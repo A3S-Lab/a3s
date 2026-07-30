@@ -1,0 +1,81 @@
+---
+title: Updates
+description: CLI self-update, registered component upgrades, Homebrew refresh, verified release assets, and TUI restart behavior.
+---
+
+# Updates
+
+A3S separates the umbrella executable from optional components:
+
+```bash
+a3s self update          # update the executable and bundled Code surface
+a3s upgrade              # list component upgrades without mutation
+a3s upgrade use --yes    # upgrade one installed component
+```
+
+`a3s code update` and TUI `/update` enter the same self-update implementation.
+The former overloaded `a3s update` route is hidden transition compatibility,
+not the command for new scripts. Component upgrades use the verified component
+transaction engine and never install a missing component implicitly.
+
+## Self-Update Flow
+
+1. Read the current compiled CLI version.
+2. Resolve the latest release from GitHub release redirects.
+3. Compare numeric version components, allowing optional `v` prefixes.
+4. Prefer Homebrew when the current install is Homebrew-managed.
+5. Refresh the tap before upgrading so stale formula metadata does not block the
+   update.
+6. Verify that the installed binary reports the target version.
+7. Fall back to a standalone release download when Homebrew cannot complete or
+   verify the upgrade.
+
+## Supported Standalone Targets
+
+Standalone direct-download update targets:
+
+- `aarch64-apple-darwin`
+- `x86_64-apple-darwin`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-unknown-linux-gnu`
+
+Unsupported targets are pointed at the latest release page instead of attempting
+an unsafe in-place update.
+
+These self-update targets are macOS and Linux. Native Windows self-update
+remains roadmap work, while the registered WebView component has a verified
+Windows x86_64 release and managed first-use lifecycle. WSL follows the Linux
+contract.
+
+## Component Upgrades
+
+`a3s upgrade` with no IDs is read-only. Select IDs explicitly, or use `--all`
+for an intentional bulk operation. `--dry-run` prints the resolved plan,
+`--offline` permits only cached material, and `--non-interactive` prevents
+prompts. Each component transaction verifies provenance, stages files before
+activation, records ownership, and preserves the prior healthy version when an
+upgrade cannot commit.
+
+## TUI Restart
+
+When `/update` succeeds from inside `a3s code`, the TUI exits cleanly, performs
+the upgrade in the restored shell, then restarts into:
+
+```bash
+a3s code resume <session-id>
+```
+
+That keeps the terminal state clean and returns the user to the saved session.
+
+## Older Builds
+
+Older builds whose `/update` path could not refresh the Homebrew tap need one
+manual bootstrap upgrade:
+
+```bash
+brew update
+brew upgrade a3s
+a3s --version
+```
+
+Current builds handle the tap refresh inside the updater.

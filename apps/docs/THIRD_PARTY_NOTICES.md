@@ -1,15 +1,21 @@
 # Third-party notices
 
-## Canvas UI Grid
+## Canvas UI — Grid
 
-The website vendors the React and vanilla TypeScript sources for the Canvas UI
-Grid component from:
+The files below are adapted from the `Grid` component in
+[DavidHDev/canvas-ui](https://github.com/DavidHDev/canvas-ui) at commit
+`6c9cccf`:
 
-<https://github.com/DavidHDev/canvas-ui/tree/main/src/lib/Grid>
+- `components/canvas-ui/grid.tsx`
+- `components/canvas-ui/grid-vanilla.ts`
+
+The source is used under the license reproduced below.
+
+---
+
+# MIT + Commons Clause License Condition v1.0
 
 Copyright (c) 2026 David Haz
-
-### MIT + Commons Clause License Condition v1.0
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +26,13 @@ an application, website, or product**, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
-### Commons Clause Restriction
+## Commons Clause Restriction
 
 You may use this Software, including for any commercial purpose, **so long as
 you do not sell, sublicense, or redistribute the components themselves -
 whether alone, in a bundle, or as a ported version.**
 
-### No Warranty
+## No Warranty
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

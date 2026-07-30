@@ -1,0 +1,51 @@
+---
+title: 干预
+description: 通过外部策略文件拒绝 egress、file access 和 exec 的可选 Observer guards。
+---
+
+# Observer 干预
+
+Observer 默认只观测。干预是 opt-in extension：外部 controller 写策略文件，独立
+guard 二进制从内核视角执行这些策略。
+
+```text
+events -> controller or Sentry -> deny files -> Observer guard -> kernel denies
+```
+
+## 已提供 Guards
+
+| Guard | Binary | 机制 | 拒绝什么 |
+| --- | --- | --- | --- |
+| Egress | `a3s-observer-enforce` | eBPF `cgroup/connect4` | 连接到 deny 文件列出的 IPv4 地址，或 reload 时解析出的主机名地址。 |
+| File/exec | `a3s-observer-fileguard` | fanotify `FAN_OPEN_PERM` 与 `FAN_OPEN_EXEC_PERM` | 对列出路径的 `open()` 和 `exec`。 |
+
+两个 guard 都会热加载 deny file。被拒绝的操作返回 `EPERM`。
+
+## 外部策略模型
+
+Observer 不判断什么危险。它提供信号和 enforcement primitive。你的 controller、Sentry
+或其它策略服务负责 decision：
+
+```text
+Observer NDJSON
+  -> policy engine
+  -> egress-deny.txt / file-exec-deny.txt
+  -> guard reload
+  -> kernel deny
+```
+
+这种拆分让被动遥测和阻断行为分离。坏策略可能破坏某个 action，但不应让 observer 失明。
+
+## Provider Policy
+
+根 crate 还暴露 host-buildable `ProviderPolicy`：按 LLM provider 分类 egress，允许配置的
+provider 集合，并拒绝已知但未获准的 provider。严格模式也可以拒绝未分类目的地。
+
+当平台需要主动控制 agent 能访问哪些模型 API 时，使用 provider allow-list。当 decision
+依赖观察到的行为并需要分层判断时，使用 Sentry。
+
+## Fail 姿态
+
+- 默认 fail-open：未知或缺失策略允许 action。
+- 安全优先部署可以组合 allow-list、Sentry fail-closed 和显式 guard 配置。
+- Deny files 是 node-local 运行态，应由 policy 和 telemetry 生成，不应作为静态产品配置提交。

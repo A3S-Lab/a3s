@@ -1,74 +1,70 @@
-# A3S CLI website and documentation
+# A3S website and documentation
 
-The public A3S site combines the product page for the root-owned `a3s`
-command-line interface with localized, versioned product documentation. It
-intentionally contains no tutorial or blog routes.
+The public A3S site combines a product homepage, bilingual documentation,
+tutorials, and the engineering blog in one statically exported Next.js app.
+
+Chinese is the default language and uses unprefixed URLs such as `/docs`.
+English uses the `/en` prefix. The previously published `/cn` routes remain
+build-time compatibility aliases, while canonical metadata and navigation
+always point to the unprefixed Chinese route.
 
 ## Architecture
 
-The site follows the same implementation model as the A3S Code website:
+- **Next.js App Router** owns routes, metadata, and static export.
+- **Fumadocs** owns documentation and tutorial content.
+- **Locale routing** in `lib/i18n.ts` is the single source of truth for default
+  language detection, canonical paths, and language switches.
+- **Documentation versions** are discovered from product-local `vX.Y.Z`
+  directories. The documentation header shows a version selector whenever a
+  product has at least one immutable snapshot, and keeps the current topic when
+  that topic exists in the selected version.
+- **Home components** under `components/home/` keep localized content, layout,
+  interaction, and design tokens separate.
+- **Architecture atlas** renders the repository map from one 34-project data
+  source. Every project exposes an interactive five-node topology with localized
+  responsibilities, keyboard-operable project and node selection, and a direct
+  documentation or repository link.
+- **Canvas UI Grid** provides the viewport-sized interactive background across
+  the homepage with a progressive CSS fallback; its notice is recorded in
+  `THIRD_PARTY_NOTICES.md`.
+- **GitHub Pages** receives the generated `out/` directory from the repository
+  documentation workflow.
 
-- **Rspress** owns static generation, locale and version routing, metadata, and
-  the Pages base path.
-- **`documentation.json`** is the single source of truth for supported locales,
-  the default locale, published documentation versions, and the rolling
-  version.
-- **Localized MDX entry files** select the custom home layout without carrying
-  product copy.
-- **A custom theme** owns navigation, CLI product content, installation
-  switching, same-page locale and version switching, and responsive styles.
-- **Canvas UI Grid** is vendored as source and provides the pointer-responsive
-  canvas treatment around the hero's CLI playback. The playback demonstrates
-  representative command outcomes, pauses off-screen, and respects reduced
-  motion. The Canvas UI license is recorded in `THIRD_PARTY_NOTICES.md`.
-- **Static public assets** provide the favicon, social card, and robots policy.
-  The official Rspress sitemap plugin derives the sitemap from generated routes
-  so locale and version entries cannot drift.
-
-The default route is Simplified Chinese. English is served from `/en/`.
-Language switching keeps the current documentation version and page. Version
-switching keeps the current language and page.
-
-## Documentation versions
-
-The rolling documentation lives under `docs/latest/<locale>/`. Because
-`latest` is the default version, Rspress omits that segment from public URLs.
-For example, the Chinese current documentation is served from `/`, while its
-English counterpart is served from `/en/`.
-
-Stable snapshots live under `docs/<version>/<locale>/` and retain their version
-segment in public URLs. The first snapshot is `v0.11.1`, served from
-`/v0.11.1/` and `/v0.11.1/en/`.
-
-To publish another stable documentation version:
-
-1. Add its metadata to `documentation.json`.
-2. Copy the complete `latest` locale trees into `docs/<version>/`.
-3. Replace the snapshot landing pages with release-specific descriptions.
-4. Keep identical relative MDX paths across all locales.
-5. Run the complete verification suite. Stable snapshots receive only accuracy
-   and security corrections after publication.
+The homepage structure follows the same maintainable pattern as the A3S Code
+site: one composition component, isolated client-side canvas behavior, and
+centralized visual tokens rather than route-local styling.
 
 ## Local development
 
 ```bash
-npm ci
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
-
-The production site is served from `/a3s/`. Override `SITE_BASE` and
-`SITE_ORIGIN` only for another deployment target.
 
 ## Verification
 
 ```bash
-npm run format:check
-npm run check:content
-npm run lint
-npm run build
-npm run check:site
+bun run typecheck
+bun run test
+bun run build
+bun run check:site
 ```
 
-`check:content` verifies the manifest and route parity for every
-version/locale pair. `check:site` verifies generated routes, cross-version and
-cross-language links, sitemap coverage, assets, and internal references.
+`check:site` validates both localized homepage exports and confirms the
+homepage CSS was emitted into the production bundle.
+
+## Publishing a documentation version
+
+Documentation versions follow the independent release cadence of each A3S
+product; there is no monorepo-wide product version.
+
+1. Copy the release-owned pages into
+   `content/docs/<locale>/<product>/vX.Y.Z/` for both `cn` and `en`.
+2. Add a localized `meta.json` and keep the snapshot immutable after release.
+3. Add the version directory to the product's localized `meta.json` navigation.
+4. When a product has a release evidence manifest, record the canonical Chinese
+   and English document URLs there.
+5. Run `bun run check` and any product-specific documentation validator.
+
+The version selector reads the Fumadocs page tree, so publishing a version does
+not require a second version registry.

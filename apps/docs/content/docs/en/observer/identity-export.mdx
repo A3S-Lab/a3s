@@ -1,0 +1,93 @@
+---
+title: Identity And Export
+description: Process and pod identity, provider classification, socket correlation, NDJSON export, and OpenTelemetry Collector handoff.
+---
+
+# Observer Identity And Export
+
+Observer's raw probes are low-level kernel events. The collector turns them into enriched events with identity, provider classification, and socket context before export.
+
+```text
+kernel event -> collector correlation -> EnrichedEvent -> NDJSON -> log pipeline
+```
+
+## Enriched Event Shape
+
+Every exported line is an `EnrichedEvent`:
+
+```json
+{
+  "identity": {
+    "agent": "agent-process-or-pod",
+    "task": "1234",
+    "session": null
+  },
+  "provider": null,
+  "event": {
+    "ToolExec": {
+      "pid": 1234,
+      "ppid": 1,
+      "uid": 1000,
+      "argv": ["git", "status"],
+      "cwd": "/work"
+    }
+  }
+}
+```
+
+`identity` answers who the event belongs to. `provider` is populated when a network event can be classified as a known LLM provider. `event` carries the signal-specific payload.
+
+## Identity Resolution
+
+Observer exposes an `IdentityResolver` trait and ships process/container resolvers:
+
+| Resolver path | Evidence used | Output |
+| --- | --- | --- |
+| Kubernetes/container | `/proc/<pid>/cgroup` | Pod UID and short container ID without Kubernetes API access. |
+| Bare host | `/proc/<pid>/comm` and `/proc/<pid>/stat` | Process name and pid task identity. |
+| Kernel fallback | In-kernel `comm` | A best-effort label for very short-lived processes. |
+
+Set `A3S_OBSERVER_COLLECTOR_ID` and `A3S_NODE_NAME` in fleet deployments when downstream systems need stable collector and node identity. If unset, the collector falls back to pod or host names where available.
+
+## Socket Correlation
+
+Network hooks observe different pieces at different times: connect, SNI, DNS, reads, receives, and close. Userspace correlation keeps `(pid, fd) -> peer` state so later LLM metrics can be tied back to the peer IP, SNI, endpoint, byte counts, latency, and TTFT.
+
+This is why `LlmCall` can include request bytes, response bytes, latency, and time-to-first-byte even though those facts arrive from multiple probe paths.
+
+## Provider Classification
+
+`ServiceClassifier` maps SNI and peer context to a `Provider`. The default `SniClassifier` recognizes a fixed set of LLM provider hostnames and returns `None` for unclassified destinations.
+
+SNI is plaintext today, but encrypted client hello can hide it. Deployments that require provider policy should combine SNI with DNS, IP intelligence, allow-lists, or a stricter proxy path when SNI is unavailable.
+
+## Export
+
+Observer exports either human logs or NDJSON. NDJSON is the production interface:
+
+```bash
+A3S_OBSERVER_JSON=1 a3s-observer-collector
+```
+
+Each line is valid JSON and can be consumed by `jq`, Vector, Loki, an OpenTelemetry Collector filelog receiver, Sentry, or a custom controller.
+
+## OpenTelemetry Collector Handoff
+
+The repository's `deploy/otel-collector.yaml` uses:
+
+| Component | Role |
+| --- | --- |
+| `filelog` receiver | Tails Observer NDJSON and parses JSON lines into structured log records. |
+| `memory_limiter` | Sheds load before the Collector OOMs under backend pressure. |
+| `batch` processor | Batches logs before export. |
+| `otlp` exporter | Sends records to the configured backend with retry and sending queue enabled. |
+
+Observer intentionally does not embed an OTLP client in the privileged collector. Transport, retry, routing, and backend outages belong to the log pipeline.
+
+## Output Backpressure
+
+The JSON exporter uses a dedicated writer thread and bounded queue. If stdout or the downstream log path stalls, Observer drops output lines and increments `output_dropped` rather than blocking the event loop. Heartbeat events include both ring drops and output drops so fleet health can detect slow consumers.
+
+## Boundary
+
+The collector enriches and exports evidence. It does not decide policy by itself; Sentry, ProviderPolicy, or another controller can consume the same NDJSON stream and drive enforcement.

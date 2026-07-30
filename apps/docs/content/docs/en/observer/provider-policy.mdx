@@ -1,0 +1,84 @@
+---
+title: Provider Policy
+description: Provider allow-lists, external controllers, deny-file formats, and the relationship between Observer guards and Sentry.
+---
+
+# Observer Provider Policy
+
+Observer separates observation from intervention. Policy can be embedded as Rust code or implemented out-of-process by any controller that reads NDJSON and writes deny files.
+
+```text
+Observer NDJSON -> policy engine -> deny file -> Observer guard -> EPERM
+```
+
+## Shipped ProviderPolicy
+
+The root crate exposes `ProviderPolicy`, a host-buildable `Policy` implementation for egress allow-lists by LLM provider.
+
+```rust
+use a3s_observer::{Provider, ProviderPolicy};
+
+let policy = ProviderPolicy::new([Provider::OpenAi, Provider::Anthropic]);
+```
+
+Default behavior:
+
+| Destination | Result |
+| --- | --- |
+| Allow-listed known provider | `Allow` |
+| Known provider not on the allow-list | `Deny` |
+| Unclassified destination | `Allow` |
+
+This keeps package mirrors, internal APIs, and ordinary non-LLM traffic available by default.
+
+## Strict Provider Cage
+
+Strict mode also denies unclassified destinations:
+
+```rust
+use a3s_observer::{Provider, ProviderPolicy};
+
+let cage = ProviderPolicy::new([Provider::OpenAi]).deny_unclassified(true);
+```
+
+Use strict mode only when the agent should reach nothing except approved model providers. It can block normal operational dependencies that do not classify as a known provider.
+
+## Custom Classifier
+
+`ProviderPolicy::with_classifier` accepts any `ServiceClassifier`. This lets a platform replace SNI-only classification with a classifier backed by DNS correlation, IP ranges, a proxy registry, or a site-owned provider map.
+
+## External Controller Path
+
+The language-agnostic path is a controller:
+
+1. Read Observer NDJSON.
+2. Apply site policy.
+3. Rewrite a deny file.
+4. Let the guard hot-reload it.
+
+The repository includes `scripts/example-controller.py` as a minimal NDJSON to egress deny-list example.
+
+## Deny-File Formats
+
+| Guard | File format |
+| --- | --- |
+| Egress guard | One IPv4 address or hostname per line. Hostnames are re-resolved on reload. |
+| File/exec guard | One path per line. The same fanotify guard can deny open and exec of listed paths. |
+
+Blank lines and comments are ignored by the egress policy parser.
+
+## Relationship To Sentry
+
+ProviderPolicy is proactive: it can prevent an agent from reaching unapproved providers before an incident event exists.
+
+Sentry is reactive and semantic: it judges observed behavior through L1/L2/L3/SAE tiers, then writes deny records for Observer guards.
+
+Use both when the platform needs a provider allow-list floor plus deeper behavior-aware judgment.
+
+## Fail Posture
+
+Observer's built-in policy trait defaults to `Allow`. Guards are opt-in, and missing policy should not break passive telemetry. Security-first deployments can still choose strict allow-lists or Sentry fail-closed mode, but that is an explicit operational choice.
+
+## Boundary
+
+Provider classification is only as strong as the signal used by the classifier. SNI-based allow-lists can lose visibility when SNI is unavailable, hidden, or not representative of the true upstream path.

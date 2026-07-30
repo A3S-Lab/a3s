@@ -1,0 +1,224 @@
+---
+title: 无头浏览器
+description: Chrome DevTools Protocol 集成，用于 JavaScript 渲染引擎
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+# 无头浏览器
+
+Google、Baidu 和 Bing China 等引擎需要 JavaScript 渲染。A3S Search 提供了 `BrowserPool`，用于管理共享的无头浏览器实例（Lightpanda 或 Chrome），并通过标签页并发控制来协调访问。
+
+## 浏览器后端
+
+A3S Search 支持两种无头浏览器后端：
+
+- **Chrome/Chromium** — 通过 `headless` 特性启用；可自动检测本机浏览器，也可下载 Chrome for Testing
+- **Lightpanda** — 通过 `lightpanda` 特性在 Linux/macOS 上启用；该特性会隐式启用 `headless`
+
+`BrowserBackend::default()` 在编译启用 `lightpanda` 时选择 Lightpanda，否则选择 Chrome。
+
+## 功能开关
+
+无头浏览器支持在 Rust crate 中需要手动启用：
+
+```toml
+# Rust 库（默认只启用 HTTP 引擎）
+[dependencies]
+a3s-search = "1.3"
+
+# 使用 Chrome/Chromium 无头后端
+[dependencies]
+a3s-search = { version = "1.3", features = ["headless"] }
+
+# 使用 Lightpanda 后端（仅 Linux/macOS；隐式启用 headless）
+[dependencies]
+a3s-search = { version = "1.3", features = ["lightpanda"] }
+```
+
+Rust crate 当前只暴露两个相关特性：`headless` 和 `lightpanda`。
+
+## BrowserPool
+
+`BrowserPool` 管理单个浏览器进程（Lightpanda 或 Chrome），并通过标签页信号量进行并发控制：
+
+```rust
+use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserBackend};
+use std::sync::Arc;
+
+let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+    backend: BrowserBackend::Chrome,
+    max_tabs: 4,
+    headless: true,
+    chrome_path: None,
+    proxy_url: None,
+    launch_args: vec![],
+}));
+```
+
+编译启用 `features = ["lightpanda"]` 后，也可以使用 `BrowserBackend::Lightpanda` 和 `lightpanda_path`。
+
+### 配置项
+
+<TypeTable
+  type={{
+    backend: { type: 'BrowserBackend', default: 'Chrome，启用 lightpanda 特性时为 Lightpanda', description: '由编译期特性选择的浏览器后端' },
+    max_tabs: { type: 'usize', default: '4', description: '最大并发浏览器标签页数' },
+    headless: { type: 'bool', default: 'true', description: '无 UI 模式运行浏览器' },
+    chrome_path: { type: 'Option<String>', default: 'None', description: '显式指定 Chrome 二进制路径（仅当 backend=Chrome 时使用）' },
+    lightpanda_path: { type: 'Option<String>', default: 'None', description: '显式指定 Lightpanda 二进制路径（仅当 backend=Lightpanda 时使用）' },
+    proxy_url: { type: 'Option<String>', default: 'None', description: '所有浏览器流量的代理 URL' },
+    launch_args: { type: 'Vec<String>', default: '[]', description: '额外的浏览器启动参数' },
+  }}
+/>
+
+### 生命周期
+
+浏览器在首次调用 `acquire_browser()` 时懒加载初始化：
+
+```rust
+let browser = pool.acquire_browser().await?;
+pool.shutdown().await;
+```
+
+## BrowserFetcher
+
+`BrowserFetcher` 使用 `BrowserPool` 实现 `PageFetcher` trait：
+
+```rust
+use a3s_search::browser::BrowserFetcher;
+use a3s_search::WaitStrategy;
+
+let fetcher = Arc::new(
+    BrowserFetcher::new(pool.clone())
+        .with_wait(WaitStrategy::Selector {
+            css: "div.g".into(),
+            timeout_ms: 5000,
+        })
+        .with_user_agent("Mozilla/5.0 ...")
+);
+```
+
+## 等待策略
+
+控制页面何时被视为"已加载"：
+
+<TypeTable
+  type={{
+    "Load": {
+      description: "Fast pages, APIs",
+    },
+    "NetworkIdle { idle_ms }": {
+      description: "Complex SPAs",
+    },
+    "Selector { css, timeout_ms }": {
+      description: "Waiting for specific content (recommended)",
+    },
+    "Delay { ms }": {
+      description: "Fallback when nothing else works",
+    },
+  }}
+/>
+
+每个内置无头引擎使用适合自身的策略：
+
+<TypeTable
+  type={{
+    "Google": {
+      description: "Selector { css: 'div.g', timeout_ms: 5000 }",
+    },
+    "Baidu": {
+      description: "Selector { css: 'div.c-container', timeout_ms: 5000 }",
+    },
+    "Bing China": {
+      description: "Delay { ms: 2000 }",
+    },
+  }}
+/>
+
+## 浏览器自动检测
+
+当 `chrome_path` 或 `lightpanda_path` 为 `None` 时，A3S Search 会自动检测或下载浏览器：
+
+### Lightpanda（启用 `lightpanda` 特性时）
+
+1. `LIGHTPANDA` 环境变量
+2. 系统 PATH（`lightpanda` 命令）
+3. 缓存目录：`~/.a3s/lightpanda/<tag>/lightpanda`
+4. 从 GitHub releases 自动下载
+
+支持的平台：macOS（arm64、x64）和 Linux（x64、arm64）。首次运行可能需要下载约 59MB。
+
+### Chrome/Chromium
+
+1. `CHROME` 环境变量
+2. 系统 PATH（`google-chrome`、`chromium`、`chrome` 等）
+3. 常见安装路径（macOS `/Applications/...`、Linux `/usr/bin/...`、Windows `C:\Program Files\...`）
+4. 缓存目录：`~/.a3s/chromium/<version>/`
+5. 从 Google CDN 自动下载 Chrome for Testing
+
+支持的平台：macOS（arm64、x64）、Linux（x64）和 Windows（x64、x86）。首次运行可能需要下载约 150MB。
+
+## 使用无头引擎
+
+```rust
+use a3s_search::{Search, SearchQuery};
+use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserFetcher};
+use a3s_search::engines::{Google, Baidu, BingChina, DuckDuckGo};
+use a3s_search::WaitStrategy;
+use std::sync::Arc;
+
+let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+    max_tabs: 4,
+    ..Default::default()
+}));
+
+let google_fetcher = Arc::new(
+    BrowserFetcher::new(pool.clone())
+        .with_wait(WaitStrategy::Selector {
+            css: "div.g".into(),
+            timeout_ms: 5000,
+        })
+);
+
+let baidu_fetcher = Arc::new(
+    BrowserFetcher::new(pool.clone())
+        .with_wait(WaitStrategy::Selector {
+            css: "div.c-container".into(),
+            timeout_ms: 5000,
+        })
+);
+
+let mut search = Search::new();
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Google::new(google_fetcher));
+search.add_engine(Baidu::new(baidu_fetcher));
+
+let results = search.search(SearchQuery::new("rust programming")).await?;
+pool.shutdown().await;
+```
+
+## PageFetcher Trait
+
+所有 fetcher 均实现此 trait：
+
+```rust
+#[async_trait]
+pub trait PageFetcher: Send + Sync {
+    async fn fetch(&self, url: &str) -> Result<String>;
+}
+```
+
+<TypeTable
+  type={{
+    "HttpFetcher": {
+      description: "Plain HTTP via reqwest, optional single proxy",
+    },
+    "PooledHttpFetcher": {
+      description: "Proxy pool rotation per request",
+    },
+    "BrowserFetcher": {
+      description: "通过 BrowserPool 进行无头浏览器渲染",
+    },
+  }}
+/>

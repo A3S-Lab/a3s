@@ -1,0 +1,101 @@
+---
+title: SqliteMemoryStore
+description: Feature-gated SQLite backend，提供 FTS5 search、Markdown export、session log、pruning 和可选 sqlite-vec semantic search。
+---
+
+# SqliteMemoryStore
+
+`SqliteMemoryStore` 是 feature-gated persistent backend。它和 `InMemoryStore`、`FileMemoryStore` 一样实现 `MemoryStore` trait，但以 SQLite 作为 authoritative store。
+
+## Enable
+
+```toml
+[dependencies]
+a3s-memory = { version = "0.1.1", features = ["sqlite"] }
+```
+
+只有启用 `sqlite` Cargo feature 时，`SqliteMemoryStore` 才会从 crate root re-export。
+
+## Storage Layout
+
+```text
+memory-root/
+  memory.db
+  MEMORY.md
+  memory/
+    YYYY-MM-DD.md
+```
+
+| Track | 作用 |
+| --- | --- |
+| `memory.db` | Authoritative SQLite database。所有 `MemoryStore` methods 都操作该数据库。 |
+| `MEMORY.md` | Importance 大于等于 `0.7` 的高重要性 memory 的 append-only Markdown log。 |
+| `memory/YYYY-MM-DD.md` | Episodic memories 的 append-only daily Markdown log。 |
+
+Markdown files 用于 human review 和 external tooling。它们不是 source of truth，database item 被删除或 prune 时也不会被重写。
+
+## Database Schema
+
+Schema 包含：
+
+| Table | 用途 |
+| --- | --- |
+| `memories` | Canonical memory item rows，包含 content、timestamps、importance、tags、type、metadata、access count 和 last access。 |
+| `memories_fts` | 由 triggers 同步的 FTS5 virtual table，用于 full-text search。 |
+| `session_log` | 按 session id 分组的 append-only structured event log。 |
+
+Database 启用 WAL mode 和 foreign keys。FTS 使用 `unicode61 remove_diacritics 1`。
+
+## Search
+
+`search(query, limit)` 使用 FTS5，并按 `bm25(memories_fts)` 排序。Tag search、recent retrieval、important retrieval、delete、clear、count 和 prune 都通过 SQL queries 实现。
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore, SqliteMemoryStore};
+
+let store = SqliteMemoryStore::new("./memory").await?;
+store.store(MemoryItem::new("prefer WAL for concurrent sqlite readers")).await?;
+
+let results = store.search("concurrent sqlite", 5).await?;
+```
+
+使用 `.with_relevance(config)` 可以覆盖该 backend 在 `search` 和 `get_recent` 中使用的 relevance config。
+
+## Session Log
+
+SQLite 还暴露一个小的 session-log API：
+
+```rust
+store
+    .log_session_event("session-1", "tool_use", &serde_json::json!({"tool": "read"}))
+    .await?;
+
+let events = store.export_session_log("session-1").await?;
+```
+
+这是存储在 SQLite 中的 append-only JSON event log，适合 agent runtime 希望在同一个 local store 中同时拥有 memory storage 和 session event export 的场景。
+
+## Optional Semantic Search
+
+`sqlite-vec` feature 启用：
+
+- `store_with_embedding(item, embedding)`
+- `search_semantic(query_embedding, limit)`
+
+```toml
+[dependencies]
+a3s-memory = { version = "0.1.1", features = ["sqlite-vec"] }
+```
+
+当前 vector table 存储 `FLOAT[1536]` embeddings。Embedding 由 caller 提供；本 crate 不负责 model inference 或 embedding generation。
+
+## Async Boundary
+
+`rusqlite::Connection` 由 `Arc<Mutex<Connection>>` 保护，blocking SQLite work 通过 `tokio::task::spawn_blocking` 调度。这让 async trait interface 可以在 Tokio application 中使用，同时把 SQLite dependency 限定在 backend 内部。
+
+## Boundaries
+
+- `sqlite` 和 `sqlite-vec` 是 optional features，不是 default dependencies。
+- Markdown export 是 best-effort；SQLite database 才是 authoritative。
+- Semantic search 需要 caller 提供符合当前维度的 embeddings。
+- 这个 backend 仍不实现 A3S Code session memory tiers 或 prompt injection；那些属于 A3S Code。

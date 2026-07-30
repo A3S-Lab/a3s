@@ -1,0 +1,80 @@
+---
+title: Protocol
+description: JSON-RPC methods, handshake, request/notification semantics, and decision shapes in AHP v2.4.
+---
+
+# AHP Protocol
+
+AHP v2.4 is a JSON-RPC 2.0 protocol. Requests are used for control points that
+need a decision; notifications are used for telemetry and durable runtime state
+that must not block the agent.
+
+## Versioning
+
+| Item | Value |
+| --- | --- |
+| Wire protocol | `2.4` |
+| Rust crate | `a3s-ahp` |
+| Crate version | `2.4.0` |
+| Repository | `https://github.com/A3S-Lab/AgentHarnessProtocol` |
+
+The handshake rejects protocol major-version mismatches. Patch crate releases
+can happen without changing the wire protocol version.
+
+## Methods
+
+| Method | Direction | Purpose |
+| --- | --- | --- |
+| `ahp/handshake` | Agent to harness | Negotiate compatibility, agent info, harness capabilities, and limits. |
+| `ahp/event` | Agent to harness | Send one event as a request or notification depending on event type. |
+| `ahp/query` | Agent to harness | Ask the harness for extra information. |
+| `ahp/batch` | Agent to harness | Send multiple generic-decision events in one request. |
+
+`handshake` and `query` exist in the event taxonomy, but normal clients should
+use the dedicated methods.
+
+## Event Envelope
+
+Every AHP event carries:
+
+| Field | Meaning |
+| --- | --- |
+| `event_type` | Snake-case event name such as `pre_action` or `task_list`. |
+| `session_id` | Runtime session identifier. |
+| `agent_id` | Agent identifier. |
+| `timestamp` | RFC3339 timestamp string supplied by the runtime. |
+| `depth` | Recursion depth for nested AHP activity. |
+| `payload` | Event-specific JSON payload. |
+| `context` | Optional structured context for context-aware decisions. |
+| `metadata` | Optional extra runtime or harness metadata. |
+
+Full-event client APIs preserve caller-supplied session, agent, depth, context,
+and metadata. Convenience APIs can create those values for simple callers.
+
+## Decisions
+
+Generic events return `Decision`:
+
+| Decision | Meaning |
+| --- | --- |
+| `allow` | Continue, optionally with metadata or a modified payload. |
+| `block` | Stop and surface a reason. |
+| `modify` | Continue using harness-modified parameters. |
+| `defer` | Retry later. |
+| `escalate` | Hand off to a human or external approval path. |
+
+Specialized events return typed decision shapes: `IdleDecision`,
+`IntentDetectionDecision`, `ContextPerceptionDecision`, `MemoryRecallDecision`,
+`PlanningDecision`, `ReasoningDecision`, `RateLimitDecision`, and
+`ConfirmationDecision`.
+
+## Request And Notification Rules
+
+- Blocking events must be sent as JSON-RPC requests.
+- Fire-and-forget events must be sent as JSON-RPC notifications.
+- The server rejects blocking events sent as notifications.
+- The server rejects non-blocking events sent as requests.
+- Runtime contract payloads are validated even when sent as notifications.
+
+This distinction is the core supervision contract: the harness decides where a
+decision is required, while non-blocking state remains cheap to stream.

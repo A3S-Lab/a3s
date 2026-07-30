@@ -1,0 +1,83 @@
+---
+title: 常见问题
+description: A3S Box 能力和边界的实用问答（CRI 核心生命周期与 exec 已可用，尚未完全一致）
+---
+
+# 常见问题
+
+## A3S Box 是 Docker 替代品吗？
+
+不是。A3S Box 提供类 Docker CLI，用 MicroVM 运行 Linux OCI 工作负载。它实现了很多常用命令，但不是 Docker daemon，不提供 Docker API，也不承诺完整 Dockerfile 或 Compose 兼容。
+
+## 今天最稳的路径是什么？
+
+本地 CLI 运行时。当前真实 macOS HVF smoke 覆盖 lifecycle、exec、PTY、attach、logs、ports、bridge 网络生命周期、卷、diff/export/commit/snapshot、restart monitor 和 Compose health/volume 流程。
+
+## 应该用哪些平台？
+
+本地开发可用 macOS Apple Silicon/HVF；Linux 验证用 KVM/libkrun 支持的主机；Windows x64 主机需要启用 Windows Hypervisor Platform，走原生 WHPX 后端。Windows 包不依赖 WSL。Windows CRI 不支持。
+
+## 可以运行 nginx 吗？
+
+可以，在支持的宿主机上：
+
+```bash
+a3s-box run -d --name web -p 8080:80 nginx:alpine
+a3s-box port web
+a3s-box logs -f web
+```
+
+如果端口不通，先运行 `a3s-box info` 查看平台能力。
+
+## Bridge 网络能访问外网吗？
+
+取决于宿主机：
+
+- Linux bridge 使用 `passt`，报告支持 outbound NAT。
+- macOS bridge 使用 `netproxy` 做 peer 网络和 TCP 端口发布，但不支持 bridge outbound NAT。
+- macOS 工作负载需要外网时，使用默认 TSI。
+
+## 网络策略会执行吗？
+
+当前只有默认 `none` isolation 可 attach。`strict` 和 `custom` 会被拒绝，因为包过滤尚未实现。
+
+## Dockerfile `RUN` 能用吗？
+
+在可 root 的 Linux 上可以，通过隔离 `chroot` 执行。builder 会在执行前检查 root 权限、shell 路径和 workdir。
+
+macOS 默认拒绝 Dockerfile `RUN`，避免静默在宿主机执行构建命令。`A3S_BOX_UNSAFE_HOST_RUN=1` 只用于本地 unsafe 实验。
+
+## CRI 生产可用吗？
+
+不应这样理解。CRI server 现在可被 `crictl` 和 kubelet 访问（通过 h2 UDS 补丁）。核心 Pod 生命周期（RunPodSandbox → CreateContainer → StartContainer → Stop/Remove）和 exec（kubectl exec / crictl exec，TTY/非 TTY，stdin/stdout/stderr 和退出码）已端到端可用；attach 和完整的 critest 一致性尚未完成。请在受控环境中使用并显式验证。Windows CRI 不在范围内。
+
+## TEE 生产可用吗？
+
+SEV-SNP 方向的软件路径存在，模拟模式适合开发。生产 TEE 声明必须基于目标宿主机类别的硬件证明。模拟模式不证明机密性。
+
+## 支持 Intel TDX 吗？
+
+当前没有产品化 TDX 路径。
+
+## 支持 GPU 或设备直通吗？
+
+不支持。当前 libkrun runtime 路径没有实现 device/GPU passthrough，对应选项会被拒绝。
+
+## 状态存在哪里？
+
+默认在 `~/.a3s`。可以用 `A3S_HOME` 隔离环境：
+
+```bash
+A3S_HOME=/tmp/a3s-box-test a3s-box ps -a
+```
+
+## 如何清理？
+
+```bash
+a3s-box rm -f box-name
+a3s-box system-prune --force
+a3s-box image-prune --force
+a3s-box volume prune --force
+```
+
+prune 会删除未使用的本地状态，请谨慎使用。

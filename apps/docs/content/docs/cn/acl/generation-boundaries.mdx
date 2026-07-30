@@ -1,0 +1,86 @@
+---
+title: Generation And Boundaries
+description: Stable ACL output、label handling、function-call placeholders、secret hygiene 和 ownership boundaries。
+---
+
+# Generation And Boundaries
+
+ACL 适合产品配置，是因为它让配置保持可读、结构化，同时把敏感值解析留给宿主组件。
+
+## Generation Behavior
+
+| Behavior | 当前实现 |
+| --- | --- |
+| Attribute order | 生成时 attributes 会按 key 排序。 |
+| String escaping | Quotes、backslashes、newline、carriage return、tab 会被 escape。 |
+| Lists and objects | Values 会 inline 生成。 |
+| Function calls | Calls 会以语法形式保留，例如 `env("PROVIDER_API_KEY")`。 |
+| Labels | 输出会把所有 labels 写在 native ACL block headers 中。 |
+| Document root shape | Root assignments 对每种 value kind 都保持 assignment；block name 与 attribute name 不同的单 attribute blocks 会保留 braces。 |
+
+Native ACL 是唯一 output mode。两个 SDK 都不提供 label-as-attribute
+generator mode，并且 Node 会拒绝 generator options，避免静默生成不同
+document shape。
+
+## Canonical Bytes And Digests
+
+当配置需要签名、存储或比较时，Rust 使用 `canonical_bytes` /
+`canonical_digest`，Node 使用 `canonicalBytes` / `canonicalDigest`。
+Canonical output 使用 UTF-8、LF line endings、恰好一个 final newline、
+sorted portable attribute/object keys，并对 duplicate object keys 使用
+last-value-wins。这些 base APIs 会保留 block、label、list 和
+function-argument order。
+
+完成 schema admission 后，Rust 的
+`canonical_bytes_with_schema` / `canonical_digest_with_schema` 和 Node 的
+`canonicalBytesWithSchema` / `canonicalDigestWithSchema` 可以递归规范化 schema
+rule 标记为 `unordered` 的同一种 declared block name 的 occurrences。
+Matching blocks 按 canonical UTF-8 bytes 比较，并且只替换原有 slots。其它
+names、unknown blocks、labels、lists、calls 和 unmarked blocks 仍然保持顺序。
+Schema-aware APIs 只把 schema 用作 normalization metadata，不会执行
+admission。
+
+Finite numbers 使用 ECMAScript shortest-round-trip formatting，negative zero
+输出为 `0`。Unicode scalar sequences 不做 normalization。Digest 格式为
+`sha256:<64 lowercase hexadecimal characters>`。
+
+## Secret Hygiene
+
+存引用，不存秘密：
+
+```text
+providers "provider" {
+  api_key = env("PROVIDER_API_KEY")
+  base_url = env("PROVIDER_BASE_URL")
+}
+```
+
+不要把真实 API keys、bearer credentials 或 private endpoints 提交进 ACL examples 或产品配置。
+ACL crate 会把 `env(...)` 保留为 function call；加载配置的组件决定如何解析。
+
+## Ownership Boundary
+
+ACL 负责：
+
+- 把 text 解析成 AST
+- 从 AST 生成 text
+- value constructors 和 document builders
+- parser diagnostics
+- declarative document-shape schemas 和 bounded validation reports
+- base 和 schema-aware canonical bytes 与 digests
+- language-neutral config shape
+
+宿主组件负责：
+
+- 定义每个 product boundary 使用的 trusted schema
+- 验证 document shape 之外的 domain rules
+- 执行 function calls
+- 解析 environment variables 或 secret-store references
+- 应用 defaults
+- 把 AST values 转成 product-specific typed configuration
+- 执行 policy decisions
+
+## Relationship To A3S Components
+
+A3S Code、A3S Sentry 和其它 A3S components 可以把 ACL 作为可审阅配置格式。每个组件应把自己的
+schema 和 evaluator 留在本组件内，而不是把 ACL 变成全局 policy engine。

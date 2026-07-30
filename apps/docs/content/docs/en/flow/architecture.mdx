@@ -1,0 +1,92 @@
+---
+title: Architecture
+description: How A3S Flow models deterministic replay, event sourcing, waits, hooks, and inspection.
+---
+
+# Flow Architecture
+
+A3S Flow keeps workflow truth in an event history, not in the call stack of a
+long-running process. Each run is projected from its committed events and then
+replayed until the runtime returns one durable command.
+
+## Layers
+
+```text
+Rust SDK layer
+  FlowEngine, FlowRuntime, FlowEventStore, snapshots
+          |
+          v
+Runtime adapter layer
+  host runtime, Rust embedded workflows, optional NativeTsRuntime
+          |
+          v
+Durable engine layer
+  replay loop, run inspection, retries, waits, hooks, cancellation
+          |
+          v
+Event store layer
+  append-only FlowEventStore, local files, SQLite, Postgres
+          |
+          v
+Dispatch layer
+  FlowTask, FlowTaskQueue, FlowWorker, FlowScheduler
+```
+
+## Replay Model
+
+The runtime returns exactly one `RuntimeCommand` per replay:
+
+| Command | Engine behavior |
+| --- | --- |
+| `ScheduleStep` | Persist step creation, execute the side-effecting step, persist output or failure, then replay. |
+| `ScheduleSteps` | Validate a stable batch of unique step IDs and apply the same durable step lifecycle to each step. |
+| `WaitUntil` | Persist a wait and suspend until the host resumes it or the scheduler finds it due. |
+| `CreateHook` | Persist a callback hook and suspend until a host resumes or disposes it. |
+| `Complete` | Persist terminal output. |
+| `Fail` | Persist terminal failure. |
+
+Replay validation rejects non-deterministic drift. Reusing an existing step,
+wait, or hook ID with different input, retry policy, deadline, token, or
+metadata returns an error instead of silently extending an incompatible history.
+
+## Event Sourcing
+
+`FlowEventStore` is append-only. Engine writes use expected sequence numbers so
+stale writers get a clear conflict instead of corrupting order.
+
+Snapshots are projections:
+
+- `snapshot(run_id)` returns the current projected run.
+- `history(run_id)` returns committed envelopes.
+- `list_snapshots()` and `run_summary()` support dashboards.
+- `list_open_suspensions()` returns waits, hooks, and delayed retries.
+- `next_wakeup()` lets hosts sleep until the next scheduled resume.
+- `list_active_hooks()` builds callback indexes or UI queues.
+
+## Timers And Hooks
+
+Timers and hooks suspend without holding compute.
+
+Use waits for:
+
+- retry backoff,
+- polling external jobs,
+- SLA deadlines,
+- sleeping between agent/tool iterations.
+
+Use hooks for:
+
+- human approval,
+- webhooks,
+- OAuth callbacks,
+- UI review gates,
+- host events that arrive later.
+
+Hooks can be resumed by run/hook ID or by public token. Disposal closes the
+callback route and lets workflow code replay down an alternate path.
+
+## Observability
+
+Flow observers mirror committed events after store append. This keeps stores
+authoritative while allowing hosts to fan out events to local audit logs, A3S
+event records, metrics, dashboards, or runtime inspection views.

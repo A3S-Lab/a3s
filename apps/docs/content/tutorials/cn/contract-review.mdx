@@ -1,0 +1,165 @@
+---
+title: 构建合同审查智能体
+description: 使用 A3S Code 结构化输出构建自主合同审查智能体，确定性输出 JSON 审查报告。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 构建合同审查智能体
+
+本教程构建一个合同审查智能体：自主读取和分析合同，然后通过 `generate_object` 输出确定性的 JSON 报告。
+
+<Callout type="info">
+核心思路：**智能体负责"理解"**（自主读取文件、分析条款），**`generate_object` 负责"输出"**（schema 强制校验的确定性 JSON）。将"理解"与"报告"分离。
+</Callout>
+
+## 架构
+
+```text
+合同文件
+  → 智能体读取文件（自主，使用 read/bash 工具）
+  → 智能体分析条款（LLM 推理）
+  → generate_object（确定性结构化输出）
+  → Schema 校验通过的 JSON 报告
+```
+
+## 定义审查结果 Schema
+
+```ts
+const CONTRACT_REVIEW_SCHEMA = {
+  type: 'object',
+  required: ['summary', 'risk_level', 'parties', 'key_terms', 'issues', 'recommendations'],
+  properties: {
+    summary: { type: 'string', minLength: 20 },
+    risk_level: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
+    parties: {
+      type: 'array',
+      minItems: 2,
+      items: {
+        type: 'object',
+        required: ['name', 'role'],
+        properties: {
+          name: { type: 'string' },
+          role: { type: 'string' },
+        },
+      },
+    },
+    key_terms: {
+      type: 'object',
+      properties: {
+        contract_amount: { type: 'string' },
+        duration: { type: 'string' },
+        payment_terms: { type: 'string' },
+        termination_clause: { type: 'string' },
+        liability_cap: { type: 'string' },
+      },
+    },
+    issues: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['severity', 'clause', 'description'],
+        properties: {
+          severity: { type: 'string', enum: ['info', 'warning', 'critical'] },
+          clause: { type: 'string' },
+          description: { type: 'string' },
+          suggestion: { type: 'string' },
+        },
+      },
+    },
+    recommendations: {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: 1,
+    },
+  },
+};
+```
+
+## 方式一：单次执行（智能体自主）
+
+让智能体自主决定如何审查、何时输出：
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+  maxToolRounds: 20,
+});
+
+const result = await session.send(`
+你是一位专业的合同审查律师。请完成以下步骤：
+
+1. 读取合同文件: contracts/service-agreement.txt
+2. 识别所有当事方、关键条款和潜在风险
+3. 分析：不公平条款、模糊表述、缺失保护、责任不对等、合规问题
+4. 使用 generate_object 工具输出结构化审查报告。
+   schema_name 为 "contract_review"，schema 如下：
+
+${JSON.stringify(CONTRACT_REVIEW_SCHEMA, null, 2)}
+`);
+```
+
+## 方式二：两阶段（严格确定性）
+
+将推理与输出分离，获得最大控制力：
+
+```ts
+async function reviewContract(contractPath: string) {
+  const session = agent.session('.', {
+    permissionPolicy: { defaultDecision: 'allow' },
+  });
+
+  // 阶段 1: 自主分析
+  const analysis = await session.send(`
+    你是合同审查律师。读取 ${contractPath} 并提供全面分析。
+  `);
+
+  // 阶段 2: 确定性结构化输出
+  const structured = await session.tool('generate_object', {
+    schema: CONTRACT_REVIEW_SCHEMA,
+    schema_name: 'contract_review',
+    prompt: `基于以下分析生成结构化报告：\n\n${analysis.text}`,
+    mode: 'tool',
+    max_repair_attempts: 3,
+  });
+
+  return JSON.parse(structured.output).object;
+}
+```
+
+## Python 版本
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+import json
+
+def review_contract(contract_path: str) -> dict:
+    agent = Agent.create(open('config.acl').read())
+    opts = SessionOptions()
+    opts.permission_policy = PermissionPolicy(default_decision="allow")
+    session = agent.session('.', opts)
+
+    analysis = session.send(f"读取 {contract_path} 并分析所有条款风险")
+
+    result = session.tool("generate_object", {
+        "schema": CONTRACT_REVIEW_SCHEMA,
+        "schema_name": "contract_review",
+        "prompt": f"基于以下分析生成结构化报告：\n\n{analysis.text}",
+        "mode": "tool",
+        "max_repair_attempts": 3,
+    })
+
+    return json.loads(result.output)["object"]
+```
+
+## 确定性保证
+
+确定性来自三层防线：
+
+1. **Tool-call 模式**：LLM 被强制调用合成工具，无法输出自由文本
+2. **Schema 校验**：完整 JSON Schema 校验（类型、必填、枚举、范围、正则）
+3. **修复重试**：校验失败时自动反馈错误并重试

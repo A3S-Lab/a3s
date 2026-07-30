@@ -1,0 +1,10 @@
+{
+  "title": "A3S CLI",
+  "pages": [
+    "index",
+    "commands",
+    "code-tui",
+    "box-and-tools",
+    "updates"
+  ]
+}

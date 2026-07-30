@@ -1,0 +1,71 @@
+---
+title: A3S Flow
+description: 事件溯源 durable workflow engine 和 Rust SDK，覆盖 replay-safe steps、timers、hooks、retries、workers 与 durable storage。
+---
+
+# A3S Flow
+
+`a3s-flow` 是 A3S 的 durable workflow engine。它把 workflow 进度记录为
+append-only typed events，把这些 events 投影成 snapshots，并反复 replay workflow
+logic，直到 run 完成或挂起。
+
+当前 crate 是 `a3s-flow` `0.4.0`。
+
+## Capability Map
+
+| 领域 | 当前能力 |
+| --- | --- |
+| Durable runs | `FlowEngine`、`WorkflowSpec`、`WorkflowRunSnapshot`、append-only event histories、idempotent starts、cancellation 与 inspection。 |
+| Replay-safe logic | 每次 replay 返回一个 `RuntimeCommand`。Steps、waits、hooks、completion、failure 都先持久化，再让 workflow code 观察到结果。 |
+| Steps and retries | Sequential steps、batch fan-out、typed JSON inputs/outputs、immediate retries、delayed retries 与 recoverable step failures。 |
+| Timers and waits | `wait_until` 不占用 compute；scheduler 可以恢复 due waits 或报告下一次 wake-up。 |
+| External callbacks | Hooks 用稳定 ID 和 public callback token 建模 human approvals、webhooks、OAuth callbacks、UI actions 和 review gates。 |
+| Storage | In-memory、local JSONL、SQLite、Postgres event stores 共享同一个 `FlowEventStore` contract。 |
+| Workers | `FlowTask`、`FlowTaskQueue`、`FlowWorker`、`FlowScheduler` 支持 local 与 Postgres-backed dispatch。 |
+| Observability | Flow observers 可以把 committed events 镜像成 raw envelopes 或 A3S-shaped audit records。 |
+| Native TypeScript | `NativeTsRuntime` 允许 Rust host 通过 versioned JSON protocol 编译并调用 TypeScript workflow source。 |
+
+## Start Here
+
+- [Quick Start](/cn/docs/flow/quick-start) 构建一个小型 embedded workflow host。
+- [Architecture](/cn/docs/flow/architecture) 解释 replay、event sourcing、
+  timers、hooks、inspection 和 observer boundaries。
+- [Durability And Workers](/cn/docs/flow/durability-workers) 对比 local、
+  SQLite、Postgres、scheduler、worker 和 task-queue 路径。
+- [Native TypeScript](/cn/docs/flow/native-typescript) 说明可选 TypeScript
+  runtime adapter 与 compiler contract。
+
+## Runtime Shape
+
+```text
+host application
+  -> FlowEngine
+  -> FlowRuntime replay
+  -> RuntimeCommand
+  -> durable event append
+  -> replay again or suspend
+```
+
+副作用应该放在 steps 里。workflow 只有在 engine 记录 step output 或 failure 之后才会
+观察到这个结果。这样 replay 保持 deterministic，同时仍能执行 API calls、local tools、
+approvals、polling loops 和 agent orchestration。
+
+## Install
+
+```toml
+[dependencies]
+a3s-flow = "0.4"
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+Optional storage features:
+
+```toml
+a3s-flow = { version = "0.4", features = ["sqlite"] }
+a3s-flow = { version = "0.4", features = ["postgres"] }
+```
+
+## Repository
+
+Source: [`A3S-Lab/Flow`](https://github.com/A3S-Lab/Flow)

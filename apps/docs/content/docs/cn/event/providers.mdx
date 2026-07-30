@@ -1,0 +1,93 @@
+---
+title: Providers
+description: EventProvider contracts、MemoryProvider、NATS JetStream、subjects、subscriptions 和 custom backend 规则。
+---
+
+# Event Providers
+
+`a3s-event` 让应用代码依赖 `EventBus` 和 `EventProvider`。Backend 负责 transport 与
+persistence 细节；应用保留同一套 publish、subscribe、history 和 health API。
+
+## Provider 矩阵
+
+| Provider | Feature | 适用场景 | 持久化 | 分布式 |
+| --- | --- | --- | --- | --- |
+| `MemoryProvider` | core | 测试、开发、单进程部署 | 进程内 retained vector，重启丢失 | 单进程 |
+| `NatsProvider` | `nats` | 生产多服务 eventing | JetStream file 或 memory storage | 分布式 |
+| Custom provider | app-owned | Redis、Kafka、database 或产品专用 backend | backend-defined | backend-defined |
+
+## Subject 模型
+
+Provider 使用点分 subject：
+
+```text
+events.<category>.<topic>[.<subtopic>...]
+```
+
+示例：
+
+| Subject | 含义 |
+| --- | --- |
+| `events.market.forex.usd_cny` | 某个外汇 pair 的 market event。 |
+| `events.system.deploy.gateway` | Gateway deployment event。 |
+| `events.task.completed` | Task completion event。 |
+
+Wildcard matching 支持：
+
+| Pattern | 含义 |
+| --- | --- |
+| `events.market.>` | 任意深度的所有 market events。 |
+| `events.*.forex` | `events` 和 `forex` 之间匹配一个 segment。 |
+
+`EventProvider::build_subject(category, topic)` 默认生成
+`{subject_prefix}.{category}.{topic}`。`category_subject(category)` 默认生成
+`{subject_prefix}.{category}.>`。
+
+## Event Envelope
+
+Event 包含 id、subject、category、event type、version、JSON payload、summary、source、
+timestamp 和 string metadata。Untyped events 是允许的：`event_type` 默认为空，`version`
+默认为 `1`。
+
+Typed events 使用 `Event::typed(...)` 创建，让 schema registry 可以按 `event_type` 和
+version 校验 payload。
+
+## Subscriptions
+
+| API | 语义 |
+| --- | --- |
+| `subscribe(pattern)` | Ephemeral subscription。 |
+| `subscribe_durable(consumer, pattern)` | provider 支持时创建 durable subscription。 |
+| `next()` | 按 provider-specific auto-ack 行为接收。 |
+| `next_manual_ack()` | 接收 `PendingEvent`，显式 `ack()` 或 `nak()`。 |
+| `history(pattern, limit)` | 拉取 retained historical events。 |
+| `unsubscribe(consumer)` | provider 支持时移除 durable subscription state。 |
+| `info()` / `health()` | Provider status 和 operational health。 |
+
+Memory provider 会把 durable subscription 当作 ephemeral subscription。NATS 会把 durable
+subscription 映射到 JetStream consumers。
+
+## NATS 配置
+
+`NatsConfig` 包含：
+
+| 字段 | 用途 |
+| --- | --- |
+| `url` | NATS server URL。 |
+| `token` / `credentials_path` | 可选 provider-native auth inputs。 |
+| `stream_name` | JetStream stream name。 |
+| `subject_prefix` | stream subjects 和默认 subject builders 使用的 prefix。 |
+| `storage` | `file` 表示持久化；`memory` 表示更快但重启丢失。 |
+| `max_events`、`max_age_secs`、`max_bytes` | Retention limits。 |
+| `connect_timeout_secs`、`request_timeout_secs` | Provider request timeouts。 |
+
+真实 provider credentials 不应进入已提交示例，应从部署环境读取。
+
+## Custom Providers
+
+Custom providers 实现 `EventProvider` 和 `Subscription`。对于 subject helper，只需要
+`subject_prefix()` 和 `name()`；provider-specific publish/subscription options 可以按需要
+忽略或实现。
+
+当产品已经标准化在某个 transport 上，但仍希望复用 A3S Event API、schema、DLQ、metrics 和
+routing abstractions 时，适合使用 custom provider。

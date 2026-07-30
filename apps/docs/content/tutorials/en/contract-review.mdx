@@ -1,0 +1,273 @@
+---
+title: Build a Contract Review Agent
+description: Use A3S Code structured output to build an autonomous contract review agent that produces deterministic JSON reports.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Build a Contract Review Agent
+
+This tutorial builds a contract review agent that autonomously reads and
+analyzes contracts, then outputs a deterministic JSON report using
+`generate_object`.
+
+<Callout type="info">
+The key insight: **the agent reasons freely** (reads files, analyzes clauses),
+but **outputs deterministically** (schema-validated JSON). This separates
+"understanding" from "reporting".
+</Callout>
+
+## Architecture
+
+```text
+Contract file
+  → Agent reads file (autonomous, uses read/bash tools)
+  → Agent analyzes clauses (LLM reasoning)
+  → generate_object (deterministic structured output)
+  → Schema-validated JSON report
+```
+
+## Define the Review Schema
+
+```ts
+const CONTRACT_REVIEW_SCHEMA = {
+  type: 'object',
+  required: ['summary', 'risk_level', 'parties', 'key_terms', 'issues', 'recommendations'],
+  properties: {
+    summary: { type: 'string', minLength: 20 },
+    risk_level: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
+    parties: {
+      type: 'array',
+      minItems: 2,
+      items: {
+        type: 'object',
+        required: ['name', 'role'],
+        properties: {
+          name: { type: 'string' },
+          role: { type: 'string' },
+        },
+      },
+    },
+    key_terms: {
+      type: 'object',
+      properties: {
+        contract_amount: { type: 'string' },
+        duration: { type: 'string' },
+        payment_terms: { type: 'string' },
+        termination_clause: { type: 'string' },
+        liability_cap: { type: 'string' },
+      },
+    },
+    issues: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['severity', 'clause', 'description'],
+        properties: {
+          severity: { type: 'string', enum: ['info', 'warning', 'critical'] },
+          clause: { type: 'string' },
+          description: { type: 'string' },
+          suggestion: { type: 'string' },
+        },
+      },
+    },
+    recommendations: {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: 1,
+    },
+  },
+};
+```
+
+## Approach 1: Single-Pass (Agent-Driven)
+
+Let the agent autonomously decide how to review and when to output:
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+  maxToolRounds: 20,
+});
+
+const result = await session.send(`
+You are a professional contract review lawyer. Complete these steps:
+
+1. Read the contract file: contracts/service-agreement.txt
+2. Identify all parties, key terms, and potential risks
+3. Analyze for: unfair clauses, ambiguous language, missing protections,
+   unbalanced liability, compliance issues
+4. Use the generate_object tool to output your findings as a structured report.
+   Use schema_name "contract_review" with this schema:
+
+${JSON.stringify(CONTRACT_REVIEW_SCHEMA, null, 2)}
+
+Your prompt to generate_object should contain your complete analysis.
+`);
+```
+
+## Approach 2: Two-Phase (Strict Determinism)
+
+Separate reasoning from output for maximum control:
+
+```ts
+async function reviewContract(contractPath: string) {
+  const session = agent.session('.', {
+    permissionPolicy: { defaultDecision: 'allow' },
+  });
+
+  // Phase 1: Autonomous analysis (agent uses any tools it needs)
+  const analysis = await session.send(`
+    You are a contract review lawyer. Read ${contractPath} and provide
+    a thorough analysis covering:
+    - All parties and their roles
+    - Key financial terms and obligations
+    - Duration and termination conditions
+    - Risk factors and problematic clauses
+    - Missing standard protections
+    - Compliance concerns
+  `);
+
+  // Phase 2: Deterministic structured output (bypasses LLM decision-making)
+  const structured = await session.tool('generate_object', {
+    schema: CONTRACT_REVIEW_SCHEMA,
+    schema_name: 'contract_review',
+    prompt: `Based on this contract review analysis, produce a structured report:\n\n${analysis.text}`,
+    mode: 'tool',
+    max_repair_attempts: 3,
+  });
+
+  if (structured.exitCode !== 0) {
+    throw new Error(`Structured output failed: ${structured.output}`);
+  }
+
+  return JSON.parse(structured.output).object;
+}
+
+const report = await reviewContract('contracts/service-agreement.txt');
+console.log(`Risk: ${report.risk_level}`);
+console.log(`Issues: ${report.issues.length}`);
+```
+
+## Approach 3: Streaming with Progress
+
+Show real-time progress as the report is generated:
+
+```ts
+async function reviewContractStreaming(contractPath: string) {
+  const session = agent.session('.', {
+    permissionPolicy: { defaultDecision: 'allow' },
+  });
+
+  const stream = await session.stream(`
+    Review the contract at ${contractPath}. Analyze all clauses for risks,
+    then use generate_object to output a structured report with schema_name
+    "contract_review" and this schema: ${JSON.stringify(CONTRACT_REVIEW_SCHEMA)}
+  `);
+
+  let finalReport = null;
+
+  for await (const ev of stream) {
+    switch (ev.type) {
+      case 'text_delta':
+        // Agent's reasoning process (optional: show to user)
+        process.stdout.write(ev.text);
+        break;
+      case 'tool_output_delta':
+        if (ev.toolName === 'generate_object') {
+          const { object_partial } = JSON.parse(ev.text);
+          renderPartialReport(object_partial);
+        }
+        break;
+      case 'tool_end':
+        if (ev.toolName === 'generate_object') {
+          finalReport = JSON.parse(ev.toolOutput).object;
+        }
+        break;
+    }
+  }
+
+  return finalReport;
+}
+```
+
+## Python Version
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+import json
+
+def review_contract(contract_path: str) -> dict:
+    agent = Agent.create(open('config.acl').read())
+    opts = SessionOptions()
+    opts.permission_policy = PermissionPolicy(default_decision="allow")
+    session = agent.session('.', opts)
+
+    # Phase 1: Autonomous analysis
+    analysis = session.send(f"""
+        You are a contract review lawyer. Read {contract_path} and analyze:
+        - Parties and roles
+        - Key terms (amount, duration, payment, termination)
+        - Risk factors and problematic clauses
+        - Missing protections
+    """)
+
+    # Phase 2: Deterministic output
+    result = session.tool("generate_object", {
+        "schema": CONTRACT_REVIEW_SCHEMA,
+        "schema_name": "contract_review",
+        "prompt": f"Based on this analysis, produce a structured report:\n\n{analysis.text}",
+        "mode": "tool",
+        "max_repair_attempts": 3,
+    })
+
+    assert result.exit_code == 0, f"Failed: {result.output}"
+    return json.loads(result.output)["object"]
+```
+
+## Batch Processing
+
+Review multiple contracts and aggregate results:
+
+```ts
+import * as fs from 'fs';
+
+async function batchReview(contractDir: string) {
+  const files = await session.glob(`${contractDir}/*.txt`);
+  const reports = [];
+
+  for (const file of files) {
+    const report = await reviewContract(file);
+    reports.push({ file, ...report });
+  }
+
+  // Aggregate risk summary
+  const critical = reports.filter(r => r.risk_level === 'critical');
+  const high = reports.filter(r => r.risk_level === 'high');
+
+  console.log(`Reviewed ${reports.length} contracts`);
+  console.log(`Critical risk: ${critical.length}`);
+  console.log(`High risk: ${high.length}`);
+
+  return reports;
+}
+```
+
+## Why This Works
+
+The determinism guarantee comes from three layers:
+
+1. **Tool-call mode**: The LLM is forced to call a synthetic tool whose parameters
+   ARE the schema. It cannot output free-form text.
+2. **Schema validation**: The output is validated against the full JSON Schema
+   (type checks, required fields, enums, ranges, patterns).
+3. **Repair loop**: If validation fails, errors are fed back to the model for
+   automatic correction (up to `max_repair_attempts` times).
+
+The agent's reasoning (Phase 1) is non-deterministic — it may read different
+parts of the contract, use different tools, take different paths. But the final
+output (Phase 2) is always a valid JSON object matching your schema.

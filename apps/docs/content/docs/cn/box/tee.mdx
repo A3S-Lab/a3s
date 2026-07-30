@@ -1,0 +1,59 @@
+---
+title: TEE 机密计算
+description: SEV-SNP 证明、RA-TLS、密封、密钥注入和模拟边界
+---
+
+# TEE 机密计算
+
+A3S Box 有 SEV-SNP 方向的机密计算路径，包含证明报告处理、RA-TLS、密封存储、密钥注入，以及面向开发的模拟模式。
+
+核心原则：**模拟模式只能证明流程可跑；只有硬件证明才能支撑机密计算声明。**
+
+## 能力矩阵
+
+| 能力 | 当前状态 |
+| --- | --- |
+| SEV-SNP report 解析 | 已实现。 |
+| ECDSA-P384 report 验证 | 已实现。 |
+| 证书链处理 | 已实现 SEV-SNP 流程。 |
+| RA-TLS | 已实现，在证书扩展中携带 SNP report 数据。 |
+| 密封 | AES-256-GCM + HKDF-SHA256 + policy context。 |
+| 密钥注入 | 通过 RA-TLS 写入 `/run/secrets/`，可选导出环境变量。 |
+| 模拟 | 通过 `--tee-simulate` 或 `A3S_TEE_SIMULATE`。 |
+| TDX | 未产品化。 |
+
+## 硬件路径
+
+```bash
+a3s-box run -d --name secure --tee myimage:latest -- sleep 3600
+a3s-box attest secure --ratls
+a3s-box inject-secret secure --secret DB_PASSWORD=secret --set-env
+a3s-box seal secure --data "encryption-key" --context app/key --policy measurement-and-chip
+```
+
+要求取决于宿主机：SEV-SNP-capable AMD EPYC 或等价云主机、`/dev/sev` 或 `/dev/sev-guest` 等设备支持，以及支持 TEE 路径的 libkrun。
+
+## 模拟路径
+
+```bash
+a3s-box run -d --name dev --tee --tee-simulate alpine:latest -- sleep 3600
+a3s-box attest dev --ratls --allow-simulated
+a3s-box inject-secret dev --secret API_KEY=secret --set-env --allow-simulated
+```
+
+模拟适合应用开发、CI 和验证密钥分发代码，不代表工作负载运行在机密硬件上。
+
+## 密封策略
+
+| 策略 | 含义 |
+| --- | --- |
+| `measurement-and-chip` | 绑定 workload measurement 和 chip identity，最强但最不便迁移。 |
+| `measurement-only` | 绑定 workload measurement，适合同 measurement 跨机器迁移。 |
+| `chip-only` | 绑定 chip identity，适合 host-bound secret。 |
+
+## 运维建议
+
+- `--allow-simulated` 只用于开发或测试环境。
+- 把证明证据当作部署策略的一部分，而不是普通日志。
+- base image、workload measurement 或 host trust root 变化后轮换 secret。
+- 未在目标主机类别跑过硬件验证时，不要对外宣称 TEE 生产保障。

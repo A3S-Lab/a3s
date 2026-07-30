@@ -1,0 +1,67 @@
+---
+title: Pruning And Tests
+description: PrunePolicy behavior, backend support, test coverage, and implementation boundaries.
+---
+
+# Memory Pruning And Tests
+
+`MemoryStore` includes an optional `prune` method. The default trait implementation is a no-op for compatibility, while shipped stores implement real pruning.
+
+## PrunePolicy
+
+```rust
+use a3s_memory::PrunePolicy;
+
+let policy = PrunePolicy {
+    max_age_days: 90,
+    min_importance_to_keep: 0.5,
+    max_items: 1000,
+};
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `max_age_days` | `90` | Age threshold for stale memory. |
+| `min_importance_to_keep` | `0.5` | Items at or above this importance are protected from age-based deletion. |
+| `max_items` | `0` | Hard cap after age pruning. `0` means unlimited. |
+
+## Algorithm
+
+Pruning has two phases:
+
+1. Delete items that are both older than `max_age_days` and below `min_importance_to_keep`.
+2. If `max_items` is greater than zero and the store is still over the cap, delete lower-ranked items until the cap is met.
+
+`InMemoryStore` and `FileMemoryStore` use relevance ordering for the cap phase. `SqliteMemoryStore` keeps higher-importance and newer rows when applying the hard cap.
+
+## Store Support
+
+| Store | Pruning support |
+| --- | --- |
+| `InMemoryStore` | Removes stale low-importance items and enforces `max_items` in memory. |
+| `FileMemoryStore` | Removes stale item files, updates `index.json`, and enforces `max_items`. |
+| `SqliteMemoryStore` | Deletes stale rows from SQLite and enforces `max_items` with SQL. |
+| Custom store | Gets the no-op default unless it overrides `prune`. |
+
+## Tests
+
+The repository includes:
+
+| Area | Covered behavior |
+| --- | --- |
+| Contract tests | Store, retrieve, missing retrieval, content search, case-insensitive search, search limits, tag search, recent items, important items, delete, clear, count, and relevance ordering across `InMemoryStore` and `FileMemoryStore`. |
+| File store tests | Persistence across instances, index rebuild after `index.json` removal, and path traversal prevention for memory IDs. |
+| Memory item tests | Builder chain, tag replacement, importance clamping, memory type, access recording, metadata, and object-safe `Arc<dyn MemoryStore>` usage. |
+| Relevance tests | Custom weights and old-item decay behavior. |
+| SQLite tests | Store/retrieve, FTS search, tag search, session-log roundtrip, Markdown export for important and episodic items, persistence, delete, clear, count, and pruning. |
+
+## Validation Boundary
+
+Tests exercise the public storage contract and feature-gated SQLite backend. They do not validate A3S Code prompt injection, session memory tiering, or external vector embedding quality because those are outside `a3s-memory`.
+
+## Operational Notes
+
+- Pruning is explicit; the store does not run a background retention task.
+- High-importance old memories are protected from age pruning.
+- `max_items` is a hard storage cap and can remove otherwise valid memories.
+- For `SqliteMemoryStore`, Markdown files are append-only review artifacts and are not pruned when database rows are deleted.

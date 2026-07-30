@@ -1,0 +1,9 @@
+{
+  "title": "A3S GUI",
+  "pages": [
+    "index",
+    "architecture",
+    "platforms",
+    "protocol-events"
+  ]
+}

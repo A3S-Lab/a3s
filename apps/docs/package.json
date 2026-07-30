@@ -1,33 +1,38 @@
 {
-  "name": "a3s-cli-website",
-  "version": "0.0.0",
-  "description": "Official multilingual product website for the A3S CLI.",
+  "name": "@a3s-lab/docs",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "npm run check:content",
-    "build": "rspress build",
-    "check": "npm run lint && npm run build && npm run check:site",
-    "check:content": "node scripts/check-docs-structure.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "check": "bun run test && bun run typecheck && bun run build && bun run check:site",
+    "check:cloud": "bun scripts/validate-cloud-docs.mjs",
     "check:site": "node scripts/check-built-site.mjs",
-    "dev": "rspress dev",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "rslint && tsc --noEmit",
-    "preview": "rspress preview"
+    "test": "bun test",
+    "typecheck": "fumadocs-mdx && tsc --noEmit"
   },
   "dependencies": {
-    "@rspress/core": "^2.0.17",
-    "@rspress/plugin-sitemap": "^2.0.18"
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/mdx": "^2.0.13",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "codehike": "^1.0.7",
+    "fumadocs-core": "^16.6.1",
+    "fumadocs-mdx": "^14.2.7",
+    "fumadocs-ui": "^16.6.1",
+    "lucide-react": "^0.563.0",
+    "next": "^16.1.6",
+    "next-themes": "^0.4.6",
+    "postcss": "^8.5.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@rslint/core": "^0.5.3",
-    "@types/node": "^22.8.1",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "prettier": "^3.8.3",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "typescript": "^6.0.3"
+    "@types/node": "^25.2.3",
+    "typescript": "^5.9.3"
   }
 }

@@ -1,0 +1,190 @@
+---
+title: Structured Output
+description: Use generate_object to produce deterministic, schema-validated JSON from any LLM provider.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Structured Output
+
+This tutorial shows how to get reliable, schema-validated JSON from LLMs using
+the `generate_object` tool — regardless of which provider you use.
+
+<Callout type="info">
+`generate_object` is a built-in tool. The agent can call it autonomously, or
+you can call it directly via `session.tool()` for deterministic output.
+</Callout>
+
+## The Problem
+
+LLMs output free-form text. When you need structured data, you face:
+- Models wrapping JSON in markdown fences
+- Missing required fields
+- Wrong types (string instead of number)
+- Extra explanation text around the JSON
+
+`generate_object` solves all of these with schema validation and automatic repair.
+
+## Quick Start
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['name', 'email', 'role'],
+    properties: {
+      name: { type: 'string' },
+      email: { type: 'string', pattern: '^[^@]+@[^@]+$' },
+      role: { type: 'string', enum: ['admin', 'user', 'viewer'] },
+    },
+  },
+  prompt: 'Extract user info: "John Doe (john@example.com) is an admin."',
+  schema_name: 'user',
+});
+
+const user = JSON.parse(result.output).object;
+// { name: "John Doe", email: "john@example.com", role: "admin" }
+```
+
+## Schema Design Tips
+
+### Use `required` aggressively
+
+```ts
+// Good: forces the model to always include these fields
+{ required: ['status', 'reason', 'score'] }
+```
+
+### Use `enum` for classification
+
+```ts
+{
+  type: 'string',
+  enum: ['bug', 'feature', 'improvement', 'documentation']
+}
+```
+
+### Use numeric constraints
+
+```ts
+{
+  type: 'number',
+  minimum: 0,
+  maximum: 1  // confidence scores
+}
+```
+
+### Nested objects for complex structures
+
+```ts
+{
+  type: 'object',
+  required: ['metadata', 'content'],
+  properties: {
+    metadata: {
+      type: 'object',
+      required: ['author', 'date'],
+      properties: {
+        author: { type: 'string' },
+        date: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+    },
+    content: { type: 'string', minLength: 10 },
+  },
+}
+```
+
+## Two-Phase Pattern
+
+For complex tasks, separate reasoning from structured output:
+
+```ts
+// Phase 1: Let the agent think freely
+const analysis = await session.send('Analyze the security of this codebase');
+
+// Phase 2: Force structured output from the analysis
+const report = await session.tool('generate_object', {
+  schema: SECURITY_REPORT_SCHEMA,
+  prompt: `Structure this analysis into a report:\n\n${analysis.text}`,
+  schema_name: 'security_report',
+  max_repair_attempts: 3,
+});
+```
+
+## Streaming Partial Objects
+
+For large objects, stream partial results to show progress:
+
+```ts
+const stream = await session.stream(
+  'Use generate_object to extract all entities from this document...'
+);
+
+for await (const ev of stream) {
+  if (ev.type === 'tool_output_delta' && ev.toolName === 'generate_object') {
+    const { object_partial } = JSON.parse(ev.text);
+    updateUI(object_partial);
+  }
+}
+```
+
+## Error Handling
+
+```ts
+const result = await session.tool('generate_object', { schema, prompt, schema_name: 'r' });
+
+if (result.exitCode !== 0) {
+  // Schema validation failed after all repair attempts
+  console.error('Structured output failed:', result.output);
+} else {
+  const { object, repair_rounds } = JSON.parse(result.output);
+  if (repair_rounds > 0) {
+    console.warn(`Required ${repair_rounds} repair rounds`);
+  }
+}
+```
+
+## Python
+
+```python
+import json
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+session = agent.session('.', opts)
+
+result = session.tool("generate_object", {
+    "schema": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["task", "priority"],
+                    "properties": {
+                        "task": {"type": "string"},
+                        "priority": {"type": "string", "enum": ["high", "medium", "low"]},
+                    }
+                }
+            }
+        }
+    },
+    "prompt": "Extract tasks: 'Fix login bug (urgent), update docs (low priority), add tests (medium)'",
+    "schema_name": "task_list",
+})
+
+tasks = json.loads(result.output)["object"]["items"]
+```

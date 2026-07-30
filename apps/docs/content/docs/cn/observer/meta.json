@@ -1,0 +1,12 @@
+{
+  "title": "A3S Observer",
+  "pages": [
+    "index",
+    "signals",
+    "identity-export",
+    "enforcement",
+    "provider-policy",
+    "operations-validation",
+    "deployment"
+  ]
+}

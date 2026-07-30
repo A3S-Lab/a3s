@@ -1,0 +1,15 @@
+{
+  "title": "A3S Memory",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "memory-item",
+    "relevance",
+    "pruning-and-tests",
+    "---Backends---",
+    "file-store",
+    "sqlite-store",
+    "custom-backend"
+  ]
+}

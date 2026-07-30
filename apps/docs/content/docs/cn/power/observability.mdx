@@ -1,0 +1,120 @@
+---
+title: 可观测性
+description: Prometheus 指标、健康端点和审计日志
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+# 可观测性
+
+## 健康端点
+
+`GET /health` — 返回服务器状态、TEE 状态和已加载模型数量。
+
+```bash
+curl http://localhost:11434/health
+```
+
+```json
+{
+  "status": "ok",
+  "version": "0.4.2",
+  "uptime_seconds": 3600,
+  "loaded_models": 2,
+  "tee": {
+    "enabled": true,
+    "type": "sev-snp",
+    "models_verified": true
+  }
+}
+```
+
+## Prometheus 指标
+
+`GET /metrics` — 以 Prometheus 文本格式返回指标。
+
+```bash
+curl http://localhost:11434/metrics
+```
+
+### 请求指标
+
+<TypeTable
+  type={{
+    "power_requests_total": { description: "按方法、路径和状态码统计的总请求数" },
+    "power_request_duration_seconds": { description: "请求耗时直方图" },
+    "power_active_requests": { description: "当前活跃推理请求数" },
+    "power_requests_running": { description: "已经获得 admission permit、正在运行的推理请求数" },
+    "power_requests_waiting": { description: "达到 max_concurrent_requests 后，正在等待 admission permit 的排队请求数" },
+  }}
+/>
+
+`max_concurrent_requests` 使用背压而不是直接拒绝超量推理请求。等待中的请求计入 `power_requests_waiting`，已放行请求会持有 permit 直到流式响应结束。
+
+### 推理指标
+
+<TypeTable
+  type={{
+    "power_inference_tokens_total": { description: "按模型统计的总生成 token 数" },
+    "power_inference_prompt_tokens_total": { description: "总处理提示词 token 数" },
+    "power_inference_duration_seconds": { description: "推理耗时直方图" },
+    "power_ttft_seconds": { description: "首 token 时间（TTFT）直方图" },
+  }}
+/>
+
+### 模型指标
+
+<TypeTable
+  type={{
+    "power_models_loaded": { description: "当前已加载模型数量" },
+    "power_model_memory_bytes": { description: "每个已加载模型的估计内存占用" },
+    "power_model_load_duration_seconds": { description: "模型加载耗时直方图" },
+  }}
+/>
+
+### GPU 指标
+
+<TypeTable
+  type={{
+    "power_gpu_utilization": { description: "GPU 计算利用率，范围为 0.0-1.0" },
+    "power_gpu_memory_bytes": { description: "按 device 标签统计的 GPU 内存占用字节数" },
+  }}
+/>
+
+### TEE 指标
+
+<TypeTable
+  type={{
+    "power_tee_attestations_total": { description: "已生成的证明报告总数" },
+    "power_tee_model_decryptions_total": { description: "加密模型解密总次数" },
+    "power_tee_redactions_total": { description: "日志脱敏应用总次数" },
+  }}
+/>
+
+## Prometheus 抓取配置
+
+```yaml
+scrape_configs:
+  - job_name: a3s-power
+    static_configs:
+      - targets: ["localhost:11434"]
+    metrics_path: /metrics
+```
+
+## 审计日志
+
+Power 以 JSONL 格式写入结构化审计日志。每个推理请求记录时间、模型名称、token 计数（可选四舍五入）和请求 ID——当 `redact_logs = true` 时，不记录提示词或响应内容。
+
+审计日志在优雅关闭（SIGTERM / Ctrl-C）时刷新，进程退出前确保写入完成。
+
+## 日志级别
+
+Power 使用 `tracing` 和 `tracing-subscriber`。通过 `RUST_LOG` 设置日志级别：
+
+```bash
+RUST_LOG=info a3s-power serve
+RUST_LOG=debug a3s-power serve
+RUST_LOG=a3s_power=debug,tower_http=info a3s-power serve
+```
+
+当 `redact_logs = true` 时，无论日志级别如何，所有推理内容都会从日志输出中剥离。

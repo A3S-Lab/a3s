@@ -1,0 +1,121 @@
+---
+title: A3S Search
+description: Embeddable meta search engine — multi-engine aggregation, consensus ranking, proxy pool, and headless browser support
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+# A3S Search
+
+A3S Search is an embeddable meta search engine library inspired by [SearXNG](https://github.com/searxng/searxng). It aggregates results from multiple search engines in parallel, deduplicates by normalized URL, and ranks them using a consensus-based scoring algorithm. Available as a Rust crate, Python package, and Node.js module.
+
+## Key Features
+
+- **Multi-Engine Aggregation** — 9 built-in engines queried in parallel with configurable per-engine timeouts.
+- **Consensus Ranking** — Results found by multiple engines rank higher. Per-engine weight multipliers.
+- **Smart Deduplication** — Merges duplicates by normalized URL, keeping the best title, snippet, and metadata.
+- **Dynamic Proxy Pool** — Round-robin and random rotation with pluggable `ProxyProvider` trait and `spawn_auto_refresh`.
+- **Health Monitor** — Automatic engine suspension after repeated failures with configurable recovery.
+- **ACL Configuration** — Load engine weights, health settings, and timeouts from `.acl` config files.
+- **Headless Browser** — Chrome/Chromium via `headless`, plus Lightpanda via `lightpanda` for JS-rendered engines (Google, Baidu, Bing China).
+- **Auto-Install Browser** — Detects or downloads Chrome for Testing, or Lightpanda when the `lightpanda` feature is enabled.
+- **PageFetcher Abstraction** — Pluggable fetching: `HttpFetcher`, `PooledHttpFetcher`, or `BrowserFetcher`.
+- **CLI Tool** — Command-line interface with multiple output formats and Homebrew distribution.
+- **Native SDKs** — TypeScript (NAPI-RS) and Python (PyO3) bindings with async support, headless browser enabled by default.
+- **Cross-Platform** — macOS (arm64, x64), Linux (x64, arm64), and Windows (x64) with auto browser download.
+
+## Architecture
+
+```
+Search
+├── HealthMonitor         ← auto-suspend/recover engines by failure count
+├── Engine Registry       ← 9 built-in engines (5 HTTP + 1 API + 3 headless)
+│   ├── DuckDuckGo        ← HttpFetcher / PooledHttpFetcher
+│   ├── Brave             ← HttpFetcher / PooledHttpFetcher
+│   ├── Bing              ← HttpFetcher / PooledHttpFetcher
+│   ├── Sogou / 360       ← HttpFetcher / PooledHttpFetcher
+│   ├── Wikipedia         ← JSON API (no fetcher)
+│   ├── Google            ← BrowserFetcher → BrowserPool
+│   ├── Baidu             ← BrowserFetcher → BrowserPool
+│   └── Bing China        ← BrowserFetcher → BrowserPool
+├── ProxyPool             ← round-robin / random rotation, AtomicBool toggle
+│   ├── PooledHttpFetcher ← per-request proxy from pool
+│   └── ProxyProvider     ← trait for dynamic proxy sources + auto-refresh
+├── Aggregator            ← deduplicate, merge, consensus score, sort
+└── SearchResults         ← ranked output
+```
+
+## Built-in Engines
+
+### HTTP Engines
+
+<TypeTable
+  type={{
+    "DuckDuckGo": {
+      description: "Shortcut: ddg · Weight: 1.0 · Paging: Yes · SafeSearch: Yes",
+    },
+    "Brave": {
+      description: "Shortcut: brave · Weight: 1.0 · Paging: Yes · SafeSearch: Yes",
+    },
+    "Bing": {
+      description: "Shortcut: bing · Weight: 1.0 · Paging: Yes · SafeSearch: Yes",
+    },
+    "Wikipedia": {
+      description: "Shortcut: wiki · Weight: 1.2 · Paging: No · SafeSearch: No",
+    },
+    "Sogou": {
+      description: "Shortcut: sogou · Weight: 1.0 · Paging: No · SafeSearch: No",
+    },
+    "360 Search": {
+      description: "Shortcut: 360 · Weight: 1.0 · Paging: No · SafeSearch: No",
+    },
+  }}
+/>
+
+### Headless Browser Engines (`headless` feature)
+
+<TypeTable
+  type={{
+    "Google": {
+      description: "Shortcut: g · Weight: 1.5 · Paging: Yes · SafeSearch: Yes",
+    },
+    "Baidu": {
+      description: "Shortcut: baidu · Weight: 1.0 · Paging: No · SafeSearch: No",
+    },
+    "Bing China": {
+      description: "Shortcut: bing_cn · Weight: 1.0 · Paging: No · SafeSearch: No",
+    },
+  }}
+/>
+
+## Supported Languages
+
+<TypeTable
+  type={{
+    "Rust": {
+      description: "Package: [a3s-search](https://crates.io/crates/a3s-search) · Install: a3s-search = '1.3' in Cargo.toml",
+    },
+    "Python": {
+      description: "Package: [a3s-search](https://pypi.org/project/a3s-search/) · Install: pip install a3s-search",
+    },
+    "Node.js": {
+      description: "Package: [@a3s-lab/search](https://www.npmjs.com/package/@a3s-lab/search) · Install: npm install @a3s-lab/search",
+    },
+    "Homebrew": {
+      description: "Package: [a3s-search](https://github.com/A3S-Lab/homebrew-tap) · Install: brew install a3s-lab/tap/a3s-search",
+    },
+  }}
+/>
+
+## Ranking Algorithm
+
+```
+score = Σ (weight / position) for each engine that found this result
+weight = engine_weight × number_of_engines_found
+```
+
+Results found by multiple engines receive a significant score boost. Higher-weighted engines (Google at 1.5, Wikipedia at 1.2) contribute more to the final score.
+
+## Test Coverage
+
+288 Rust tests (244 lib + 31 CLI + 13 integration) + 103 SDK tests (49 Node.js + 54 Python). Cross-platform: macOS, Linux, and Windows.

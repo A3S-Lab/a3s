@@ -1,0 +1,61 @@
+---
+title: Payload Security
+description: AES-256-GCM event payload encryption, key rotation, and decrypt boundaries.
+---
+
+# Payload Security
+
+The `encryption` feature adds application-level payload encryption. It is independent of transport security: TLS protects the connection, while `EventEncryptor` protects the JSON payload before the event is written to a provider.
+
+## Encrypted Envelope
+
+`Aes256GcmEncryptor` replaces `event.payload` with an envelope:
+
+| Field | Meaning |
+| --- | --- |
+| `keyId` | Which registered key encrypted the payload. |
+| `nonce` | Base64-encoded 96-bit AES-GCM nonce. |
+| `ciphertext` | Base64-encoded ciphertext and authentication tag. |
+| `encrypted` | Marker used by `EncryptedPayload::is_encrypted`. |
+
+The envelope is stored as normal JSON, so provider history, NATS JetStream, and custom providers do not need special binary handling.
+
+## Wiring An Encryptor
+
+```rust
+use std::sync::Arc;
+use a3s_event::{Aes256GcmEncryptor, EventBus};
+use a3s_event::provider::memory::MemoryProvider;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+let key = [0x42; 32];
+let encryptor = Arc::new(Aes256GcmEncryptor::new("key-2026-01", &key));
+
+bus.set_encryptor(encryptor);
+```
+
+When an encryptor is configured:
+
+- `publish(...)`, `publish_event(...)`, and `publish_event_with_options(...)` encrypt the payload before writing to the provider.
+- `list_events(...)` detects encrypted envelopes and decrypts them best-effort before returning history.
+- `EventMetrics` increments encrypt/decrypt counters for successful operations.
+- Decryption uses the `keyId` in the envelope, so older messages can still be read after rotation if old keys remain registered.
+
+## Key Rotation
+
+`Aes256GcmEncryptor` encrypts with one active key and decrypts with any registered key.
+
+```rust
+let mut encryptor = Aes256GcmEncryptor::new("key-2026-01", &[0x42; 32]);
+
+encryptor.add_key("key-2026-02", &[0x7a; 32])?;
+encryptor.rotate_to("key-2026-02")?;
+```
+
+Keep old keys available until all retained provider history encrypted with those keys has expired or been re-encrypted. Removing an old key makes matching envelopes undecryptable.
+
+## Boundaries
+
+Payload encryption only covers `event.payload`. Subjects, category, event type, version, summary, source, timestamp, metadata, provider headers, and JetStream stream names remain visible to the provider because they are used for routing, filtering, history, and observability.
+
+Use provider TLS or private networking for transport confidentiality. Use payload encryption when the event body itself must remain opaque to the provider operator or storage layer.

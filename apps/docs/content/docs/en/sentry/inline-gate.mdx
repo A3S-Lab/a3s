@@ -1,0 +1,51 @@
+---
+title: Inline Gate
+description: Pre-forward LLM/MCP wire inspection with masking, verdicts, and Gateway integration.
+---
+
+# Inline Gate
+
+The Observer event path is reactive: it judges what the agent already did and
+can block future actions. The inline gate is pre-forward: it inspects decoded
+LLM or MCP wire content before the request reaches the upstream service.
+
+```text
+agent request -> Gateway wire proxy -> Sentry inspect_wire -> masked/blocked request -> upstream
+```
+
+## What It Reuses
+
+Inline inspection wraps the decoded body as an `SslContent`-shaped event, so the
+same L1/L2/L3 policy machinery applies. There is no second policy language for
+the wire path.
+
+## Masking
+
+`inspect_wire` returns an inline decision plus concrete redaction spans. Applying
+the decision replaces each sensitive span with a stable placeholder before the
+request is forwarded. The proxy keeps the restore map for the paired response.
+
+Detection and masking are separate:
+
+- Content may be allowed and still be masked.
+- A block stops forwarding.
+- Masking is applied even when the final verdict is allow.
+
+## Detector Shape
+
+The built-in detectors are conservative and span-based: provider key shapes,
+PEM private keys, cloud credential shapes, labelled credential values, bearer
+credentials, common chat/workspace keys, JWT-like values, and email addresses.
+Overlapping matches are merged so a secret cannot leak through an unmasked tail.
+
+## Fail Posture
+
+Rules-only inline mode masks secrets but generally forwards escalations unless
+fail-closed or an L2/L3 guard blocks the request. Safety-first deployments should
+enable a real semantic guard or fail-closed behavior.
+
+## Boundary
+
+The inline gate sees only traffic routed through the Gateway wire proxy. Observer
+remains the backstop for raw sockets, direct provider calls, or agents that do
+not use the configured proxy endpoint.

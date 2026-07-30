@@ -1,0 +1,140 @@
+---
+title: 构建 Research Agent
+description: 使用 A3S Code v4.3.3 Node SDK 组合 PTC、任务委派、流式输出与队列检查能力。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 构建 Research Agent
+
+这篇教程组合确定性本地扫描、委派式子调查、流式合成、队列检查与 run replay。
+
+<Callout type="warn">
+真实网页搜索、远程 worker 和第三方 MCP server 都依赖你的运行环境。生产使用前，
+应在应用中测试这些集成。
+</Callout>
+
+## 结构
+
+```text
+问题
+  -> 用 PTC 做确定性本地扫描
+  -> 可选委派子调查
+  -> 流式合成
+  -> run 与 queue 检查
+```
+
+## 创建 Session
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  planningMode: 'enabled',
+  maxToolRounds: 24,
+  autoCompact: true,
+  autoDelegation: { enabled: true, maxTasks: 2 },
+  autoParallel: false,
+});
+```
+
+## 用 PTC 做确定性扫描
+
+Programmatic Tool Calling 适合有边界、可重复的工具链。运行时暴露
+`ctx.readFile`、`ctx.read`、`ctx.grep`、`ctx.glob`、`ctx.ls`、
+`ctx.bash`、`ctx.git` 和通用 `ctx.tool`。
+
+```ts
+const scan = await session.program({
+  source: `
+    export default async function run(ctx, inputs) {
+      const files = await ctx.glob(inputs.glob);
+      const hits = await ctx.grep(inputs.query, { glob: inputs.glob });
+      const status = await ctx.git('status');
+      return { files, hits, status };
+    }
+  `,
+  inputs: {
+    glob: '**/*.{ts,tsx,js,md}',
+    query: 'authentication',
+  },
+  allowedTools: ['glob', 'grep', 'git'],
+  limits: {
+    timeoutMs: 30000,
+    maxToolCalls: 12,
+    maxOutputBytes: 65536,
+  },
+});
+
+const metadata = JSON.parse(scan.metadataJson);
+console.log(metadata.script_result);
+console.log(metadata.program.tool_calls);
+```
+
+## 委派聚焦调查
+
+```ts
+const investigations = await session.tasks([
+  {
+    agent: 'general',
+    description: 'Auth release blockers',
+    prompt: 'Inspect authentication error handling and list release blockers.',
+    maxSteps: 4,
+  },
+  {
+    agent: 'general',
+    description: 'Auth test coverage',
+    prompt: 'Inspect tests around authentication edge cases and list missing coverage.',
+    maxSteps: 4,
+  },
+]);
+```
+
+`tasks()` 返回核心 `parallel_task` tool 的 `ToolResult`。
+
+## 流式合成
+
+使用 `.next()` 消费 `EventStream`：
+
+```ts
+const stream = await session.stream(`
+Write a concise research report.
+
+PTC scan:
+${scan.output}
+
+Child investigations:
+${investigations.output}
+`);
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (event?.text) process.stdout.write(event.text);
+}
+```
+
+## 检查 Queue 与 Replay 状态
+
+队列 API 是 session 检查与 external-task primitive：
+
+```ts
+const queued = agent.session(process.cwd(), {
+  queueConfig: { enableDlq: true, enableMetrics: true },
+});
+
+console.log(queued.hasQueue());
+console.log(await queued.queueStats());
+console.log(await queued.queueMetrics());
+console.log(await queued.pendingExternalTasks());
+console.log(await queued.deadLetters());
+
+for (const run of await session.runs()) {
+  console.log(run.id, run.status, await session.runEvents(run.id));
+}
+```
+
+这是一套本地 research workflow。真实 web、远程 worker 或第三方 MCP 服务应先在
+你的部署环境中测试，再进入生产流程。

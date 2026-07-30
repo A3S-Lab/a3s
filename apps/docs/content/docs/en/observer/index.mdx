@@ -1,0 +1,105 @@
+---
+title: A3S Observer
+description: eBPF-based, language-agnostic observability and optional kernel intervention for AI agents.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# A3S Observer
+
+`a3s-observer` turns kernel-level activity into semantic AI-agent telemetry:
+which process or pod ran which tool, touched which file, called which LLM
+provider, reached which endpoint, and triggered which security-sensitive syscall.
+It observes unmodified agents across languages, and it can optionally attach
+kernel guards that deny egress, file access, or exec through external policy
+files.
+
+```
+agent + tool subprocesses
+        |
+        | exec, exit, connect, DNS, TLS ClientHello, file, unlink, security syscalls
+        v
+kernel probes / fanotify
+        |
+        v
+collector: identity + pid/fd correlation + provider classification
+        |
+        v
+NDJSON -> OpenTelemetry Collector / Sentry / your backend
+```
+
+## Why eBPF (not an SDK)
+
+- **Zero-instrumentation, language-agnostic** — observe any agent (Python / Node / Go /
+  Rust) without touching its code or SDK.
+- **Sees what the app won't tell you** — real subprocess execs, file writes, network
+  egress, including the tool subprocesses an agent spawns.
+- **Low overhead, security-relevant** — runs in the kernel; an agent can't easily evade it.
+
+<Callout type="info">
+The observe path is passive by default. Interventions are opt-in and isolated:
+`a3s-observer-enforce` handles egress through cgroup BPF, while
+`a3s-observer-fileguard` uses fanotify for file and exec denial.
+</Callout>
+
+## Current Capability
+
+| Area | Implemented capability |
+| --- | --- |
+| Passive telemetry | `ToolExec`, `ProcessExit`, `Egress`, `Dns`, `LlmCall`, `SecurityAction`, collector heartbeat, and provider classification from SNI. |
+| Optional content capture | `A3S_OBSERVER_SSL=1` enables OpenSSL `SSL_write` / `SSL_read` uprobes that emit `SslContent`; `LlmApi` is parsed from that content when possible. |
+| Optional file signals | `A3S_OBSERVER_FILES=1` enables file write and delete signals. |
+| Identity | Kubernetes cgroup to pod identity, `/proc` process metadata, and in-kernel `comm` fallback for short-lived processes. |
+| Correlation | Userspace `(pid, fd) -> peer` correlation ties sockets, providers, endpoints, and LLM metrics together. |
+| Export | NDJSON or human log; production transport is delegated to an OpenTelemetry Collector or another log pipeline. |
+| Intervention | Egress deny via `a3s-observer-enforce`; file and exec deny via `a3s-observer-fileguard`; both driven by external hot-reloaded policy files. |
+
+## Architecture (minimal core + extensions)
+
+Swappable traits around the probe core:
+
+- `IdentityResolver` — k8s cgroup→pod · `/proc` (bare host) · in-kernel `comm` fallback
+- `ServiceClassifier` — SNI / IP → `Provider` (15 LLM providers)
+- `Exporter` — NDJSON · log → OpenTelemetry Collector (filelog → OTLP)
+- `Policy` — optional host-buildable decision seam for egress, file, and exec verdicts
+
+Crates: `a3s-observer` (contracts + model), `a3s-observer-common` (`no_std` shared types),
+`a3s-observer-ebpf` (the probes), `a3s-observer-collector` (loader, correlation, export,
+`enforce`, and `fileguard`).
+
+## Start Here
+
+- [Signals](/docs/observer/signals) lists every implemented event family and its opt-in flags.
+- [Identity And Export](/docs/observer/identity-export) explains process/pod identity, provider classification, socket correlation, NDJSON, and OpenTelemetry Collector handoff.
+- [Enforcement](/docs/observer/enforcement) explains egress/file/exec denial and the external policy model.
+- [Provider Policy](/docs/observer/provider-policy) documents the host-buildable provider allow-list and language-agnostic controller path.
+- [Operations And Validation](/docs/observer/operations-validation) covers heartbeat, liveness, backpressure, supply-chain posture, and upstream validation evidence.
+- [Deployment](/docs/observer/deployment) covers Linux requirements, NDJSON export, and Kubernetes deployment.
+
+## Build And Run
+
+The eBPF crate needs nightly + `rust-src` + `bpf-linker` (which borrows rustc's bundled
+LLVM — **no system LLVM required**):
+
+```bash
+rustup toolchain install nightly --component rust-src
+cargo install bpf-linker
+cargo build --release -p a3s-observer-collector
+
+# Linux only; needs root / CAP_BPF
+sudo ./target/release/a3s-observer-collector                          # human-readable log
+A3S_OBSERVER_JSON=1 sudo -E ./target/release/a3s-observer-collector   # NDJSON → vector/Loki/jq
+```
+
+Linux only; needs root or the relevant capabilities (`CAP_BPF`, `CAP_PERFMON`,
+and the permissions required by fanotify/guard paths).
+
+## Boundaries
+
+- The always-on core is passive. SSL content and file events are opt-in because
+  they are higher-volume and more sensitive.
+- OpenSSL plaintext capture only works for processes using OpenSSL symbols; Go's
+  `crypto/tls` path is not covered by that uprobe path.
+- A3S Box guests have their own kernel. Host-side Observer sees guest egress
+  through the host network path, but in-guest exec/file telemetry needs an
+  in-guest collector.

@@ -1,0 +1,50 @@
+---
+title: FileMemoryStore
+description: Persistent backend with atomic writes, in-memory index, and index rebuild
+---
+
+# FileMemoryStore
+
+The default persistent backend. Stores one JSON file per memory item plus a compact index for fast search.
+
+## Directory layout
+
+```
+memory/
+  index.json          ← lightweight index (id, tags, importance, timestamp)
+  items/
+    {uuid}.json       ← full item content, written atomically
+```
+
+## Usage
+
+```rust
+use a3s_memory::{FileMemoryStore, MemoryItem, MemoryStore};
+
+let store = FileMemoryStore::new("./memory").await?;
+
+store.store(MemoryItem::new("Deploy via `just release`").with_importance(0.9)).await?;
+
+let results = store.search("deploy", 5).await?;
+let recent  = store.get_recent(10).await?;
+let top     = store.get_important(0.7, 10).await?;
+```
+
+## Key properties
+
+- **Atomic writes** — items written via `.tmp` → rename, no corruption on crash
+- **In-memory index** — loaded on init, `search()` and `search_by_tags()` never hit disk
+- **Path traversal prevention** — memory IDs are sanitized before use as filenames
+- **Persistence** — survives process restarts; reload by constructing a new instance
+
+## Index rebuild
+
+If `index.json` is deleted or corrupted, recover without data loss:
+
+```rust
+let store = FileMemoryStore::new("./memory").await?;
+
+// Scans items/ and rebuilds index.json from item files
+let recovered = store.rebuild_index().await?;
+println!("Recovered {} memories", recovered);
+```

@@ -1,0 +1,75 @@
+---
+title: Protocol
+description: AHP v2.4 的 JSON-RPC 方法、handshake、request/notification 语义和 decision 形状。
+---
+
+# AHP Protocol
+
+AHP v2.4 是 JSON-RPC 2.0 协议。需要 decision 的控制点使用 request；不应阻塞 agent
+的遥测和 durable runtime state 使用 notification。
+
+## 版本
+
+| 项 | 值 |
+| --- | --- |
+| 线协议 | `2.4` |
+| Rust crate | `a3s-ahp` |
+| Crate version | `2.4.0` |
+| Repository | `https://github.com/A3S-Lab/AgentHarnessProtocol` |
+
+handshake 会拒绝协议 major version 不匹配。crate 可以做 patch release，而不改变线协议版本。
+
+## 方法
+
+| Method | 方向 | 用途 |
+| --- | --- | --- |
+| `ahp/handshake` | Agent 到 harness | 协商兼容性、agent info、harness capabilities 和 limits。 |
+| `ahp/event` | Agent 到 harness | 按事件类型发送单个 request 或 notification。 |
+| `ahp/query` | Agent 到 harness | 向 harness 请求额外信息。 |
+| `ahp/batch` | Agent 到 harness | 在一次 request 中发送多个通用 decision events。 |
+
+`handshake` 和 `query` 也在事件 taxonomy 中，但常规 client 应使用专用方法。
+
+## Event Envelope
+
+每个 AHP event 都包含：
+
+| 字段 | 含义 |
+| --- | --- |
+| `event_type` | snake-case 事件名，例如 `pre_action` 或 `task_list`。 |
+| `session_id` | Runtime session 标识。 |
+| `agent_id` | Agent 标识。 |
+| `timestamp` | Runtime 提供的 RFC3339 timestamp 字符串。 |
+| `depth` | 嵌套 AHP 活动的递归深度。 |
+| `payload` | 事件专用 JSON payload。 |
+| `context` | 可选结构化上下文，用于 context-aware decisions。 |
+| `metadata` | 可选 runtime 或 harness metadata。 |
+
+Full-event client APIs 会保留调用方提供的 session、agent、depth、context 和 metadata；
+便捷 API 则可以替简单调用方生成这些字段。
+
+## Decisions
+
+通用事件返回 `Decision`：
+
+| Decision | 含义 |
+| --- | --- |
+| `allow` | 继续执行，可带 metadata 或 modified payload。 |
+| `block` | 停止，并返回原因。 |
+| `modify` | 使用 harness 修改后的参数继续执行。 |
+| `defer` | 稍后重试。 |
+| `escalate` | 转交人工或外部审批路径。 |
+
+特殊事件返回 typed decision shapes：`IdleDecision`、`IntentDetectionDecision`、
+`ContextPerceptionDecision`、`MemoryRecallDecision`、`PlanningDecision`、
+`ReasoningDecision`、`RateLimitDecision` 和 `ConfirmationDecision`。
+
+## Request 和 Notification 规则
+
+- 阻塞事件必须作为 JSON-RPC request 发送。
+- Fire-and-forget 事件必须作为 JSON-RPC notification 发送。
+- server 会拒绝作为 notification 发送的阻塞事件。
+- server 会拒绝作为 request 发送的非阻塞事件。
+- Runtime contract payload 即使作为 notification 发送，也会被校验。
+
+这一区分是监督协议的核心：需要 decision 的地方让 harness 决策；非阻塞 state 则保持低成本流式传输。

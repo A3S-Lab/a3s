@@ -1,0 +1,95 @@
+---
+title: Providers
+description: EventProvider contracts, MemoryProvider, NATS JetStream, subjects, subscriptions, and custom backend rules.
+---
+
+# Event Providers
+
+`a3s-event` keeps application code on `EventBus` and `EventProvider`. Backends
+own transport and persistence details; the app keeps the same publish,
+subscribe, history, and health API.
+
+## Provider Matrix
+
+| Provider | Feature | Use case | Persistence | Distribution |
+| --- | --- | --- | --- | --- |
+| `MemoryProvider` | core | tests, development, single-process deployments | In-process retained vector, lost on restart | Single process |
+| `NatsProvider` | `nats` | production multi-service eventing | JetStream file or memory storage | Distributed |
+| Custom provider | app-owned | Redis, Kafka, database, or product-specific backend | Backend-defined | Backend-defined |
+
+## Subject Model
+
+Providers use dot-separated subjects:
+
+```text
+events.<category>.<topic>[.<subtopic>...]
+```
+
+Examples:
+
+| Subject | Meaning |
+| --- | --- |
+| `events.market.forex.usd_cny` | Market event for a forex pair. |
+| `events.system.deploy.gateway` | Gateway deployment event. |
+| `events.task.completed` | Task completion event. |
+
+Wildcard matching supports:
+
+| Pattern | Meaning |
+| --- | --- |
+| `events.market.>` | All market events at any depth. |
+| `events.*.forex` | One segment between `events` and `forex`. |
+
+`EventProvider::build_subject(category, topic)` defaults to
+`{subject_prefix}.{category}.{topic}`. `category_subject(category)` defaults to
+`{subject_prefix}.{category}.>`.
+
+## Event Envelope
+
+An event contains an id, subject, category, event type, version, JSON payload,
+summary, source, timestamp, and string metadata. Untyped events are allowed:
+`event_type` defaults to empty and `version` defaults to `1`.
+
+Typed events use `Event::typed(...)`, which lets the schema registry validate
+payloads by `event_type` and version.
+
+## Subscriptions
+
+| API | Semantics |
+| --- | --- |
+| `subscribe(pattern)` | Ephemeral subscription. |
+| `subscribe_durable(consumer, pattern)` | Durable subscription when supported by the provider. |
+| `next()` | Receive with provider-specific auto-ack behavior. |
+| `next_manual_ack()` | Receive a `PendingEvent` and explicitly `ack()` or `nak()`. |
+| `history(pattern, limit)` | Fetch retained historical events. |
+| `unsubscribe(consumer)` | Remove durable subscription state where supported. |
+| `info()` / `health()` | Provider status and operational health. |
+
+The memory provider treats durable subscriptions like ephemeral subscriptions.
+NATS maps durable subscriptions to JetStream consumers.
+
+## NATS Configuration
+
+`NatsConfig` includes:
+
+| Field | Purpose |
+| --- | --- |
+| `url` | NATS server URL. |
+| `token` / `credentials_path` | Optional provider-native auth inputs. |
+| `stream_name` | JetStream stream name. |
+| `subject_prefix` | Prefix used by stream subjects and default subject builders. |
+| `storage` | `file` for persistence or `memory` for faster restart-volatile storage. |
+| `max_events`, `max_age_secs`, `max_bytes` | Retention limits. |
+| `connect_timeout_secs`, `request_timeout_secs` | Provider request timeouts. |
+
+Keep real provider credentials out of committed examples and load them from the
+deployment environment.
+
+## Custom Providers
+
+Custom providers implement `EventProvider` and `Subscription`. Only
+`subject_prefix()` and `name()` are required for subject helpers; provider-specific
+publish and subscription options can be ignored or implemented as needed.
+
+Use a custom provider when the product already standardizes on a transport, but
+still wants the A3S Event API, schema, DLQ, metrics, and routing abstractions.

@@ -1,0 +1,109 @@
+---
+title: CLI Reference
+description: a3s-power command line reference
+---
+
+# CLI Reference
+
+## serve
+
+Start the inference server.
+
+```bash
+a3s-power serve [OPTIONS]
+
+Options:
+  --host <HOST>    Bind address (default: 127.0.0.1)
+  --port <PORT>    Port (default: 11434)
+  --config <PATH>  Config file path (default: ~/.a3s/power/config.hcl)
+```
+
+```bash
+# Default
+a3s-power serve
+
+# Custom host/port
+a3s-power serve --host 0.0.0.0 --port 8080
+
+# With TEE mode
+A3S_POWER_TEE_MODE=1 a3s-power serve
+
+# Simulate TEE (development)
+A3S_TEE_SIMULATE=1 a3s-power serve
+```
+
+## a3s-power-verify
+
+Verify a TEE attestation report from a running Power server.
+
+```bash
+a3s-power-verify [OPTIONS] <SERVER_URL>
+
+Options:
+  --nonce <HEX>        Client nonce to bind into report_data
+  --model <NAME>       Expected model name (verifies model hash binding)
+  --measurement <HEX>  Expected TEE measurement to verify against
+```
+
+```bash
+# Basic verification
+a3s-power-verify http://localhost:11434
+
+# With nonce
+a3s-power-verify --nonce deadbeef01234567 http://localhost:11434
+
+# Verify model binding
+a3s-power-verify --model llama3.2:3b http://localhost:11434
+
+# Verify measurement (hardware fingerprint)
+a3s-power-verify --measurement abc123... http://localhost:11434
+```
+
+The verify CLI calls `GET /v1/attestation`, then runs:
+- `verify_report()` — validates report structure
+- `verify_nonce_binding()` — confirms nonce is in `report_data`
+- `verify_model_hash_binding()` — confirms model SHA-256 is in `report_data`
+- `verify_measurement()` — compares TEE measurement against expected value
+
+## Feature Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `mistralrs` | ✅ | Pure Rust inference (candle). No C++ required. |
+| `llamacpp` | ❌ | llama.cpp inference. Requires C++ + CMake. |
+| `picolm` | ❌ | Pure Rust layer-streaming GGUF inference. O(layer_size) RAM for TEE. |
+| `hf` | ❌ | HuggingFace Hub model pull (`POST /v1/models/pull`). |
+| `hw-verify` | ❌ | Hardware attestation signature verification (AMD KDS / Intel PCS). |
+| `tls` | ❌ | RA-TLS transport with attestation X.509 extension. |
+| `vsock` | ❌ | AF_VSOCK transport for MicroVM guest-host (Linux only). |
+| `tee-minimal` | ❌ | Composite: `picolm` + `tls` + `vsock`. Smallest auditable TEE build. |
+
+```bash
+# Default (mistralrs only)
+cargo build --release
+
+# With HF pull + hardware verification (release build)
+cargo build --release --features hf,hw-verify
+
+# With llama.cpp instead of mistralrs
+cargo build --release --no-default-features --features llamacpp
+
+# TEE-minimal build (picolm + TLS + Vsock)
+cargo build --release --no-default-features --features tee-minimal
+
+# All features
+cargo build --release --features mistralrs,hf,hw-verify,tls,vsock
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `A3S_POWER_HOME` | Base directory (default: `~/.a3s/power`) |
+| `A3S_POWER_HOST` | Server bind address |
+| `A3S_POWER_PORT` | Server port |
+| `A3S_POWER_TEE_MODE` | Enable TEE mode (`1` or `true`) |
+| `A3S_POWER_REDACT_LOGS` | Enable log redaction (`1` or `true`) |
+| `A3S_TEE_SIMULATE` | Simulate TEE for development (`1`) |
+| `HF_TOKEN` | HuggingFace token for private model pulls |
+| `RUST_LOG` | Log level (e.g. `info`, `debug`) |

@@ -1,0 +1,118 @@
+---
+title: Memory System
+description: Give your agent long-term memory that persists across sessions.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Memory System
+
+The memory system gives agents persistent knowledge that survives across
+sessions. Agents can store facts, recall context, and build up understanding
+of projects over time.
+
+## Quick Start
+
+```ts
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  memoryStore: new FileMemoryStore('./memory'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Agent automatically stores and recalls relevant memories
+await session.send('Remember that our API uses JWT tokens with 24h expiry');
+
+// In a later session (even days later):
+const newSession = agent.session('.', {
+  memoryStore: new FileMemoryStore('./memory'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+await newSession.send('What authentication method do we use?');
+// Agent recalls: "JWT tokens with 24h expiry"
+```
+
+## How It Works
+
+1. Agent encounters information worth remembering
+2. Memory is stored with metadata (topic, relevance, timestamp)
+3. On future prompts, relevant memories are recalled and injected into context
+4. Stale memories can be updated or removed
+
+## Memory Store Backends
+
+### FileMemoryStore
+
+Persists memories as files on disk:
+
+```ts
+import { FileMemoryStore } from '@a3s-lab/code';
+const store = new FileMemoryStore('./project-memory');
+```
+
+## Use Cases
+
+### Project Context
+
+```ts
+// First session: agent learns about the project
+await session.send('This is a NestJS monorepo with 3 microservices');
+await session.send('We use PostgreSQL with Kysely for type-safe queries');
+await session.send('CI runs on GitHub Actions, deploys to AWS ECS');
+
+// Later sessions: agent already knows the stack
+await session.send('Add a new endpoint for user preferences');
+// Agent uses NestJS patterns, Kysely queries, considers CI/CD
+```
+
+### Team Conventions
+
+```ts
+await session.send('Remember: we always use conventional commits');
+await session.send('Remember: PRs need at least 2 approvals');
+await session.send('Remember: no direct pushes to main');
+```
+
+### Combining Memory with Structured Output
+
+```ts
+// Agent recalls project context, then produces structured output
+const session = agent.session('.', {
+  memoryStore: new FileMemoryStore('./memory'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['tech_stack', 'conventions', 'deployment'],
+    properties: {
+      tech_stack: { type: 'array', items: { type: 'string' } },
+      conventions: { type: 'array', items: { type: 'string' } },
+      deployment: { type: 'object', properties: {
+        platform: { type: 'string' },
+        ci: { type: 'string' },
+      }},
+    },
+  },
+  prompt: 'Based on what you know about this project, summarize the tech stack and conventions.',
+  schema_name: 'project_summary',
+});
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, FileMemoryStore
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.memory_store = FileMemoryStore('./memory')
+
+session = agent.session('.', opts)
+session.send("Remember: this project uses GraphQL, not REST")
+```

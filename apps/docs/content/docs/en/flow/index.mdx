@@ -1,0 +1,72 @@
+---
+title: A3S Flow
+description: Durable workflow engine and Rust SDK for event-sourced runs, replay-safe steps, timers, hooks, retries, workers, and durable storage.
+---
+
+# A3S Flow
+
+`a3s-flow` is the durable workflow engine for A3S. It records workflow progress
+as append-only typed events, projects those events into snapshots, and replays
+workflow logic until the run completes or suspends.
+
+The current crate is `a3s-flow` `0.4.0`.
+
+## Capability Map
+
+| Area | Current capability |
+| --- | --- |
+| Durable runs | `FlowEngine`, `WorkflowSpec`, `WorkflowRunSnapshot`, append-only event histories, idempotent run starts, cancellation, and inspection. |
+| Replay-safe logic | Workflows return one `RuntimeCommand` per replay. Steps, waits, hooks, completion, and failure are persisted before workflow code observes them. |
+| Steps and retries | Sequential steps, batch fan-out, typed JSON inputs/outputs, immediate retries, delayed retries, and recoverable step failures. |
+| Timers and waits | `wait_until` suspends without holding compute; schedulers can resume due waits or report the next wake-up. |
+| External callbacks | Hooks model human approvals, webhooks, OAuth callbacks, UI actions, and review gates through stable IDs and public callback tokens. |
+| Storage | In-memory, local JSONL, SQLite, and Postgres event stores share the same `FlowEventStore` contract. |
+| Workers | `FlowTask`, `FlowTaskQueue`, `FlowWorker`, and `FlowScheduler` support local and Postgres-backed dispatch. |
+| Observability | Flow observers can mirror committed events into raw envelopes or A3S-shaped audit records. |
+| Native TypeScript | `NativeTsRuntime` lets a Rust host compile and invoke TypeScript workflow source through a versioned JSON protocol. |
+
+## Start Here
+
+- [Quick Start](/docs/flow/quick-start) builds a small embedded workflow host.
+- [Architecture](/docs/flow/architecture) explains replay, event sourcing,
+  timers, hooks, inspection, and observer boundaries.
+- [Durability And Workers](/docs/flow/durability-workers) compares local,
+  SQLite, Postgres, scheduler, worker, and task-queue paths.
+- [Native TypeScript](/docs/flow/native-typescript) covers the optional
+  TypeScript runtime adapter and compiler contract.
+
+## Runtime Shape
+
+```text
+host application
+  -> FlowEngine
+  -> FlowRuntime replay
+  -> RuntimeCommand
+  -> durable event append
+  -> replay again or suspend
+```
+
+Side effects belong in steps. The workflow observes a step result only after the
+engine has recorded that output or failure. This keeps replay deterministic
+while still allowing real work such as API calls, local tools, approvals,
+polling loops, and agent orchestration.
+
+## Install
+
+```toml
+[dependencies]
+a3s-flow = "0.4"
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+Optional storage features:
+
+```toml
+a3s-flow = { version = "0.4", features = ["sqlite"] }
+a3s-flow = { version = "0.4", features = ["postgres"] }
+```
+
+## Repository
+
+Source: [`A3S-Lab/Flow`](https://github.com/A3S-Lab/Flow)

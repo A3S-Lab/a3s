@@ -1,0 +1,52 @@
+---
+title: API Flow
+description: UpdateConfig, run_update, GitHub release lookup, semver comparison, and fallback behavior in A3S Updater.
+---
+
+# Updater API Flow
+
+Each binary provides an `UpdateConfig`, then calls `run_update`.
+
+```rust
+use a3s_updater::{run_update, UpdateConfig};
+
+let config = UpdateConfig {
+    binary_name: "a3s-tool",
+    crate_name: "a3s-tool",
+    current_version: env!("CARGO_PKG_VERSION"),
+    github_owner: "A3S-Lab",
+    github_repo: "Tool",
+};
+
+run_update(&config).await?;
+# Ok::<(), anyhow::Error>(())
+```
+
+## UpdateConfig
+
+| Field | Role |
+| --- | --- |
+| `binary_name` | File name expected inside the release archive. |
+| `crate_name` | Crate name printed in the manual `cargo install` fallback message. |
+| `current_version` | Current binary version, usually `env!("CARGO_PKG_VERSION")`. |
+| `github_owner` | GitHub repository owner. |
+| `github_repo` | GitHub repository name. |
+
+## run_update Steps
+
+1. Detect the normalized platform target.
+2. Fetch the latest release from the configured GitHub repository.
+3. Parse the release tag as semver, allowing an optional `v` prefix.
+4. Parse the current version as semver.
+5. Stop when the current version is already greater than or equal to the latest.
+6. Find a matching release asset for binary, version, OS, and architecture.
+7. Download and extract the binary.
+8. Replace the running executable in place.
+
+When no matching prebuilt asset exists, the library prints a manual
+`cargo install <crate_name>` fallback and returns successfully.
+
+## Release Type
+
+The exported `Release` type mirrors the GitHub response fields used by the
+updater: `tag_name`, optional `body`, and `assets`.

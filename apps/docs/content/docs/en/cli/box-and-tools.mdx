@@ -1,0 +1,62 @@
+---
+title: Box And Tools
+description: Registered Box proxying, component installation, discovery, inventory, and helper binary boundaries.
+---
+
+# Box And Tools
+
+`a3s box ...` is the umbrella CLI's Box proxy. It keeps the common entry point
+simple while leaving sandbox/runtime behavior in the `a3s-box` binary.
+
+## Box Proxy Flow
+
+When you run `a3s box <args...>`, the CLI:
+
+1. Resolves the registered `box` component from the trusted catalog.
+2. Reconciles its receipt with an allowed existing installation, including the
+   configured install directory, a CLI sibling, `PATH`, or the user component
+   root.
+3. Performs a visible first-use installation only when Box is missing and the
+   invocation permits network and interaction.
+4. Executes the absolute resolved `a3s-box` path with the original arguments.
+
+The proxy exits with the same status code as `a3s-box` when the child command
+fails.
+
+## Bootstrap Paths
+
+| Path | Behavior |
+| --- | --- |
+| Homebrew | Tries the `a3s-lab/tap/a3s-box` formula when `brew` is available. |
+| Standalone release | Downloads a platform release archive, extracts Box binaries, installs them into the chosen bin directory, and copies bundled libraries. |
+| Existing install | Reconciles a compatible executable from an allowed discovery location without claiming files owned by another package manager. |
+
+Standalone Box bootstrap currently has release targets for macOS arm64, Linux
+arm64, and Linux x86_64. Unsupported OS/arch pairs should install Box manually
+from the release page.
+
+## Installed Box Binaries
+
+When present in the release archive, bootstrap installs:
+
+- `a3s-box`
+- `a3s-box-shim`
+- `a3s-box-guest-init`
+- `a3s-box-cri`
+
+## Component And Tool Listing
+
+`a3s list` reports every trusted catalog component, its bundled, managed,
+delegated, external, missing, or unsupported state, installed ownership receipt,
+and delegated Use capabilities. Additional visible `a3s-*` executables on
+`PATH` are listed separately as unregistered external tools; local status is
+network-free by default, discovery never executes them, and their presence does
+not activate them as trusted components.
+
+## Boundaries
+
+The CLI does not implement container isolation itself. It owns Box catalog and
+lifecycle policy, while verified transaction primitives stage and activate the
+artifact. The Box repository owns runtime, CRI, networking, image, and TEE
+behavior. Current managed delivery targets macOS and Linux; Windows remains on
+the roadmap.

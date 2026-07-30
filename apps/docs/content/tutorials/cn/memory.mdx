@@ -1,0 +1,116 @@
+---
+title: 记忆系统
+description: 为智能体提供跨 Session 持久化的长期记忆。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 记忆系统
+
+记忆系统为智能体提供跨 Session 持久化的知识。智能体可以存储事实、回忆上下文，并随时间积累对项目的理解。
+
+## 快速开始
+
+```ts
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  memoryStore: new FileMemoryStore('./memory'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// 智能体自动存储和回忆相关记忆
+await session.send('Remember that our API uses JWT tokens with 24h expiry');
+
+// 在之后的 Session 中（即使隔了几天）：
+const newSession = agent.session('.', {
+  memoryStore: new FileMemoryStore('./memory'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+await newSession.send('What authentication method do we use?');
+// 智能体回忆："JWT tokens with 24h expiry"
+```
+
+## 工作原理
+
+1. 智能体遇到值得记住的信息
+2. 记忆连同元数据（主题、相关性、时间戳）一起存储
+3. 在未来的提示中，相关记忆被召回并注入上下文
+4. 过时的记忆可以被更新或移除
+
+## 存储后端
+
+### FileMemoryStore
+
+将记忆以文件形式持久化到磁盘：
+
+```ts
+import { FileMemoryStore } from '@a3s-lab/code';
+const store = new FileMemoryStore('./project-memory');
+```
+
+## 使用场景
+
+### 项目上下文
+
+```ts
+// 第一个 Session：智能体了解项目
+await session.send('This is a NestJS monorepo with 3 microservices');
+await session.send('We use PostgreSQL with Kysely for type-safe queries');
+await session.send('CI runs on GitHub Actions, deploys to AWS ECS');
+
+// 之后的 Session：智能体已经了解技术栈
+await session.send('Add a new endpoint for user preferences');
+// 智能体使用 NestJS 模式、Kysely 查询，考虑 CI/CD
+```
+
+### 团队约定
+
+```ts
+await session.send('Remember: we always use conventional commits');
+await session.send('Remember: PRs need at least 2 approvals');
+await session.send('Remember: no direct pushes to main');
+```
+
+### 结合记忆与结构化输出
+
+```ts
+// 智能体回忆项目上下文，然后生成结构化输出
+const session = agent.session('.', {
+  memoryStore: new FileMemoryStore('./memory'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['tech_stack', 'conventions', 'deployment'],
+    properties: {
+      tech_stack: { type: 'array', items: { type: 'string' } },
+      conventions: { type: 'array', items: { type: 'string' } },
+      deployment: { type: 'object', properties: {
+        platform: { type: 'string' },
+        ci: { type: 'string' },
+      }},
+    },
+  },
+  prompt: 'Based on what you know about this project, summarize the tech stack and conventions.',
+  schema_name: 'project_summary',
+});
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, FileMemoryStore
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.memory_store = FileMemoryStore('./memory')
+
+session = agent.session('.', opts)
+session.send("Remember: this project uses GraphQL, not REST")
+```

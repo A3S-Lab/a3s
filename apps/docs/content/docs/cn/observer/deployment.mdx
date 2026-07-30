@@ -1,0 +1,56 @@
+---
+title: 部署
+description: 在 Linux 主机和 Kubernetes 节点上构建、运行和运维 A3S Observer。
+---
+
+# Observer 部署
+
+A3S Observer 仅支持 Linux，并且是特权组件。Rust host crates 可以正常构建，但 eBPF
+probes 需要 nightly Rust toolchain、`rust-src` 和 `bpf-linker`。
+
+## 本地构建
+
+```bash
+rustup toolchain install nightly --component rust-src
+cargo install bpf-linker
+cargo build --release -p a3s-observer-collector
+```
+
+先以 observe-only 运行：
+
+```bash
+sudo ./target/release/a3s-observer-collector
+A3S_OBSERVER_JSON=1 sudo -E ./target/release/a3s-observer-collector
+```
+
+高流量或敏感信号需要显式开启：
+
+```bash
+A3S_OBSERVER_JSON=1 A3S_OBSERVER_FILES=1 sudo -E ./target/release/a3s-observer-collector
+A3S_OBSERVER_JSON=1 A3S_OBSERVER_SSL=1 sudo -E ./target/release/a3s-observer-collector
+```
+
+## 导出管道
+
+Observer 输出 NDJSON，并把运输问题留给日志管道：
+
+```text
+a3s-observer -> NDJSON -> OpenTelemetry Collector filelog receiver -> OTLP backend
+```
+
+这让特权 collector 与后端可用性解耦，也避免在 probe 二进制里嵌入进程内 OTLP client。
+
+## Kubernetes
+
+Observer 仓库提供 DaemonSet 和 OpenTelemetry Collector 配置。推荐形态：
+
+- Observer 在每个节点运行，并把 NDJSON 输出到 stdout。
+- Collector tail 日志，做 batch、retry，并导出到后端。
+- `A3S_OBSERVER_COLLECTOR_ID` 和 `A3S_NODE_NAME` 提供稳定 fleet identity。
+- 可选 guards 与 Sentry 这类 controller 共享 node-local deny files。
+
+## 验证状态
+
+上游仓库记录了 Linux 6.8 验证、持续 observe soak、8 节点 Kubernetes observe-only soak，
+以及隔离环境下 egress、file/exec 和 SSL-content 路径的 intervention 验证。这些是当前
+实现证据，但不能替代你对自身 kernel、发行版和容器运行时的验证。

@@ -1,0 +1,10 @@
+{
+  "title": "A3S AHP",
+  "pages": [
+    "index",
+    "protocol",
+    "events",
+    "typed-decisions",
+    "transports"
+  ]
+}

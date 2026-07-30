@@ -1,0 +1,93 @@
+---
+title: 身份与导出
+description: Process/pod identity、provider classification、socket correlation、NDJSON export 与 OpenTelemetry Collector handoff。
+---
+
+# Observer 身份与导出
+
+Observer 的 raw probes 是低层 kernel events。Collector 会在 export 前把它们变成带 identity、provider classification 和 socket context 的 enriched events。
+
+```text
+kernel event -> collector correlation -> EnrichedEvent -> NDJSON -> log pipeline
+```
+
+## Enriched Event Shape
+
+每一行导出都是一个 `EnrichedEvent`：
+
+```json
+{
+  "identity": {
+    "agent": "agent-process-or-pod",
+    "task": "1234",
+    "session": null
+  },
+  "provider": null,
+  "event": {
+    "ToolExec": {
+      "pid": 1234,
+      "ppid": 1,
+      "uid": 1000,
+      "argv": ["git", "status"],
+      "cwd": "/work"
+    }
+  }
+}
+```
+
+`identity` 回答 event 属于谁。网络 event 能被识别为已知 LLM provider 时，`provider` 会被填充。`event` 携带具体 signal payload。
+
+## Identity Resolution
+
+Observer 暴露 `IdentityResolver` trait，并提供 process/container resolvers：
+
+| Resolver path | 使用证据 | 输出 |
+| --- | --- | --- |
+| Kubernetes/container | `/proc/<pid>/cgroup` | Pod UID 和短 container ID，不需要 Kubernetes API access。 |
+| Bare host | `/proc/<pid>/comm` 与 `/proc/<pid>/stat` | Process name 与 pid task identity。 |
+| Kernel fallback | In-kernel `comm` | 给 very short-lived process 提供 best-effort label。 |
+
+Fleet deployment 中设置 `A3S_OBSERVER_COLLECTOR_ID` 和 `A3S_NODE_NAME`，可以让 downstream system 获得稳定 collector 与 node identity。未设置时，collector 会尽量回退到 pod 或 host name。
+
+## Socket Correlation
+
+网络 hooks 在不同时间看到不同片段：connect、SNI、DNS、read、recv 和 close。Userspace correlation 维护 `(pid, fd) -> peer` 状态，因此后续 LLM metrics 可以关联到 peer IP、SNI、endpoint、byte counts、latency 和 TTFT。
+
+这就是为什么 `LlmCall` 能同时包含 request bytes、response bytes、latency 和 time-to-first-byte，即便这些事实来自不同 probe path。
+
+## Provider Classification
+
+`ServiceClassifier` 根据 SNI 和 peer context 映射到 `Provider`。默认 `SniClassifier` 识别一组固定 LLM provider hostnames，对无法分类的目的地返回 `None`。
+
+今天 SNI 仍是 plaintext，但 encrypted client hello 可能隐藏它。需要 provider policy 的部署，应在 SNI 不可用时结合 DNS、IP intelligence、allow-lists 或更严格 proxy path。
+
+## Export
+
+Observer 可导出 human logs 或 NDJSON。NDJSON 是生产 interface：
+
+```bash
+A3S_OBSERVER_JSON=1 a3s-observer-collector
+```
+
+每一行都是合法 JSON，可被 `jq`、Vector、Loki、OpenTelemetry Collector filelog receiver、Sentry 或 custom controller 消费。
+
+## OpenTelemetry Collector Handoff
+
+仓库中的 `deploy/otel-collector.yaml` 使用：
+
+| Component | 作用 |
+| --- | --- |
+| `filelog` receiver | Tail Observer NDJSON，并把 JSON line 解析成 structured log record。 |
+| `memory_limiter` | 在 backend pressure 下先 shed load，避免 Collector OOM。 |
+| `batch` processor | Export 前 batch logs。 |
+| `otlp` exporter | 带 retry 和 sending queue，把 records 发到配置 backend。 |
+
+Observer 刻意不在 privileged collector 里嵌入 OTLP client。Transport、retry、routing 和 backend outage 应由 log pipeline 负责。
+
+## Output Backpressure
+
+JSON exporter 使用独立 writer thread 和 bounded queue。如果 stdout 或下游 log path 卡住，Observer 会 drop output lines 并增加 `output_dropped`，而不是阻塞 event loop。Heartbeat events 包含 ring drops 与 output drops，方便 fleet health 检测 slow consumers。
+
+## Boundary
+
+Collector 负责 enrich 和 export evidence。它自身不做策略判断；Sentry、ProviderPolicy 或其它 controller 可以消费同一条 NDJSON stream，并驱动 enforcement。

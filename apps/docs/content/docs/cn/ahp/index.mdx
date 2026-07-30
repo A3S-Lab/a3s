@@ -1,0 +1,40 @@
+---
+title: Agent Harness Protocol
+description: 面向自主智能体监督的传输无关 JSON-RPC 协议。
+---
+
+# Agent Harness Protocol
+
+AHP 把 agent 执行和策略执行分开。agent 在有意义的控制点发出结构化事件，harness
+评估事件并返回 decision，agent 在继续执行前应用该 decision。
+
+当前 crate 是 `a3s-ahp` `2.4.0`；线协议版本是 `2.4`。
+
+## 能力地图
+
+| 领域 | 当前能力 |
+| --- | --- |
+| 协议 | JSON-RPC 2.0 方法：`ahp/handshake`、`ahp/event`、`ahp/query`、`ahp/batch`。 |
+| 传输 | Rust client/server 支持 stdio、HTTP、WebSocket 和 Unix socket。 |
+| 认证 | HTTP 和 WebSocket client 可选 API key 与 bearer auth。 |
+| 兼容性 | handshake 会拒绝协议 major 版本不匹配，并公布 harness limits。 |
+| Decision | 通用 `Decision`，以及 context、memory、planning、reasoning、rate limit、confirmation、idle、intent detection 等专用 payload。 |
+| 运行时契约 | run lifecycle、task-list snapshot、verification evidence 的持久非阻塞事件。 |
+| 批处理 | 通用 decision event 支持 batch request；handler 失败走 fail-closed。 |
+
+## 从这里开始
+
+- [Protocol](/cn/docs/ahp/protocol) 解释 JSON-RPC 方法、handshake、request、notification 和 decision。
+- [Events](/cn/docs/ahp/events) 映射阻塞事件、通知、runtime contracts 和 batch 规则。
+- [Typed Decisions](/cn/docs/ahp/typed-decisions) 展开 context、memory、planning、reasoning、rate-limit、confirmation、idle 和 intent-detection 的专用 contract。
+- [Transports](/cn/docs/ahp/transports) 说明 feature flags、client/server lifecycle、auth 和 limits。
+
+## 在系统中的位置
+
+当产品希望用一个监督平面管理多个 agent runtime 时，AHP 很适合。不同 runtime
+可以使用同一套协议，而不需要采用彼此的内部实现。
+
+## 边界
+
+AHP 定义线协议和 decision 形状。它本身不执行工具、不运行模型、也不替 runtime enforce
+policy；真正执行 decision 的仍是接收 decision 的 agent 或 runtime。

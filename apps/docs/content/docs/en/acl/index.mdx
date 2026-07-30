@@ -1,0 +1,70 @@
+---
+title: A3S ACL
+description: Typed Agent Configuration Language used across A3S components.
+---
+
+# A3S ACL
+
+`a3s-acl` is a lightweight typed configuration language for agent and component
+configuration. It provides a Rust crate and a Node.js/TypeScript SDK for parsing
+ACL text into an AST and generating ACL text back from structured values.
+
+The checked-in Rust crate and Node package source are `0.3.0`. The Rust crate is
+published on crates.io. At this snapshot, the `@a3s-lab/acl` `0.3.0` npm
+publication is still tracked by
+[`A3S-Lab/ACL#13`](https://github.com/A3S-Lab/ACL/issues/13); registry consumers
+must not assume the checked-in Node APIs are available from npm until that
+release succeeds. The crate repository metadata points to
+[`A3S-Lab/ACL`](https://github.com/A3S-Lab/ACL).
+
+## Capability Map
+
+| Area | Current capability |
+| --- | --- |
+| Syntax | ACL attributes, labeled blocks, nested blocks, lists, objects, strings, numbers, booleans, null, function calls, comments, and `=` / `:` assignments. |
+| Lexer/parser | Bounded parsing and multi-diagnostic collection, stable diagnostic codes, UTF-8 byte spans, comment skipping, string escapes, negative numbers, and scientific notation. |
+| Admission | Closed-by-default declarative schemas, recursive value rules, stable logical paths, redacted diagnostics, and bounded Rust/Node validation reports. |
+| Functions | First-class call values such as `env(...)`, `concat(...)`, and custom function names. |
+| AST | `Document`, `Block`, typed values, builders, value constructors, and `Value` accessors. |
+| Generation | Native ACL output, block-header labels, sorted attributes and objects, type-stable strings, and map generation. |
+| Integrity | Byte-identical Rust/Node canonical UTF-8, algorithm-prefixed SHA-256 digests, and recursive schema-aware normalization for declared unordered block occurrences. |
+| SDKs | Rust crate `a3s-acl`; Node package `@a3s-lab/acl` with TypeScript definitions. |
+
+## Start Here
+
+- [Syntax](/docs/acl/syntax) documents blocks, attributes, values, calls,
+  comments, and parser boundaries.
+- [Rust API](/docs/acl/rust-api) covers bounded parsing, schema admission,
+  multi-diagnostic collection, schema-aware canonical digests, generation,
+  builders, and AST value helpers.
+- [Node SDK](/docs/acl/node-sdk) covers the JavaScript/TypeScript parser,
+  schema validator, native ACL generator, schema-aware canonical APIs, and
+  builders.
+- [Generation And Boundaries](/docs/acl/generation-boundaries) explains stable
+  output, canonical bytes, secret handling, and host-component ownership.
+
+## Example
+
+```text
+default_model = "provider/model-id"
+
+providers "provider" {
+  api_key = env("PROVIDER_API_KEY")
+  base_url = env("PROVIDER_BASE_URL")
+
+  models "model-id" {
+    tool_call = true
+  }
+}
+```
+
+## Use In A3S
+
+ACL is the configuration format used by A3S Code sessions, Sentry policy files,
+and other components that need reviewable, typed product configuration without
+embedding private values in source control.
+
+## Boundaries
+
+ACL is a config language, not a policy engine by itself. Components decide how
+to evaluate values, what functions are allowed, and how secrets are resolved.

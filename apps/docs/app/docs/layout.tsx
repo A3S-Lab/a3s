@@ -1,0 +1,11 @@
+import { I18nProvider } from '@/components/i18n-provider';
+import { DocsShell } from '@/components/docs-shell';
+import type { ReactNode } from 'react';
+
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <I18nProvider locale="cn">
+      <DocsShell locale="cn">{children}</DocsShell>
+    </I18nProvider>
+  );
+}

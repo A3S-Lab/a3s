@@ -1,0 +1,16 @@
+{
+  "title": "A3S Gateway",
+  "pages": [
+    "index",
+    "quick-start",
+    "wire-firewall",
+    "---核心---",
+    "configuration",
+    "routing",
+    "middleware",
+    "services",
+    "---运维---",
+    "observability",
+    "deployment"
+  ]
+}

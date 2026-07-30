@@ -1,0 +1,52 @@
+---
+title: API Flow
+description: A3S Updater 的 UpdateConfig、run_update、GitHub release lookup、semver comparison 和 fallback behavior。
+---
+
+# Updater API Flow
+
+每个 binary 提供一个 `UpdateConfig`，然后调用 `run_update`。
+
+```rust
+use a3s_updater::{run_update, UpdateConfig};
+
+let config = UpdateConfig {
+    binary_name: "a3s-tool",
+    crate_name: "a3s-tool",
+    current_version: env!("CARGO_PKG_VERSION"),
+    github_owner: "A3S-Lab",
+    github_repo: "Tool",
+};
+
+run_update(&config).await?;
+# Ok::<(), anyhow::Error>(())
+```
+
+## UpdateConfig
+
+| Field | 作用 |
+| --- | --- |
+| `binary_name` | Release archive 内预期的 file name。 |
+| `crate_name` | Manual `cargo install` fallback message 中打印的 crate name。 |
+| `current_version` | 当前 binary version，通常是 `env!("CARGO_PKG_VERSION")`。 |
+| `github_owner` | GitHub repository owner。 |
+| `github_repo` | GitHub repository name。 |
+
+## run_update Steps
+
+1. 检测 normalized platform target。
+2. 从 configured GitHub repository 获取 latest release。
+3. 把 release tag 解析为 semver，允许可选 `v` prefix。
+4. 把 current version 解析为 semver。
+5. 当 current version 已经大于等于 latest 时停止。
+6. 按 binary、version、OS、architecture 查找 matching release asset。
+7. 下载并提取 binary。
+8. 原地替换 running executable。
+
+当没有 matching prebuilt asset 时，library 会打印 manual `cargo install <crate_name>` fallback，
+并成功返回。
+
+## Release Type
+
+导出的 `Release` type 映射 updater 使用的 GitHub response fields：`tag_name`、optional `body`
+和 `assets`。

@@ -1,0 +1,46 @@
+---
+title: Inline Gate
+description: 转发前 LLM/MCP wire inspection、masking、verdict 和 Gateway 集成。
+---
+
+# Inline Gate
+
+Observer event path 是 reactive：它判断 agent 已经做过的事，并能阻断未来 action。
+Inline gate 是 pre-forward：它在请求到达上游服务前检查解码后的 LLM 或 MCP wire content。
+
+```text
+agent request -> Gateway wire proxy -> Sentry inspect_wire -> masked/blocked request -> upstream
+```
+
+## 复用什么
+
+Inline inspection 把解码 body 包装成 `SslContent` 形态的 event，因此复用同一套
+L1/L2/L3 policy machinery。wire path 没有第二套策略语言。
+
+## Masking
+
+`inspect_wire` 返回 inline decision 和具体 redaction spans。应用 decision 时，每个敏感
+span 会在转发前替换为稳定 placeholder。Proxy 保存 restore map，用于配对 response。
+
+Detection 和 masking 是分开的：
+
+- 内容可以被 allow，同时仍然被 mask。
+- Block 会停止转发。
+- 即使最终 verdict 是 allow，也会应用 masking。
+
+## Detector 形态
+
+内置 detectors 是保守的 span-based 检测：provider key shapes、PEM private keys、
+cloud credential shapes、带 label 的 credential values、bearer credentials、常见
+chat/workspace keys、JWT-like values 和 email addresses。重叠 match 会合并，避免
+secret 尾部漏出。
+
+## Fail Posture
+
+Rules-only inline 模式会 mask secrets，但除非 fail-closed 或 L2/L3 guard block 请求，
+一般会继续转发 escalation。安全优先部署应启用真实语义 guard 或 fail-closed 行为。
+
+## 边界
+
+Inline gate 只能看到走 Gateway wire proxy 的流量。原始 socket、直接 provider call，
+或者没有使用配置 proxy endpoint 的 agent，仍需要 Observer 作为兜底。

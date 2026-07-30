@@ -1,0 +1,95 @@
+---
+title: Frequently Asked Questions
+description: Practical answers about A3S Box capabilities and boundaries
+---
+
+# A3S Box FAQ
+
+## Is A3S Box a Docker replacement?
+
+No. A3S Box provides a Docker-like CLI for running Linux OCI workloads in MicroVMs. It implements many common commands, but it is not a Docker daemon, does not expose the Docker API, and does not claim full Dockerfile or Compose parity.
+
+## What is the strongest supported path today?
+
+The local CLI runtime. Real macOS HVF smoke coverage currently exercises lifecycle, exec, PTY, attach, logs, ports, bridge network lifecycle, volumes, diff/export/commit/snapshot, restart monitor behavior, and Compose health/volume flows with an offline Alpine image archive.
+
+## Which platforms should I use?
+
+Use macOS Apple Silicon for local HVF development, Linux hosts with KVM/libkrun support for Linux validation, or Windows x64 hosts with Windows Hypervisor Platform enabled for the native WHPX backend. The Windows package does not require WSL. Windows CRI is not supported.
+
+## Can I run nginx?
+
+Yes, on a supported host:
+
+```bash
+a3s-box run -d --name web -p 8080:80 nginx:alpine
+a3s-box port web
+a3s-box logs -f web
+```
+
+If port publishing fails, run `a3s-box info` and verify the platform capabilities.
+
+## Does bridge networking provide outbound internet?
+
+It depends on the host:
+
+- Linux bridge uses `passt` and reports outbound NAT support.
+- macOS bridge uses `netproxy` for peer networking and published TCP ports, but bridge outbound NAT is unsupported.
+- On macOS, use default TSI networking when the workload needs outbound internet.
+
+## Are network policies enforced?
+
+Only the default `none` isolation mode is attachable. `strict` and `custom` policy modes are rejected because packet filtering is not implemented yet.
+
+## Does Dockerfile `RUN` work?
+
+Yes on root-capable Linux through isolated `chroot` execution. The builder checks root privileges, shell path, and workdir before executing.
+
+On macOS, Dockerfile `RUN` fails by default to avoid silently executing build commands on the host. `A3S_BOX_UNSAFE_HOST_RUN=1` exists only for local unsafe experiments.
+
+## Is CRI production-ready?
+
+Not yet, but the core path now works end to end. As of v2.0.5 the CRI server is reachable by `crictl`, the kubelet, and `critest` over its Unix domain socket (a vendored `h2` patch relaxes the percent-encoded socket-path `:authority` that grpc-go >= 1.57 sends, which upstream `h2` previously rejected before any RPC could run).
+
+What works, verified on a `/dev/kvm` host via `crictl`:
+
+- CRI v1 `RuntimeService` + `ImageService` over the UDS.
+- The full pod sandbox + container lifecycle (`RunPodSandbox`/`runp` → `CreateContainer`/`create` → `StartContainer`/`start` → `ps` → stop → remove → `stopp` → `rmp`). Each pod sandbox maps to one Box microVM.
+- `exec` over the Kubernetes SPDY/3.1 remotecommand protocol: `kubectl exec` / `crictl exec`, TTY and non-TTY, stdin/stdout/stderr, and exit-code propagation.
+- Container stdout/stderr captured to the CRI `log_path` and readable via `crictl logs`.
+- RuntimeClass image overrides.
+
+What does NOT work yet — do not rely on these: CRI `attach`, and the stricter `critest` conformance specs (exact CRI log format, Linux SecurityContext such as RunAsUser/RunAsGroup/capabilities/Privileged/ReadonlyRootfs/MaskedPaths/SupplementalGroups, seccomp/AppArmor, namespace sharing like HostNetwork/HostPID/HostIPC/PodPID, mount propagation, and port-forward). The `critest` baseline today is roughly 23 of 80 run specs passing; conformance is tracked in the box repo's `docs/cri-conformance.md`.
+
+The CRI is Linux-only. Core lifecycle + exec work with `crictl`/kubelet, but it is not a drop-in production Kubernetes runtime and is not fully `critest`-conformant. Windows CRI is out of scope.
+
+## Is TEE production-ready?
+
+The SEV-SNP-oriented software path exists, and simulation mode is useful for development. A production TEE claim requires hardware-backed attestation on the target host class. Simulation does not prove confidentiality.
+
+## Can I use Intel TDX?
+
+Not as a productized path today.
+
+## Does A3S Box support GPU or device passthrough?
+
+No. Device and GPU options are rejected because the current libkrun runtime path does not implement those features.
+
+## Where is state stored?
+
+By default under `~/.a3s`. Set `A3S_HOME` to isolate an environment:
+
+```bash
+A3S_HOME=/tmp/a3s-box-test a3s-box ps -a
+```
+
+## How do I clean up?
+
+```bash
+a3s-box rm -f box-name
+a3s-box system-prune --force
+a3s-box image-prune --force
+a3s-box volume prune --force
+```
+
+Use prune commands carefully; they remove unused local state.

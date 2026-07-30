@@ -1,0 +1,188 @@
+---
+title: 结构化输出
+description: 使用 generate_object 从任何 LLM 提供商获得确定性的、Schema 校验的 JSON 输出。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 结构化输出
+
+本教程展示如何通过 `generate_object` 工具从 LLM 获取可靠的、经过 Schema 校验的 JSON 输出，无论使用哪个提供商。
+
+<Callout type="info">
+`generate_object` 是内置工具。智能体可以自主调用它，你也可以通过 `session.tool()` 直接调用以获得确定性输出。
+</Callout>
+
+## 问题
+
+LLM 输出自由文本。当你需要结构化数据时，会遇到：
+- 模型用 markdown 代码块包裹 JSON
+- 缺少必填字段
+- 类型错误（字符串代替数字）
+- JSON 周围夹杂额外解释文本
+
+`generate_object` 通过 Schema 校验和自动修复解决所有这些问题。
+
+## 快速开始
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['name', 'email', 'role'],
+    properties: {
+      name: { type: 'string' },
+      email: { type: 'string', pattern: '^[^@]+@[^@]+$' },
+      role: { type: 'string', enum: ['admin', 'user', 'viewer'] },
+    },
+  },
+  prompt: 'Extract user info: "John Doe (john@example.com) is an admin."',
+  schema_name: 'user',
+});
+
+const user = JSON.parse(result.output).object;
+// { name: "John Doe", email: "john@example.com", role: "admin" }
+```
+
+## Schema 设计技巧
+
+### 积极使用 `required`
+
+```ts
+// 强制模型始终包含这些字段
+{ required: ['status', 'reason', 'score'] }
+```
+
+### 使用 `enum` 进行分类
+
+```ts
+{
+  type: 'string',
+  enum: ['bug', 'feature', 'improvement', 'documentation']
+}
+```
+
+### 使用数值约束
+
+```ts
+{
+  type: 'number',
+  minimum: 0,
+  maximum: 1  // 置信度分数
+}
+```
+
+### 嵌套对象处理复杂结构
+
+```ts
+{
+  type: 'object',
+  required: ['metadata', 'content'],
+  properties: {
+    metadata: {
+      type: 'object',
+      required: ['author', 'date'],
+      properties: {
+        author: { type: 'string' },
+        date: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+    },
+    content: { type: 'string', minLength: 10 },
+  },
+}
+```
+
+## 两阶段模式
+
+对于复杂任务，将推理与结构化输出分离：
+
+```ts
+// 阶段 1：让智能体自由思考
+const analysis = await session.send('Analyze the security of this codebase');
+
+// 阶段 2：将分析结果转为结构化输出
+const report = await session.tool('generate_object', {
+  schema: SECURITY_REPORT_SCHEMA,
+  prompt: `Structure this analysis into a report:\n\n${analysis.text}`,
+  schema_name: 'security_report',
+  max_repair_attempts: 3,
+});
+```
+
+## 流式部分对象
+
+对于大型对象，流式传输部分结果以展示进度：
+
+```ts
+const stream = await session.stream(
+  'Use generate_object to extract all entities from this document...'
+);
+
+for await (const ev of stream) {
+  if (ev.type === 'tool_output_delta' && ev.toolName === 'generate_object') {
+    const { object_partial } = JSON.parse(ev.text);
+    updateUI(object_partial);
+  }
+}
+```
+
+## 错误处理
+
+```ts
+const result = await session.tool('generate_object', { schema, prompt, schema_name: 'r' });
+
+if (result.exitCode !== 0) {
+  // 所有修复尝试后 Schema 校验仍然失败
+  console.error('Structured output failed:', result.output);
+} else {
+  const { object, repair_rounds } = JSON.parse(result.output);
+  if (repair_rounds > 0) {
+    console.warn(`Required ${repair_rounds} repair rounds`);
+  }
+}
+```
+
+## Python
+
+```python
+import json
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+session = agent.session('.', opts)
+
+result = session.tool("generate_object", {
+    "schema": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["task", "priority"],
+                    "properties": {
+                        "task": {"type": "string"},
+                        "priority": {"type": "string", "enum": ["high", "medium", "low"]},
+                    }
+                }
+            }
+        }
+    },
+    "prompt": "Extract tasks: 'Fix login bug (urgent), update docs (low priority), add tests (medium)'",
+    "schema_name": "task_list",
+})
+
+tasks = json.loads(result.output)["object"]["items"]
+```

@@ -1,0 +1,137 @@
+---
+title: 安全与人机协作
+description: 通过权限策略、确认流程和 HITL 模式控制智能体权限。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 安全与人机协作
+
+A3S Code 提供分层安全机制：权限策略控制智能体可以使用哪些工具，HITL（Human-in-the-Loop）确认将危险操作置于人工审批之后。
+
+## 权限策略
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+
+// 允许所有工具（开发模式）
+const devSession = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// 限制性策略（生产环境）
+const prodSession = agent.session('.', {
+  permissionPolicy: {
+    defaultDecision: 'deny',
+    allow: ['read', 'grep', 'glob', 'ls', 'generate_object'],
+    deny: ['bash(rm:*)', 'bash(sudo:*)', 'write'],
+  },
+});
+```
+
+## 策略模式
+
+| 模式 | 匹配范围 |
+| --- | --- |
+| `bash` | 所有 bash 命令 |
+| `bash(rm:*)` | 以 `rm` 开头的 bash 命令 |
+| `bash(echo:*)` | 以 `echo` 开头的 bash 命令 |
+| `write` | 所有文件写入 |
+| `read` | 所有文件读取 |
+| `*` | 所有操作 |
+
+## HITL 确认
+
+对于交互式应用，要求特定工具需要人工审批：
+
+```ts
+const session = agent.session('.', {
+  confirmationPolicy: {
+    requireConfirmation: ['bash', 'write', 'edit'],
+    timeoutMs: 60000, // 60 秒超时
+  },
+  hitl: true,
+});
+
+const stream = await session.stream('Fix the bug in auth.ts');
+
+for await (const ev of stream) {
+  if (ev.type === 'confirmation_required') {
+    console.log(`Tool: ${ev.toolName}`);
+    console.log(`Args: ${JSON.stringify(ev.args, null, 2)}`);
+
+    const approved = await askUser('Approve this action? [y/n]');
+    session.confirmToolUse(ev.toolId, approved);
+  }
+  if (ev.type === 'text_delta') {
+    process.stdout.write(ev.text);
+  }
+}
+```
+
+## 只读智能体
+
+创建只能观察、不能修改的智能体：
+
+```ts
+const readOnlySession = agent.session('.', {
+  permissionPolicy: {
+    defaultDecision: 'deny',
+    allow: ['read', 'grep', 'glob', 'ls', 'generate_object'],
+  },
+});
+
+// 智能体可以分析但不能写入/执行
+const analysis = await readOnlySession.send('Review this codebase for security issues');
+```
+
+## 结合安全策略与结构化输出
+
+```ts
+// 只读智能体生成结构化安全报告
+const session = agent.session('.', {
+  permissionPolicy: {
+    defaultDecision: 'deny',
+    allow: ['read', 'grep', 'glob', 'ls', 'generate_object'],
+  },
+});
+
+const result = await session.send(`
+  Analyze all files in src/ for security vulnerabilities.
+  Use generate_object to output a structured report with schema:
+  {
+    "type": "object",
+    "required": ["vulnerabilities", "risk_score"],
+    "properties": {
+      "vulnerabilities": {"type": "array", "items": {"type": "object",
+        "required": ["file", "type", "severity"],
+        "properties": {
+          "file": {"type": "string"},
+          "type": {"type": "string"},
+          "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]}
+        }}},
+      "risk_score": {"type": "number", "minimum": 0, "maximum": 10}
+    }
+  }
+`);
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, ConfirmationPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+
+# 只读策略
+opts.permission_policy = PermissionPolicy(
+    default_decision="deny",
+    allow=["read", "grep", "glob", "ls", "generate_object"],
+)
+
+session = agent.session('.', opts)
+```

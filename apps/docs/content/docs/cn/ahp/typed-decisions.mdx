@@ -1,0 +1,85 @@
+---
+title: Typed Decisions
+description: AHP 中 context、memory、planning、reasoning、rate limit、confirmation、idle 和 intent detection 的专用 decision contract。
+---
+
+# Typed Decisions
+
+普通 action 和 prompt gate 使用通用 `Decision` 就足够。某些 harness 点需要更丰富的 payload，因此 AHP v2.4 定义了 specialized typed events 和 typed decisions。
+
+Typed events 是阻塞 JSON-RPC requests，但不可 batch，因为 `ahp/batch` 返回的是 `Vec<Decision>`，不是混合 typed responses。应使用 `send_typed_event` 或 `send_typed_event_full` 发送。
+
+## Handler 默认行为
+
+`EventHandler` 为每个 specialized event 提供显式 hook：
+
+| Event | Handler | 默认行为 |
+| --- | --- | --- |
+| `idle` | `handle_idle` | 允许 idle processing。 |
+| `intent_detection` | `handle_intent_detection` | 未实现时返回 unsupported。 |
+| `context_perception` | `handle_context_perception` | 未实现时返回 unsupported。 |
+| `memory_recall` | `handle_memory_recall` | 未实现时返回 unsupported。 |
+| `planning` | `handle_planning` | 未实现时返回 unsupported。 |
+| `reasoning` | `handle_reasoning` | 未实现时返回 unsupported。 |
+| `rate_limit` | `handle_rate_limit` | 未实现时返回 unsupported。 |
+| `confirmation` | `handle_confirmation` | 未实现时返回 unsupported。 |
+
+Server 会先把 payload 反序列化成 typed payload，再调用 handler，并把 typed decision 序列化回 JSON-RPC result。
+
+## Context Perception
+
+`context_perception` 在模型继续之前向 harness 请求 workspace 或 knowledge context。
+
+| Field family | 示例 |
+| --- | --- |
+| Intent | `recognize`、`understand`、`locate`、`retrieve`、`explore`、`reason`、`validate`、`compare`、`track`。 |
+| Target | Entity、location、event、relation、rule、state、resource 或 pattern。 |
+| Domain | Coding、writing、data analysis、research、project management、conversation、operations、security 或 general。 |
+| Modality | Text、code、structured data、table、chart、image、audio、video 或 any。 |
+| Urgency | `critical`、`high`、`normal` 或 `low`。 |
+| Freshness | `realtime`、`recent` 或 `static`。 |
+| Constraints | Max results、max context length，以及是否 include sources。 |
+
+Decision 可以是：
+
+| Decision | 含义 |
+| --- | --- |
+| `allow` | 注入 facts、file snippets、project summary、knowledge strings 和 suggestions。 |
+| `block` | 用 reason 跳过或拒绝 context injection。 |
+| `refine` | 要求 runtime 缩小 intent、target 或 scope 后再试。 |
+
+当 agent 的请求过宽，无法做出高质量 context lookup 时，使用 `refine`。
+
+## Memory、Planning 和 Reasoning
+
+| Event | Payload | Decision |
+| --- | --- | --- |
+| `memory_recall` | Session id、query、memory type、max results 和 working directory。 | `allow` 注入 facts，或 `block` 并给出 reason。 |
+| `planning` | Session id、task description、available strategies 和可选 constraints。 | `allow` 选择 strategy/template、`modify` 修改 task 并给 hints，或 `block`。 |
+| `reasoning` | Session id、reasoning type、problem statement 和可选 hints。 | `allow` 并可给 hints，或 `block`。 |
+
+Planning strategies 包括 `none`、`step_by_step`、`tree_of_thoughts`、`graph_planning` 和 `custom`。Reasoning types 包括 `chain_of_thought`、`tree_of_thoughts`、`react`、`reflexion` 和 `other`。
+
+## Rate Limit 和 Confirmation
+
+| Event | 使用场景 | Decision |
+| --- | --- | --- |
+| `rate_limit` | 命中 token、request、API、tool 或 custom limit。 | `retry` 并给 delay、`queue`，或 `skip` 并给 reason。 |
+| `confirmation` | 需要 safety、user、cost 或 custom approval。 | `approve`、`reject` 或 `escalate`。 |
+
+Runtime 仍负责 enforce：如果 harness 返回 `queue`、`skip`、`reject` 或 `escalate`，agent 或 host process 必须应用该结果。
+
+## Intent Detection
+
+`intent_detection` 发生在更深的 context work 之前。Payload 包含 session id、prompt、workspace 和可选 language hint。Harness 可以返回：
+
+| Decision | 含义 |
+| --- | --- |
+| `allow` | Detected intent、`0.0` 到 `1.0` 的 confidence score，以及可选 target hints。 |
+| `block` | 跳过 detection，让 runtime 使用本地 fallback。 |
+
+Target hints 可以包含 target type、target name 和 domain。
+
+## Event Context
+
+任意 AHP event 也可以在 typed payload 之外携带 `EventContext`。它包含 recent facts、memory summary、session stats、current task 和任意 client capabilities。Harness 应忽略无法识别的 capabilities，只依赖自己明确需要的字段。

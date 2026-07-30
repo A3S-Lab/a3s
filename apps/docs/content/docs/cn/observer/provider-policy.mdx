@@ -1,0 +1,84 @@
+---
+title: Provider Policy
+description: Provider allow-lists、external controllers、deny-file formats，以及 Observer guards 与 Sentry 的关系。
+---
+
+# Observer Provider Policy
+
+Observer 将 observation 和 intervention 分离。Policy 可以作为 Rust code 嵌入，也可以由任何读取 NDJSON、写入 deny files 的 out-of-process controller 实现。
+
+```text
+Observer NDJSON -> policy engine -> deny file -> Observer guard -> EPERM
+```
+
+## Shipped ProviderPolicy
+
+Root crate 暴露 `ProviderPolicy`，这是一个 host-buildable `Policy` implementation，用于按 LLM provider 做 egress allow-list。
+
+```rust
+use a3s_observer::{Provider, ProviderPolicy};
+
+let policy = ProviderPolicy::new([Provider::OpenAi, Provider::Anthropic]);
+```
+
+默认行为：
+
+| Destination | Result |
+| --- | --- |
+| Allow-listed known provider | `Allow` |
+| Known provider not on the allow-list | `Deny` |
+| Unclassified destination | `Allow` |
+
+这样默认不会切断 package mirrors、internal APIs 和普通 non-LLM traffic。
+
+## Strict Provider Cage
+
+Strict mode 也会 deny unclassified destinations：
+
+```rust
+use a3s_observer::{Provider, ProviderPolicy};
+
+let cage = ProviderPolicy::new([Provider::OpenAi]).deny_unclassified(true);
+```
+
+只有当 agent 应该只能访问 approved model providers 时，才适合 strict mode。它可能阻断无法分类为 known provider 的正常运行依赖。
+
+## Custom Classifier
+
+`ProviderPolicy::with_classifier` 接受任意 `ServiceClassifier`。平台可以用它替换 SNI-only classification，例如接入 DNS correlation、IP ranges、proxy registry 或站点自有 provider map。
+
+## External Controller Path
+
+Language-agnostic path 是一个 controller：
+
+1. 读取 Observer NDJSON。
+2. 应用 site policy。
+3. Rewrite deny file。
+4. Guard 热加载该文件。
+
+仓库中的 `scripts/example-controller.py` 是最小 NDJSON 到 egress deny-list 示例。
+
+## Deny-File Formats
+
+| Guard | File format |
+| --- | --- |
+| Egress guard | 每行一个 IPv4 address 或 hostname。Hostname 会在 reload 时重新 resolve。 |
+| File/exec guard | 每行一个 path。同一个 fanotify guard 可 deny listed paths 的 open 和 exec。 |
+
+Egress policy parser 会忽略 blank lines 和 comments。
+
+## Relationship To Sentry
+
+ProviderPolicy 是 proactive：它可以在 incident event 产生前，阻止 agent 访问未批准 providers。
+
+Sentry 是 reactive 和 semantic：它通过 L1/L2/L3/SAE tiers 判断 observed behavior，然后为 Observer guards 写 deny records。
+
+平台需要 provider allow-list floor 加上更深的 behavior-aware judgment 时，两者可以一起使用。
+
+## Fail Posture
+
+Observer 的内置 policy trait 默认 `Allow`。Guards 是 opt-in，缺少 policy 不应破坏 passive telemetry。Security-first deployment 仍可选择 strict allow-lists 或 Sentry fail-closed mode，但这是显式 operational choice。
+
+## Boundary
+
+Provider classification 的强度取决于 classifier 使用的信号。SNI-based allow-list 在 SNI 不可用、被隐藏或不能代表真实 upstream path 时会失去可见性。

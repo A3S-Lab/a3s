@@ -1,0 +1,74 @@
+---
+title: State And Messaging
+description: Subscription state stores、event sources 和 cross-session messaging ports。
+---
+
+# State And Messaging
+
+A3S Event 不只是 provider abstraction。它还提供几个小型 host-side primitives，用于恢复 subscriptions、从本地 source 产生 events，以及在 sessions 之间传递 messages。
+
+## Subscription State Stores
+
+`StateStore` 按 `subscriber_id` 持久化 `SubscriptionFilter`。
+
+| Store | 使用场景 | 持久化行为 |
+| --- | --- | --- |
+| `FileStateStore` | 重启后需要恢复 subscriptions 的本地服务和 CLI 进程。 | 通过 temp file + rename 写入 pretty JSON，并按需创建父目录。 |
+| `MemoryStateStore` | 测试和 embedded host。 | 状态保存在内存中，store drop 后丢失。 |
+
+`EventBus::set_state_store(...)` 会立即加载已持久化的 filters。后续 `update_subscription(...)` 和 `remove_subscription(...)` 会 best-effort 保存状态；保存失败会记录日志，而不是破坏 publish path。
+
+```rust
+use std::sync::Arc;
+use a3s_event::{EventBus, SubscriptionFilter};
+use a3s_event::provider::memory::MemoryProvider;
+use a3s_event::state::FileStateStore;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+bus.set_state_store(Arc::new(FileStateStore::new("./event-state/subscriptions.json")))?;
+
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "analyst".to_string(),
+    subjects: vec!["events.market.>".to_string()],
+    durable: true,
+    options: None,
+}).await?;
+```
+
+## Event Sources
+
+启用 `routing` feature 后，`EventSource` 是 adapter trait，用于把外部信号生成的 events 发送到 channel。当前 source 支持包括 `CronSource`，它按固定间隔发出 events，并支持优雅停止。
+
+```rust
+use std::time::Duration;
+use a3s_event::{CronSource, Event};
+
+let source = CronSource::new("health-sweep", Duration::from_secs(30), || {
+    Event::new(
+        "events.health.sweep",
+        "health",
+        "Health sweep",
+        "health-source",
+        serde_json::json!({}),
+    )
+});
+```
+
+当 host application 需要把 timers、webhooks、filesystem notifications 或 metric thresholds 适配成普通 A3S events，而不是把这些 producer 硬编码进 provider 层时，适合使用 sources。
+
+## Cross-Session Messaging
+
+`MessagingPort` 是独立 trait，用于定向或广播 session messages。它适合 inter-process 或 inter-session communication，尤其是 payload 更像 command 而不是 event history 的场景。
+
+| Type | 行为 |
+| --- | --- |
+| `Message` | 包含 id、source session、可选 target session、message type、JSON payload 和 timestamp 的 envelope。 |
+| `MessagingPort` | 发送 messages、订阅 filters、报告 connection state，并暴露 transport name。 |
+| `MessageStream` | 普通接收 messages，或带 timeout 接收。 |
+| `InMemoryMessaging` | 面向测试和 embedded use 的单进程实现。 |
+
+`InMemoryMessaging` 支持 broadcast messages 和 targeted messages。定向消息使用 `session.<target_id>` 形式的 pattern；广播消息匹配 `*`。
+
+## 边界
+
+需要 durable event history、provider-backed subscriptions、schema、DLQ 和 routing 时使用 `EventBus`。不需要 provider retention 或 event schema validation 的轻量 session-to-session messages，则使用 `MessagingPort`。

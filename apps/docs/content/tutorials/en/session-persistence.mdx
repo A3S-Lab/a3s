@@ -1,0 +1,133 @@
+---
+title: Session Persistence
+description: Save, resume, and manage long-running agent sessions across restarts.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Session Persistence
+
+Sessions can be saved and resumed across process restarts. This enables
+long-running workflows, multi-step tasks that span hours, and stateful
+agent applications.
+
+## Quick Start
+
+```ts
+import { Agent, FileSessionStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  sessionStore: new FileSessionStore('./sessions'),
+  sessionId: 'my-project-review',
+  autoSave: true,
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Work happens...
+await session.send('Read and analyze the codebase');
+// Session is auto-saved after each turn
+```
+
+## Resuming a Session
+
+```ts
+// Later (even after process restart):
+const resumed = agent.resumeSession('my-project-review', {
+  sessionStore: new FileSessionStore('./sessions'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Continues with full conversation history
+const result = await resumed.send('What did you find in the analysis?');
+```
+
+## Storage Backends
+
+### FileSessionStore
+
+Persists sessions as JSON files on disk:
+
+```ts
+import { FileSessionStore } from '@a3s-lab/code';
+
+const store = new FileSessionStore('./data/sessions');
+```
+
+### MemorySessionStore
+
+In-memory storage (useful for tests):
+
+```ts
+import { MemorySessionStore } from '@a3s-lab/code';
+
+const store = new MemorySessionStore();
+```
+
+## Manual Save
+
+When `autoSave` is false, save explicitly:
+
+```ts
+const session = agent.session('.', {
+  sessionStore: new FileSessionStore('./sessions'),
+  sessionId: 'manual-save-demo',
+  autoSave: false,
+});
+
+await session.send('Do some work');
+// Explicitly save at checkpoints
+await session.save();
+```
+
+## Session History
+
+Access the conversation history:
+
+```ts
+const history = session.history();
+for (const msg of history) {
+  console.log(`[${msg.role}] ${msg.content?.slice(0, 80)}`);
+}
+```
+
+## Run Replay
+
+Inspect past execution runs:
+
+```ts
+const runs = await session.runs();
+for (const run of runs) {
+  console.log(`Run ${run.id}: ${run.status}`);
+  const events = await session.runEvents(run.id);
+  // Replay tool calls, text output, etc.
+}
+```
+
+## Use Cases
+
+- **Multi-day code reviews**: Start a review, resume next day with full context
+- **Iterative development**: Agent remembers what it built in previous turns
+- **Stateful assistants**: Customer support bots that remember conversation history
+- **Checkpoint-based workflows**: Save before risky operations, resume from checkpoint if needed
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, FileSessionStore
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.session_store = FileSessionStore('./sessions')
+opts.session_id = 'my-session'
+opts.auto_save = True
+
+session = agent.session('.', opts)
+session.send('Start working on the task')
+
+# Later:
+resumed = agent.resume_session('my-session', opts)
+resumed.send('Continue where you left off')
+```

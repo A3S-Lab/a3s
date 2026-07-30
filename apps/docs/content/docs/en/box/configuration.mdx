@@ -1,0 +1,117 @@
+---
+title: Configuration
+description: A3S Box state, environment variables, runtime options, and limits
+---
+
+# Configuration
+
+A3S Box configuration is currently mostly CLI-driven. There is no production HCL config file contract for the CLI path yet. The stable sources of configuration are command-line flags, persisted state under `A3S_HOME`, and a small set of environment variables.
+
+## State Layout
+
+| Path | Purpose |
+| --- | --- |
+| `~/.a3s/boxes.json` | Box records, names, status, image reference, ports, network, health, exit code. |
+| `~/.a3s/images/` | Local OCI image cache. |
+| `~/.a3s/volumes/` | Named volume data. |
+| `~/.a3s/networks.json` | User-defined network records and endpoints. |
+| `~/.a3s/audit.jsonl` | Persistent audit events. |
+| `~/.a3s/boxes/<id>/` | Per-box rootfs, sockets, logs, and runtime files. |
+
+Set `A3S_HOME` to isolate tests or run multiple environments:
+
+```bash
+A3S_HOME=/tmp/a3s-box-dev a3s-box ps -a
+```
+
+## Environment Variables
+
+| Variable | Description |
+| --- | --- |
+| `A3S_HOME` | Data directory. Default: `~/.a3s`. |
+| `A3S_IMAGE_CACHE_SIZE` | Image cache size. Default: `10g`. |
+| `A3S_TEE_SIMULATE` | Enables simulated TEE behavior. |
+| `A3S_REGISTRY_PROTOCOL` | Registry protocol override, mainly for local/insecure registry tests. |
+| `A3S_BOX_CRI_AGENT_IMAGE` | Default CRI sandbox agent/rootfs image. |
+| `A3S_BOX_UNSAFE_HOST_RUN` | Opt into unsafe macOS host execution for Dockerfile `RUN` experiments. |
+| `KRUN_SNAPSHOT_MEM_FILE` | Path the booted template writes its file-backed guest RAM to when capturing a snapshot-fork template. |
+| `KRUN_SNAPSHOT_SOCK` | Control socket the template listens on for the `snapshot <path>` command (Linux `/dev/kvm` only). |
+| `KRUN_RESTORE_FROM` | Path to a snapshot the microVM restores from as a Copy-on-Write fork instead of cold booting. |
+| `RUST_LOG` | Tracing log level. |
+
+Smoke-test variables are documented in the repository README and test files: `A3S_BOX_SMOKE_IMAGE`, `A3S_BOX_SMOKE_IMAGE_TAR`, `A3S_BOX_SMOKE_SKIP_PULL`, `A3S_BOX_SMOKE_TIMEOUT_SECS`, and `A3S_BOX_TEST_ALPINE_TAR`.
+
+## Runtime Resources
+
+```bash
+a3s-box run --cpus 4 --memory 2g alpine:latest -- sleep 3600
+```
+
+Boot-time CPU and memory are configured before the MicroVM starts. Running VMs cannot have vCPU or memory size changed because libkrun does not expose that hot-resize API. `container-update` validates this boundary and can update supported lifecycle/restart metadata and guest-level limits where applicable.
+
+Supported resource limit flags include:
+
+- `--pids-limit`;
+- `--cpuset-cpus`;
+- `--ulimit name=soft:hard`;
+- `--cpu-shares`, `--cpu-quota`, `--cpu-period`;
+- `--memory-reservation`, `--memory-swap`.
+
+Linux cgroup v2 controls are best-effort and depend on host permissions/delegation.
+
+## Warm Pool and Snapshot-Fork
+
+The warm pool keeps sandboxes pre-booted and serves them over a Unix socket.
+On a Linux `/dev/kvm` host it can fill the pool with native Copy-on-Write
+snapshot-fork instead of cold booting each sandbox:
+
+```bash
+a3s-box pool start --image alpine:latest --size 8 --snapshot-fork
+```
+
+Snapshot-fork cold-boots one template, snapshots its file-backed guest RAM plus
+KVM vCPU and virtio device state, then restores the rest of the pool from that
+snapshot. Each fork maps the template RAM `MAP_PRIVATE`, so it only pays for the
+pages it dirties.
+
+The mechanism is also reachable below the pool through environment variables —
+`KRUN_SNAPSHOT_MEM_FILE` / `KRUN_SNAPSHOT_SOCK` capture a template and
+`KRUN_RESTORE_FROM` restores a fork — or per box through the `BoxConfig` /
+`InstanceSpec` fields `snapshot_mem_file`, `snapshot_sock`, and `restore_from`.
+The per-VM fields take precedence over the process-global environment when set.
+Snapshot-fork is Linux `/dev/kvm` only and off by default.
+
+## Process Configuration
+
+A3S Box merges image metadata and CLI overrides in this order:
+
+1. image `ENTRYPOINT`, `CMD`, `ENV`, `WORKDIR`, `USER`, `STOPSIGNAL`, and `HEALTHCHECK`;
+2. env files;
+3. inline `--env` values;
+4. CLI overrides such as `--entrypoint`, `CMD...`, `--workdir`, `--user`, `--stop-signal`, and health flags.
+
+Validation is intentionally early. Unsupported named users, relative workdirs, invalid hostnames, invalid `--add-host` entries, and unsupported security options fail before the VM is booted or persistent state is written.
+
+## Logging
+
+```bash
+a3s-box run --log-driver json-file --log-opt max-size=100m alpine:latest -- echo ok
+a3s-box logs --tail 100 box-name
+a3s-box logs -f box-name
+```
+
+`json-file` is the default. `none` disables box log capture.
+
+## Health and Restart
+
+```bash
+a3s-box run -d --name api \
+  --health-cmd 'curl -f http://localhost/health || exit 1' \
+  --health-interval 30 \
+  --health-timeout 5 \
+  --health-retries 3 \
+  --restart on-failure:3 \
+  myapi:latest
+```
+
+The `monitor` command performs restart-policy recovery for detached boxes. Health checks and restart behavior are covered by unit and real-runtime smoke tests, but they still depend on the guest image containing the health command you specify.

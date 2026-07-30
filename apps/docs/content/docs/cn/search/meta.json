@@ -1,0 +1,16 @@
+{
+  "title": "A3S Search",
+  "pages": [
+    "index",
+    "quick-start",
+    "---核心---",
+    "engines",
+    "queries",
+    "results",
+    "---能力---",
+    "proxy",
+    "configuration",
+    "browser",
+    "cli"
+  ]
+}

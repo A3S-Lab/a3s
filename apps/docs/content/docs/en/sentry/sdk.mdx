@@ -1,0 +1,71 @@
+---
+title: SDK And Embedding
+description: Native Python and TypeScript SDKs plus Rust in-process pipeline embedding.
+---
+
+# Sentry SDK And Embedding
+
+Sentry can run as a daemon after Observer, or it can be embedded in-process. The
+SDKs wrap the same Rust engine used by the daemon.
+
+## Python
+
+The Python SDK exposes a native in-process `Sentry` object and event builders for
+Observer-shaped events such as egress, tool execution, DNS, file access, SSL
+content, and security actions.
+
+```python
+from a3s_sentry import Sentry, egress, tool_exec
+
+sentry = Sentry.create("sentry.acl")
+decision = sentry.evaluate(egress(1, "169.254.169.254", 80))
+enforced = sentry.evaluate_and_enforce(tool_exec(2, ["/usr/bin/ncat", "host", "4444"]))
+```
+
+## TypeScript
+
+The TypeScript SDK exposes the same judge through a native package. Its staged
+method runs on the N-API worker pool and returns a typed promise:
+
+```ts
+import { Sentry, egress, fileAccess } from '@a3s-lab/sentry';
+
+const sentry = Sentry.create('sentry.acl');
+const decision = sentry.evaluate(egress(1, '169.254.169.254', 80));
+
+const fast = await sentry.evaluateThroughL2(
+  fileAccess(2, '/home/agent/.aws/credentials', false),
+);
+if (fast.stageStatus === 'escalated') {
+  await durableL3Queue.send(fast);
+}
+```
+
+`evaluateThroughL2` never invokes L3 or resolves an outstanding escalation
+through `fail_closed`. Its `ThroughL2Result` includes `l1Decision`, optional
+`l2Decision`, `effectiveDecision`, `stageStatus`, and optional
+`escalationCause`.
+
+## Unified ACL Config
+
+The SDK config can describe:
+
+- L1 rules.
+- Optional L2 backend.
+- Optional L3 agent backend.
+- Deny-file sinks.
+- Fail posture and speculation behavior.
+
+Keep real provider credentials and local paths out of committed examples. Use
+environment variables or deployment secrets.
+
+## Rust Embedding
+
+Rust hosts can build the pipeline directly from `LiveRules`, `Pipeline`, and
+judge implementations. This is the lowest-level integration path when a product
+already owns the event source and enforcement sinks.
+
+Use `Pipeline::evaluate_through_l2` when that product also owns a durable L3
+queue. The method stops after the fast tiers and preserves an unresolved
+escalation; callers must persist and dispatch that result rather than treating
+it as an allow.

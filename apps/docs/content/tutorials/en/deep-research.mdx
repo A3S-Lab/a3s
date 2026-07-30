@@ -1,0 +1,143 @@
+---
+title: Build a Research Agent
+description: Compose A3S Code v4.3.3 programmatic tool calling, task delegation, streaming, and queue inspection with the Node SDK.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Build a Research Agent
+
+This tutorial combines deterministic local scanning, delegated follow-ups,
+streaming synthesis, queue inspection, and run replay.
+
+<Callout type="warn">
+Live web search, remote workers, and third-party MCP servers depend on your
+runtime environment. Test those integrations in your application before relying
+on them in production.
+</Callout>
+
+## Shape
+
+```text
+question
+  -> deterministic local scan with PTC
+  -> optional delegated child investigations
+  -> streamed synthesis
+  -> run and queue inspection
+```
+
+## Create a Session
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  planningMode: 'enabled',
+  maxToolRounds: 24,
+  autoCompact: true,
+  autoDelegation: { enabled: true, maxTasks: 2 },
+  autoParallel: false,
+});
+```
+
+## Deterministic Scan with PTC
+
+Programmatic Tool Calling is the right place for bounded, repeatable tool
+chains. The runtime exposes `ctx.readFile`, `ctx.read`, `ctx.grep`, `ctx.glob`,
+`ctx.ls`, `ctx.bash`, `ctx.git`, and generic `ctx.tool`.
+
+```ts
+const scan = await session.program({
+  source: `
+    export default async function run(ctx, inputs) {
+      const files = await ctx.glob(inputs.glob);
+      const hits = await ctx.grep(inputs.query, { glob: inputs.glob });
+      const status = await ctx.git('status');
+      return { files, hits, status };
+    }
+  `,
+  inputs: {
+    glob: '**/*.{ts,tsx,js,md}',
+    query: 'authentication',
+  },
+  allowedTools: ['glob', 'grep', 'git'],
+  limits: {
+    timeoutMs: 30000,
+    maxToolCalls: 12,
+    maxOutputBytes: 65536,
+  },
+});
+
+const metadata = JSON.parse(scan.metadataJson);
+console.log(metadata.script_result);
+console.log(metadata.program.tool_calls);
+```
+
+## Delegate Focused Follow-Ups
+
+```ts
+const investigations = await session.tasks([
+  {
+    agent: 'general',
+    description: 'Auth release blockers',
+    prompt: 'Inspect authentication error handling and list release blockers.',
+    maxSteps: 4,
+  },
+  {
+    agent: 'general',
+    description: 'Auth test coverage',
+    prompt: 'Inspect tests around authentication edge cases and list missing coverage.',
+    maxSteps: 4,
+  },
+]);
+```
+
+`tasks()` returns a `ToolResult` from the core `parallel_task` tool.
+
+## Stream Synthesis
+
+Consume `EventStream` with `.next()`:
+
+```ts
+const stream = await session.stream(`
+Write a concise research report.
+
+PTC scan:
+${scan.output}
+
+Child investigations:
+${investigations.output}
+`);
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (event?.text) process.stdout.write(event.text);
+}
+```
+
+## Inspect Queue and Replay State
+
+Queue APIs are session inspection and external-task primitives:
+
+```ts
+const queued = agent.session(process.cwd(), {
+  queueConfig: { enableDlq: true, enableMetrics: true },
+});
+
+console.log(queued.hasQueue());
+console.log(await queued.queueStats());
+console.log(await queued.queueMetrics());
+console.log(await queued.pendingExternalTasks());
+console.log(await queued.deadLetters());
+
+for (const run of await session.runs()) {
+  console.log(run.id, run.status, await session.runEvents(run.id));
+}
+```
+
+Use this as a local research workflow. Add live web, remote workers, or
+third-party MCP servers after testing those services in your deployment
+environment.

@@ -1,0 +1,62 @@
+---
+title: Deployment
+description: Build, run, and operate A3S Observer on Linux hosts and Kubernetes nodes.
+---
+
+# Observer Deployment
+
+A3S Observer is Linux-only and privileged. The Rust host crates build normally,
+but the eBPF probes require a nightly Rust toolchain, `rust-src`, and
+`bpf-linker`.
+
+## Local Build
+
+```bash
+rustup toolchain install nightly --component rust-src
+cargo install bpf-linker
+cargo build --release -p a3s-observer-collector
+```
+
+Run observe-only first:
+
+```bash
+sudo ./target/release/a3s-observer-collector
+A3S_OBSERVER_JSON=1 sudo -E ./target/release/a3s-observer-collector
+```
+
+Enable high-volume or sensitive signals explicitly:
+
+```bash
+A3S_OBSERVER_JSON=1 A3S_OBSERVER_FILES=1 sudo -E ./target/release/a3s-observer-collector
+A3S_OBSERVER_JSON=1 A3S_OBSERVER_SSL=1 sudo -E ./target/release/a3s-observer-collector
+```
+
+## Export Pipeline
+
+Observer emits NDJSON and deliberately leaves transport concerns to the log
+pipeline:
+
+```text
+a3s-observer -> NDJSON -> OpenTelemetry Collector filelog receiver -> OTLP backend
+```
+
+This keeps the privileged collector decoupled from backend availability and
+avoids embedding an in-process OTLP client in the probe binary.
+
+## Kubernetes
+
+The Observer repo ships a DaemonSet and an OpenTelemetry Collector config. The
+intended shape is:
+
+- Observer runs on each node and writes NDJSON to stdout.
+- The collector tails logs, batches, retries, and exports to the backend.
+- `A3S_OBSERVER_COLLECTOR_ID` and `A3S_NODE_NAME` provide stable fleet identity.
+- Optional guards share node-local deny files with a controller such as Sentry.
+
+## Validation Status
+
+The upstream repo documents validation on Linux 6.8, sustained observe soak,
+an 8-node Kubernetes observe-only soak, and isolated intervention validation for
+egress, file/exec, and SSL-content paths. Treat those as evidence for the current
+implementation, not as a substitute for validating your kernel, distro, and
+container runtime.

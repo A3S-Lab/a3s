@@ -1,0 +1,74 @@
+---
+title: State And Messaging
+description: Subscription state stores, event sources, and cross-session messaging ports.
+---
+
+# State And Messaging
+
+A3S Event is not only a provider abstraction. It also includes small host-side primitives for restoring subscriptions, producing events from local sources, and moving messages between sessions.
+
+## Subscription State Stores
+
+`StateStore` persists `SubscriptionFilter` records keyed by `subscriber_id`.
+
+| Store | Use case | Persistence behavior |
+| --- | --- | --- |
+| `FileStateStore` | Local services and CLI processes that need subscriptions restored after restart. | Writes pretty JSON through a temp file plus rename, creating parent directories as needed. |
+| `MemoryStateStore` | Tests and embedded hosts. | Keeps state in memory until the store is dropped. |
+
+`EventBus::set_state_store(...)` loads persisted filters immediately. Later calls to `update_subscription(...)` and `remove_subscription(...)` save state best-effort and log failures instead of failing the publish path.
+
+```rust
+use std::sync::Arc;
+use a3s_event::{EventBus, SubscriptionFilter};
+use a3s_event::provider::memory::MemoryProvider;
+use a3s_event::state::FileStateStore;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+bus.set_state_store(Arc::new(FileStateStore::new("./event-state/subscriptions.json")))?;
+
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "analyst".to_string(),
+    subjects: vec!["events.market.>".to_string()],
+    durable: true,
+    options: None,
+}).await?;
+```
+
+## Event Sources
+
+With the `routing` feature, `EventSource` is an adapter trait for components that generate events from external signals and send them into a channel. Current source support includes `CronSource`, which emits events on a fixed interval and can be stopped gracefully.
+
+```rust
+use std::time::Duration;
+use a3s_event::{CronSource, Event};
+
+let source = CronSource::new("health-sweep", Duration::from_secs(30), || {
+    Event::new(
+        "events.health.sweep",
+        "health",
+        "Health sweep",
+        "health-source",
+        serde_json::json!({}),
+    )
+});
+```
+
+Use sources when the host application wants to adapt timers, webhooks, filesystem notifications, or metric thresholds into normal A3S events without hard-coding those producers into the provider layer.
+
+## Cross-Session Messaging
+
+`MessagingPort` is a separate trait for directed or broadcast session messages. It is useful for inter-process or inter-session communication where the payload is more command-like than event-history-like.
+
+| Type | Behavior |
+| --- | --- |
+| `Message` | Envelope with id, source session, optional target session, message type, JSON payload, and timestamp. |
+| `MessagingPort` | Sends messages, subscribes to filters, reports connection state, and exposes a transport name. |
+| `MessageStream` | Receives messages normally or with a timeout. |
+| `InMemoryMessaging` | Single-process implementation for tests and embedded use. |
+
+`InMemoryMessaging` supports broadcast messages and targeted messages. A targeted message uses a pattern like `session.<target_id>`; broadcast messages match `*`.
+
+## Boundary
+
+Use `EventBus` for durable event history, provider-backed subscriptions, schema, DLQ, and routing. Use `MessagingPort` for lightweight session-to-session messages that do not need provider retention or event schema validation.

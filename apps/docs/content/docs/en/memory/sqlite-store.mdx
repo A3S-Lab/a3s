@@ -1,0 +1,101 @@
+---
+title: SqliteMemoryStore
+description: Feature-gated SQLite backend with FTS5 search, Markdown export, session log, pruning, and optional sqlite-vec semantic search.
+---
+
+# SqliteMemoryStore
+
+`SqliteMemoryStore` is a feature-gated persistent backend. It implements the same `MemoryStore` trait as `InMemoryStore` and `FileMemoryStore`, but uses SQLite as the authoritative store.
+
+## Enable
+
+```toml
+[dependencies]
+a3s-memory = { version = "0.1.1", features = ["sqlite"] }
+```
+
+`SqliteMemoryStore` is re-exported from the crate root only when the `sqlite` Cargo feature is enabled.
+
+## Storage Layout
+
+```text
+memory-root/
+  memory.db
+  MEMORY.md
+  memory/
+    YYYY-MM-DD.md
+```
+
+| Track | Role |
+| --- | --- |
+| `memory.db` | Authoritative SQLite database. All `MemoryStore` methods operate on this database. |
+| `MEMORY.md` | Append-only Markdown log for high-importance memories with importance at or above `0.7`. |
+| `memory/YYYY-MM-DD.md` | Append-only daily Markdown log for episodic memories. |
+
+Markdown files are for human review and external tooling. They are not the source of truth and are not rewritten when a database item is deleted or pruned.
+
+## Database Schema
+
+The schema includes:
+
+| Table | Purpose |
+| --- | --- |
+| `memories` | Canonical memory item rows, including content, timestamps, importance, tags, type, metadata, access count, and last access. |
+| `memories_fts` | FTS5 virtual table synced by triggers for full-text search. |
+| `session_log` | Append-only structured event log keyed by session id. |
+
+The database enables WAL mode and foreign keys. FTS uses `unicode61 remove_diacritics 1`.
+
+## Search
+
+`search(query, limit)` uses FTS5 and orders by `bm25(memories_fts)`. Tag search, recent retrieval, important retrieval, delete, clear, count, and prune are implemented through SQL queries.
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore, SqliteMemoryStore};
+
+let store = SqliteMemoryStore::new("./memory").await?;
+store.store(MemoryItem::new("prefer WAL for concurrent sqlite readers")).await?;
+
+let results = store.search("concurrent sqlite", 5).await?;
+```
+
+Use `.with_relevance(config)` to override the relevance config used by `search` and `get_recent` on this backend.
+
+## Session Log
+
+SQLite also exposes a small session-log API:
+
+```rust
+store
+    .log_session_event("session-1", "tool_use", &serde_json::json!({"tool": "read"}))
+    .await?;
+
+let events = store.export_session_log("session-1").await?;
+```
+
+This is an append-only JSON event log stored in SQLite, useful when an agent runtime wants memory storage and session event export in the same local store.
+
+## Optional Semantic Search
+
+The `sqlite-vec` feature enables:
+
+- `store_with_embedding(item, embedding)`
+- `search_semantic(query_embedding, limit)`
+
+```toml
+[dependencies]
+a3s-memory = { version = "0.1.1", features = ["sqlite-vec"] }
+```
+
+The current vector table stores `FLOAT[1536]` embeddings. Embeddings are supplied by the caller; this crate does not own model inference or embedding generation.
+
+## Async Boundary
+
+`rusqlite::Connection` is protected by `Arc<Mutex<Connection>>`, and blocking SQLite work is dispatched through `tokio::task::spawn_blocking`. This keeps the async trait interface usable from Tokio applications while keeping the SQLite dependency local to the backend.
+
+## Boundaries
+
+- `sqlite` and `sqlite-vec` are optional features, not default dependencies.
+- Markdown export is best-effort; the SQLite database is authoritative.
+- Semantic search requires caller-supplied embeddings with the expected dimension.
+- This backend still does not implement A3S Code session memory tiers or prompt injection. Those live in A3S Code.
