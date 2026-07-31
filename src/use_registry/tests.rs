@@ -1,5 +1,52 @@
 use super::*;
 
+#[tokio::test]
+async fn registry_slot_waits_without_blocking_and_settles_when_setup_finishes() {
+    let slot = UseRegistrySlot::preparing();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(10), slot.wait_until_settled())
+            .await
+            .is_err()
+    );
+
+    let waiting = tokio::spawn({
+        let slot = slot.clone();
+        async move { slot.wait_until_settled().await }
+    });
+    slot.set_unavailable("fixture setup failure");
+
+    tokio::time::timeout(Duration::from_secs(1), waiting)
+        .await
+        .expect("settled slot should wake waiters")
+        .expect("slot waiter should not panic");
+    assert!(slot.ready_handle().is_none());
+}
+
+#[tokio::test]
+async fn dropping_the_last_registry_handle_cancels_owned_background_work() {
+    let cancellation = CancellationToken::new();
+    let (desired_tx, _) = watch::channel(Arc::new(DesiredCapabilities::default()));
+    let handle = UseRegistryHandle {
+        inner: Arc::new(UseRegistryInner {
+            executable: PathBuf::from("unused-a3s-use"),
+            directory: PathBuf::from("."),
+            desired_tx,
+            cancellation: cancellation.clone(),
+            projections: Mutex::new(BTreeMap::new()),
+            registry_task: Mutex::new(None),
+        }),
+    };
+    let clone = handle.clone();
+
+    drop(handle);
+    assert!(!cancellation.is_cancelled());
+    drop(clone);
+
+    tokio::time::timeout(Duration::from_secs(1), cancellation.cancelled())
+        .await
+        .expect("dropping the final registry handle must cancel its tasks");
+}
+
 #[cfg(any(unix, windows))]
 // Keep process-backed fixtures from competing for spawn and stdio scheduling;
 // startup budget tests must measure the product path, not test-harness load.

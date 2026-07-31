@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Stopped Code TUI startup from waiting for A3S Use discovery, verified
+  first-use installation, and capability projection; they now continue in the
+  background. Ready
+  capabilities hot-plug into the active session, `/use status` reports setup
+  progress, and `/use repair` waits for the current setup attempt to settle.
+
 ### Fixed
 
+- Bounded cancellation of in-flight A3S Use setup and MCP projection so Code
+  shutdown does not wait on a stalled provider process.
 - Allowed current installers to validate and ignore the inert legacy
   self-update marker in release archives without installing managed SRT.
 

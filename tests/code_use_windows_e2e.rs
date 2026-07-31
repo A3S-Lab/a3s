@@ -89,6 +89,7 @@ impl WindowsE2e {
             .env("A3S_USE_BROWSER_EXECUTABLE_PATH", &self.edge)
             .env("A3S_USE_BROWSER_HEADED", "false")
             .env("A3S_CODE_TUI_SMOKE", "1")
+            .env("A3S_CODE_TUI_SMOKE_WAIT_USE", "1")
             .env("A3S_CODE_TUI_PROMPT", prompt)
             .env("PATH", isolated_path)
             .env("NO_PROXY", "127.0.0.1,localhost")

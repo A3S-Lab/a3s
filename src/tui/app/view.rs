@@ -400,9 +400,9 @@ impl App {
         self.sync_runtime_tool();
         if let Ok(mut active) = self.active_session.lock() {
             *active = Arc::clone(&self.session);
-        }
-        if let Some(use_registry) = &self.use_registry {
-            use_registry.replace_session(Arc::clone(&self.session));
+            if let Some(use_registry) = self.use_registry.ready_handle() {
+                use_registry.replace_session(Arc::clone(&self.session));
+            }
         }
     }
 

@@ -540,7 +540,7 @@ struct App {
     active_session: SharedActiveSession,
     /// Live projection of independently managed A3S Use MCP and Skill
     /// extensions into the current Code session.
-    use_registry: Option<crate::use_registry::UseRegistryHandle>,
+    use_registry: crate::use_registry::UseRegistrySlot,
     /// Agent + session-rebuild bits, kept so `/model` can switch models by
     /// resuming the session under a new model (no in-place model setter exists).
     agent: Arc<Agent>,

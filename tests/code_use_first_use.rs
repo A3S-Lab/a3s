@@ -401,6 +401,7 @@ fn run_tui_smoke(
         .env("A3S_CACHE_HOME", workspace.path("cache"))
         .env("A3S_RUNTIME_HOME", workspace.path("runtime"))
         .env("A3S_CODE_TUI_SMOKE", "1")
+        .env("A3S_CODE_TUI_SMOKE_WAIT_USE", "1")
         .env(
             "A3S_CODE_TUI_PROMPT",
             "Report whether the projected A3S Use OCR capability is ready.",

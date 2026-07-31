@@ -415,12 +415,15 @@ declare native CLI, standard MCP, and/or `SKILL.md` surfaces. A3S does not
 define an extension JSON-RPC protocol; `--json` remains a one-command CLI
 result.
 
-The Code TUI treats Use as a first-use component: before terminal takeover it
-reuses a healthy install or installs the verified release when networking and
-automatic setup are allowed. Offline mode and `A3S_NO_AUTO_INSTALL=1` remain
-strict no-mutation boundaries, and a failed setup does not prevent Code from
-starting. Code Web consumes an already-ready component without changing its
-lifecycle. Both surfaces keep one registry watcher for the process. Browser,
+The Code TUI treats Use as an asynchronous first-use component: terminal
+startup does not wait for Use discovery, download, installation, or initial
+projection. Those steps continue in the background when networking and
+automatic setup are allowed, and the live registry is hot-plugged into the
+current Code session when ready. Offline mode and `A3S_NO_AUTO_INSTALL=1`
+remain strict no-mutation boundaries, and a failed or slow setup does not
+prevent Code from starting. Code Web consumes an already-ready component
+without changing its lifecycle. Both surfaces keep one registry watcher for
+the process. Browser,
 Office, OCR, and enabled external MCP/Skill surfaces are projected into every
 active Code session. Code registers a dedicated `use` worker that can
 invoke only `mcp__use_*` tools; workspace, shell, unrelated MCP, and recursive
@@ -432,10 +435,11 @@ fall back to another execution surface, and an Office
 rebuild replays the current surfaces, and a Web process shares the watcher
 across all concurrent sessions.
 
-Inside the TUI, `/use` and `/use status` report the discovered binary,
-generation/revision convergence, provider readiness, MCP connection/tool count,
-and verified/loaded Skills. `/use repair` prints explicit repair commands but
-never executes them. The primary model does not receive raw `mcp__use_*`
+Inside the TUI, `/use` and `/use status` report background setup progress, the
+discovered binary, generation/revision convergence, provider readiness, MCP
+connection/tool count, and verified/loaded Skills. `/use repair` waits for an
+in-flight setup to settle before printing explicit repair commands, but never
+executes them. The primary model does not receive raw `mcp__use_*`
 definitions; only the dedicated worker does. Closed-world read-only MCP tools,
 including local PP-OCRv6 doctor and extraction, can proceed without another
 prompt. Missing annotations, open-world access, mutations, destructive

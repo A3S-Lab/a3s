@@ -189,13 +189,12 @@ impl App {
                     .fg(TN_GRAY)
                     .render("  inspecting A3S Use capabilities…"),
             );
-            let Some(registry) = self.use_registry.clone() else {
-                let status = crate::use_registry::unavailable_status_text(include_repair_guidance);
-                self.replace_tracked_line(status_entry, &gutter(TN_YELLOW, &status));
-                return None;
-            };
+            let registry = self.use_registry.clone();
             let session = Arc::clone(&self.session);
             return Some(cmd::cmd(move || async move {
+                if include_repair_guidance {
+                    registry.wait_until_settled().await;
+                }
                 let text = registry.status_text(session, include_repair_guidance).await;
                 Msg::UseStatus { status_entry, text }
             }));

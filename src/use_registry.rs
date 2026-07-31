@@ -1252,6 +1252,25 @@ pub(crate) fn unavailable_status_text(include_repair_guidance: bool) -> String {
     lines.join("\n")
 }
 
+fn preparing_status_text() -> String {
+    [
+        "A3S Use status",
+        "  setup   discovering or installing in the background",
+        "  Code remains available while Browser/Office/OCR capabilities load",
+        "  Run /use status again to inspect the live projection.",
+    ]
+    .join("\n")
+}
+
+fn unavailable_status_text_with_reason(reason: &str, include_repair_guidance: bool) -> String {
+    let mut status = unavailable_status_text(include_repair_guidance);
+    if !reason.trim().is_empty() {
+        status.push_str("\n  setup   ");
+        status.push_str(reason.trim());
+    }
+    status
+}
+
 fn is_ocr_capability(capability: &CapabilityBinding) -> bool {
     capability.route == "ocr"
 }
@@ -1278,6 +1297,89 @@ impl Drop for UseRegistryInner {
 #[derive(Clone)]
 pub(crate) struct UseRegistryHandle {
     inner: Arc<UseRegistryInner>,
+}
+
+#[derive(Clone)]
+enum UseRegistrySlotState {
+    Preparing,
+    Ready {
+        handle: UseRegistryHandle,
+        warning: Option<String>,
+    },
+    Unavailable {
+        reason: String,
+    },
+}
+
+/// Shared TUI view of the asynchronously prepared Use registry.
+///
+/// The slot is created before terminal takeover, updated by the background
+/// first-use task, and read by `/use` plus session rebuilds. Keeping the handle
+/// behind a watch value lets installation and registry discovery complete
+/// without blocking the terminal event loop.
+#[derive(Clone)]
+pub(crate) struct UseRegistrySlot {
+    state: watch::Sender<Arc<UseRegistrySlotState>>,
+}
+
+impl UseRegistrySlot {
+    pub(crate) fn preparing() -> Self {
+        let (state, _) = watch::channel(Arc::new(UseRegistrySlotState::Preparing));
+        Self { state }
+    }
+
+    pub(crate) fn set_ready(&self, handle: UseRegistryHandle, warning: Option<String>) {
+        self.state
+            .send_replace(Arc::new(UseRegistrySlotState::Ready { handle, warning }));
+    }
+
+    pub(crate) fn set_unavailable(&self, reason: impl Into<String>) {
+        self.state
+            .send_replace(Arc::new(UseRegistrySlotState::Unavailable {
+                reason: reason.into(),
+            }));
+    }
+
+    pub(crate) fn ready_handle(&self) -> Option<UseRegistryHandle> {
+        match self.state.borrow().as_ref() {
+            UseRegistrySlotState::Ready { handle, .. } => Some(handle.clone()),
+            UseRegistrySlotState::Preparing | UseRegistrySlotState::Unavailable { .. } => None,
+        }
+    }
+
+    pub(crate) async fn wait_until_settled(&self) {
+        let mut state = self.state.subscribe();
+        loop {
+            if !matches!(state.borrow().as_ref(), UseRegistrySlotState::Preparing) {
+                return;
+            }
+            if state.changed().await.is_err() {
+                return;
+            }
+        }
+    }
+
+    pub(crate) async fn status_text(
+        &self,
+        session: Arc<AgentSession>,
+        include_repair_guidance: bool,
+    ) -> String {
+        let state = self.state.borrow().clone();
+        match state.as_ref() {
+            UseRegistrySlotState::Preparing => preparing_status_text(),
+            UseRegistrySlotState::Ready { handle, warning } => {
+                let mut status = handle.status_text(session, include_repair_guidance).await;
+                if let Some(warning) = warning.as_deref() {
+                    status.push_str("\n  setup   ");
+                    status.push_str(warning);
+                }
+                status
+            }
+            UseRegistrySlotState::Unavailable { reason } => {
+                unavailable_status_text_with_reason(reason, include_repair_guidance)
+            }
+        }
+    }
 }
 
 impl UseRegistryHandle {
