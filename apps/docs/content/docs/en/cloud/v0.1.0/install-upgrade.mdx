@@ -15,7 +15,7 @@ moving branch in an operational environment.
 
 ## Prerequisites
 
-- Linux, Rust 1.88 or later, Docker, and PostgreSQL 17;
+- Linux, Rust 1.88 or later, A3S Box, and PostgreSQL 17;
 - Gateway `1.0.12` and Runtime `0.2.0` at the locked revisions;
 - write access to persistent PostgreSQL, artifact, log, and node-state paths;
 - separate environment variables for database, bootstrap, Gateway, and
@@ -31,10 +31,9 @@ production policy selects it.
 From a recursive checkout of the root repository at the snapshot revision:
 
 ```bash
-docker compose \
-  --env-file apps/cloud/deploy/dev/.env.example \
-  --file apps/cloud/deploy/dev/compose.yaml \
-  up --detach --wait
+a3s-box compose \
+  --file apps/cloud/deploy/dev/compose.acl \
+  up --detach --timeout 120
 
 export A3S_CLOUD_POSTGRES_URL="postgres://a3s_cloud:a3s_cloud@127.0.0.1:54320/a3s_cloud"
 export A3S_CLOUD_BOOTSTRAP_TOKEN="replace-with-at-least-32-random-characters"
@@ -46,9 +45,9 @@ apps/cloud/target/release/a3s-cloud-control-plane apps/cloud/config/cloud.acl
 ```
 
 Startup applies the checked-in migrations. Keep the complete
-[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/4ca33905191d337f0cf63d5a098a24b59bf48b29/config/cloud.acl)
+[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/61a52047169bb2eaf2e04943c967d85b74ff538e/config/cloud.acl)
 and
-[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/4ca33905191d337f0cf63d5a098a24b59bf48b29/config/node.example.acl)
+[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/61a52047169bb2eaf2e04943c967d85b74ff538e/config/node.example.acl)
 as the starting point; both are parsed by the docs gate and by Cloud's typed
 configuration tests.
 
