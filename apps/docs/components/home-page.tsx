@@ -1,104 +1,270 @@
 import {
   ArrowRight,
-  ArrowUpRight,
-  Blocks,
-  Box as BoxIcon,
-  Braces,
   CheckCircle2,
   CircleDot,
-  Gauge,
   Github,
   Layers3,
-  PanelsTopLeft,
-  ScanSearch,
+  Pause,
+  Play,
   ShieldCheck,
   Terminal,
-  type LucideIcon,
-} from 'lucide-react';
-import Link from 'next/link';
-import { A3SMark } from '@/components/home/a3s-mark';
-import { architectureProjects } from '@/components/home/architecture';
-import { ArchitectureAtlas } from '@/components/home/architecture-atlas';
-import { CopyCommand } from '@/components/home/copy-command';
-import { HomeNav } from '@/components/home/home-nav';
+} from "lucide-react";
+import { Fragment, useEffect, useState, type CSSProperties } from "react";
+import { A3SMark } from "./home/a3s-mark";
+import { architectureProjects } from "./home/architecture";
 import {
-  homeContent,
-  type Lang,
-  type ProductCopy,
-  type ProductId,
-} from '@/components/home/home-content';
-import { localePath } from '@/lib/i18n';
-
-const productIcons: Record<ProductId, LucideIcon> = {
-  code: Braces,
-  web: PanelsTopLeft,
-  research: ScanSearch,
-  use: Blocks,
-  box: BoxIcon,
-  bench: Gauge,
-};
+  ARCHITECTURE_SELECT_PROJECT_EVENT,
+  ArchitectureAtlas,
+} from "./home/architecture-atlas";
+import { CopyCommand } from "./home/copy-command";
+import { HomeNav } from "./home/home-nav";
+import { homeContent, type AiNativeCopy, type Lang } from "./home/home-content";
+import { SiteLink } from "./home/site-link";
+import { localePath } from "../lib/i18n";
 
 const signalIcons = [Terminal, ShieldCheck, Layers3, CheckCircle2];
 
 const heroOrbitNodes = [
-  { label: 'CLI', x: 50, y: 10 },
-  { label: 'WEB', x: 78, y: 22 },
-  { label: 'CLOUD', x: 90, y: 50 },
-  { label: 'RUNTIME', x: 78, y: 78 },
-  { label: 'BOX', x: 50, y: 90 },
-  { label: 'FLOW', x: 22, y: 78 },
-  { label: 'USE', x: 10, y: 50 },
-  { label: 'CODE', x: 22, y: 22 },
+  { label: "CLI", x: 50, y: 10 },
+  { label: "WEB", x: 78, y: 22 },
+  { label: "CLOUD", x: 90, y: 50 },
+  { label: "RUNTIME", x: 78, y: 78 },
+  { label: "BOX", x: 50, y: 90 },
+  { label: "FLOW", x: 22, y: 78 },
+  { label: "USE", x: 10, y: 50 },
+  { label: "CODE", x: 22, y: 22 },
 ] as const;
 
-function ProductCard({
-  product,
-  action,
+function AiNativeSection({
+  content,
   lang,
 }: {
-  product: ProductCopy;
-  action: string;
+  content: AiNativeCopy;
   lang: Lang;
 }) {
-  const Icon = productIcons[product.id];
+  const [selectedStepId, setSelectedStepId] = useState(content.steps[0]?.id);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const selectedStep =
+    content.steps.find((step) => step.id === selectedStepId) ??
+    content.steps[0];
+  const selectedStepIndex = Math.max(
+    0,
+    content.steps.findIndex((step) => step.id === selectedStep?.id),
+  );
+  const selectedProjects = selectedStep
+    ? selectedStep.projects
+        .map((projectId) =>
+          architectureProjects.find((project) => project.id === projectId),
+        )
+        .filter((project) => project !== undefined)
+    : [];
+  const activePosition =
+    content.steps.length > 1
+      ? `${(selectedStepIndex / (content.steps.length - 1)) * 100}%`
+      : "0%";
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const stopForReducedMotion = () => {
+      if (reducedMotion.matches) setIsPlaying(false);
+    };
+
+    stopForReducedMotion();
+    reducedMotion.addEventListener("change", stopForReducedMotion);
+    return () =>
+      reducedMotion.removeEventListener("change", stopForReducedMotion);
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const timer = window.setInterval(() => {
+      setSelectedStepId((currentStepId) => {
+        const currentIndex = content.steps.findIndex(
+          (step) => step.id === currentStepId,
+        );
+        return content.steps[(currentIndex + 1) % content.steps.length]?.id;
+      });
+    }, 3600);
+
+    return () => window.clearInterval(timer);
+  }, [content.steps, isPlaying]);
+
+  function openArchitectureProject(projectId: string) {
+    window.dispatchEvent(
+      new CustomEvent(ARCHITECTURE_SELECT_PROJECT_EVENT, {
+        detail: projectId,
+      }),
+    );
+    document.getElementById("architecture")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+  }
 
   return (
-    <Link
-      className="a3s-product-card"
-      data-product={product.id}
-      href={product.external ? product.href : localePath(product.href, lang)}
-      target={product.external ? '_blank' : undefined}
-      rel={product.external ? 'noopener noreferrer' : undefined}
+    <section
+      className="a3s-section a3s-native"
+      id="ai-native"
+      aria-labelledby="a3s-native-title"
     >
-      <div className="a3s-product-card__topline">
-        <span>{product.index}</span>
-        <span>{product.eyebrow}</span>
-        <ArrowUpRight aria-hidden="true" />
+      <div className="a3s-section-heading">
+        <div>
+          <span className="a3s-section-eyebrow">{content.eyebrow}</span>
+          <h2 id="a3s-native-title">{content.title}</h2>
+        </div>
+        <p>{content.description}</p>
       </div>
-      <div className="a3s-product-card__icon">
-        <Icon aria-hidden="true" />
+
+      <div className="a3s-native__interaction">
+        <header>
+          <div>
+            <span>{content.interactionEyebrow}</span>
+            <h3>{content.interactionTitle}</h3>
+            <p>{content.interactionDescription}</p>
+          </div>
+          <button
+            aria-label={isPlaying ? content.pause : content.play}
+            className="a3s-native__playback"
+            onClick={() => setIsPlaying((value) => !value)}
+            type="button"
+          >
+            {isPlaying ? (
+              <Pause aria-hidden="true" />
+            ) : (
+              <Play aria-hidden="true" />
+            )}
+            <span>{isPlaying ? content.pause : content.play}</span>
+          </button>
+        </header>
+        <div className="a3s-native__flow-viewport">
+          <div
+            className="a3s-native__flow"
+            role="tablist"
+            aria-label={content.interactionTitle}
+            style={
+              {
+                gridTemplateColumns: `repeat(${content.steps.length}, minmax(0, 1fr))`,
+                minWidth: `${content.steps.length * 176}px`,
+              } as CSSProperties
+            }
+          >
+            <span className="a3s-native__rail" aria-hidden="true">
+              <i
+                className={isPlaying ? "is-playing" : undefined}
+                style={
+                  {
+                    "--active-position": activePosition,
+                  } as CSSProperties
+                }
+              >
+                AGENT
+              </i>
+            </span>
+            {content.steps.map((step) => (
+              <button
+                aria-controls="a3s-native-step-detail"
+                aria-selected={step.id === selectedStep?.id}
+                className={
+                  step.id === selectedStep?.id ? "is-selected" : undefined
+                }
+                key={step.id}
+                onClick={() => {
+                  setSelectedStepId(step.id);
+                  setIsPlaying(false);
+                }}
+                role="tab"
+                type="button"
+              >
+                <span>{step.index}</span>
+                <b>{step.title}</b>
+                <small>{step.summary}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+        {selectedStep ? (
+          <div
+            className="a3s-native__detail"
+            id="a3s-native-step-detail"
+            role="tabpanel"
+          >
+            <span>{selectedStep.index}</span>
+            <div>
+              <h4>{selectedStep.title}</h4>
+              <p>{selectedStep.detail}</p>
+            </div>
+            <div className="a3s-native__path" aria-hidden="true">
+              {selectedStep.path.map((node, index) => (
+                <Fragment key={node}>
+                  <code>{node}</code>
+                  {index < selectedStep.path.length - 1 ? <i>→</i> : null}
+                </Fragment>
+              ))}
+              {selectedStep.id === "scale" ? (
+                <span className="a3s-native__replicas">
+                  <i />
+                  <i />
+                  <i />
+                  <b>+N</b>
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        <div className="a3s-native__stack">
+          <header>
+            <span>{content.stageProjects}</span>
+            <b>
+              {String(selectedProjects.length).padStart(2, "0")} /{" "}
+              {architectureProjects.length}
+            </b>
+          </header>
+          <div>
+            {selectedProjects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => openArchitectureProject(project.id)}
+                type="button"
+              >
+                <span>{project.name}</span>
+                <p>{project.role[lang]}</p>
+                <small>{content.openArchitecture} ↘</small>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <h3>{product.name}</h3>
-      <p>{product.description}</p>
-      <div className="a3s-product-card__footer">
-        <code>
-          <span>$</span> {product.command}
-        </code>
-        <span className="a3s-product-card__action">{action}</span>
+
+      <div className="a3s-native__organization">
+        <header>
+          <h3>{content.organizationTitle}</h3>
+          <p>{content.organizationDescription}</p>
+        </header>
+        <div>
+          {content.reasons.map((reason) => (
+            <article key={reason.index}>
+              <span>{reason.index}</span>
+              <h4>{reason.title}</h4>
+              <p>{reason.description}</p>
+            </article>
+          ))}
+        </div>
       </div>
-    </Link>
+    </section>
   );
 }
 
-export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
+export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
   const tr = homeContent[lang];
-  const products = tr.products.items as readonly ProductCopy[];
 
   return (
     <main
       className="a3s-site"
       data-lang={lang}
-      lang={lang === 'cn' ? 'zh-CN' : 'en'}
+      lang={lang === "cn" ? "zh-CN" : "en"}
     >
       <HomeNav lang={lang} />
 
@@ -117,13 +283,13 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
             </h1>
             <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
-              <Link
+              <SiteLink
                 className="a3s-button a3s-button--primary"
-                href={localePath('/docs', lang)}
+                href={localePath("/docs", lang)}
               >
                 {tr.hero.primaryAction}
                 <ArrowRight aria-hidden="true" />
-              </Link>
+              </SiteLink>
               <a className="a3s-button a3s-button--ghost" href="#architecture">
                 <CircleDot aria-hidden="true" />
                 {tr.hero.secondaryAction}
@@ -167,9 +333,9 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
                     key={node.label}
                     style={
                       {
-                        '--orbit-x': `${node.x}%`,
-                        '--orbit-y': `${node.y}%`,
-                      } as React.CSSProperties
+                        "--orbit-x": `${node.x}%`,
+                        "--orbit-y": `${node.y}%`,
+                      } as CSSProperties
                     }
                   >
                     <i />
@@ -215,29 +381,7 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
       </section>
 
-      <section
-        className="a3s-section a3s-products"
-        id="products"
-        aria-labelledby="a3s-products-title"
-      >
-        <div className="a3s-section-heading">
-          <div>
-            <span className="a3s-section-eyebrow">{tr.products.eyebrow}</span>
-            <h2 id="a3s-products-title">{tr.products.title}</h2>
-          </div>
-          <p>{tr.products.description}</p>
-        </div>
-        <div className="a3s-product-grid">
-          {products.map((product) => (
-            <ProductCard
-              action={tr.products.action}
-              key={product.id}
-              lang={lang}
-              product={product}
-            />
-          ))}
-        </div>
-      </section>
+      <AiNativeSection content={tr.aiNative} lang={lang} />
 
       <section
         className="a3s-architecture"
@@ -259,58 +403,6 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
       </section>
 
       <section
-        className="a3s-section a3s-principles"
-        id="principles"
-        aria-labelledby="a3s-principles-title"
-      >
-        <div className="a3s-section-heading">
-          <div>
-            <span className="a3s-section-eyebrow">{tr.principles.eyebrow}</span>
-            <h2 id="a3s-principles-title">{tr.principles.title}</h2>
-          </div>
-          <p>{tr.principles.description}</p>
-        </div>
-        <div className="a3s-principle-grid">
-          {tr.principles.items.map((item, index) => (
-            <article
-              className={
-                index === 0
-                  ? 'a3s-principle-card is-featured'
-                  : 'a3s-principle-card'
-              }
-              key={item.index}
-            >
-              <div>
-                <span>{item.index}</span>
-                <i />
-              </div>
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="a3s-ecosystem" aria-labelledby="a3s-ecosystem-title">
-        <div className="a3s-section a3s-ecosystem__inner">
-          <div>
-            <span className="a3s-section-eyebrow">{tr.ecosystem.eyebrow}</span>
-            <h2 id="a3s-ecosystem-title">{tr.ecosystem.title}</h2>
-          </div>
-          <div className="a3s-module-field">
-            {architectureProjects.map((project, index) => (
-              <span
-                key={project.id}
-                style={{ '--module-index': index } as React.CSSProperties}
-              >
-                <i /> {project.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section
         className="a3s-section a3s-quickstart"
         id="quickstart"
         aria-labelledby="a3s-quickstart-title"
@@ -319,10 +411,10 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <span className="a3s-section-eyebrow">{tr.quickstart.eyebrow}</span>
           <h2 id="a3s-quickstart-title">{tr.quickstart.title}</h2>
           <p>{tr.quickstart.description}</p>
-          <Link href={localePath('/docs/cli', lang)}>
+          <SiteLink href={localePath("/docs/installation.html", lang)}>
             {tr.quickstart.docs}
             <ArrowRight aria-hidden="true" />
-          </Link>
+          </SiteLink>
           <small>{tr.quickstart.note}</small>
         </div>
         <div className="a3s-terminal-card">
@@ -360,14 +452,14 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <h2 id="a3s-cta-title">{tr.cta.title}</h2>
           <p>{tr.cta.description}</p>
           <div>
-            <Link
+            <SiteLink
               className="a3s-button a3s-button--light"
-              href={localePath('/docs', lang)}
+              href={localePath("/docs", lang)}
             >
               {tr.cta.primary}
               <ArrowRight aria-hidden="true" />
-            </Link>
-            <Link
+            </SiteLink>
+            <SiteLink
               className="a3s-button a3s-button--outline"
               href="https://github.com/A3S-Lab/a3s"
               target="_blank"
@@ -375,7 +467,7 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
             >
               <Github aria-hidden="true" />
               {tr.cta.secondary}
-            </Link>
+            </SiteLink>
           </div>
         </div>
       </section>
@@ -383,36 +475,37 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
       <footer className="a3s-footer">
         <div className="a3s-footer__inner">
           <div className="a3s-footer__brand">
-            <Link href={localePath('/', lang)}>
+            <SiteLink href={localePath("/", lang)}>
               <A3SMark />
               <span>A3S</span>
-            </Link>
+            </SiteLink>
             <p>{tr.footer.description}</p>
           </div>
           <div className="a3s-footer__column">
             <b>{tr.footer.resources}</b>
-            <Link href={localePath('/docs', lang)}>{tr.footer.docs}</Link>
-            <Link href={localePath('/tutorials', lang)}>
-              {tr.footer.tutorials}
-            </Link>
-            <Link href={localePath('/blog', lang)}>{tr.footer.blog}</Link>
+            <SiteLink href={localePath("/docs", lang)}>
+              {tr.footer.docs}
+            </SiteLink>
+            <SiteLink href={localePath("/blog", lang)}>
+              {tr.footer.blog}
+            </SiteLink>
           </div>
           <div className="a3s-footer__column">
             <b>{tr.footer.community}</b>
-            <Link
+            <SiteLink
               href="https://github.com/A3S-Lab"
               target="_blank"
               rel="noopener noreferrer"
             >
               {tr.footer.github}
-            </Link>
-            <Link
+            </SiteLink>
+            <SiteLink
               href="https://discord.gg/XVg6Hu6H"
               target="_blank"
               rel="noopener noreferrer"
             >
               {tr.footer.discord}
-            </Link>
+            </SiteLink>
           </div>
         </div>
         <div className="a3s-footer__base">

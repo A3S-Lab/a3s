@@ -104,6 +104,40 @@
     grid-template-columns: minmax(0, 1.1fr) minmax(270px, 0.9fr);
   }
 
+  .a3s-native__detail {
+    grid-template-columns: 34px 1fr;
+  }
+
+  .a3s-native__path {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .a3s-native__organization > header {
+    gap: 26px;
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-native__organization > header p {
+    justify-self: start;
+  }
+
+  .a3s-native__organization > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .a3s-native__stack > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .a3s-native__stack button:nth-child(4n) {
+    border-right: 1px solid var(--a3s-line);
+  }
+
+  .a3s-native__stack button:nth-child(3n) {
+    border-right: 0;
+  }
+
   .a3s-architecture__copy {
     gap: 26px;
     grid-template-columns: 1fr;
@@ -111,11 +145,6 @@
 
   .a3s-architecture__copy > p {
     justify-self: start;
-  }
-
-  .a3s-ecosystem__inner {
-    gap: 48px;
-    grid-template-columns: minmax(230px, 0.58fr) minmax(450px, 1.42fr);
   }
 
   .a3s-quickstart {
@@ -199,47 +228,68 @@
   }
 
   .a3s-section-heading h2,
+  .a3s-native h2,
   .a3s-architecture h2,
-  .a3s-ecosystem h2,
   .a3s-quickstart h2 {
     font-size: clamp(29px, 8vw, 40px);
   }
 
-  .a3s-products,
-  .a3s-principles {
+  .a3s-native {
     padding-top: 86px;
     padding-bottom: 90px;
   }
 
-  .a3s-product-grid,
-  .a3s-principle-grid {
+  .a3s-native__interaction {
     margin-top: 38px;
+  }
+
+  .a3s-native__interaction > header {
+    min-height: 0;
+    padding: 22px;
     grid-template-columns: 1fr;
   }
 
-  .a3s-product-card {
-    min-height: 286px;
+  .a3s-native__playback {
+    width: fit-content;
   }
 
-  .a3s-principle-card.is-featured {
-    grid-column: span 1;
+  .a3s-native__detail {
+    padding: 22px;
+    grid-template-columns: 1fr;
   }
 
-  .a3s-principle-card.is-featured h3 {
-    font-size: 21px;
+  .a3s-native__path {
+    overflow-x: auto;
+    grid-column: 1;
+    justify-content: flex-start;
+  }
+
+  .a3s-native__organization {
+    margin-top: 56px;
+  }
+
+  .a3s-native__organization > div {
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-native__organization article {
+    min-height: 190px;
+  }
+
+  .a3s-native__stack > div {
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-native__stack button,
+  .a3s-native__stack button:nth-child(3n),
+  .a3s-native__stack button:nth-child(4n) {
+    min-height: 138px;
+    border-right: 0;
   }
 
   .a3s-architecture__inner {
     padding-top: 84px;
     padding-bottom: 86px;
-  }
-
-  .a3s-ecosystem__inner {
-    min-height: auto;
-    padding-top: 68px;
-    padding-bottom: 68px;
-    gap: 36px;
-    grid-template-columns: 1fr;
   }
 
   .a3s-quickstart {

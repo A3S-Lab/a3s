@@ -1,0 +1,79 @@
+---
+title: Installation
+description: Install A3S CLI on macOS, Linux, and Windows.
+---
+
+# Installation
+
+## macOS and Linux
+
+The release installer supports macOS and glibc Linux. It writes to
+`~/.local/bin` and does not edit shell configuration by default.
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
+```
+
+Allow a persistent `PATH` change:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | A3S_MODIFY_PATH=1 sh
+```
+
+Homebrew:
+
+```bash
+brew install a3s-lab/tap/a3s
+```
+
+## Windows
+
+Run from PowerShell 5.1 or newer:
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
+```
+
+The default directory is `%LOCALAPPDATA%\Programs\a3s\bin`. Rerun the installer
+to upgrade on Windows; in-process self-update is not available there yet.
+
+## Cargo
+
+```bash
+cargo install a3s
+```
+
+The Cargo package contains the CLI and Code, but not the complete Web workspace
+or native WebView helper. On first `a3s web` start, the CLI can fetch
+version-matched Web assets. For an offline host, pass a local `--web-dir` or
+use `--api-only`.
+
+## Verify
+
+```bash
+a3s --version
+a3s config paths
+a3s doctor
+```
+
+`a3s doctor` is read-only. To prevent all first-use preparation:
+
+```bash
+A3S_NO_AUTO_INSTALL=1 a3s --offline doctor
+```
+
+## Installer controls
+
+| Environment variable | Purpose |
+| --- | --- |
+| `A3S_VERSION` | Install an exact stable version. |
+| `A3S_INSTALL_DIR` | Change the binary directory. |
+| `A3S_DATA_HOME` | Change the A3S data directory. |
+| `A3S_MODIFY_PATH=1` | Allow the Unix installer to edit shell configuration. |
+| `A3S_GITHUB_TOKEN` | Read releases when GitHub API limits apply. |
+
+The installers verify release digests, archive paths, and the staged binary
+version. A failed activation leaves the prior install in place.

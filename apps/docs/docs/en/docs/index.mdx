@@ -1,0 +1,69 @@
+---
+title: A3S CLI
+description: Install, configure, run, and maintain A3S from the a3s command.
+---
+
+# A3S CLI
+
+`a3s` is the common command entrypoint for A3S. Code, the Web workbench, and
+Research ship with the CLI. Independent components such as Box, Search, and
+Use are discovered, installed, and invoked through the same command.
+
+## Quick start
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
+
+cd /path/to/project
+a3s config init
+a3s model list
+a3s code
+```
+
+The installer writes `a3s` to `~/.local/bin` by default. If that directory is
+not on `PATH`, it prints the exact shell change required.
+
+## Main entrypoints
+
+| Command | Purpose |
+| --- | --- |
+| `a3s code` | Open the terminal agent workbench. |
+| `a3s code exec "..."` | Run one non-interactive task in the current workspace. |
+| `a3s web` | Start local Web, whose workbench is Work. |
+| `a3s code research "..."` | Run Research with retained source evidence. |
+| `a3s config ...` | Initialize, inspect, and edit ACL configuration. |
+| `a3s model ...` | Discover and select callable models. |
+| `a3s list` / `a3s doctor` | Inspect components, provenance, and runtime prerequisites. |
+| `a3s install` / `a3s upgrade` | Manage independent A3S components. |
+
+## Delivery boundary
+
+The initial install contains the CLI, Code runtime, and terminal interface.
+Official releases and Homebrew packages also carry Web assets and the WebView
+helper on supported platforms. Read-only commands such as `list` and `--help`
+never download independent products.
+
+Every route uses the same global options:
+
+```bash
+a3s -C /path/to/project --config ./team.acl --offline code
+a3s --output json doctor
+```
+
+- `-C` selects the workspace.
+- `--config` selects one explicit ACL file.
+- `--offline` disables networking and first-use downloads.
+- `--non-interactive` disables prompts and confirmations.
+- `--output human|json|jsonl` selects root-command output.
+
+## Documentation
+
+- [Installation](./installation)
+- [Configuration and models](./configuration)
+- [Command reference](./commands)
+- [Code](./code)
+- [Web / Work](./web)
+- [Components](./components)
+- [Updates](./updates)
+- [CLI internals](./architecture)

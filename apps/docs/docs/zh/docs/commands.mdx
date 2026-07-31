@@ -1,0 +1,88 @@
+---
+title: 命令参考
+description: a3s 根命令、全局选项和输出约定。
+---
+
+# 命令参考
+
+## 全局选项
+
+```text
+a3s [GLOBAL OPTIONS] <COMMAND>
+```
+
+| 选项 | 作用 |
+| --- | --- |
+| `-C, --directory PATH` | 在指定工作区执行。 |
+| `--config PATH` | 使用指定 ACL 文件。 |
+| `--output human|json|jsonl` | 设置根命令输出格式。 |
+| `--json` | `--output json` 的简写。 |
+| `--offline` | 禁止网络与首次使用下载。 |
+| `--non-interactive` | 禁止提示与确认。 |
+| `--no-progress` | 关闭进度条。 |
+| `--color auto|always|never` | 控制颜色。 |
+| `-q, --quiet` | 只保留必要输出。 |
+| `-v, --verbose` | 增加诊断信息，可重复。 |
+
+## 工作入口
+
+| 命令 | 作用 |
+| --- | --- |
+| `a3s code` | 启动交互式 Code TUI。 |
+| `a3s code exec [PROMPT]` | 执行一次非交互任务。 |
+| `a3s code resume [SESSION_ID]` | 恢复指定或最新 session。 |
+| `a3s code research QUERY` | 生成 Markdown 与 HTML Research 产物。 |
+| `a3s web [start]` | 前台启动本地 Web / Work。 |
+| `a3s web start -d` | 启动受管后台实例。 |
+| `a3s web status|logs|open|stop` | 管理当前工作区的 Web 实例。 |
+| `a3s top` | 查看智能体、容器、session、事件和进程。 |
+
+## 产品与能力
+
+| 命令 | 作用 |
+| --- | --- |
+| `a3s box ...` | 调用受管 Box。 |
+| `a3s compose ...` | 把 Compose 命令转交给 Box。 |
+| `a3s up|down|ps|logs ...` | 常用 Compose 快捷入口。 |
+| `a3s bench ...` | 调用受管 Bench。 |
+| `a3s search ...` | 调用受管 Search。 |
+| `a3s use DOMAIN ...` | 调用 Browser、Office、OCR 或扩展能力。 |
+
+这些命令由 typed component ID 解析到已验证的可执行文件。未知根命令不会猜测
+`PATH` 中的同名程序。
+
+## 配置、账户与模型
+
+| 命令 | 作用 |
+| --- | --- |
+| `a3s config path|paths|show|init|edit|validate` | 管理 ACL 配置。 |
+| `a3s auth list|status|login|logout` | 管理账户来源与 A3S OS session。 |
+| `a3s model list|current|use|reset` | 管理可调用模型。 |
+
+## 组件与系统
+
+| 命令 | 作用 |
+| --- | --- |
+| `a3s list` | 列出内置、已安装、可安装和外部组件。 |
+| `a3s info COMPONENT` | 查看来源、版本和安装状态。 |
+| `a3s install COMPONENT...` | 安装或修复受管组件。 |
+| `a3s upgrade [COMPONENT...]` | 查看或应用组件升级。 |
+| `a3s uninstall COMPONENT...` | 删除 receipt 证明归属的文件。 |
+| `a3s doctor [COMPONENT]` | 执行只读健康检查。 |
+| `a3s registry ...` | 管理受信任的组件 registry。 |
+| `a3s cache path|status|prune|clean` | 管理可重建缓存。 |
+| `a3s self update` | 更新 CLI 自身。 |
+| `a3s completion SHELL` | 生成 shell completion。 |
+| `a3s help [COMMAND...]` | 查看任意命令路径的帮助。 |
+
+## 机器输出
+
+根命令使用统一 envelope 和稳定的 operation 名称。脚本应显式选择 JSON：
+
+```bash
+a3s --output json list
+a3s --output json doctor use
+a3s --output json install use --dry-run
+```
+
+代理产品的 stdout、stderr 与退出码保持由对应组件负责。

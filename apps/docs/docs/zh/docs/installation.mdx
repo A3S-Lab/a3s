@@ -1,0 +1,77 @@
+---
+title: 安装
+description: 在 macOS、Linux 和 Windows 上安装 A3S CLI。
+---
+
+# 安装
+
+## macOS 与 Linux
+
+官方安装器支持 macOS 和 glibc Linux。默认目录是 `~/.local/bin`，不会自动修改 shell
+配置。
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
+```
+
+允许安装器持久写入 `PATH`：
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | A3S_MODIFY_PATH=1 sh
+```
+
+Homebrew：
+
+```bash
+brew install a3s-lab/tap/a3s
+```
+
+## Windows
+
+在 PowerShell 5.1 或更高版本中运行：
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
+```
+
+默认目录是 `%LOCALAPPDATA%\Programs\a3s\bin`。当前 Windows 版本通过重新运行安装器升级，
+不支持进程内自更新。
+
+## Cargo
+
+```bash
+cargo install a3s
+```
+
+Cargo 包含 CLI 与 Code，但不携带完整 Web 工作区或原生 WebView helper。首次执行
+`a3s web` 时，CLI 可以下载与自身版本严格匹配的 Web 资源；离线环境可传入本地
+`--web-dir`，或用 `--api-only` 只启动 API。
+
+## 验证安装
+
+```bash
+a3s --version
+a3s config paths
+a3s doctor
+```
+
+`a3s doctor` 是只读检查，不安装组件。需要完全禁止首次使用准备时：
+
+```bash
+A3S_NO_AUTO_INSTALL=1 a3s --offline doctor
+```
+
+## 安装器控制项
+
+| 环境变量 | 作用 |
+| --- | --- |
+| `A3S_VERSION` | 安装指定稳定版本。 |
+| `A3S_INSTALL_DIR` | 改变二进制安装目录。 |
+| `A3S_DATA_HOME` | 改变 A3S 数据目录。 |
+| `A3S_MODIFY_PATH=1` | 允许 Unix 安装器修改 shell 配置。 |
+| `A3S_GITHUB_TOKEN` | 在 GitHub API 限流环境中读取 release。 |
+
+安装器校验 release digest、归档路径和 staged binary 版本。激活失败时保留原安装。

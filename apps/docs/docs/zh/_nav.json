@@ -1,0 +1,29 @@
+[
+  {
+    "text": "A3S CLI",
+    "link": "/docs/",
+    "activeMatch": "^/docs/"
+  },
+  {
+    "text": "博客",
+    "link": "/blog/",
+    "activeMatch": "^/blog/"
+  },
+  {
+    "text": "项目",
+    "items": [
+      {
+        "text": "GitHub",
+        "link": "https://github.com/A3S-Lab/a3s"
+      },
+      {
+        "text": "A3S Code",
+        "link": "https://a3s-lab.github.io/Code/"
+      },
+      {
+        "text": "更新记录",
+        "link": "https://github.com/A3S-Lab/a3s/commits/main/"
+      }
+    ]
+  }
+]

@@ -1,406 +1,430 @@
-export type Lang = 'en' | 'cn';
+export type Lang = "en" | "cn";
 
-export type ProductId = 'code' | 'web' | 'research' | 'use' | 'box' | 'bench';
-
-export interface ProductCopy {
-  id: ProductId;
+export interface AiNativeStepCopy {
+  id: string;
   index: string;
-  name: string;
-  eyebrow: string;
-  description: string;
-  command: string;
-  href: string;
-  external?: boolean;
+  title: string;
+  summary: string;
+  detail: string;
+  path: readonly string[];
+  projects: readonly string[];
 }
 
-export interface PrincipleCopy {
+export interface AiNativeReasonCopy {
   index: string;
   title: string;
   description: string;
 }
 
-const sharedProducts = {
-  en: [
-    {
-      id: 'code',
-      index: '01',
-      name: 'Code',
-      eyebrow: 'Agent sessions and tools',
-      description:
-        'Run a coding agent in the terminal or embed the same Rust core from Rust, Node.js, Python, or Go.',
-      command: 'a3s code',
-      href: '/docs/code',
-    },
-    {
-      id: 'web',
-      index: '02',
-      name: 'Web + Work',
-      eyebrow: 'Tasks, files, and editors',
-      description:
-        'Use one local workspace for tasks, real files, Monaco, Git, knowledge bases, Office documents, and PDF.',
-      command: 'a3s web',
-      href: '/docs/cli/commands',
-    },
-    {
-      id: 'research',
-      index: '03',
-      name: 'Research',
-      eyebrow: 'Web research workflow',
-      description:
-        'Search the web, keep source records, and produce editable Markdown and HTML reports from Code.',
-      command: 'a3s code research --web',
-      href: '/tutorials/deep-research',
-    },
-    {
-      id: 'use',
-      index: '04',
-      name: 'Use',
-      eyebrow: 'Browser, OCR, and packages',
-      description:
-        'Install Browser and OCR routes, then add Office, Science, or another reviewed package without rebuilding Code.',
-      command: 'a3s install use',
-      href: 'https://github.com/A3S-Lab/a3s#typed-capabilities-and-components',
-      external: true,
-    },
-    {
-      id: 'box',
-      index: '05',
-      name: 'Box',
-      eyebrow: 'OCI workloads in MicroVMs',
-      description:
-        'Run OCI images in a Linux MicroVM, or choose the shared-kernel Sandbox explicitly on supported hosts.',
-      command: 'a3s box ps',
-      href: '/docs/box',
-    },
-    {
-      id: 'bench',
-      index: '06',
-      name: 'Bench',
-      eyebrow: 'Task, Candidate, Judge',
-      description:
-        'Freeze a Task and Candidate, run the Task-owned Judge, and keep the exact inputs, result, and runtime records.',
-      command: 'a3s install bench',
-      href: 'https://github.com/A3S-Lab/Bench',
-      external: true,
-    },
-  ] satisfies ProductCopy[],
-  cn: [
-    {
-      id: 'code',
-      index: '01',
-      name: 'Code',
-      eyebrow: 'Agent 会话与工具',
-      description:
-        '在终端运行编程 Agent，也可以从 Rust、Node.js、Python 或 Go 嵌入同一个 Rust Core。',
-      command: 'a3s code',
-      href: '/docs/code',
-    },
-    {
-      id: 'web',
-      index: '02',
-      name: 'Web + Work',
-      eyebrow: '任务、文件与编辑器',
-      description:
-        '在一个本地工作台中处理任务、真实文件、Monaco、Git、知识库、Office 文档和 PDF。',
-      command: 'a3s web',
-      href: '/docs/cli/commands',
-    },
-    {
-      id: 'research',
-      index: '03',
-      name: 'Research',
-      eyebrow: '网页研究工作流',
-      description:
-        '用 Code 搜索网页、保存来源记录，并生成可继续编辑的 Markdown 和 HTML 报告。',
-      command: 'a3s code research --web',
-      href: '/tutorials/deep-research',
-    },
-    {
-      id: 'use',
-      index: '04',
-      name: 'Use',
-      eyebrow: 'Browser、OCR 与扩展包',
-      description:
-        '安装 Browser 和 OCR 路由，再按需加入 Office、Science 或其他经过检查的包。',
-      command: 'a3s install use',
-      href: 'https://github.com/A3S-Lab/a3s#typed-capabilities-and-components',
-      external: true,
-    },
-    {
-      id: 'box',
-      index: '05',
-      name: 'Box',
-      eyebrow: '在 MicroVM 中运行 OCI',
-      description:
-        '在受支持的宿主机上用 Linux MicroVM 运行 OCI 镜像，也可以明确选择共享内核 Sandbox。',
-      command: 'a3s box ps',
-      href: '/docs/box',
-    },
-    {
-      id: 'bench',
-      index: '06',
-      name: 'Bench',
-      eyebrow: 'Task、Candidate、Judge',
-      description:
-        '冻结 Task 和 Candidate，运行 Task 自带的 Judge，并保存确切输入、结果和运行记录。',
-      command: 'a3s install bench',
-      href: 'https://github.com/A3S-Lab/Bench',
-      external: true,
-    },
-  ] satisfies ProductCopy[],
-};
+export interface AiNativeCopy {
+  eyebrow: string;
+  title: string;
+  description: string;
+  interactionEyebrow: string;
+  interactionTitle: string;
+  interactionDescription: string;
+  play: string;
+  pause: string;
+  stageProjects: string;
+  openArchitecture: string;
+  steps: readonly AiNativeStepCopy[];
+  organizationTitle: string;
+  organizationDescription: string;
+  reasons: readonly AiNativeReasonCopy[];
+}
+
+export const lifecycleProjects = {
+  foundation: ["homebrew", "docs", "cli", "acl", "common"],
+  build: ["code", "tui", "web", "desktop", "gui", "webview"],
+  capabilities: [
+    "use",
+    "browser",
+    "search",
+    "ocr",
+    "parser",
+    "office",
+    "science",
+    "memory",
+  ],
+  coordinate: ["flow", "event", "lane", "bench", "test", "windhole"],
+  execute: ["runtime", "box", "oci-runtime", "power", "boot"],
+  scale: ["gateway", "cloud", "orm"],
+  govern: ["observer", "sentry", "updater"],
+} as const;
 
 export const homeContent = {
   en: {
     nav: {
-      products: 'Products',
-      architecture: 'Architecture',
-      principles: 'Principles',
-      docs: 'Docs',
-      blog: 'Blog',
-      language: '中文',
-      menu: 'Open navigation',
+      aiNative: "AI Native",
+      architecture: "Architecture",
+      docs: "Docs",
+      blog: "Blog",
+      language: "中文",
+      menu: "Open navigation",
     },
     hero: {
-      eyebrow: 'OPEN SOURCE · RUST NATIVE · LOCAL FIRST',
-      lineOne: 'Run Code locally.',
-      lineTwo: 'Add Browser, Box, or Cloud',
-      accent: 'when you need them.',
+      eyebrow: "OPEN SOURCE · RUST NATIVE · LOCAL FIRST",
+      lineOne: "A3S is",
+      lineTwo: "an operating system",
+      accent: "for agents.",
       description:
-        'Install the A3S CLI and start Code in a project directory. Browser automation, OCR, Office editing, evaluation, MicroVMs, and a self-hosted control plane are separate projects you can add later.',
-      primaryAction: 'Install A3S',
-      secondaryAction: 'See every project',
-      terminalTitle: 'a3s / local session',
-      terminalReady: 'READY',
+        "It runs on Linux, macOS, and Windows and gives sessions, tools, state, workflows, execution, and policy one set of interfaces. Start on your machine; add Box or Cloud when the work needs isolation or remote resources.",
+      primaryAction: "Install A3S",
+      secondaryAction: "See every project",
+      terminalTitle: "a3s / system",
+      terminalReady: "RUNNING",
       terminalRows: [
-        ['session.events', 'ordered'],
-        ['workspace.path', 'bounded'],
-        ['tool.approval', 'on_request'],
-        ['state.persist', 'configured'],
+        ["session", "local"],
+        ["tools", "governed"],
+        ["state", "persistent"],
+        ["execution", "ready"],
       ],
-      intent: 'a3s code',
-      policy: 'AgentSession',
-      runtime: 'Tool runtime',
-      status: 'session running',
+      policy: "A3S OS",
+      status: "system ready",
     },
     signal: [
-      'Runs on your machine',
-      'Rust core + four SDKs',
-      'Browser, OCR, and Office packages',
-      'Box and Cloud stay optional',
+      "Linux · macOS · Windows",
+      "Local sessions and state",
+      "Tools, policy, and workflows",
+      "Box and Cloud when needed",
     ],
-    products: {
-      eyebrow: 'WHERE TO START / 01—06',
-      title: 'Pick the part you need first.',
+    aiNative: {
+      eyebrow: "AI NATIVE / HOW WORK RUNS",
+      title: "AI Native is not a chat box added to old software.",
       description:
-        'Code, Web, Use, Box, and Bench are separate programs. Install one, then add another only when your workflow calls for it.',
-      action: 'View details',
-      items: sharedProducts.en,
-    },
+        "People set the goal, boundaries, and exceptions. Agents carry the work across tools, change real state, and leave a record that another person or process can inspect and continue.",
+      interactionEyebrow: "CODE ↔ OPERATING SYSTEM",
+      interactionTitle:
+        "Build the agent in Code, then carry it through development, deployment, and operations.",
+      interactionDescription:
+        "The API grows with the job. Start with a local AgentSession; add durable state, placement, isolation, routing, and fleet control only when the agent needs them.",
+      play: "Play lifecycle",
+      pause: "Pause lifecycle",
+      stageProjects: "Projects introduced at this stage",
+      openArchitecture: "Open architecture",
+      steps: [
+        {
+          id: "foundation",
+          index: "01",
+          title: "Set the boundary",
+          summary: "Install · configure · contracts",
+          detail:
+            "Install the local entrypoint, read the system contracts, and describe the Agent in ACL. At this point A3S is still one local command with explicit model, tool, workspace, and permission boundaries.",
+          path: ["Install", "ACL", "a3s CLI"],
+          projects: lifecycleProjects.foundation,
+        },
+        {
+          id: "build",
+          index: "02",
+          title: "Build the agent",
+          summary: "Developer → A3S Code",
+          detail:
+            "A3S Code creates AgentSession, assembles context, calls the model, runs tools, and emits typed events. The same core can sit behind the terminal, Web browser workbench, a native desktop host, or an SDK.",
+          path: ["Developer", "A3S Code", "AgentSession"],
+          projects: lifecycleProjects.build,
+        },
+        {
+          id: "capabilities",
+          index: "03",
+          title: "Add capabilities",
+          summary: "Use · data · real tools",
+          detail:
+            "Use resolves typed capability packages without expanding Code itself. Add browser control, search, OCR, document parsing and editing, scientific tools, or durable memory only when the Agent needs them.",
+          path: ["A3S Code", "A3S Use", "Capability packages"],
+          projects: lifecycleProjects.capabilities,
+        },
+        {
+          id: "coordinate",
+          index: "04",
+          title: "Orchestrate and verify",
+          summary: "Workflow · queue · evidence",
+          detail:
+            "Flow records replay-safe workflows, Event carries facts, and Lane bounds concurrent work. Bench, Test, and Windhole turn tasks, candidates, drivers, judges, and run evidence into repeatable checks.",
+          path: ["Flow / Lane", "Bench / Test", "Run evidence"],
+          projects: lifecycleProjects.coordinate,
+        },
+        {
+          id: "execute",
+          index: "05",
+          title: "Deploy and execute",
+          summary: "Progressive API → A3S OS",
+          detail:
+            "Promote the same Agent definition through progressive APIs. Runtime owns the Task and Service contract, Box provides explicit isolation, Power serves models, and Boot hosts modular services.",
+          path: ["Agent release", "Runtime", "Box / Power"],
+          projects: lifecycleProjects.execute,
+        },
+        {
+          id: "scale",
+          index: "06",
+          title: "Serve and scale",
+          summary: "Gateway · Runtime · Cloud",
+          detail:
+            "Gateway accepts concurrent traffic and routes it to healthy revisions. Runtime executes independent units in parallel. Cloud stores desired state, schedules capacity, reconciles replicas, and coordinates scale-out or scale-in.",
+          path: ["Gateway", "Runtime fan-out", "Cloud replicas"],
+          projects: lifecycleProjects.scale,
+        },
+        {
+          id: "govern",
+          index: "07",
+          title: "Operate and govern",
+          summary: "Observe · decide · update",
+          detail:
+            "Observer records process, file, network, and model activity. Sentry evaluates those observations and can produce enforcement actions. Updater applies signed, health-gated changes across the running fleet.",
+          path: ["Observer", "Sentry", "Update / rollback"],
+          projects: lifecycleProjects.govern,
+        },
+      ],
+      organizationTitle: "Why a new kind of organization needs this layer",
+      organizationDescription:
+        "Once agents can edit files, call services, and run jobs, sharing a model account is not an operating model. The organization needs common rules and durable records for work done by people and agents together.",
+      reasons: [
+        {
+          index: "01",
+          title: "Work becomes reusable",
+          description:
+            "A proven process can be stored as an Agent, Skill, or Workflow, reviewed like code, and run again without rebuilding it from a chat transcript.",
+        },
+        {
+          index: "02",
+          title: "Everyone uses the same boundaries",
+          description:
+            "Workspace limits, tool permissions, approval points, and execution policy apply whether work starts in a terminal, Web, Desktop, or an API.",
+        },
+        {
+          index: "03",
+          title: "State survives a conversation",
+          description:
+            "Sessions, events, artifacts, memory, and workflow checkpoints make long-running work resumable and handoffs inspectable.",
+        },
+        {
+          index: "04",
+          title: "Execution grows without changing the job",
+          description:
+            "Keep ordinary work local, move risky workloads into Box, and use Cloud when a team needs remote machines or coordinated capacity.",
+        },
+      ],
+    } satisfies AiNativeCopy,
     architecture: {
-      eyebrow: '37 PROJECTS / SOURCE-BASED DIAGRAMS',
-      title: 'See what each project is actually made of.',
+      eyebrow: "36 PROJECTS / INTERNAL ARCHITECTURE",
+      title: "Inside every A3S project.",
       description:
-        'Each diagram uses names and relationships taken from that project’s README, source tree, manifest, and architecture notes. Select a node to see its direct connections.',
-    },
-    principles: {
-      eyebrow: 'OWNERSHIP / 05',
-      title: 'Which project owns which job.',
-      description:
-        'These boundaries explain where configuration, execution, storage, and enforcement live in the repository.',
-      items: [
-        {
-          index: '01',
-          title: 'CLI owns the local entrypoint',
-          description:
-            'It parses commands, loads configuration, hosts the Code TUI, and starts independently installed components.',
-        },
-        {
-          index: '02',
-          title: 'Code owns agent sessions',
-          description:
-            'AgentSession orders events and runs; the host supplies models, tools, stores, permissions, and presentation.',
-        },
-        {
-          index: '03',
-          title: 'Use owns capability packages',
-          description:
-            'Built-in Browser and OCR routes sit beside receipt-backed Office, Science, and other external packages.',
-        },
-        {
-          index: '04',
-          title: 'Runtime owns unit lifecycle',
-          description:
-            'Tasks and Services use one apply, inspect, logs, exec, stop, and remove contract; providers create the resources.',
-        },
-        {
-          index: '05',
-          title: 'Observer and Sentry split signal from judgment',
-          description:
-            'Observer collects and enforces at the kernel boundary; Sentry evaluates events and produces deny actions.',
-        },
-      ] satisfies PrincipleCopy[],
-    },
-    ecosystem: {
-      eyebrow: 'ALL 37 PROJECTS',
-      title: 'Open any repository from the map.',
+        "Entrypoints, core modules, state, adapters, security boundaries, control flow, and data flow.",
     },
     quickstart: {
-      eyebrow: 'INSTALL / LOCAL',
-      title: 'Install the CLI, then run Code in a project.',
+      eyebrow: "INSTALL / LOCAL",
+      title: "Install the CLI, then run Code in a project.",
       description:
-        'The installer adds the a3s command. Code uses the model provider or compatible local account configured on your machine.',
-      copy: 'Copy install command',
-      copied: 'Copied',
-      docs: 'Read installation options',
-      note: 'macOS · glibc Linux · Windows installer available',
+        "The installer adds the a3s command. Code uses the model provider or compatible local account configured on your machine.",
+      copy: "Copy install command",
+      copied: "Copied",
+      docs: "Read installation options",
+      note: "macOS · glibc Linux · Windows installer available",
       command:
         "curl --proto '=https' --tlsv1.2 -LsSf \\\n  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh\n\ncd /path/to/project\na3s code",
     },
     cta: {
-      eyebrow: 'DOCUMENTATION AND SOURCE',
-      title: 'Read the setup guide or inspect the code.',
-      description:
-        'Every project in the architecture map links to its documentation or repository.',
-      primary: 'Open documentation',
-      secondary: 'Browse GitHub',
+      eyebrow: "DOCUMENTATION AND SOURCE",
+      title: "Read the setup guide or inspect the code.",
+      description: "Start with setup, interfaces, or source.",
+      primary: "Open documentation",
+      secondary: "Browse GitHub",
     },
     footer: {
       description:
-        'Local agent tools, runtimes, and infrastructure from A3S Lab.',
-      resources: 'Resources',
-      community: 'Community',
-      docs: 'Documentation',
-      tutorials: 'Tutorials',
-      blog: 'Blog',
-      github: 'GitHub',
-      discord: 'Discord',
-      license: 'MIT licensed · Built in the open',
+        "An open-source operating system for agents, built by A3S Lab.",
+      resources: "Resources",
+      community: "Community",
+      docs: "Documentation",
+      blog: "Blog",
+      github: "GitHub",
+      discord: "Discord",
+      license: "MIT licensed · Built in the open",
     },
   },
   cn: {
     nav: {
-      products: '产品',
-      architecture: '架构',
-      principles: '原则',
-      docs: '文档',
-      blog: '博客',
-      language: 'EN',
-      menu: '打开导航',
+      aiNative: "AI Native",
+      architecture: "架构",
+      docs: "文档",
+      blog: "博客",
+      language: "EN",
+      menu: "打开导航",
     },
     hero: {
-      eyebrow: '开源 · RUST 原生 · 本地优先',
-      lineOne: '先在本地运行。',
-      lineTwo: '需要时，再接入',
-      accent: '浏览器、文档、评测与云节点。',
+      eyebrow: "开源 · RUST 原生 · 本地优先",
+      lineOne: "A3S 是",
+      lineTwo: "智能体",
+      accent: "操作系统。",
       description:
-        '安装 A3S CLI，在项目目录中启动 Code。浏览器自动化、OCR、Office 编辑、评测、MicroVM 和自托管控制平面都是独立项目，可以以后再装。',
-      primaryAction: '安装 A3S',
-      secondaryAction: '查看全部项目',
-      terminalTitle: 'a3s / 本地会话',
-      terminalReady: '就绪',
+        "它运行在 Linux、macOS 和 Windows 之上，把会话、工具、状态、工作流、执行环境和权限收进一套接口。先从本机开始，需要隔离或远程资源时再接入 Box 与 Cloud。",
+      primaryAction: "安装 A3S",
+      secondaryAction: "查看全部项目",
+      terminalTitle: "a3s / 系统",
+      terminalReady: "运行中",
       terminalRows: [
-        ['session.events', 'ordered'],
-        ['workspace.path', 'bounded'],
-        ['tool.approval', 'on_request'],
-        ['state.persist', 'configured'],
+        ["session", "local"],
+        ["tools", "governed"],
+        ["state", "persistent"],
+        ["execution", "ready"],
       ],
-      intent: 'a3s code',
-      policy: 'AgentSession',
-      runtime: '工具运行时',
-      status: '会话运行中',
+      policy: "A3S OS",
+      status: "系统就绪",
     },
     signal: [
-      '直接运行在本机',
-      'Rust Core + 四种 SDK',
-      'Browser、OCR、Office 可选安装',
-      'Box 与 Cloud 不强制依赖',
+      "Linux · macOS · Windows",
+      "本地会话与状态",
+      "工具、权限与工作流",
+      "Box、Cloud 按需接入",
     ],
-    products: {
-      eyebrow: '从哪里开始 / 01—06',
-      title: '先选现在需要的那一部分。',
+    aiNative: {
+      eyebrow: "AI NATIVE / 工作方式",
+      title: "AI Native，不是给旧软件加一个聊天框。",
       description:
-        'Code、Web、Use、Box 和 Bench 是不同程序。先装一个，遇到具体需求时再加入其他项目。',
-      action: '查看详情',
-      items: sharedProducts.cn,
-    },
+        "人给出目标、边界和例外，智能体在多个工具之间把工作做完，修改真实状态，并留下能被检查、接手和继续执行的记录。",
+      interactionEyebrow: "CODE ↔ 操作系统",
+      interactionTitle:
+        "在 Code 中创建智能体，再沿同一套接口完成开发、部署和运维。",
+      interactionDescription:
+        "API 会随任务逐步展开：先用本地 AgentSession，需要时再加入持久状态、任务放置、隔离、流量入口和节点管理。",
+      play: "播放生命周期",
+      pause: "暂停生命周期",
+      stageProjects: "这一阶段引入的项目",
+      openArchitecture: "查看架构",
+      steps: [
+        {
+          id: "foundation",
+          index: "01",
+          title: "定义边界",
+          summary: "安装 · 配置 · 契约",
+          detail:
+            "先装好本地入口，读清系统契约，再用 ACL 描述 Agent。此时 A3S 仍只是一个本地命令，模型、工具、工作区和权限边界都明确写出。",
+          path: ["Install", "ACL", "a3s CLI"],
+          projects: lifecycleProjects.foundation,
+        },
+        {
+          id: "build",
+          index: "02",
+          title: "开发智能体",
+          summary: "开发者 → A3S Code",
+          detail:
+            "A3S Code 创建 AgentSession，组装上下文、调用模型、运行工具并发送类型化事件。同一个核心可以放在终端、Web 浏览器工作台、原生桌面宿主或 SDK 后面。",
+          path: ["Developer", "A3S Code", "AgentSession"],
+          projects: lifecycleProjects.build,
+        },
+        {
+          id: "capabilities",
+          index: "03",
+          title: "加入能力",
+          summary: "Use · 数据 · 真实工具",
+          detail:
+            "Use 解析类型化能力包，不必继续膨胀 Code。智能体需要时再加入浏览器、检索、OCR、文档解析与编辑、科研工具或持久记忆。",
+          path: ["A3S Code", "A3S Use", "Capability packages"],
+          projects: lifecycleProjects.capabilities,
+        },
+        {
+          id: "coordinate",
+          index: "04",
+          title: "编排与验证",
+          summary: "工作流 · 队列 · 证据",
+          detail:
+            "Flow 记录可重放工作流，Event 传递事实，Lane 限制并发工作。Bench、Test 与 Windhole 把 Task、Candidate、Driver、Judge 和运行证据变成可重复检查。",
+          path: ["Flow / Lane", "Bench / Test", "Run evidence"],
+          projects: lifecycleProjects.coordinate,
+        },
+        {
+          id: "execute",
+          index: "05",
+          title: "部署与执行",
+          summary: "渐进式 API → A3S OS",
+          detail:
+            "同一份 Agent 定义沿渐进式 API 进入系统。Runtime 负责 Task 与 Service 契约，Box 提供明确隔离，Power 提供模型服务，Boot 承载模块化服务。",
+          path: ["Agent release", "Runtime", "Box / Power"],
+          projects: lifecycleProjects.execute,
+        },
+        {
+          id: "scale",
+          index: "06",
+          title: "流量与扩缩容",
+          summary: "Gateway · Runtime · Cloud",
+          detail:
+            "Gateway 接收并发流量并路由到健康 revision；Runtime 并行执行独立单元；Cloud 保存期望状态、调度容量、收敛副本并协调扩容或缩容。",
+          path: ["Gateway", "Runtime fan-out", "Cloud replicas"],
+          projects: lifecycleProjects.scale,
+        },
+        {
+          id: "govern",
+          index: "07",
+          title: "运维与治理",
+          summary: "观察 · 判断 · 更新",
+          detail:
+            "Observer 记录进程、文件、网络与模型活动；Sentry 评估这些观察并生成可选的执行动作；Updater 对运行中的节点执行签名且带健康检查的更新。",
+          path: ["Observer", "Sentry", "Update / rollback"],
+          projects: lifecycleProjects.govern,
+        },
+      ],
+      organizationTitle: "新型组织为什么需要这一层",
+      organizationDescription:
+        "当智能体开始改文件、调用服务和运行任务，共用一个模型账号并不能管理工作。人和智能体需要共用规则、状态和执行记录。",
+      reasons: [
+        {
+          index: "01",
+          title: "工作方法可以复用",
+          description:
+            "成熟流程可以保存成 Agent、Skill 或 Workflow，像代码一样评审和版本化，不必从聊天记录里重新拼装。",
+        },
+        {
+          index: "02",
+          title: "所有入口遵守同一套边界",
+          description:
+            "无论工作从终端、Web、Desktop 还是 API 开始，工作区限制、工具权限、审批点和执行策略保持一致。",
+        },
+        {
+          index: "03",
+          title: "状态不会随对话结束而消失",
+          description:
+            "Session、事件、Artifact、Memory 和 Workflow checkpoint 让长期任务能够恢复，也让交接有据可查。",
+        },
+        {
+          index: "04",
+          title: "执行规模可以逐步增加",
+          description:
+            "普通工作留在本机，风险任务放进 Box；团队需要远程机器或统一容量时，再接入 Cloud。",
+        },
+      ],
+    } satisfies AiNativeCopy,
     architecture: {
-      eyebrow: '37 个项目 / 按源码绘制',
-      title: '逐个查看每个项目到底由什么组成。',
-      description:
-        '节点和连线来自对应项目的 README、源码目录、manifest 与架构文档。选择节点可以查看它的直接连接。',
-    },
-    principles: {
-      eyebrow: '职责归属 / 05',
-      title: '每一项工作由哪个项目负责。',
-      description:
-        '下面列出配置、会话、扩展包、运行时和安全判断在仓库中的实际归属。',
-      items: [
-        {
-          index: '01',
-          title: 'CLI 负责本地入口',
-          description:
-            '它解析命令、读取配置、承载 Code TUI，并启动单独安装的组件。',
-        },
-        {
-          index: '02',
-          title: 'Code 负责 Agent 会话',
-          description:
-            'AgentSession 排序事件和运行；模型、工具、存储、权限与界面由宿主提供。',
-        },
-        {
-          index: '03',
-          title: 'Use 负责能力包',
-          description:
-            '内置 Browser、OCR 路由与基于 receipt 的 Office、Science 等扩展包使用同一入口。',
-        },
-        {
-          index: '04',
-          title: 'Runtime 负责执行单元生命周期',
-          description:
-            'Task 和 Service 使用同一套 apply、inspect、logs、exec、stop、remove 接口，Provider 负责创建资源。',
-        },
-        {
-          index: '05',
-          title: 'Observer 与 Sentry 分开采集和判断',
-          description:
-            'Observer 从内核采集并执行拦截；Sentry 评估事件并生成 deny action。',
-        },
-      ] satisfies PrincipleCopy[],
-    },
-    ecosystem: {
-      eyebrow: '全部 37 个项目',
-      title: '架构图直达各个仓库。',
+      eyebrow: "36 个项目 / 内部技术架构",
+      title: "A3S 各项目的内部结构",
+      description: "入口、核心模块、状态、适配器、安全边界、控制流与数据流。",
     },
     quickstart: {
-      eyebrow: '安装 / 本地',
-      title: '装好 CLI，在项目里运行 Code。',
+      eyebrow: "安装 / 本地",
+      title: "装好 CLI，在项目里运行 Code。",
       description:
-        '安装器会加入 a3s 命令。Code 使用你在本机配置的模型 Provider 或兼容账户。',
-      copy: '复制安装命令',
-      copied: '已复制',
-      docs: '查看完整安装选项',
-      note: 'macOS · glibc Linux · 提供 Windows 安装器',
+        "安装器会加入 a3s 命令。Code 使用你在本机配置的模型 Provider 或兼容账户。",
+      copy: "复制安装命令",
+      copied: "已复制",
+      docs: "查看完整安装选项",
+      note: "macOS · glibc Linux · 提供 Windows 安装器",
       command:
         "curl --proto '=https' --tlsv1.2 -LsSf \\\n  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh\n\ncd /path/to/project\na3s code",
     },
     cta: {
-      eyebrow: '文档与源码',
-      title: '先看安装说明，也可以看源码。',
-      description: '架构图中的每个项目都链接到对应文档或仓库。',
-      primary: '打开文档',
-      secondary: '浏览 GitHub',
+      eyebrow: "文档与源码",
+      title: "先看安装说明，也可以看源码。",
+      description: "安装、接口和源码都可以从这里开始。",
+      primary: "打开文档",
+      secondary: "浏览 GitHub",
     },
     footer: {
-      description: 'A3S Lab 开发的本地 Agent 工具、运行时与基础设施。',
-      resources: '资源',
-      community: '社区',
-      docs: '文档',
-      tutorials: '教程',
-      blog: '博客',
-      github: 'GitHub',
-      discord: 'Discord',
-      license: 'MIT 协议 · 开放构建',
+      description: "A3S Lab 开发的开源智能体操作系统。",
+      resources: "资源",
+      community: "社区",
+      docs: "文档",
+      blog: "博客",
+      github: "GitHub",
+      discord: "Discord",
+      license: "MIT 协议 · 开放构建",
     },
   },
 } as const;

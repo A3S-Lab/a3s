@@ -1,0 +1,39 @@
+---
+title: A3S GUI
+description: RSX 函数组件到原生平台命令流的 Rust GUI renderer。
+---
+
+# A3S GUI
+
+`a3s-gui` 是将 Rust-style `.rsx` 函数组件转换为 native UI IR 和 platform
+command stream 的 Rust crate。UI 逻辑通过 Rust hooks 暴露给 RSX，platform
+adapters 将 command stream 应用到 AppKit、WinUI 或 GTK。
+
+crate metadata 指向 [`A3S-Lab/GUI`](https://github.com/A3S-Lab/GUI)，并作为
+`crates/gui` submodule 固定在当前 monorepo 中。
+
+## 能力地图
+
+| 领域 | 当前能力 |
+| --- | --- |
+| Input model | 支持 `ComponentCx` Rust hooks、Rust-style `.rsx` function components、HTML/SVG intrinsic names、DOM-style props、inline style、aria/data attributes 和命名事件 actions。 |
+| Native IR | Typed tree，包含 native role、state、label、value、accessibility metadata、style token、event 和 children。 |
+| Runtime | `GuiRuntime`、keyed renderer diff engine、action registration、event routing，以及用于验证的 headless recording backend。 |
+| Command stream | 可序列化 native command，例如 create、update、insert child、remove、set root。 |
+| Platform planning | AppKit、WinUI、GTK planning adapter 将 IR 映射为 native widget blueprint。 |
+| Native paths | crate manifest 中存在 feature-gated AppKit、WinUI、GTK native adapter paths。 |
+| Design system | `rsx_ui` 提供 shadcn-like RSX components，并使用 Vercel/Geist design tokens。 |
+
+## 从这里开始
+
+- [Architecture](/docs/gui/architecture) 解释 RSX-to-native pipeline、host
+  boundary、command stream 和 style contract。
+- [Platforms](/docs/gui/platforms) 映射 supported semantic parts 到 AppKit、
+  WinUI 和 GTK planning/native backends。
+- [Protocol And Events](/docs/gui/protocol-events) 覆盖 `UiFrame`、
+  `NativeProtocolSession`、host events、action routing 和 native input flow。
+
+## 边界
+
+Native feature paths 从 command stream 创建平台控件，不嵌入 browser engine。A3S WebView
+是单独的组件，用于 embedded web content。

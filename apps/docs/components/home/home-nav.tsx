@@ -1,38 +1,41 @@
-'use client';
+"use client";
 
-import { Github, Menu, MoveUpRight } from 'lucide-react';
-import Link from 'next/link';
-import type { MouseEvent as ReactMouseEvent } from 'react';
-import { A3SMark } from '@/components/home/a3s-mark';
-import { homeContent, type Lang } from '@/components/home/home-content';
-import { localePath } from '@/lib/i18n';
+import { Github, Menu, MoveUpRight } from "lucide-react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { localePath } from "../../lib/i18n";
+import { A3SMark } from "./a3s-mark";
+import { homeContent, type Lang } from "./home-content";
+import { SiteLink } from "./site-link";
 
 function closeMobileNav(event: ReactMouseEvent<HTMLDivElement>) {
-  if (!(event.target instanceof Element) || !event.target.closest('a')) return;
+  if (!(event.target instanceof Element) || !event.target.closest("a")) return;
 
-  const details = event.currentTarget.closest('details');
+  const details = event.currentTarget.closest("details");
   if (details) details.open = false;
 }
 
 export function HomeNav({ lang }: { lang: Lang }) {
   const tr = homeContent[lang].nav;
-  const homeHref = localePath('/', lang);
-  const languageHref = localePath('/', lang === 'cn' ? 'en' : 'cn');
+  const homeHref = localePath("/", lang);
+  const languageHref = localePath("/", lang === "cn" ? "en" : "cn");
 
   const anchorLinks = [
-    { label: tr.products, href: '#products' },
-    { label: tr.architecture, href: '#architecture' },
-    { label: tr.principles, href: '#principles' },
+    { label: tr.aiNative, href: "#ai-native" },
+    { label: tr.architecture, href: "#architecture" },
   ];
 
   return (
     <header className="a3s-home-nav">
       <nav className="a3s-home-nav__inner" aria-label="Primary navigation">
-        <Link className="a3s-home-brand" href={homeHref} aria-label="A3S home">
+        <SiteLink
+          className="a3s-home-brand"
+          href={homeHref}
+          aria-label="A3S home"
+        >
           <A3SMark className="a3s-home-brand__mark" />
           <span>A3S</span>
           <small>LAB</small>
-        </Link>
+        </SiteLink>
 
         <div className="a3s-home-nav__links">
           {anchorLinks.map((item) => (
@@ -40,18 +43,18 @@ export function HomeNav({ lang }: { lang: Lang }) {
               {item.label}
             </a>
           ))}
-          <Link href={localePath('/blog', lang)}>{tr.blog}</Link>
+          <SiteLink href={localePath("/blog", lang)}>{tr.blog}</SiteLink>
         </div>
 
         <div className="a3s-home-nav__actions">
-          <Link
+          <SiteLink
             className="a3s-home-nav__language"
             href={languageHref}
-            hrefLang={lang === 'cn' ? 'en' : 'zh-Hans'}
+            hrefLang={lang === "cn" ? "en" : "zh-Hans"}
           >
             {tr.language}
-          </Link>
-          <Link
+          </SiteLink>
+          <SiteLink
             className="a3s-home-nav__github"
             href="https://github.com/A3S-Lab/a3s"
             target="_blank"
@@ -59,11 +62,14 @@ export function HomeNav({ lang }: { lang: Lang }) {
             aria-label="A3S on GitHub"
           >
             <Github aria-hidden="true" />
-          </Link>
-          <Link className="a3s-home-nav__docs" href={localePath('/docs', lang)}>
+          </SiteLink>
+          <SiteLink
+            className="a3s-home-nav__docs"
+            href={localePath("/docs", lang)}
+          >
             {tr.docs}
             <MoveUpRight aria-hidden="true" />
-          </Link>
+          </SiteLink>
         </div>
 
         <details className="a3s-home-nav__mobile">
@@ -77,16 +83,16 @@ export function HomeNav({ lang }: { lang: Lang }) {
                 {item.label}
               </a>
             ))}
-            <Link href={localePath('/docs', lang)}>{tr.docs}</Link>
-            <Link href={localePath('/blog', lang)}>{tr.blog}</Link>
-            <Link href={languageHref}>{tr.language}</Link>
-            <Link
+            <SiteLink href={localePath("/docs", lang)}>{tr.docs}</SiteLink>
+            <SiteLink href={localePath("/blog", lang)}>{tr.blog}</SiteLink>
+            <SiteLink href={languageHref}>{tr.language}</SiteLink>
+            <SiteLink
               href="https://github.com/A3S-Lab/a3s"
               target="_blank"
               rel="noopener noreferrer"
             >
               GitHub
-            </Link>
+            </SiteLink>
           </div>
         </details>
       </nav>

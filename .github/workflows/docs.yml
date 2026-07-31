@@ -33,7 +33,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SITE_URL: https://a3s-lab.github.io/a3s
+      DOCS_BASE: /a3s/
+      DOCS_ORIGIN: https://a3s-lab.github.io
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,21 +51,23 @@ jobs:
         with:
           workspaces: apps/cloud -> target
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/docs/package-lock.json
 
       - name: Install dependencies
         working-directory: apps/docs
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Validate Cloud documentation contracts
         working-directory: apps/docs
-        run: bun run check:cloud
+        run: npm run check:cloud
 
       - name: Test website routing
         working-directory: apps/docs
-        run: bun run test
+        run: npm run test
 
       - name: Validate shipped Cloud ACL configurations
         working-directory: apps/cloud
@@ -74,15 +77,15 @@ jobs:
 
       - name: Typecheck website
         working-directory: apps/docs
-        run: bun run typecheck
+        run: npm run typecheck
 
       - name: Build
         working-directory: apps/docs
-        run: bun run build
+        run: npm run build
 
       - name: Validate exported website
         working-directory: apps/docs
-        run: bun run check:site
+        run: npm run check:site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

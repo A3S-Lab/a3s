@@ -1,0 +1,86 @@
+---
+title: 配置与模型
+description: A3S CLI 的 ACL 配置层、模型路由和账户边界。
+---
+
+# 配置与模型
+
+A3S 使用 ACL（Agent Configuration Language）保存产品配置。CLI 只读取
+`config.acl`，不会把它当成 TOML 或 HCL。
+
+## 配置层
+
+解析顺序：
+
+1. `--config PATH` 或 `A3S_CONFIG_FILE`
+2. 从当前工作区向上查找 `.a3s/config.acl`
+3. `~/.a3s/config.acl`
+
+显式文件优先；工作区层覆盖用户层。`-C` 会在解析相对路径前先改变有效工作区。
+
+```bash
+a3s config path
+a3s config paths
+a3s config init
+a3s config init --scope workspace
+a3s config show
+a3s config validate
+a3s config edit --scope workspace
+```
+
+`config show` 输出脱敏后的有效配置。`config validate` 同时检查 ACL 语法和 Code
+配置语义。
+
+## 选择模型
+
+```bash
+a3s model list
+a3s model current
+a3s model use openai/my-model
+a3s model use codex/gpt-5.2-codex
+a3s model use openai/my-model --scope workspace
+a3s model reset --scope user
+```
+
+模型 ID 必须带来源，例如 `openai/...`、`claude-code/...`、`codex/...`、`kimi/...`、
+`workbuddy/...` 或 `a3s-os/...`。`model use` 先检查该来源当前是否可用，再更新选定
+ACL 层中的 `default_model`。
+
+Claude Code、Codex、Kimi 和 WorkBuddy 继续管理各自的本机登录状态。CLI 只读取可用性，
+不会把 OAuth 凭据复制到 `config.acl`。
+
+## A3S OS 账户
+
+在 ACL 中配置 OS endpoint 后：
+
+```bash
+a3s auth login os
+a3s auth status os
+a3s auth logout os
+```
+
+受保护环境可以从标准输入传入已有 token：
+
+```bash
+printf '%s' "$A3S_OS_TOKEN" | a3s auth login os --token-stdin
+```
+
+本地 Code、Web、文件工具、MCP、Memory 与 Research 不依赖 OS 登录。远程 Runtime、
+托管资产和受信任 ViewLink 需要已登录的 OS session。
+
+## 工作区数据
+
+默认状态放在工作区的 `.a3s/` 下：
+
+| 路径 | 内容 |
+| --- | --- |
+| `.a3s/config.acl` | 工作区配置 |
+| `.a3s/tui/sessions/v1/sessions` | Code session 快照 |
+| `.a3s/tui/session-state/v1` | TUI 侧状态 |
+| `.a3s/agents` | Agent 定义 |
+| `.a3s/mcps` | MCP 资产 |
+| `.a3s/skills` | Skill 资产 |
+| `.a3s/flows` | Flow 资产 |
+| `.a3s/memory` | 工作区 Memory |
+
+对应目录可通过 ACL 或专用环境变量覆盖。`a3s config paths` 会打印本次调用实际采用的路径。

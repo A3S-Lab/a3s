@@ -1,0 +1,88 @@
+---
+title: CLI 内部结构
+description: A3S CLI 的解析、上下文、分发、组件代理和输出边界。
+---
+
+# CLI 内部结构
+
+```text
+argv
+  │
+  ▼
+clap::Cli / RootCommand
+  │
+  ▼
+InvocationContext
+  ├── workspace (-C)
+  ├── ACL layers (--config)
+  ├── output / interaction policy
+  └── offline / first-use policy
+  │
+  ▼
+typed command dispatch
+  ├── Code / Web / Research ── in-process runtime
+  ├── Config / Auth / Model ── root-owned services
+  ├── Components ───────────── catalog + transaction engine
+  └── Box / Search / Use ───── verified executable proxy
+  │
+  ▼
+CommandOutcome / component exit status
+```
+
+## 入口
+
+`src/main.rs` 只负责启动异步运行时、解析 `Cli` 并把结果交给统一退出路径。
+`src/cli/args.rs` 使用 Clap 定义根命令和全局参数；每个子命令都有明确的 typed args，
+未知命令在解析阶段失败。
+
+## 调用上下文
+
+`InvocationContext` 在分发前一次性固定：
+
+- 有效工作区与相对路径基准
+- 显式 ACL 文件和用户/工作区配置层
+- human、JSON 或 JSONL 输出
+- 是否允许网络、提示、进度和首次使用安装
+- A3S 数据、状态、缓存和组件目录
+
+下游命令接收上下文，不重新读取当前目录来推断另一套配置。
+
+## 内置运行路径
+
+Code、Web 与 Research 和 CLI 同进程：
+
+| 路径 | 主要模块 |
+| --- | --- |
+| Code | `commands/code` → Code Core → TUI 或 headless event consumer |
+| Web | `api/serve` → Code Web API → 静态 Work 资源 |
+| Research | `commands/code/research_runtime` → shared typed research engine |
+| Config | `commands/config` → ACL resolver → validated persistence |
+| Model | `commands/model` → unified model catalog → selected ACL layer |
+
+这条路径共享配置、账户、模型和权限状态，不经过子进程文本协议。
+
+## 组件路径
+
+独立产品经过四个阶段：
+
+```text
+typed component ID
+  → trusted catalog
+  → source / platform / receipt resolution
+  → exact executable + forwarded argv
+```
+
+安装与升级由 transaction engine 暂存、校验和激活。代理只执行 receipt
+记录的绝对路径；发现到的外部程序与受管组件分开报告。
+
+## 安全边界
+
+| 边界 | 约束 |
+| --- | --- |
+| 配置 | 只用 `a3s-acl` 解析；输出默认脱敏。 |
+| 凭据 | 第三方账户保留自己的 credential store；CLI 不复制 token。 |
+| 组件 | 来源、digest、manifest、平台和所有权都在激活前验证。 |
+| 删除 | 只删除 receipt 能证明归属的文件。 |
+| 网络 | `--offline` 同时关闭网络与首次使用下载。 |
+| Web | 默认监听 loopback；远程暴露需外部认证与 TLS。 |
+| 工具 | Code run 冻结权限快照，子任务继承同一边界。 |

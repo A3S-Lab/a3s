@@ -1,0 +1,76 @@
+---
+title: "A3S Code v2.1.0: The Coding Agent Runtime"
+description: How A3S Code exposes coding-agent sessions, tools, PTC, delegation, memory, replay, and verification through the Node SDK.
+date: "2026-02-27"
+author: A3S Lab
+tags: [a3s-code, coding-agent, embeddable, typescript, sdk]
+sidebar: false
+---
+
+# A3S Code v2.1.0: The Coding Agent Runtime
+
+<BlogMeta />
+
+A3S Code is an embeddable runtime for coding-agent workflows. A host
+application creates an agent, opens a workspace-bound session, and drives work
+through prompts, tools, deterministic programs, delegated tasks, replay, and
+verification evidence.
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  planningMode: 'enabled',
+});
+
+const result = await session.send(
+  'Find where authentication errors are handled and summarize the flow.',
+);
+
+console.log(result.text);
+console.log(result.verificationSummaryText);
+```
+
+## Runtime Surface
+
+- ACL configuration with `providers` and `models` blocks.
+- OpenAI-compatible `apiKey`/`baseUrl` and `api_key`/`base_url` aliases.
+- Session options for model override, skill directories, prompt slots, planning,
+  file-backed memory/session stores, auto-save, compaction, continuation, and
+  permission-policy shape.
+- Direct tools: read, glob, grep, bash, git, generic `tool`, skill search, and
+  tool registry inspection.
+- Programmatic Tool Calling through `session.program()` and the core `program`
+  tool.
+- Task delegation with `delegateTask` and `parallelTask`.
+- Run replay, trace events, verification summaries, and run-scoped inspection.
+- Live stdio MCP registration and tool invocation.
+- Queue inspection and external-task primitives.
+- Session persistence through `save()` and `agent.resumeSession()`.
+
+## Streaming
+
+Use `.next()` to consume the stream:
+
+```ts
+const stream = await session.stream('Explain the release risk in one paragraph.');
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (event?.text) process.stdout.write(event.text);
+}
+```
+
+Use the streaming shape documented for your installed SDK version.
+
+## Why the Coding Agent Is Still the Core
+
+Coding agents are valuable because they can close the loop with objective
+feedback: read code, make a change, run a command, inspect failure, and try
+again. A3S Code v2.1.0 exposes that loop as an embeddable runtime:
+sessions, tools, PTC, delegation, memory, replay, and verification evidence.
+
+For the complete API surface covered by integration tests, see
+[A3S Code API Contract](https://github.com/A3S-Lab/Code/blob/main/website/docs/v6/en/guide/api-contract.mdx).

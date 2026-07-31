@@ -1,0 +1,19 @@
+[
+  "index",
+  "quick-start",
+  {
+    "type": "section-header",
+    "label": "Core"
+  },
+  "engines",
+  "queries",
+  "results",
+  {
+    "type": "section-header",
+    "label": "Capabilities"
+  },
+  "proxy",
+  "configuration",
+  "browser",
+  "cli"
+]

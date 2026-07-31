@@ -1,17 +1,7 @@
-import { defineI18n } from 'fumadocs-core/i18n';
-
 export const locales = ['cn', 'en'] as const;
 export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = 'cn';
-
-export const i18n = defineI18n({
-  defaultLanguage: defaultLocale,
-  languages: [...locales],
-  hideLocale: 'default-locale',
-  parser: 'dir',
-  fallbackLanguage: null,
-});
 
 export function isLocale(value: string): value is Locale {
   return locales.includes(value as Locale);
@@ -46,6 +36,26 @@ export function localePath(href: string, locale: Locale): string {
   const prefix = locale === defaultLocale ? '' : `/${locale}`;
 
   return `${prefix}${normalized === '/' ? '' : normalized}${suffix}` || '/';
+}
+
+/**
+ * Point custom-site links at the canonical directory URL emitted by Rspress.
+ * Static hosts serve these routes from `index.html`; using the trailing slash
+ * also keeps the browser pathname identical to the pathname used during SSG.
+ */
+export function canonicalSitePath(href: string): string {
+  if (!href.startsWith('/') || href.startsWith('//')) return href;
+
+  const suffixIndex = href.search(/[?#]/);
+  const pathname = suffixIndex === -1 ? href : href.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? '' : href.slice(suffixIndex);
+  const hasFileExtension = /\/[^/]+\.[^/]+$/.test(pathname);
+
+  if (pathname === '/' || pathname.endsWith('/') || hasFileExtension) {
+    return href;
+  }
+
+  return `${pathname}/${suffix}`;
 }
 
 export function htmlLanguage(locale: Locale): string {

@@ -1,0 +1,29 @@
+[
+  {
+    "text": "A3S CLI",
+    "link": "/docs/",
+    "activeMatch": "^/docs/"
+  },
+  {
+    "text": "Blog",
+    "link": "/blog/",
+    "activeMatch": "^/blog/"
+  },
+  {
+    "text": "Project",
+    "items": [
+      {
+        "text": "GitHub",
+        "link": "https://github.com/A3S-Lab/a3s"
+      },
+      {
+        "text": "A3S Code",
+        "link": "https://a3s-lab.github.io/Code/"
+      },
+      {
+        "text": "Changelog",
+        "link": "https://github.com/A3S-Lab/a3s/commits/main/"
+      }
+    ]
+  }
+]

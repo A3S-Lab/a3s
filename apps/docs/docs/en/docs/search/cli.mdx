@@ -1,0 +1,196 @@
+---
+title: CLI
+description: Command-line interface for quick searches with multiple output formats
+---
+
+
+# CLI
+
+A3S Search includes a command-line tool for quick searches from the terminal.
+
+## Installation
+
+```bash
+# Homebrew (macOS / Linux)
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-search
+
+# From crates.io
+cargo install a3s-search
+
+# From source
+cd crates/search && cargo install --path .
+```
+
+## Update
+
+```bash
+# Homebrew
+brew update && brew upgrade a3s-search
+
+# cargo install (re-installs latest from crates.io)
+cargo install a3s-search
+```
+
+## Uninstall
+
+```bash
+# Homebrew
+brew uninstall a3s-search
+brew untap a3s-lab/tap   # optional: remove the tap itself
+
+# cargo
+cargo uninstall a3s-search
+```
+
+## Basic Search
+
+```bash
+# Default search (DuckDuckGo + Wikipedia)
+a3s-search "rust programming"
+
+# Specific engines
+a3s-search "rust" -e ddg,wiki,brave,bing
+
+# Chinese engines
+a3s-search "人工智能" -e sogou,360
+
+# Google (Chrome auto-installed if needed)
+a3s-search "rust" -e g,ddg
+
+# Chinese headless engines
+a3s-search "Rust 编程" -e baidu,bing_cn
+```
+
+## Options
+
+<TypeTable
+  type={{
+    "-e, --engines": {
+      description: "Comma-separated engine shortcuts",
+      default: "ddg,wiki",
+    },
+    "-l, --limit": {
+      description: "Max number of results",
+      default: "10",
+    },
+    "-t, --timeout": {
+      description: "Timeout in seconds",
+      default: "10",
+    },
+    "-p, --proxy": {
+      description: "Proxy URL (HTTP/HTTPS/SOCKS5)",
+      default: "None",
+    },
+    "-f, --format": {
+      description: "Output format: text, json, compact",
+      default: "text",
+    },
+    "-v, --verbose": {
+      description: "Enable verbose logging",
+      default: "false",
+    },
+  }}
+/>
+
+## Output Formats
+
+### Text
+
+Human-readable output with title, URL, snippet, and metadata:
+
+```bash
+$ a3s-search "rust language"
+
+1. The Rust Programming Language
+   https://www.rust-lang.org/
+   A language empowering everyone to build reliable and efficient software.
+   Score: 3.50 | Engines: ddg, brave, bing
+
+2. Rust (programming language) - Wikipedia
+   https://en.wikipedia.org/wiki/Rust_(programming_language)
+   Rust is a multi-paradigm, general-purpose programming language...
+   Score: 2.70 | Engines: wiki, ddg
+```
+
+### JSON
+
+```bash
+$ a3s-search "rust" -f json
+```
+
+Machine-readable JSON with full result metadata.
+
+### Compact
+
+```bash
+$ a3s-search "rust" -f compact
+```
+
+Tab-separated output: `title\turl` — useful for piping to other tools.
+
+## Available Engines
+
+```bash
+# List all available engines
+a3s-search engines
+```
+
+<TypeTable
+  type={{
+    "ddg": {
+      description: "Engine: DuckDuckGo · Method: HTTP",
+    },
+    "brave": {
+      description: "Engine: Brave Search · Method: HTTP",
+    },
+    "bing": {
+      description: "Engine: Bing International · Method: HTTP",
+    },
+    "wiki": {
+      description: "Engine: Wikipedia · Method: JSON API",
+    },
+    "sogou": {
+      description: "Engine: Sogou (搜狗) · Method: HTTP",
+    },
+    "360": {
+      description: "Engine: 360 Search (360搜索) · Method: HTTP",
+    },
+    "g": {
+      description: "Engine: Google · Method: Headless",
+    },
+    "baidu": {
+      description: "Engine: Baidu (百度) · Method: Headless",
+    },
+    "bing_cn": {
+      description: "Engine: Bing China (必应中国) · Method: Headless",
+    },
+  }}
+/>
+
+## Proxy
+
+```bash
+# HTTP proxy
+a3s-search "rust" -p http://127.0.0.1:8080
+
+# SOCKS5 proxy
+a3s-search "rust" -p socks5://127.0.0.1:1080
+```
+
+## Browser Auto-Install
+
+When using headless engines (`g`, `baidu`, `bing_cn`), A3S Search uses the browser backend compiled into the binary and detects or downloads the matching browser automatically.
+
+```bash
+# First run: the required browser is auto-downloaded if not installed
+a3s-search "rust" -e g
+# Downloading browser...
+# Browser installed successfully!
+
+# Subsequent runs: uses the cached browser
+a3s-search "rust" -e g
+
+# Or set CHROME / LIGHTPANDA to use a specific binary
+CHROME=/usr/bin/chromium a3s-search "rust" -e g
+```

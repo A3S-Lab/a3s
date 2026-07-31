@@ -1,19 +1,18 @@
 import {
   architectureProjects,
-  systemArchitectureProject,
   type ArchitectureCategory,
   type ArchitectureProject,
-} from '.';
+} from ".";
 
-export type ArchitectureAtlasCategory = 'all' | ArchitectureCategory;
+export type ArchitectureAtlasCategory = "all" | ArchitectureCategory;
 
 export function filterArchitectureProjects(
   category: ArchitectureAtlasCategory,
   query: string,
 ): readonly ArchitectureProject[] {
   const projects: readonly ArchitectureProject[] =
-    category === 'all'
-      ? [systemArchitectureProject, ...architectureProjects]
+    category === "all"
+      ? architectureProjects
       : architectureProjects.filter((project) => project.category === category);
   const normalizedQuery = query.trim().toLocaleLowerCase();
 
@@ -22,7 +21,7 @@ export function filterArchitectureProjects(
   return projects.filter((project) => {
     const nodes = project.nodes
       .map((node) => `${node.label} ${node.detail.cn} ${node.detail.en}`)
-      .join(' ');
+      .join(" ");
     const searchable =
       `${project.name} ${project.id} ${project.role.cn} ${project.role.en} ${nodes}`.toLocaleLowerCase();
 
@@ -33,7 +32,7 @@ export function filterArchitectureProjects(
 export function replacementArchitectureProject(
   projects: readonly ArchitectureProject[],
   activeProjectId: string,
-  query = '',
+  query = "",
 ): ArchitectureProject | undefined {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const exactMatch = normalizedQuery

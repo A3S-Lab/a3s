@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Check, Copy } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Check, Copy } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface CopyCommandProps {
   command: string;

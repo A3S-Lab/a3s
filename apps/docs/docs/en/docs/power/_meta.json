@@ -1,0 +1,26 @@
+[
+  "index",
+  "quick-start",
+  {
+    "type": "section-header",
+    "label": "Core"
+  },
+  "configuration",
+  "models",
+  "inference",
+  {
+    "type": "section-header",
+    "label": "API"
+  },
+  "openai-api",
+  {
+    "type": "section-header",
+    "label": "Capabilities"
+  },
+  "tools",
+  "structured-output",
+  "tee-privacy",
+  "supply-chain",
+  "observability",
+  "cli"
+]

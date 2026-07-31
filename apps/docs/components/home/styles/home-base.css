@@ -7,6 +7,10 @@ body:has(.a3s-site) {
   scrollbar-width: thin;
 }
 
+body:has(.a3s-site) .rp-nav {
+  display: none;
+}
+
 .a3s-site {
   --a3s-bg: #000;
   --a3s-panel: #030303;
@@ -22,7 +26,8 @@ body:has(.a3s-site) {
   --a3s-violet: #b8bcba;
   --a3s-green: var(--a3s-accent);
   --a3s-amber: #b8bcba;
-  --a3s-mono: 'IBM Plex Mono', 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --a3s-mono:
+    "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
   --a3s-max: 1320px;
   position: relative;
   min-height: 100vh;
@@ -124,7 +129,7 @@ body:has(.a3s-site) {
   left: 13px;
   height: 1px;
   background: var(--a3s-text);
-  content: '';
+  content: "";
   opacity: 0;
   transform: scaleX(0);
   transition:
@@ -219,7 +224,7 @@ body:has(.a3s-site) {
   left: 50%;
   width: 1px;
   background: var(--a3s-line);
-  content: '';
+  content: "";
   pointer-events: none;
 }
 
@@ -230,7 +235,7 @@ body:has(.a3s-site) {
   left: 8%;
   height: 1px;
   background: #171918;
-  content: '';
+  content: "";
   opacity: 0.45;
   pointer-events: none;
 }
@@ -298,7 +303,7 @@ body:has(.a3s-site) {
   color: var(--a3s-accent);
 }
 
-.a3s-site[data-lang='en'] .a3s-hero h1 {
+.a3s-site[data-lang="en"] .a3s-hero h1 {
   font-size: clamp(38px, 3.2vw, 48px);
   letter-spacing: -0.045em;
 }
@@ -652,7 +657,6 @@ body:has(.a3s-site) {
 
 .a3s-section-heading h2,
 .a3s-architecture h2,
-.a3s-ecosystem h2,
 .a3s-quickstart h2,
 .a3s-cta h2 {
   margin: 14px 0 0;
@@ -672,7 +676,7 @@ body:has(.a3s-site) {
   line-height: 1.8;
 }
 
-.a3s-site :is(a, button, summary, [tabindex='0']):focus-visible {
+.a3s-site :is(a, button, summary, [tabindex="0"]):focus-visible {
   outline: 1px solid var(--a3s-accent);
   outline-offset: 4px;
 }

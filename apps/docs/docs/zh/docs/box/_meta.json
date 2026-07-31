@@ -1,0 +1,29 @@
+[
+  "index",
+  "quick-start",
+  "faq",
+  {
+    "type": "section-header",
+    "label": "核心"
+  },
+  "configuration",
+  "images",
+  "networking",
+  {
+    "type": "section-header",
+    "label": "安全"
+  },
+  "tee",
+  {
+    "type": "section-header",
+    "label": "SDK"
+  },
+  "sdk",
+  {
+    "type": "section-header",
+    "label": "运维"
+  },
+  "cri",
+  "helm",
+  "cli"
+]

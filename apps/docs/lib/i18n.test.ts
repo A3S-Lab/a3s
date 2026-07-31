@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
   defaultLocale,
+  canonicalSitePath,
   localeFromPathname,
   localePath,
   localizedUrl,
@@ -42,6 +43,14 @@ describe('documentation locale routing', () => {
     assert.equal(localizedUrl('https://a3s.dev/', '/docs', 'en'),
       'https://a3s.dev/en/docs',
     );
+  });
+
+  test('uses canonical directory URLs for custom site links', () => {
+    assert.equal(canonicalSitePath('/docs'), '/docs/');
+    assert.equal(canonicalSitePath('/en/docs?tab=api#rest'), '/en/docs/?tab=api#rest');
+    assert.equal(canonicalSitePath('/#architecture'), '/#architecture');
+    assert.equal(canonicalSitePath('/favicon.svg'), '/favicon.svg');
+    assert.equal(canonicalSitePath('https://github.com/A3S-Lab'), 'https://github.com/A3S-Lab');
   });
 
   test('strips only a leading supported locale', () => {

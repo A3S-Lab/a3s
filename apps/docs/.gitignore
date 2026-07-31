@@ -1,16 +1,14 @@
 # dependencies
 node_modules/
 
-# next.js
-.next/
+# rspress
 out/
-
-# fumadocs
-.source/
+.rspress/
 
 # production
 build/
 dist/
+doc_build/
 *.tgz
 
 # dotenv environment variable files
@@ -21,9 +19,6 @@ dist/
 .eslintcache
 .cache
 *.tsbuildinfo
-
-# typescript
-next-env.d.ts
 
 # logs
 logs/

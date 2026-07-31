@@ -1,0 +1,91 @@
+---
+title: Command reference
+description: Root commands, global options, and output contracts for a3s.
+---
+
+# Command reference
+
+## Global options
+
+```text
+a3s [GLOBAL OPTIONS] <COMMAND>
+```
+
+| Option | Purpose |
+| --- | --- |
+| `-C, --directory PATH` | Run in the selected workspace. |
+| `--config PATH` | Use one explicit ACL file. |
+| `--output human|json|jsonl` | Select root-command output. |
+| `--json` | Shorthand for `--output json`. |
+| `--offline` | Disable networking and first-use downloads. |
+| `--non-interactive` | Disable prompts and confirmations. |
+| `--no-progress` | Disable progress indicators. |
+| `--color auto|always|never` | Control terminal color. |
+| `-q, --quiet` | Suppress nonessential output. |
+| `-v, --verbose` | Increase diagnostic detail; repeatable. |
+
+## Work entrypoints
+
+| Command | Purpose |
+| --- | --- |
+| `a3s code` | Start the interactive Code TUI. |
+| `a3s code exec [PROMPT]` | Run one non-interactive task. |
+| `a3s code resume [SESSION_ID]` | Resume a selected or newest session. |
+| `a3s code research QUERY` | Produce Markdown and HTML Research artifacts. |
+| `a3s web [start]` | Start local Web / Work in the foreground. |
+| `a3s web start -d` | Start a managed background instance. |
+| `a3s web status|logs|open|stop` | Manage the workspace Web instance. |
+| `a3s top` | Monitor agents, containers, sessions, events, and processes. |
+
+## Products and capabilities
+
+| Command | Purpose |
+| --- | --- |
+| `a3s box ...` | Invoke managed Box. |
+| `a3s compose ...` | Forward Compose commands to Box. |
+| `a3s up|down|ps|logs ...` | Short forms for common Compose operations. |
+| `a3s bench ...` | Invoke managed Bench. |
+| `a3s search ...` | Invoke managed Search. |
+| `a3s use DOMAIN ...` | Invoke Browser, Office, OCR, or an extension. |
+
+These routes resolve typed component IDs to verified executables. An unknown
+root command is an error; the CLI does not guess a similarly named program on
+`PATH`.
+
+## Configuration, accounts, and models
+
+| Command | Purpose |
+| --- | --- |
+| `a3s config path|paths|show|init|edit|validate` | Manage ACL configuration. |
+| `a3s auth list|status|login|logout` | Manage account sources and the A3S OS session. |
+| `a3s model list|current|use|reset` | Manage callable models. |
+
+## Components and system
+
+| Command | Purpose |
+| --- | --- |
+| `a3s list` | List built-in, installed, available, and external components. |
+| `a3s info COMPONENT` | Inspect provenance, versions, and install state. |
+| `a3s install COMPONENT...` | Install or repair managed components. |
+| `a3s upgrade [COMPONENT...]` | Inspect or apply component upgrades. |
+| `a3s uninstall COMPONENT...` | Remove files proven by ownership receipts. |
+| `a3s doctor [COMPONENT]` | Run read-only health checks. |
+| `a3s registry ...` | Manage trusted component registries. |
+| `a3s cache path|status|prune|clean` | Manage recreatable cache data. |
+| `a3s self update` | Update the CLI itself. |
+| `a3s completion SHELL` | Generate shell completion. |
+| `a3s help [COMMAND...]` | Show help for a command path. |
+
+## Machine output
+
+Root-owned commands use stable operation names and one output contract. Scripts
+should select JSON explicitly:
+
+```bash
+a3s --output json list
+a3s --output json doctor use
+a3s --output json install use --dry-run
+```
+
+Proxied products keep responsibility for their own stdout, stderr, and exit
+status.

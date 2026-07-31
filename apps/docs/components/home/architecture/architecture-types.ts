@@ -1,22 +1,18 @@
-export type ArchitectureCategory = 'products' | 'runtime' | 'interfaces';
+export type ArchitectureCategory = "products" | "runtime" | "interfaces";
 
 export type ArchitectureNodeKind =
-  | 'entry'
-  | 'process'
-  | 'control'
-  | 'service'
-  | 'adapter'
-  | 'runtime'
-  | 'store'
-  | 'security'
-  | 'output';
+  | "entry"
+  | "process"
+  | "control"
+  | "service"
+  | "adapter"
+  | "runtime"
+  | "store"
+  | "security"
+  | "output";
 
 export type ArchitectureEdgeKind =
-  | 'call'
-  | 'data'
-  | 'event'
-  | 'control'
-  | 'optional';
+  "call" | "data" | "event" | "control" | "optional";
 
 export interface LocalizedArchitectureText {
   cn: string;

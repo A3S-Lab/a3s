@@ -1,0 +1,129 @@
+---
+title: Configuration
+description: HCL configuration file and environment variables
+---
+
+
+# Configuration
+
+A3S Power uses HCL (HashiCorp Configuration Language) as its configuration format.
+
+Default location: `~/.a3s/power/config.hcl`
+
+## Minimal Config
+
+```text
+host = "127.0.0.1"
+port = 11434
+max_loaded_models = 1
+keep_alive = "5m"
+```
+
+## Full Config Reference
+
+```text
+# Server
+host             = "127.0.0.1"
+port             = 11434
+max_loaded_models = 1
+keep_alive       = "5m"      # "0" = unload immediately, "-1" = never
+num_thread       = 8
+flash_attention  = false
+num_parallel     = 1         # Concurrent inference slots
+use_mlock        = false
+
+# GPU
+gpu {
+  gpu_layers   = -1          # -1 = all layers on GPU, 0 = CPU only
+  main_gpu     = 0
+  tensor_split = []          # e.g. [0.7, 0.3] for 2 GPUs
+}
+
+# TEE privacy protection
+tee_mode                = false
+redact_logs             = false
+suppress_token_metrics  = false
+model_hashes            = {}   # {"model:tag" = "sha256:abc..."}
+
+# Encrypted model loading
+model_key_source  = null       # {file = "/path/key.hex"} or {env = "MY_KEY"}
+key_provider      = "static"   # "static" or "rotating"
+in_memory_decrypt = false      # Decrypt in mlock-pinned RAM, never touch disk
+
+# Rate limiting
+rate_limit_rps          = 0    # 0 = unlimited
+max_concurrent_requests = 0    # 0 = unlimited
+
+# Transport
+tls_port   = null              # TLS port (requires tls feature)
+ra_tls     = false             # Embed attestation in TLS cert
+vsock_port = null              # Vsock port (Linux only, requires vsock feature)
+```
+
+## Configuration Reference
+
+<TypeTable
+  type={{
+    host: { type: 'string', default: '"127.0.0.1"', description: 'HTTP server bind address' },
+    port: { type: 'int', default: '11434', description: 'HTTP server port' },
+    max_loaded_models: { type: 'int', default: '1', description: 'Maximum models loaded concurrently' },
+    keep_alive: { type: 'string', default: '"5m"', description: 'Auto-unload idle models. "0" = immediate, "-1" = never' },
+    use_mlock: { type: 'bool', default: 'false', description: 'Lock model weights in memory (prevent swapping)' },
+    num_thread: { type: 'int', default: 'auto', description: 'Thread count for inference' },
+    flash_attention: { type: 'bool', default: 'false', description: 'Enable flash attention' },
+    num_parallel: { type: 'int', default: '1', description: 'Concurrent inference slots' },
+    tee_mode: { type: 'bool', default: 'false', description: 'Enable TEE: attestation, integrity checks, log redaction' },
+    redact_logs: { type: 'bool', default: 'false', description: 'Redact inference content from all logs' },
+    model_hashes: { type: 'map', default: '{}', description: 'Expected SHA-256 hashes for model integrity verification' },
+    suppress_token_metrics: { type: 'bool', default: 'false', description: 'Round token counts to nearest 10 (side-channel prevention)' },
+    model_key_source: { type: 'object', default: 'null', description: 'Decryption key for .enc model files' },
+    key_provider: { type: 'string', default: '"static"', description: '"static" or "rotating"' },
+    in_memory_decrypt: { type: 'bool', default: 'false', description: 'Decrypt .enc models in mlock-pinned RAM only' },
+    rate_limit_rps: { type: 'int', default: '0', description: 'Max requests/sec for /v1/* (0 = unlimited)' },
+    max_concurrent_requests: { type: 'int', default: '0', description: 'Max concurrent requests (0 = unlimited)' },
+    tls_port: { type: 'int', default: 'null', description: 'TLS server port (tls feature required)' },
+    ra_tls: { type: 'bool', default: 'false', description: 'Embed TEE attestation in TLS cert (requires tls_port + tee_mode)' },
+    vsock_port: { type: 'int', default: 'null', description: 'Vsock port for MicroVM guest-host (vsock feature, Linux only)' },
+  }}
+/>
+
+## Environment Variables
+
+<TypeTable
+  type={{
+    A3S_POWER_HOME: { description: 'Base directory (default: ~/.a3s/power)' },
+    A3S_POWER_HOST: { description: 'Server bind address' },
+    A3S_POWER_PORT: { description: 'Server port' },
+    A3S_POWER_MAX_MODELS: { description: 'Max concurrent loaded models' },
+    A3S_POWER_KEEP_ALIVE: { description: 'Default keep-alive duration' },
+    A3S_POWER_GPU_LAYERS: { description: 'GPU layer offloading' },
+    A3S_POWER_TEE_MODE: { description: 'Enable TEE mode ("1" or "true")' },
+    A3S_POWER_REDACT_LOGS: { description: 'Enable log redaction ("1" or "true")' },
+    A3S_POWER_TLS_PORT: { description: 'TLS server port (tls feature required)' },
+    A3S_POWER_RA_TLS: { description: 'Enable RA-TLS ("1" or "true")' },
+    A3S_POWER_VSOCK_PORT: { description: 'Vsock port (vsock feature, Linux only)' },
+    A3S_TEE_SIMULATE: { description: 'Simulate TEE for development ("1")' },
+    HF_TOKEN: { description: 'HuggingFace token for private/gated model pulls' },
+  }}
+/>
+
+Environment variables take precedence over config file values.
+
+## TEE Configuration Example
+
+```text
+tee_mode   = true
+redact_logs = true
+
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+}
+
+# Optional: encrypted model weights
+model_key_source = { env = "MODEL_DECRYPT_KEY" }
+in_memory_decrypt = true
+
+# Optional: RA-TLS
+tls_port = 11443
+ra_tls   = true
+```

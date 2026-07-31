@@ -1,0 +1,106 @@
+{
+  "name": "a3s",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#050706",
+    "editor.foreground": "#d7dad8",
+    "editorLineNumber.foreground": "#4b514e",
+    "editorLineNumber.activeForeground": "#9aa09d",
+    "editor.selectionBackground": "#243b39"
+  },
+  "tokenColors": [
+    {
+      "scope": ["comment", "punctuation.definition.comment"],
+      "settings": {
+        "foreground": "#68706c",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": [
+        "keyword",
+        "storage",
+        "storage.type",
+        "storage.modifier",
+        "keyword.control",
+        "keyword.operator.word"
+      ],
+      "settings": {
+        "foreground": "#83c8c4"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "meta.function-call",
+        "variable.function"
+      ],
+      "settings": {
+        "foreground": "#d4d8d5"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "support.type",
+        "support.class",
+        "entity.name.namespace"
+      ],
+      "settings": {
+        "foreground": "#aeb5b1"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function.decorator",
+        "meta.function.decorator",
+        "punctuation.definition.decorator"
+      ],
+      "settings": {
+        "foreground": "#89b8b4"
+      }
+    },
+    {
+      "scope": ["string", "string.quoted", "string.template"],
+      "settings": {
+        "foreground": "#9fc2aa"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language",
+        "constant.character",
+        "constant.other"
+      ],
+      "settings": {
+        "foreground": "#c5b69a"
+      }
+    },
+    {
+      "scope": [
+        "variable.parameter",
+        "variable.other",
+        "meta.object-literal.key",
+        "meta.mapping.key"
+      ],
+      "settings": {
+        "foreground": "#d0d5d2"
+      }
+    },
+    {
+      "scope": ["punctuation", "meta.brace", "meta.delimiter"],
+      "settings": {
+        "foreground": "#7d8581"
+      }
+    },
+    {
+      "scope": ["keyword.operator", "operator"],
+      "settings": {
+        "foreground": "#83aaa7"
+      }
+    }
+  ]
+}

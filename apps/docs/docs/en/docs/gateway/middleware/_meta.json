@@ -1,0 +1,34 @@
+[
+  "index",
+  {
+    "type": "section-header",
+    "label": "Authentication"
+  },
+  "api-key",
+  "basic-auth",
+  "jwt",
+  "forward-auth",
+  {
+    "type": "section-header",
+    "label": "Traffic Control"
+  },
+  "rate-limit",
+  "rate-limit-redis",
+  "circuit-breaker",
+  "retry",
+  "body-limit",
+  {
+    "type": "section-header",
+    "label": "Transform"
+  },
+  "cors",
+  "headers",
+  "strip-prefix",
+  "compress",
+  {
+    "type": "section-header",
+    "label": "Network"
+  },
+  "ip-allow",
+  "tcp-filter"
+]

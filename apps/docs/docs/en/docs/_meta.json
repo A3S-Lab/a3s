@@ -1,0 +1,27 @@
+[
+  {
+    "type": "section-header",
+    "label": "Start"
+  },
+  "index",
+  "installation",
+  "configuration",
+  {
+    "type": "section-header",
+    "label": "Use"
+  },
+  "commands",
+  "code",
+  "web",
+  {
+    "type": "section-header",
+    "label": "Manage"
+  },
+  "components",
+  "updates",
+  {
+    "type": "section-header",
+    "label": "Internals"
+  },
+  "architecture"
+]

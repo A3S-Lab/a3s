@@ -1,0 +1,29 @@
+[
+  "index",
+  "quick-start",
+  "faq",
+  {
+    "type": "section-header",
+    "label": "Core"
+  },
+  "configuration",
+  "images",
+  "networking",
+  {
+    "type": "section-header",
+    "label": "Security"
+  },
+  "tee",
+  {
+    "type": "section-header",
+    "label": "SDK"
+  },
+  "sdk",
+  {
+    "type": "section-header",
+    "label": "Operations"
+  },
+  "cri",
+  "helm",
+  "cli"
+]

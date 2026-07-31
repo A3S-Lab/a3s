@@ -1,0 +1,67 @@
+---
+title: Updates
+description: CLI self-update, component upgrades, and failure recovery.
+---
+
+# Updates
+
+The CLI and independent components have separate update paths.
+
+```bash
+a3s self update --check
+a3s self update --dry-run
+a3s self update --yes
+
+a3s upgrade
+a3s upgrade use --yes
+```
+
+## CLI self-update
+
+`a3s self update`:
+
+1. Reads the compiled version and installation source.
+2. Resolves the stable release for the current platform.
+3. Verifies the release digest, archive structure, and staged binary version.
+4. Stages before atomic activation.
+5. Confirms that the new executable reports the target version.
+
+Homebrew installations update through Homebrew. Standalone installations use a
+platform-matched release archive. In-process self-update supports macOS and
+glibc Linux. Windows upgrades by rerunning the PowerShell installer.
+
+## Updates from Code
+
+`a3s code update` and TUI `/update` use the same CLI self-update path. The TUI
+saves the active session, exits, updates, and then runs:
+
+```bash
+a3s code resume <session-id>
+```
+
+If automatic restart fails, the terminal still prints that recovery command.
+
+## Component upgrades
+
+`a3s upgrade` without IDs only checks. Explicit IDs or `--all` authorize
+mutation:
+
+```bash
+a3s upgrade --dry-run use
+a3s upgrade use --plan-digest <sha256>
+a3s upgrade --all --yes
+```
+
+A component is downloaded into staging. Provenance, checksum, manifest,
+platform, and protocol checks complete before the active version changes. A
+failed commit preserves the previous healthy version and its receipt.
+
+## Offline
+
+```bash
+a3s --offline upgrade
+a3s --offline install use --version <version>
+```
+
+Offline mode uses cached material only. If the exact artifact is absent, the
+operation fails rather than falling back to an unverified source.

@@ -1,0 +1,64 @@
+---
+title: Web / Work
+description: Local Work, managed background instances, assets, and network boundaries.
+---
+
+# Web / Work
+
+Web is Work. `a3s web` starts the local Web host, and Work is its default
+workbench. They are not parallel products.
+
+Work uses the same Code Core as the terminal and combines task sessions, code
+editing, Git review, file management, and live preview. Knowledge is a separate
+built-in destination.
+
+## Start
+
+```bash
+a3s web
+a3s web -d
+a3s web -d --replace
+```
+
+- Foreground mode keeps logs in the current terminal.
+- `-d` starts or reuses the managed instance for the current workspace.
+- `--replace` replaces only an identity-verified A3S instance. It never kills
+  an unrelated process that owns the port.
+
+## Manage a background instance
+
+```bash
+a3s web status
+a3s web open
+a3s web logs
+a3s web logs --follow
+a3s web stop
+```
+
+Instance identity includes the workspace. A repeat start checks ownership and
+health before deciding whether to reuse or reject the existing service.
+
+## Address and assets
+
+```bash
+a3s web --host 127.0.0.1 --port 4090
+a3s web --web-dir ./apps/web/dist
+a3s web --api-only
+```
+
+The default host is `127.0.0.1`. `A3S_CODE_WEB_HOST` and
+`A3S_CODE_WEB_PORT` set defaults. Port `0` selects an available port.
+
+Official releases and Homebrew packages carry Web assets. A Cargo install may
+fetch matching assets on first start. `--offline` and
+`A3S_NO_AUTO_INSTALL=1` disable that download.
+
+## Network boundary
+
+The Code API can change workspace files and invoke tools, so it binds to
+loopback by default. Deliberate remote access needs authentication, TLS, and an
+explicit network policy outside the process.
+
+Live preview accepts workspace static files and localhost or loopback services.
+Static pages run in an opaque-origin sandbox; arbitrary remote URLs are not
+turned into a local proxy.

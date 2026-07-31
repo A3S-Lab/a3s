@@ -1,0 +1,90 @@
+---
+title: Code
+description: a3s code 的交互式工作台、一次性任务、session、权限和 Research。
+---
+
+# Code
+
+`a3s code` 在当前工作区启动终端工作台。CLI 负责配置、账户、组件和进程生命周期；
+`a3s-code-core` 负责 session、模型、工具、权限、Memory、委派和事件流；`a3s-tui`
+负责终端渲染与输入。
+
+## 启动方式
+
+```bash
+a3s code
+a3s -C /path/to/project code
+a3s code exec "检查公开 API 并运行相关测试"
+a3s code exec --mode plan --prompt-file task.md
+```
+
+`code exec` 支持 `default`、`plan` 和 `auto` 三种模式，也可以用
+`--model PROVIDER/MODEL` 覆盖本次调用的模型。
+
+## Session
+
+```bash
+a3s code resume
+a3s code resume <session-id>
+a3s code session list
+```
+
+正常退出会打印可直接执行的恢复命令。恢复内容包括 transcript、模型来源、effort、
+执行模式和 TUI 侧状态。
+
+| 数据 | 默认路径 |
+| --- | --- |
+| Core session 快照 | `.a3s/tui/sessions/v1/sessions` |
+| TUI session 状态 | `.a3s/tui/session-state/v1` |
+
+`/fork` 从当前 transcript 创建新 session。`/fork worktree` 还会创建独立 Git
+worktree，不改动原仓库的 index。
+
+## 执行模式
+
+| 模式 | 行为 |
+| --- | --- |
+| Default | 工作区内的常规改动可以执行；越过边界的操作进入确认。 |
+| Plan | 只开放读取与分析；批准后以新的 Default turn 开始实现。 |
+| Auto | 不进入人工确认；无法证明安全的宿主操作直接失败。 |
+
+一次 run 接纳后会冻结权限快照。前台、队列、并行任务、Skill 和后台子任务不会因为下一轮
+切换模式而改变已经生效的边界。
+
+## 常用 TUI 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `/model` | 选择配置或本机账户提供的模型。 |
+| `/config` | 编辑当前 ACL 配置。 |
+| `/checkup` | 只读检查安装、配置、指令、Skill、Plugin、MCP 与策略。 |
+| `/use` | 查看 Use、Browser、Office 与 OCR readiness。 |
+| `/ide` | 打开文件树和代码查看/编辑界面。 |
+| `/memory` / `/ctx` / `/kb` | 管理长期 Memory、历史上下文和知识库。 |
+| `/agent` / `/skill` / `/mcp` / `/flow` / `/okf` | 管理本地与 OS 资产。 |
+| `/goal` / `/loop` | 运行可恢复目标或连续任务。 |
+| `/compact` | 压缩当前上下文。 |
+| `/fork` / `/rewind` / `/clear` | 分支、回退或清空会话。 |
+| `/auto` | 切换风险感知自动模式。 |
+| `/update` | 保存 session、更新 CLI，再恢复。 |
+
+## 工具与权限
+
+模型只能调用 session registry 中注册的工具。每次调用都有名称、结构化参数、事件 ID、
+超时和权限判断。
+
+- 文件操作限制在有效工作区。
+- 高风险 shell、受保护元数据、修改型 Git 和外部副作用需要明确授权或直接拒绝。
+- MCP 与 Use 工具沿用自身声明的只读、网络、修改和破坏性边界。
+- 项目授权写入 `.a3s/permissions.acl`，保存的是规范化操作和资源，不保存界面文案。
+- 子任务继承父 run 的权限与确认边界。
+
+## Research
+
+```bash
+a3s code research --web "比较 Tokio 与 async-std"
+a3s code research --local-only "梳理当前仓库的发布流程"
+```
+
+每次 Research 都使用独立 run 目录，产出事件记录、`report.md` 和可编辑
+`index.html`。结果区分综合完成、证据不足、仅有来源和无证据，不会把缺失来源包装成确定结论。

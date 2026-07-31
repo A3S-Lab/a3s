@@ -1,58 +1,58 @@
-import assert from 'node:assert/strict';
-import { describe, test } from 'node:test';
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
 import {
   filterArchitectureProjects,
   replacementArchitectureProject,
-} from './architecture-filter';
+} from "./architecture-filter";
 
-describe('homepage architecture search', () => {
-  test('matches project names, node names, and node descriptions', () => {
+describe("homepage architecture search", () => {
+  test("matches project names, node names, and node descriptions", () => {
     assert.deepEqual(
-      filterArchitectureProjects('all', 'Office').map(
+      filterArchitectureProjects("all", "Office").map(
         (project) => project.name,
       ),
-      ['A3S', 'Web', 'Parser', 'Use', 'Office'],
+      ["Web", "Parser", "Use", "Office"],
     );
     assert.deepEqual(
-      filterArchitectureProjects('all', 'PDFium').map(
+      filterArchitectureProjects("all", "PDFium").map(
         (project) => project.name,
       ),
-      ['Parser', 'Office'],
+      ["Parser", "Office"],
     );
     assert.deepEqual(
-      filterArchitectureProjects('all', '终态不可变').map(
+      filterArchitectureProjects("all", "终态不可变").map(
         (project) => project.name,
       ),
-      ['Runtime'],
+      ["Runtime"],
     );
     assert.deepEqual(
-      filterArchitectureProjects('all', 'SIGINT').map(
+      filterArchitectureProjects("all", "SIGINT").map(
         (project) => project.name,
       ),
-      ['Test'],
+      ["Test"],
     );
   });
 
-  test('replaces a selected project that is absent from non-empty results', () => {
-    const matches = filterArchitectureProjects('all', 'PDFium');
+  test("replaces a selected project that is absent from non-empty results", () => {
+    const matches = filterArchitectureProjects("all", "PDFium");
 
     assert.equal(
-      replacementArchitectureProject(matches, 'a3s-system')?.name,
-      'Parser',
+      replacementArchitectureProject(matches, "code")?.name,
+      "Parser",
     );
-    assert.equal(replacementArchitectureProject(matches, 'office'), undefined);
-    assert.equal(replacementArchitectureProject([], 'a3s-system'), undefined);
+    assert.equal(replacementArchitectureProject(matches, "office"), undefined);
+    assert.equal(replacementArchitectureProject([], "code"), undefined);
   });
 
-  test('prefers an exact project name over broader component matches', () => {
-    const matches = filterArchitectureProjects('all', 'Office');
+  test("prefers an exact project name over broader component matches", () => {
+    const matches = filterArchitectureProjects("all", "Office");
 
     assert.equal(
-      replacementArchitectureProject(matches, 'a3s-system', 'Office')?.name,
-      'Office',
+      replacementArchitectureProject(matches, "code", "Office")?.name,
+      "Office",
     );
     assert.equal(
-      replacementArchitectureProject(matches, 'office', 'Office'),
+      replacementArchitectureProject(matches, "office", "Office"),
       undefined,
     );
   });

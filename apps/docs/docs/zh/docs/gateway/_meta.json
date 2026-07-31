@@ -1,0 +1,25 @@
+[
+  "index",
+  "quick-start",
+  "wire-firewall",
+  {
+    "type": "section-header",
+    "label": "核心"
+  },
+  "configuration",
+  "routing",
+  {
+    "type": "dir",
+    "name": "middleware",
+    "label": "中间件",
+    "collapsible": true,
+    "collapsed": true
+  },
+  "services",
+  {
+    "type": "section-header",
+    "label": "运维"
+  },
+  "observability",
+  "deployment"
+]
