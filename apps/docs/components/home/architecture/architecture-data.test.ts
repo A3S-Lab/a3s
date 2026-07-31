@@ -48,6 +48,35 @@ describe("homepage architecture atlas", () => {
     );
   });
 
+  test("keeps the localized CLI terminal on the real command surface", () => {
+    const expectedCommands = [
+      "a3s config paths",
+      "a3s model current",
+      'a3s code exec "Check the API boundary"',
+      "a3s web -d",
+      "a3s doctor",
+    ];
+    const englishCommands = homeContent.en.hero.terminal.commands;
+    const chineseCommands = homeContent.cn.hero.terminal.commands;
+
+    assert.deepEqual(
+      englishCommands.map((command) => command.command),
+      expectedCommands,
+    );
+    assert.deepEqual(
+      chineseCommands.map((command) => command.command),
+      expectedCommands,
+    );
+    assert.deepEqual(
+      englishCommands.map((command) => command.id),
+      chineseCommands.map((command) => command.id),
+    );
+    for (const command of [...englishCommands, ...chineseCommands]) {
+      assert.ok(command.summary.length > 0);
+      assert.ok(command.output.length > 0);
+    }
+  });
+
   test("uses project-specific topologies instead of one fixed template", () => {
     const nodeCounts = new Set(
       architectureProjects.map((project) => project.nodes.length),

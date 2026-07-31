@@ -16,24 +16,15 @@ import {
   ARCHITECTURE_SELECT_PROJECT_EVENT,
   ArchitectureAtlas,
 } from "./home/architecture-atlas";
+import { CliTerminalDemo } from "./home/cli-terminal-demo";
 import { CopyCommand } from "./home/copy-command";
+import { HeroTypewriter } from "./home/hero-typewriter";
 import { HomeNav } from "./home/home-nav";
 import { homeContent, type AiNativeCopy, type Lang } from "./home/home-content";
 import { SiteLink } from "./home/site-link";
 import { localePath } from "../lib/i18n";
 
 const signalIcons = [Terminal, ShieldCheck, Layers3, CheckCircle2];
-
-const heroOrbitNodes = [
-  { label: "CLI", x: 50, y: 10 },
-  { label: "WEB", x: 78, y: 22 },
-  { label: "CLOUD", x: 90, y: 50 },
-  { label: "RUNTIME", x: 78, y: 78 },
-  { label: "BOX", x: 50, y: 90 },
-  { label: "FLOW", x: 22, y: 78 },
-  { label: "USE", x: 10, y: 50 },
-  { label: "CODE", x: 22, y: 22 },
-] as const;
 
 function AiNativeSection({
   content,
@@ -276,12 +267,13 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
               <span />
               {tr.hero.eyebrow}
             </div>
-            <h1 id="a3s-hero-title">
-              <span>{tr.hero.lineOne}</span>
-              <span>{tr.hero.lineTwo}</span>
-              <em>{tr.hero.accent}</em>
-            </h1>
-            <p>{tr.hero.description}</p>
+            <HeroTypewriter
+              accent={tr.hero.accent}
+              description={tr.hero.description}
+              id="a3s-hero-title"
+              lineOne={tr.hero.lineOne}
+              lineTwo={tr.hero.lineTwo}
+            />
             <div className="a3s-hero__actions">
               <SiteLink
                 className="a3s-button a3s-button--primary"
@@ -302,68 +294,7 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
             </div>
           </div>
 
-          <div className="a3s-system-panel" aria-label="A3S local session flow">
-            <div className="a3s-system-panel__chrome">
-              <span>
-                <i /> <i /> <i />
-              </span>
-              <code>{tr.hero.terminalTitle}</code>
-              <b>{tr.hero.terminalReady}</b>
-            </div>
-            <div className="a3s-system-panel__body">
-              <div className="a3s-system-orbit" aria-hidden="true">
-                <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-                  <circle cx="50" cy="50" r="40" />
-                  {heroOrbitNodes.map((node) => (
-                    <line
-                      key={node.label}
-                      x1="50"
-                      x2={node.x}
-                      y1="50"
-                      y2={node.y}
-                    />
-                  ))}
-                  <path d="M22 22 C22 38 38 38 38 50 S38 78 22 78" />
-                  <path d="M78 22 C78 38 62 38 62 50 S62 78 78 78" />
-                  <path d="M10 50 C28 50 30 35 50 35 S72 50 90 50" />
-                  <path d="M10 50 C28 50 30 65 50 65 S72 50 90 50" />
-                </svg>
-                {heroOrbitNodes.map((node) => (
-                  <span
-                    key={node.label}
-                    style={
-                      {
-                        "--orbit-x": `${node.x}%`,
-                        "--orbit-y": `${node.y}%`,
-                      } as CSSProperties
-                    }
-                  >
-                    <i />
-                    <b>{node.label}</b>
-                  </span>
-                ))}
-                <div className="a3s-system-orbit__core">
-                  <small>shared runtime</small>
-                  <b>{tr.hero.policy}</b>
-                </div>
-              </div>
-              <div className="a3s-system-telemetry">
-                <div className="a3s-system-telemetry__head">
-                  <span>SESSION STATE</span>
-                  <span>
-                    <i /> {tr.hero.status}
-                  </span>
-                </div>
-                {tr.hero.terminalRows.map(([key, value]) => (
-                  <div className="a3s-system-telemetry__row" key={key}>
-                    <code>{key}</code>
-                    <span />
-                    <b>{value}</b>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <CliTerminalDemo content={tr.hero.terminal} key={lang} />
         </div>
       </section>
 

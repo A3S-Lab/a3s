@@ -97,6 +97,7 @@ const [chinese, english, chineseDocs, englishDocs, blog, englishBlog] =
 
 for (const marker of [
   "A3S 是",
+  "AI Native 的",
   "智能体",
   "操作系统",
   'id="ai-native"',
@@ -109,6 +110,7 @@ for (const marker of [
 
 for (const marker of [
   "A3S is",
+  "the AI Native",
   "operating system",
   "for agents",
   'id="ai-native"',
@@ -117,6 +119,17 @@ for (const marker of [
   "Gateway · Runtime · Cloud",
 ]) {
   assert(english.includes(marker), `English homepage is missing: ${marker}`);
+}
+
+for (const command of [
+  "a3s config paths",
+  "a3s model current",
+  "a3s code exec",
+  "a3s web -d",
+  "a3s doctor",
+]) {
+  assert(chinese.includes(command), `Chinese CLI demo is missing: ${command}`);
+  assert(english.includes(command), `English CLI demo is missing: ${command}`);
 }
 
 assert(chinese.includes("Web"), "Chinese homepage has no Web product");
@@ -222,7 +235,8 @@ const css = (
 
 for (const selector of [
   ".a3s-home-nav",
-  ".a3s-system-orbit",
+  ".a3s-cli-terminal__screen",
+  ".a3s-type-char",
   ".a3s-native__flow",
   ".a3s-native__stack",
   ".a3s-atlas__node",

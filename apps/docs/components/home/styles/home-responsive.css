@@ -82,10 +82,12 @@
     padding-top: 76px;
     padding-bottom: 76px;
     gap: 62px;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .a3s-hero__copy {
+    width: 100%;
+    min-width: 0;
     max-width: 780px;
     padding-right: 0;
   }
@@ -193,20 +195,21 @@
     line-height: 1.04;
   }
 
-  .a3s-hero__copy > p {
+  .a3s-hero__description {
     font-size: 12px;
   }
 
   .a3s-system-panel {
-    min-height: 520px;
+    min-height: 540px;
+    grid-template-rows: 40px 52px minmax(350px, 1fr) 48px;
   }
 
-  .a3s-system-panel__body {
-    min-height: 480px;
+  .a3s-cli-terminal__screen {
+    padding: 28px 23px;
   }
 
-  .a3s-system-orbit {
-    width: min(100%, 430px);
+  .a3s-cli-terminal__footer {
+    gap: 10px;
   }
 
   .a3s-signal-strip > div {
@@ -386,7 +389,8 @@
   }
 
   .a3s-system-panel {
-    min-height: 460px;
+    min-height: 500px;
+    grid-template-rows: 40px 50px minmax(330px, 1fr) 48px;
   }
 
   .a3s-system-panel__chrome {
@@ -397,28 +401,48 @@
     display: none;
   }
 
-  .a3s-system-panel__body {
-    min-height: 420px;
+  .a3s-cli-terminal__tabs {
+    grid-template-columns: repeat(5, minmax(68px, 1fr));
   }
 
-  .a3s-system-orbit > span {
-    width: 58px;
+  .a3s-cli-terminal__tabs button {
+    padding: 0 8px;
   }
 
-  .a3s-system-orbit > span b {
-    font-size: 6px;
-  }
-
-  .a3s-system-orbit__core {
-    width: 118px;
-  }
-
-  .a3s-system-telemetry__head span:first-child {
+  .a3s-cli-terminal__tabs small {
     display: none;
   }
 
-  .a3s-system-telemetry__head {
-    justify-content: flex-end;
+  .a3s-cli-terminal__screen {
+    padding: 24px 16px;
+  }
+
+  .a3s-cli-terminal__prompt {
+    gap: 8px;
+    font-size: 10px;
+  }
+
+  .a3s-cli-terminal__prompt code,
+  .a3s-cli-terminal__line code {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .a3s-cli-terminal__line {
+    font-size: 8px;
+  }
+
+  .a3s-cli-terminal__summary,
+  .a3s-cli-terminal__progress {
+    display: none;
+  }
+
+  .a3s-cli-terminal__footer {
+    grid-template-columns: 1fr auto;
+  }
+
+  .a3s-cli-terminal__footer > button {
+    min-width: 88px;
   }
 
   .a3s-signal-strip > div {
@@ -463,5 +487,14 @@
   .a3s-module-field span {
     opacity: 1;
     transform: none;
+  }
+
+  .a3s-type-char {
+    opacity: 1;
+    animation: none !important;
+  }
+
+  .a3s-hero__type-caret {
+    display: none;
   }
 }

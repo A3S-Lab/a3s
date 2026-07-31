@@ -33,6 +33,34 @@ export interface AiNativeCopy {
   reasons: readonly AiNativeReasonCopy[];
 }
 
+export type CliTerminalLineTone =
+  "default" | "muted" | "path" | "success" | "command";
+
+export interface CliTerminalLineCopy {
+  text: string;
+  tone?: CliTerminalLineTone;
+}
+
+export interface CliTerminalCommandCopy {
+  id: string;
+  label: string;
+  command: string;
+  summary: string;
+  output: readonly CliTerminalLineCopy[];
+}
+
+export interface CliTerminalCopy {
+  ariaLabel: string;
+  title: string;
+  play: string;
+  pause: string;
+  typing: string;
+  running: string;
+  complete: string;
+  paused: string;
+  commands: readonly CliTerminalCommandCopy[];
+}
+
 export const lifecycleProjects = {
   foundation: ["homebrew", "docs", "cli", "acl", "common"],
   build: ["code", "tui", "web", "desktop", "gui", "webview"],
@@ -63,28 +91,123 @@ export const homeContent = {
       menu: "Open navigation",
     },
     hero: {
-      eyebrow: "OPEN SOURCE · RUST NATIVE · LOCAL FIRST",
+      eyebrow: "OPEN SOURCE · AI NATIVE · LOCAL FIRST",
       lineOne: "A3S is",
-      lineTwo: "an operating system",
-      accent: "for agents.",
+      lineTwo: "the AI Native",
+      accent: "operating system for agents.",
       description:
-        "It runs on Linux, macOS, and Windows and gives sessions, tools, state, workflows, execution, and policy one set of interfaces. Start on your machine; add Box or Cloud when the work needs isolation or remote resources.",
-      primaryAction: "Install A3S",
-      secondaryAction: "See every project",
-      terminalTitle: "a3s / system",
-      terminalReady: "RUNNING",
-      terminalRows: [
-        ["session", "local"],
-        ["tools", "governed"],
-        ["state", "persistent"],
-        ["execution", "ready"],
-      ],
-      policy: "A3S OS",
-      status: "system ready",
+        "AI Native treats an agent as a unit that can be built, deployed, and operated. A3S gives its sessions, models, tools, state, workflows, execution, and permissions one interface—from a local machine to Box and Cloud.",
+      primaryAction: "Install A3S CLI",
+      secondaryAction: "Explore project architecture",
+      terminal: {
+        ariaLabel: "Interactive A3S CLI command demonstration",
+        title: "a3s cli / ~/workspace",
+        play: "Play commands",
+        pause: "Pause commands",
+        typing: "typing",
+        running: "running",
+        complete: "exit 0",
+        paused: "paused",
+        commands: [
+          {
+            id: "paths",
+            label: "PATHS",
+            command: "a3s config paths",
+            summary: "Configuration, state, and workspace paths resolved",
+            output: [
+              {
+                text: "config             ~/.config/a3s/config.acl",
+                tone: "path",
+              },
+              {
+                text: "workspace config   ./.a3s/config.acl",
+                tone: "path",
+              },
+              {
+                text: "state              ~/.local/state/a3s",
+                tone: "path",
+              },
+              { text: "agent              ./.a3s/agents", tone: "path" },
+              { text: "memory             ./.a3s/memory", tone: "path" },
+            ],
+          },
+          {
+            id: "model",
+            label: "MODEL",
+            command: "a3s model current",
+            summary: "Effective model and its ACL source shown",
+            output: [
+              { text: "codex/gpt-5.2-codex", tone: "success" },
+              {
+                text: "config: ~/.config/a3s/config.acl",
+                tone: "path",
+              },
+            ],
+          },
+          {
+            id: "code",
+            label: "CODE",
+            command: 'a3s code exec "Check the API boundary"',
+            summary: "One non-interactive Code session completed",
+            output: [
+              { text: "tool: rg", tone: "muted" },
+              { text: "tool: read", tone: "muted" },
+              { text: "Checked 12 API routes." },
+              {
+                text: "No boundary violations found.",
+                tone: "success",
+              },
+            ],
+          },
+          {
+            id: "web",
+            label: "WEB",
+            command: "a3s web -d",
+            summary: "Managed Web instance started and verified",
+            output: [
+              {
+                text: "A3S Web:       http://127.0.0.1:7331/",
+                tone: "path",
+              },
+              {
+                text: "A3S Code API:  http://127.0.0.1:7331/api/health",
+                tone: "path",
+              },
+              { text: "Background PID: 84217", tone: "muted" },
+              { text: "a3s web status", tone: "command" },
+              { text: "running · pid 84217 · managed", tone: "success" },
+            ],
+          },
+          {
+            id: "doctor",
+            label: "DOCTOR",
+            command: "a3s doctor",
+            summary: "Installed components passed their health checks",
+            output: [
+              {
+                text: "ok code               Bundled / Ready",
+                tone: "success",
+              },
+              {
+                text: "ok box                Managed / Ready",
+                tone: "success",
+              },
+              {
+                text: "ok use                Managed / Ready",
+                tone: "success",
+              },
+              {
+                text: "ok use/browser        External / Ready",
+                tone: "success",
+              },
+            ],
+          },
+        ],
+      } satisfies CliTerminalCopy,
     },
     signal: [
       "Linux · macOS · Windows",
-      "Local sessions and state",
+      "Agent sessions and durable state",
       "Tools, policy, and workflows",
       "Box and Cloud when needed",
     ],
@@ -251,28 +374,123 @@ export const homeContent = {
       menu: "打开导航",
     },
     hero: {
-      eyebrow: "开源 · RUST 原生 · 本地优先",
+      eyebrow: "开源 · AI NATIVE · 本地优先",
       lineOne: "A3S 是",
-      lineTwo: "智能体",
-      accent: "操作系统。",
+      lineTwo: "AI Native 的",
+      accent: "智能体操作系统。",
       description:
-        "它运行在 Linux、macOS 和 Windows 之上，把会话、工具、状态、工作流、执行环境和权限收进一套接口。先从本机开始，需要隔离或远程资源时再接入 Box 与 Cloud。",
-      primaryAction: "安装 A3S",
-      secondaryAction: "查看全部项目",
-      terminalTitle: "a3s / 系统",
-      terminalReady: "运行中",
-      terminalRows: [
-        ["session", "local"],
-        ["tools", "governed"],
-        ["state", "persistent"],
-        ["execution", "ready"],
-      ],
-      policy: "A3S OS",
-      status: "系统就绪",
+        "AI Native 把智能体作为可开发、可部署、可运维的执行单元。A3S 统一它的会话、模型、工具、状态、工作流、运行环境和权限，从本机到 Box 与 Cloud 使用同一套接口。",
+      primaryAction: "安装 A3S CLI",
+      secondaryAction: "查看项目架构",
+      terminal: {
+        ariaLabel: "A3S CLI 命令交互演示",
+        title: "a3s cli / ~/workspace",
+        play: "播放命令",
+        pause: "暂停命令",
+        typing: "输入中",
+        running: "执行中",
+        complete: "退出码 0",
+        paused: "已暂停",
+        commands: [
+          {
+            id: "paths",
+            label: "路径",
+            command: "a3s config paths",
+            summary: "已解析配置、状态与工作区路径",
+            output: [
+              {
+                text: "config             ~/.config/a3s/config.acl",
+                tone: "path",
+              },
+              {
+                text: "workspace config   ./.a3s/config.acl",
+                tone: "path",
+              },
+              {
+                text: "state              ~/.local/state/a3s",
+                tone: "path",
+              },
+              { text: "agent              ./.a3s/agents", tone: "path" },
+              { text: "memory             ./.a3s/memory", tone: "path" },
+            ],
+          },
+          {
+            id: "model",
+            label: "模型",
+            command: "a3s model current",
+            summary: "已显示当前模型与对应 ACL 配置",
+            output: [
+              { text: "codex/gpt-5.2-codex", tone: "success" },
+              {
+                text: "config: ~/.config/a3s/config.acl",
+                tone: "path",
+              },
+            ],
+          },
+          {
+            id: "code",
+            label: "CODE",
+            command: 'a3s code exec "Check the API boundary"',
+            summary: "已完成一次非交互 Code 会话",
+            output: [
+              { text: "tool: rg", tone: "muted" },
+              { text: "tool: read", tone: "muted" },
+              { text: "Checked 12 API routes." },
+              {
+                text: "No boundary violations found.",
+                tone: "success",
+              },
+            ],
+          },
+          {
+            id: "web",
+            label: "WEB",
+            command: "a3s web -d",
+            summary: "Web 后台实例已启动并通过状态检查",
+            output: [
+              {
+                text: "A3S Web:       http://127.0.0.1:7331/",
+                tone: "path",
+              },
+              {
+                text: "A3S Code API:  http://127.0.0.1:7331/api/health",
+                tone: "path",
+              },
+              { text: "Background PID: 84217", tone: "muted" },
+              { text: "a3s web status", tone: "command" },
+              { text: "running · pid 84217 · managed", tone: "success" },
+            ],
+          },
+          {
+            id: "doctor",
+            label: "诊断",
+            command: "a3s doctor",
+            summary: "已安装组件全部通过健康检查",
+            output: [
+              {
+                text: "ok code               Bundled / Ready",
+                tone: "success",
+              },
+              {
+                text: "ok box                Managed / Ready",
+                tone: "success",
+              },
+              {
+                text: "ok use                Managed / Ready",
+                tone: "success",
+              },
+              {
+                text: "ok use/browser        External / Ready",
+                tone: "success",
+              },
+            ],
+          },
+        ],
+      } satisfies CliTerminalCopy,
     },
     signal: [
       "Linux · macOS · Windows",
-      "本地会话与状态",
+      "智能体会话与持久状态",
       "工具、权限与工作流",
       "Box、Cloud 按需接入",
     ],
