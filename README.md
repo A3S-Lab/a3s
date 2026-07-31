@@ -257,6 +257,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Research | Evidence is admitted only from fetched text or validated workspace sources; local-only mode remains network-free |
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
+| Test | The deterministic Web runner, ACL admission, structured reports, and interrupt-safe browser cleanup are working; LLM planning, GUI/CUA, TUI/PTY, MCP, and Skill surfaces remain planned |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
 | Office | Pre-1.0; five browser-native surfaces and native CLI/MCP/Skill automation exist, while the first npm package release is still pending |
 | Parser | Pre-alpha contract and architecture foundation; Office/OCR adapters, per-unit layout rendering, format breadth, and production scale evidence remain planned |
@@ -362,6 +363,7 @@ distribution assets.
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
 | [A3S Box](crates/box/) | Node-local Linux OCI provider with explicit MicroVM or shared-kernel Sandbox selection and local SDKs |
 | [A3S Bench](crates/bench/) | Reproducible Task, Candidate, and Judge evaluation; source implemented, compatible umbrella component release pending |
+| [A3S Test](crates/test/) | Agent-ready typed E2E runtime with a working Web driver and shared contracts for planned GUI and TUI testing |
 | [A3S Search](crates/search/) | Quality-gated Browser-first discovery, lazy HTTP/RSS and native API fallbacks, ranking, deduplication, and cascade receipts |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |

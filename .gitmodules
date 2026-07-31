@@ -91,3 +91,6 @@
 [submodule "crates/parser"]
 	path = crates/parser
 	url = git@github.com:A3S-Lab/Parser.git
+[submodule "crates/test"]
+	path = crates/test
+	url = git@github.com:A3S-Lab/Test.git
