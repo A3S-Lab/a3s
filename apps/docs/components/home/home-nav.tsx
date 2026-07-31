@@ -21,6 +21,7 @@ export function HomeNav({ lang }: { lang: Lang }) {
 
   const anchorLinks = [
     { label: tr.aiNative, href: "#ai-native" },
+    { label: tr.cloudLifecycle, href: "#cloud-lifecycle" },
     { label: tr.architecture, href: "#architecture" },
   ];
 

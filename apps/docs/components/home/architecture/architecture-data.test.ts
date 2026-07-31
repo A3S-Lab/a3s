@@ -77,6 +77,72 @@ describe("homepage architecture atlas", () => {
     }
   });
 
+  test("keeps the Cloud lifecycle terminal on real progressive and Cloud contracts", () => {
+    const english = homeContent.en.cloudLifecycle;
+    const chinese = homeContent.cn.cloudLifecycle;
+    const expectedStageIds = [
+      "develop",
+      "discover",
+      "deploy",
+      "converge",
+      "serve",
+      "observe",
+      "recover",
+    ];
+
+    assert.deepEqual(
+      english.stages.map((stage) => stage.id),
+      expectedStageIds,
+    );
+    assert.deepEqual(
+      chinese.stages.map((stage) => stage.id),
+      expectedStageIds,
+    );
+
+    for (const content of [english, chinese]) {
+      assert.equal(
+        content.contract[0]?.value,
+        "POST /api/v1/kernel/capabilities",
+      );
+      assert.equal(content.contract[1]?.value, "search → describe → execute");
+      assert.deepEqual(
+        content.systems.map((system) => system.id),
+        ["code", "os", "cloud", "runtime", "gateway"],
+      );
+
+      const commands = content.stages.map((stage) => stage.command);
+      assert.ok(commands.includes("a3s code"));
+      assert.deepEqual(
+        content.stages.map((stage) => stage.prompt),
+        ["$", "›", "›", "→", "›", "›", "›"],
+      );
+
+      const trace = content.stages
+        .flatMap((stage) => stage.lines.map((line) => line.text))
+        .join("\n");
+      for (const marker of [
+        '"action":"search"',
+        '"action":"describe"',
+        '"action":"execute"',
+        "AgentBuildController_triggerAgentBuild",
+        "TriggerAgentBuildRequestDto",
+        "a3s_cloud_workloads_get",
+        "a3s_cloud_routes_get",
+        "a3s_cloud_workload_logs_get",
+        "a3s_cloud_workloads_rollback",
+        "workloadId · sourceRevisionId · idempotencyKey",
+      ]) {
+        assert.ok(trace.includes(marker), `Cloud trace is missing: ${marker}`);
+      }
+
+      for (const stage of content.stages) {
+        assert.ok(stage.lines.length >= 5);
+        assert.ok(stage.systems.length > 0);
+        assert.ok(stage.result.length > 0);
+      }
+    }
+  });
+
   test("uses project-specific topologies instead of one fixed template", () => {
     const nodeCounts = new Set(
       architectureProjects.map((project) => project.nodes.length),

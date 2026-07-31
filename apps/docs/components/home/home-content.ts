@@ -1,3 +1,5 @@
+import { cloudLifecycleContent } from "./cloud-lifecycle-content";
+
 export type Lang = "en" | "cn";
 
 export interface AiNativeStepCopy {
@@ -61,6 +63,64 @@ export interface CliTerminalCopy {
   commands: readonly CliTerminalCommandCopy[];
 }
 
+export type CloudLifecycleSystemId =
+  "code" | "os" | "cloud" | "runtime" | "gateway";
+
+export type CloudLifecycleLineTone = "default" | "muted" | "accent" | "success";
+
+export interface CloudLifecycleLineCopy {
+  source: string;
+  text: string;
+  tone?: CloudLifecycleLineTone;
+}
+
+export interface CloudLifecycleStageCopy {
+  id: string;
+  index: string;
+  phase: string;
+  title: string;
+  summary: string;
+  result: string;
+  prompt: string;
+  command: string;
+  lines: readonly CloudLifecycleLineCopy[];
+  systems: readonly CloudLifecycleSystemId[];
+}
+
+export interface CloudLifecycleCopy {
+  eyebrow: string;
+  title: string;
+  description: string;
+  ariaLabel: string;
+  terminalTitle: string;
+  stageNavigation: string;
+  systemPath: string;
+  play: string;
+  pause: string;
+  typing: string;
+  running: string;
+  complete: string;
+  paused: string;
+  contract: readonly {
+    label: string;
+    value: string;
+  }[];
+  systems: readonly {
+    id: CloudLifecycleSystemId;
+    label: string;
+    detail: string;
+  }[];
+  stages: readonly CloudLifecycleStageCopy[];
+  verified: {
+    label: string;
+    value: string;
+  };
+  next: {
+    label: string;
+    value: string;
+  };
+}
+
 export const lifecycleProjects = {
   foundation: ["homebrew", "docs", "cli", "acl", "common"],
   build: ["code", "tui", "web", "desktop", "gui", "webview"],
@@ -84,6 +144,7 @@ export const homeContent = {
   en: {
     nav: {
       aiNative: "AI Native",
+      cloudLifecycle: "Cloud lifecycle",
       architecture: "Architecture",
       docs: "Docs",
       blog: "Blog",
@@ -327,6 +388,7 @@ export const homeContent = {
         },
       ],
     } satisfies AiNativeCopy,
+    cloudLifecycle: cloudLifecycleContent.en,
     architecture: {
       eyebrow: "36 PROJECTS / INTERNAL ARCHITECTURE",
       title: "Inside every A3S project.",
@@ -367,6 +429,7 @@ export const homeContent = {
   cn: {
     nav: {
       aiNative: "AI Native",
+      cloudLifecycle: "云端生命周期",
       architecture: "架构",
       docs: "文档",
       blog: "博客",
@@ -610,6 +673,7 @@ export const homeContent = {
         },
       ],
     } satisfies AiNativeCopy,
+    cloudLifecycle: cloudLifecycleContent.cn,
     architecture: {
       eyebrow: "36 个项目 / 内部技术架构",
       title: "A3S 各项目的内部结构",

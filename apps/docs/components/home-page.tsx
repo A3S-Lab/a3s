@@ -17,6 +17,7 @@ import {
   ArchitectureAtlas,
 } from "./home/architecture-atlas";
 import { CliTerminalDemo } from "./home/cli-terminal-demo";
+import { CloudLifecycleTerminal } from "./home/cloud-lifecycle-terminal";
 import { CopyCommand } from "./home/copy-command";
 import { HeroTypewriter } from "./home/hero-typewriter";
 import { HomeNav } from "./home/home-nav";
@@ -313,6 +314,8 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
       </section>
 
       <AiNativeSection content={tr.aiNative} lang={lang} />
+
+      <CloudLifecycleTerminal content={tr.cloudLifecycle} key={lang} />
 
       <section
         className="a3s-architecture"

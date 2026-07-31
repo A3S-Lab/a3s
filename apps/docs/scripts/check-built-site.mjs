@@ -101,8 +101,14 @@ for (const marker of [
   "智能体",
   "操作系统",
   'id="ai-native"',
+  'id="cloud-lifecycle"',
   'id="architecture"',
   "渐进式 API",
+  "POST /api/v1/kernel/capabilities",
+  "search → describe → execute",
+  "提交部署意图",
+  "读取有边界的日志",
+  "H0.3",
   "Gateway · Runtime · Cloud",
 ]) {
   assert(chinese.includes(marker), `Chinese homepage is missing: ${marker}`);
@@ -114,8 +120,14 @@ for (const marker of [
   "operating system",
   "for agents",
   'id="ai-native"',
+  'id="cloud-lifecycle"',
   'id="architecture"',
   "Progressive API",
+  "POST /api/v1/kernel/capabilities",
+  "search → describe → execute",
+  "Commit deployment intent",
+  "Read bounded logs",
+  "H0.3",
   "Gateway · Runtime · Cloud",
 ]) {
   assert(english.includes(marker), `English homepage is missing: ${marker}`);
@@ -236,6 +248,8 @@ const css = (
 for (const selector of [
   ".a3s-home-nav",
   ".a3s-cli-terminal__screen",
+  ".a3s-cloud-terminal__screen",
+  ".a3s-cloud-terminal__systems",
   ".a3s-type-char",
   ".a3s-native__flow",
   ".a3s-native__stack",
