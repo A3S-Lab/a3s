@@ -253,10 +253,6 @@ body:has(.a3s-site) .rp-nav {
   pointer-events: none;
 }
 
-.a3s-hero__ambient {
-  display: none;
-}
-
 .a3s-hero__grid {
   position: relative;
   z-index: 2;

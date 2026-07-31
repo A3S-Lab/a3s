@@ -2,6 +2,7 @@
 
 import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { CanvasSignalField } from "./canvas-signal-field";
 import type { CloudLifecycleCopy } from "./home-content";
 
 const TYPE_START_DELAY = 360;
@@ -35,6 +36,9 @@ export function CloudLifecycleTerminal({
           ? "running"
           : "complete";
   const phaseLabel = content[phase];
+  const activeSystems = content.systems.flatMap((system, index) =>
+    stage?.systems.includes(system.id) ? [index] : [],
+  );
 
   useEffect(() => {
     const motionPreference = window.matchMedia(
@@ -240,6 +244,12 @@ export function CloudLifecycleTerminal({
                 id="a3s-cloud-terminal-screen"
                 role="tabpanel"
               >
+                <CanvasSignalField
+                  activeIndex={activeIndex}
+                  activeSystems={activeSystems}
+                  playing={isPlaying}
+                  variant="terminal"
+                />
                 <header>
                   <span>{stage.phase}</span>
                   <b>{stage.title}</b>

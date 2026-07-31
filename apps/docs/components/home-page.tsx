@@ -16,6 +16,7 @@ import {
   ARCHITECTURE_SELECT_PROJECT_EVENT,
   ArchitectureAtlas,
 } from "./home/architecture-atlas";
+import { CanvasSignalField } from "./home/canvas-signal-field";
 import { CliTerminalDemo } from "./home/cli-terminal-demo";
 import { CloudLifecycleTerminal } from "./home/cloud-lifecycle-terminal";
 import { CopyCommand } from "./home/copy-command";
@@ -143,6 +144,12 @@ function AiNativeSection({
               } as CSSProperties
             }
           >
+            <CanvasSignalField
+              activeIndex={selectedStepIndex}
+              itemCount={content.steps.length}
+              playing={isPlaying}
+              variant="lifecycle"
+            />
             <span className="a3s-native__rail" aria-hidden="true">
               <i
                 className={isPlaying ? "is-playing" : undefined}
@@ -261,7 +268,7 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
       <HomeNav lang={lang} />
 
       <section className="a3s-hero" aria-labelledby="a3s-hero-title">
-        <div className="a3s-hero__ambient" aria-hidden="true" />
+        <CanvasSignalField variant="hero" />
         <div className="a3s-hero__grid">
           <div className="a3s-hero__copy">
             <div className="a3s-eyebrow">

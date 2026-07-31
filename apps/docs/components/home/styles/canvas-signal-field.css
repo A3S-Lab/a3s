@@ -1,0 +1,80 @@
+.a3s-canvas-field {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.a3s-canvas-field--hero {
+  z-index: 1;
+  opacity: 0.9;
+  mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.42),
+    #000 42%,
+    #000 92%,
+    transparent
+  );
+}
+
+.a3s-native__flow > .a3s-canvas-field--lifecycle {
+  z-index: 0;
+  opacity: 0.95;
+}
+
+.a3s-native__flow > button {
+  background: rgba(0, 0, 0, 0.94);
+}
+
+.a3s-native__flow > button.is-selected {
+  background: rgba(6, 16, 14, 0.9);
+}
+
+.a3s-cloud-terminal__screen > .a3s-canvas-field--terminal {
+  z-index: 0;
+  opacity: 0.82;
+}
+
+.a3s-cloud-terminal__screen > header,
+.a3s-cloud-terminal__screen > .a3s-cloud-terminal__prompt,
+.a3s-cloud-terminal__screen > .a3s-cloud-terminal__output,
+.a3s-cloud-terminal__screen > .a3s-visually-hidden {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 720px) {
+  .a3s-canvas-field--hero {
+    opacity: 0.62;
+    mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.76),
+      #000 35%,
+      #000 86%,
+      transparent
+    );
+  }
+
+  .a3s-native__flow > .a3s-canvas-field--lifecycle {
+    opacity: 0.76;
+  }
+
+  .a3s-cloud-terminal__screen > .a3s-canvas-field--terminal {
+    opacity: 0.62;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .a3s-canvas-field {
+    opacity: 0.34;
+  }
+}
+
+@media (forced-colors: active) {
+  .a3s-canvas-field {
+    display: none;
+  }
+}
