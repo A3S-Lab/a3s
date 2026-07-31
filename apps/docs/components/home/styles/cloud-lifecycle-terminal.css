@@ -271,7 +271,7 @@
   margin-top: 26px;
   align-items: start;
   gap: 10px;
-  grid-template-columns: auto minmax(0, max-content) 1px;
+  grid-template-columns: max-content minmax(0, 1fr) 1px;
   color: var(--a3s-text);
   font-size: 11px;
   line-height: 1.7;
