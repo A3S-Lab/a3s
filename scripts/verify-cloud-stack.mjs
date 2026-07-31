@@ -150,13 +150,14 @@ export function parseCloudStackLock(source) {
     validateAttributes(
       block,
       ['owner', 'path', 'source', 'version'],
-      ['package', 'repository', 'revision'],
+      ['manifest', 'package', 'repository', 'revision'],
     );
     const id = block.labels[0];
     const path = attribute(block, 'path', 'String');
     const sourceKind = attribute(block, 'source', 'String');
     const component = {
       id,
+      manifest: optionalAttribute(block, 'manifest', 'String') ?? 'Cargo.toml',
       owner: attribute(block, 'owner', 'String'),
       package: optionalAttribute(block, 'package', 'String'),
       path,
@@ -169,6 +170,11 @@ export function parseCloudStackLock(source) {
     invariant(!componentIds.has(id), `duplicate component ${id}`);
     componentIds.add(id);
     validateRelativePath(path, `component "${id}" path`);
+    validateRelativePath(component.manifest, `component "${id}" manifest`);
+    invariant(
+      component.manifest === 'Cargo.toml' || component.manifest.endsWith('/Cargo.toml'),
+      `component "${id}" manifest must name Cargo.toml`,
+    );
     invariant(!componentPaths.has(path), `duplicate component path ${path}`);
     componentPaths.add(path);
     invariant(
@@ -263,13 +269,48 @@ function git(root, args, options) {
   return run('git', args, root, options);
 }
 
-function readManifestIdentity(manifestPath, workspace = false) {
+function readManifestIdentity(manifestPath, componentRoot) {
   const source = readFileSync(manifestPath, 'utf8');
-  const sectionName = workspace ? 'workspace.package' : 'package';
-  const section = tomlSection(source, sectionName, manifestPath);
-  const version = quotedTomlValue(section, 'version', manifestPath);
-  const name = workspace ? undefined : quotedTomlValue(section, 'name', manifestPath);
+  if (!/^\[package\]\s*$/m.test(source)) {
+    const section = tomlSection(source, 'workspace.package', manifestPath);
+    const version = quotedTomlValue(section, 'version', manifestPath);
+    return { name: undefined, source, version };
+  }
+
+  const section = tomlSection(source, 'package', manifestPath);
+  const name = quotedTomlValue(section, 'name', manifestPath);
+  const explicitVersion = optionalQuotedTomlValue(section, 'version');
+  let version = explicitVersion;
+  if (!version) {
+    invariant(
+      /^version\.workspace\s*=\s*true\s*$/m.test(section),
+      `${manifestPath} is missing a quoted version or version.workspace = true`,
+    );
+    version = inheritedWorkspaceVersion(manifestPath, componentRoot);
+  }
   return { name, source, version };
+}
+
+function inheritedWorkspaceVersion(manifestPath, componentRoot) {
+  let directory = dirname(manifestPath);
+  while (directory === componentRoot || directory.startsWith(`${componentRoot}${sep}`)) {
+    const candidate = join(directory, 'Cargo.toml');
+    if (existsSync(candidate)) {
+      const source = readFileSync(candidate, 'utf8');
+      if (/^\[workspace\.package\]\s*$/m.test(source)) {
+        const section = tomlSection(source, 'workspace.package', candidate);
+        const version = optionalQuotedTomlValue(section, 'version');
+        if (version) {
+          return version;
+        }
+      }
+    }
+    if (directory === componentRoot) {
+      break;
+    }
+    directory = dirname(directory);
+  }
+  throw new Error(`${manifestPath} inherits a workspace version that could not be resolved`);
 }
 
 function tomlSection(source, name, label) {
@@ -283,11 +324,17 @@ function tomlSection(source, name, label) {
 }
 
 function quotedTomlValue(section, name, label) {
-  const match = new RegExp(`^${name.replaceAll('-', '\\-')}\\s*=\\s*"([^"]+)"\\s*$`, 'm').exec(
-    section,
-  );
-  invariant(match, `${label} is missing a quoted ${name}`);
-  return match[1];
+  const value = optionalQuotedTomlValue(section, name);
+  invariant(value, `${label} is missing a quoted ${name}`);
+  return value;
+}
+
+function optionalQuotedTomlValue(section, name) {
+  const match = new RegExp(
+    `^${name.replaceAll('-', '\\-')}\\s*=\\s*"([^"]+)"\\s*$`,
+    'm',
+  ).exec(section);
+  return match?.[1];
 }
 
 export function tomlDependency(source, sectionName, dependency, label = 'Cargo.toml') {
@@ -514,9 +561,9 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
   for (const component of lock.components) {
     const componentRoot = join(root, component.path);
     invariant(existsSync(componentRoot), `component "${component.id}" is not initialized`);
-    const manifestPath = join(componentRoot, 'Cargo.toml');
+    const manifestPath = join(componentRoot, component.manifest);
     invariant(existsSync(manifestPath), `component "${component.id}" is missing Cargo.toml`);
-    const identity = readManifestIdentity(manifestPath, component.id === 'cloud');
+    const identity = readManifestIdentity(manifestPath, componentRoot);
     invariant(
       identity.version === component.version,
       `component "${component.id}" manifest is ${identity.version}, expected ${component.version}`,
@@ -567,7 +614,12 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
       const tracked =
         git(
           root,
-          ['ls-files', '--error-unmatch', '--', `${component.path}/Cargo.toml`],
+          [
+            'ls-files',
+            '--error-unmatch',
+            '--',
+            `${component.path}/${component.manifest}`,
+          ],
           { allowFailure: true },
         ).status === 0;
       invariant(tracked, `workspace component "${component.id}" is not tracked`);

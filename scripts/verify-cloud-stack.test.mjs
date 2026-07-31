@@ -30,8 +30,27 @@ test('the lock rejects unsafe and duplicate component paths', () => {
   const unsafe = LOCK_SOURCE.replace('  path = "crates/acl"\n', '  path = "../acl"\n');
   assert.throws(() => parseCloudStackLock(unsafe), /normalized repository-relative path/);
 
+  const unsafeManifest = LOCK_SOURCE.replace(
+    '  manifest = "src/runtime/Cargo.toml"\n',
+    '  manifest = "../runtime/Cargo.toml"\n',
+  );
+  assert.throws(
+    () => parseCloudStackLock(unsafeManifest),
+    /component "box" manifest must be a normalized repository-relative path/,
+  );
+
   const duplicate = LOCK_SOURCE.replace('  path = "crates/boot"\n', '  path = "crates/acl"\n');
   assert.throws(() => parseCloudStackLock(duplicate), /duplicate component path crates\/acl/);
+});
+
+test('the Box component resolves its package from the nested Rust workspace', () => {
+  const box = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'box',
+  );
+  assert.ok(box);
+  assert.equal(box.manifest, 'src/runtime/Cargo.toml');
+  assert.equal(box.package, 'a3s-box-runtime');
+  assert.equal(box.version, '3.2.0');
 });
 
 test('the lock must use canonical a3s-acl attribute ordering', () => {

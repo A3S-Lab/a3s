@@ -6,6 +6,10 @@ records exact Cargo package versions, and names the protocol levels exercised
 by the gate. The root-owned Updater crate is pinned by its exact package version
 and by the root commit that contains it.
 
+Components whose package manifest is below the repository root declare a
+component-relative `manifest` path. Workspace-inherited package versions are
+resolved from the nearest enclosing Rust workspace manifest.
+
 The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
