@@ -1,84 +1,340 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'A3S — Governed agents, local AI work, and composable infrastructure';
+export const alt = 'A3S — Agent tools, workflows, and runtimes';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 export const dynamic = 'force-static';
+
+const orbitNodes = [
+  { label: 'CLI', x: 250, y: 44 },
+  { label: 'WEB', x: 396, y: 104 },
+  { label: 'CLOUD', x: 456, y: 250 },
+  { label: 'RUNTIME', x: 396, y: 396 },
+  { label: 'BOX', x: 250, y: 456 },
+  { label: 'FLOW', x: 104, y: 396 },
+  { label: 'USE', x: 44, y: 250 },
+  { label: 'CODE', x: 104, y: 104 },
+] as const;
 
 export default function OpenGraphImage() {
   return new ImageResponse(
     (
       <div
         style={{
+          display: 'flex',
           width: '100%',
           height: '100%',
-          display: 'flex',
-          position: 'relative',
           overflow: 'hidden',
-          background: 'linear-gradient(125deg, #07101f 0%, #10152c 58%, #24163f 100%)',
-          color: '#f5f7fb',
-          fontFamily: 'Arial, sans-serif',
+          background: '#000',
+          color: '#e8eae8',
+          fontFamily: 'monospace',
+          flexDirection: 'column',
         }}
       >
         <div
           style={{
-            position: 'absolute',
-            inset: 0,
-            opacity: 0.18,
-            backgroundImage:
-              'linear-gradient(rgba(145, 171, 220, 0.24) 1px, transparent 1px), linear-gradient(90deg, rgba(145, 171, 220, 0.24) 1px, transparent 1px)',
-            backgroundSize: '58px 58px',
+            display: 'flex',
+            height: 62,
+            padding: '0 34px',
+            borderBottom: '1px solid #292d2c',
+            alignItems: 'center',
           }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            width: 560,
-            height: 560,
-            right: -150,
-            bottom: -250,
-            border: '2px solid rgba(127, 161, 255, 0.24)',
-            borderRadius: '50%',
-            boxShadow: '0 0 0 70px rgba(127, 161, 255, 0.035), 0 0 0 140px rgba(127, 161, 255, 0.02)',
-          }}
-        />
-        <div style={{ display: 'flex', width: '100%', padding: '62px 70px', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 17 }}>
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: 23,
+              fontWeight: 700,
+              letterSpacing: '-0.04em',
+            }}
+          >
+            A3S
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              marginLeft: 15,
+              color: '#606563',
+              fontSize: 10,
+              letterSpacing: '0.16em',
+            }}
+          >
+            LAB
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              marginLeft: 'auto',
+              color: '#777d7a',
+              fontSize: 10,
+              letterSpacing: '0.14em',
+            }}
+          >
+            CODE / RUNTIME / CLOUD / TOOLS
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              marginLeft: 30,
+              color: '#75c7c3',
+              fontSize: 10,
+              letterSpacing: '0.14em',
+            }}
+          >
+            OPEN SOURCE
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', height: 568 }}>
+          <div
+            style={{
+              display: 'flex',
+              width: 610,
+              padding: '58px 42px 34px',
+              borderRight: '1px solid #666b69',
+              flexDirection: 'column',
+            }}
+          >
             <div
               style={{
                 display: 'flex',
-                width: 54,
-                height: 54,
-                border: '3px solid #6ca3ff',
-                borderRadius: '50%',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontSize: 28,
-                fontWeight: 800,
+                color: '#9a9f9d',
+                fontSize: 11,
+                letterSpacing: '0.14em',
               }}
             >
-              A
+              <span
+                style={{
+                  display: 'flex',
+                  width: 9,
+                  height: 9,
+                  marginRight: 11,
+                  border: '1px solid #75c7c3',
+                  borderRadius: 9,
+                }}
+              >
+                {' '}
+              </span>
+              RUST NATIVE · LOCAL FIRST
             </div>
-            <div style={{ display: 'flex', fontSize: 31, fontWeight: 800, letterSpacing: '-0.04em' }}>A3S</div>
-            <div style={{ display: 'flex', color: '#78859a', fontSize: 13, fontWeight: 700, letterSpacing: '0.18em' }}>RUST-NATIVE AGENT PLATFORM</div>
+            <div
+              style={{
+                display: 'flex',
+                marginTop: 38,
+                fontSize: 59,
+                fontWeight: 500,
+                letterSpacing: '-0.055em',
+                lineHeight: 1.03,
+                flexDirection: 'column',
+              }}
+            >
+              <span style={{ display: 'flex' }}>Run Code locally.</span>
+              <span style={{ display: 'flex', marginTop: 4 }}>
+                Add what the job
+              </span>
+              <span style={{ display: 'flex', color: '#75c7c3' }}>
+                actually needs.
+              </span>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                width: 510,
+                marginTop: 28,
+                color: '#9a9f9d',
+                fontSize: 17,
+                lineHeight: 1.55,
+              }}
+            >
+              34 independently released projects, each mapped from its own
+              source and architecture notes.
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                width: 230,
+                height: 42,
+                marginTop: 'auto',
+                padding: '0 14px',
+                borderTop: '1px solid #292d2c',
+                borderBottom: '1px solid #292d2c',
+                alignItems: 'center',
+                color: '#d5d8d5',
+                fontSize: 14,
+              }}
+            >
+              <span
+                style={{ display: 'flex', marginRight: 12, color: '#75c7c3' }}
+              >
+                $
+              </span>
+              a3s code
+            </div>
           </div>
 
-          <div style={{ display: 'flex', marginTop: 75, flexDirection: 'column' }}>
-            <div style={{ display: 'flex', fontSize: 75, fontWeight: 800, letterSpacing: '-0.055em', lineHeight: 0.96 }}>One command.</div>
-            <div style={{ display: 'flex', marginTop: 8, fontSize: 75, fontWeight: 800, letterSpacing: '-0.055em', lineHeight: 0.96 }}>Every boundary, explicit.</div>
-            <div style={{ display: 'flex', width: 710, marginTop: 28, color: '#a7b2c3', fontSize: 24, lineHeight: 1.45 }}>
-              Governed agents, local AI work, and composable infrastructure.
+          <div
+            style={{
+              display: 'flex',
+              width: 590,
+              padding: '26px 30px 20px',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                height: 34,
+                borderBottom: '1px solid #292d2c',
+                alignItems: 'center',
+                color: '#777d7a',
+                fontSize: 10,
+                letterSpacing: '0.12em',
+              }}
+            >
+              <span style={{ display: 'flex', gap: 4 }}>
+                {[0, 1, 2].map((bar) => (
+                  <span
+                    key={bar}
+                    style={{
+                      display: 'flex',
+                      width: 3,
+                      height: 12,
+                      background: '#e8eae8',
+                    }}
+                  />
+                ))}
+              </span>
+              <span style={{ display: 'flex', marginLeft: 'auto' }}>
+                A3S / PROJECT MAP
+              </span>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', marginTop: 'auto', alignItems: 'center', gap: 14 }}>
-            <div style={{ display: 'flex', padding: '14px 20px', border: '1px solid rgba(123, 160, 222, 0.35)', borderRadius: 8, background: 'rgba(4, 8, 16, 0.55)', color: '#dce7f8', fontFamily: 'monospace', fontSize: 17 }}>
-              <span style={{ color: '#54dda1', marginRight: 12 }}>$</span> a3s code
+            <div
+              style={{
+                display: 'flex',
+                width: 500,
+                height: 500,
+                margin: '3px auto 0',
+                position: 'relative',
+              }}
+            >
+              <svg width="500" height="500" viewBox="0 0 500 500">
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="206"
+                  fill="none"
+                  stroke="#a7aaa8"
+                  strokeWidth="1"
+                />
+                {orbitNodes.map((node) => (
+                  <line
+                    key={`line-${node.label}`}
+                    x1="250"
+                    x2={node.x}
+                    y1="250"
+                    y2={node.y}
+                    stroke="#505452"
+                    strokeDasharray="3 4"
+                    strokeWidth="1"
+                  />
+                ))}
+                <path
+                  d="M104 104 C104 185 186 165 186 250 S104 315 104 396"
+                  fill="none"
+                  stroke="#8a8f8c"
+                  strokeDasharray="3 4"
+                  strokeWidth="1"
+                />
+                <path
+                  d="M396 104 C396 185 314 165 314 250 S396 315 396 396"
+                  fill="none"
+                  stroke="#8a8f8c"
+                  strokeDasharray="3 4"
+                  strokeWidth="1"
+                />
+                <path
+                  d="M44 250 C140 250 150 185 250 185 S360 250 456 250"
+                  fill="none"
+                  stroke="#8a8f8c"
+                  strokeDasharray="3 4"
+                  strokeWidth="1"
+                />
+                <path
+                  d="M44 250 C140 250 150 315 250 315 S360 250 456 250"
+                  fill="none"
+                  stroke="#8a8f8c"
+                  strokeDasharray="3 4"
+                  strokeWidth="1"
+                />
+                {orbitNodes.map((node) => (
+                  <circle
+                    key={node.label}
+                    cx={node.x}
+                    cy={node.y}
+                    r="6"
+                    fill="#000"
+                    stroke="#b5b9b7"
+                    strokeWidth="1"
+                  />
+                ))}
+              </svg>
+              <div
+                style={{
+                  display: 'flex',
+                  position: 'absolute',
+                  top: 219,
+                  left: 174,
+                  width: 152,
+                  height: 62,
+                  border: '1px dashed #7f8481',
+                  background: '#000',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'flex',
+                    color: '#9a9f9d',
+                    fontSize: 10,
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  shared runtime
+                </span>
+                <span
+                  style={{
+                    display: 'flex',
+                    marginTop: 6,
+                    color: '#e8eae8',
+                    fontSize: 13,
+                  }}
+                >
+                  AgentSession
+                </span>
+              </div>
+              {orbitNodes.map((node) => (
+                <div
+                  key={node.label}
+                  style={{
+                    display: 'flex',
+                    position: 'absolute',
+                    top: node.y < 250 ? node.y - 25 : node.y + 10,
+                    left: node.x - 45,
+                    width: 90,
+                    justifyContent: 'center',
+                    color: '#b8bcba',
+                    fontSize: 9,
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  {node.label}
+                </div>
+              ))}
             </div>
-            {['CODE', 'WEB + WORK', 'RESEARCH', 'BOX'].map((item) => (
-              <div key={item} style={{ display: 'flex', color: '#7e8a9d', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em' }}>{item}</div>
-            ))}
           </div>
         </div>
       </div>

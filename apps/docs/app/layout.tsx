@@ -8,14 +8,18 @@ import '@/components/home/styles/architecture-atlas.css';
 import '@/components/home/styles/home-responsive.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
+const socialImage = `${siteUrl.replace(/\/$/, '')}/opengraph-image`;
+const defaultTitle = 'A3S — Agent 工具、工作流与运行时';
+const defaultDescription =
+  'A3S 包含 CLI、Code、Browser、Office、Flow、Runtime、Cloud 等独立项目，可按需安装并通过公开接口组合。';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'A3S — 可治理 Agent 与可组合基础设施',
+    default: defaultTitle,
     template: '%s | A3S',
   },
-  description: '面向可治理 Agent、本地 AI 工作与可组合基础设施的 Rust 原生平台。',
+  description: defaultDescription,
   keywords: [
     'A3S',
     'agentic agents',
@@ -38,13 +42,22 @@ export const metadata: Metadata = {
     locale: 'zh_CN',
     url: siteUrl,
     siteName: 'A3S',
-    title: 'A3S — 可治理 Agent 与可组合基础设施',
-    description: '面向可治理 Agent、本地 AI 工作与可组合基础设施的 Rust 原生平台。',
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [
+      {
+        url: socialImage,
+        width: 1200,
+        height: 630,
+        alt: 'A3S — Agent tools, workflows, and runtimes',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'A3S — 可治理 Agent 与可组合基础设施',
-    description: '面向可治理 Agent、本地 AI 工作与可组合基础设施的 Rust 原生平台。',
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [socialImage],
   },
   robots: {
     index: true,
@@ -64,9 +77,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
           rel="stylesheet"
         />
         <script

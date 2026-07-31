@@ -19,10 +19,14 @@ import Link from 'next/link';
 import { A3SMark } from '@/components/home/a3s-mark';
 import { architectureProjects } from '@/components/home/architecture';
 import { ArchitectureAtlas } from '@/components/home/architecture-atlas';
-import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
 import { CopyCommand } from '@/components/home/copy-command';
 import { HomeNav } from '@/components/home/home-nav';
-import { homeContent, type Lang, type ProductCopy, type ProductId } from '@/components/home/home-content';
+import {
+  homeContent,
+  type Lang,
+  type ProductCopy,
+  type ProductId,
+} from '@/components/home/home-content';
 import { localePath } from '@/lib/i18n';
 
 const productIcons: Record<ProductId, LucideIcon> = {
@@ -36,7 +40,26 @@ const productIcons: Record<ProductId, LucideIcon> = {
 
 const signalIcons = [Terminal, ShieldCheck, Layers3, CheckCircle2];
 
-function ProductCard({ product, action, lang }: { product: ProductCopy; action: string; lang: Lang }) {
+const heroOrbitNodes = [
+  { label: 'CLI', x: 50, y: 10 },
+  { label: 'WEB', x: 78, y: 22 },
+  { label: 'CLOUD', x: 90, y: 50 },
+  { label: 'RUNTIME', x: 78, y: 78 },
+  { label: 'BOX', x: 50, y: 90 },
+  { label: 'FLOW', x: 22, y: 78 },
+  { label: 'USE', x: 10, y: 50 },
+  { label: 'CODE', x: 22, y: 22 },
+] as const;
+
+function ProductCard({
+  product,
+  action,
+  lang,
+}: {
+  product: ProductCopy;
+  action: string;
+  lang: Lang;
+}) {
   const Icon = productIcons[product.id];
 
   return (
@@ -72,8 +95,11 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const products = tr.products.items as readonly ProductCopy[];
 
   return (
-    <main className="a3s-site">
-      <CanvasBackdrop />
+    <main
+      className="a3s-site"
+      data-lang={lang}
+      lang={lang === 'cn' ? 'zh-CN' : 'en'}
+    >
       <HomeNav lang={lang} />
 
       <section className="a3s-hero" aria-labelledby="a3s-hero-title">
@@ -91,7 +117,10 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
             </h1>
             <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
-              <Link className="a3s-button a3s-button--primary" href={localePath('/docs', lang)}>
+              <Link
+                className="a3s-button a3s-button--primary"
+                href={localePath('/docs', lang)}
+              >
                 {tr.hero.primaryAction}
                 <ArrowRight aria-hidden="true" />
               </Link>
@@ -107,36 +136,57 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
             </div>
           </div>
 
-          <div className="a3s-system-panel" aria-label="A3S governed execution topology">
+          <div className="a3s-system-panel" aria-label="A3S local session flow">
             <div className="a3s-system-panel__chrome">
-              <span><i /> <i /> <i /></span>
+              <span>
+                <i /> <i /> <i />
+              </span>
               <code>{tr.hero.terminalTitle}</code>
               <b>{tr.hero.terminalReady}</b>
             </div>
             <div className="a3s-system-panel__body">
-              <div className="a3s-system-flow">
-                <div className="a3s-system-node a3s-system-node--intent">
-                  <span>01</span>
-                  <b>{tr.hero.intent}</b>
-                  <small>prompt / goal / context</small>
-                </div>
-                <div className="a3s-system-connector"><i /><i /><i /></div>
-                <div className="a3s-system-node a3s-system-node--policy">
-                  <span>02</span>
+              <div className="a3s-system-orbit" aria-hidden="true">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                  <circle cx="50" cy="50" r="40" />
+                  {heroOrbitNodes.map((node) => (
+                    <line
+                      key={node.label}
+                      x1="50"
+                      x2={node.x}
+                      y1="50"
+                      y2={node.y}
+                    />
+                  ))}
+                  <path d="M22 22 C22 38 38 38 38 50 S38 78 22 78" />
+                  <path d="M78 22 C78 38 62 38 62 50 S62 78 78 78" />
+                  <path d="M10 50 C28 50 30 35 50 35 S72 50 90 50" />
+                  <path d="M10 50 C28 50 30 65 50 65 S72 50 90 50" />
+                </svg>
+                {heroOrbitNodes.map((node) => (
+                  <span
+                    key={node.label}
+                    style={
+                      {
+                        '--orbit-x': `${node.x}%`,
+                        '--orbit-y': `${node.y}%`,
+                      } as React.CSSProperties
+                    }
+                  >
+                    <i />
+                    <b>{node.label}</b>
+                  </span>
+                ))}
+                <div className="a3s-system-orbit__core">
+                  <small>shared runtime</small>
                   <b>{tr.hero.policy}</b>
-                  <small>model · tools · permissions</small>
-                </div>
-                <div className="a3s-system-connector"><i /><i /><i /></div>
-                <div className="a3s-system-node a3s-system-node--runtime">
-                  <span>03</span>
-                  <b>{tr.hero.runtime}</b>
-                  <small>process · container · MicroVM</small>
                 </div>
               </div>
               <div className="a3s-system-telemetry">
                 <div className="a3s-system-telemetry__head">
-                  <span>LIVE TELEMETRY</span>
-                  <span><i /> {tr.hero.status}</span>
+                  <span>SESSION STATE</span>
+                  <span>
+                    <i /> {tr.hero.status}
+                  </span>
                 </div>
                 {tr.hero.terminalRows.map(([key, value]) => (
                   <div className="a3s-system-telemetry__row" key={key}>
@@ -165,7 +215,11 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
       </section>
 
-      <section className="a3s-section a3s-products" id="products" aria-labelledby="a3s-products-title">
+      <section
+        className="a3s-section a3s-products"
+        id="products"
+        aria-labelledby="a3s-products-title"
+      >
         <div className="a3s-section-heading">
           <div>
             <span className="a3s-section-eyebrow">{tr.products.eyebrow}</span>
@@ -175,16 +229,27 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
         <div className="a3s-product-grid">
           {products.map((product) => (
-            <ProductCard action={tr.products.action} key={product.id} lang={lang} product={product} />
+            <ProductCard
+              action={tr.products.action}
+              key={product.id}
+              lang={lang}
+              product={product}
+            />
           ))}
         </div>
       </section>
 
-      <section className="a3s-architecture" id="architecture" aria-labelledby="a3s-architecture-title">
+      <section
+        className="a3s-architecture"
+        id="architecture"
+        aria-labelledby="a3s-architecture-title"
+      >
         <div className="a3s-section a3s-architecture__inner">
           <div className="a3s-architecture__copy">
             <div>
-              <span className="a3s-section-eyebrow">{tr.architecture.eyebrow}</span>
+              <span className="a3s-section-eyebrow">
+                {tr.architecture.eyebrow}
+              </span>
               <h2 id="a3s-architecture-title">{tr.architecture.title}</h2>
             </div>
             <p>{tr.architecture.description}</p>
@@ -193,7 +258,11 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
       </section>
 
-      <section className="a3s-section a3s-principles" id="principles" aria-labelledby="a3s-principles-title">
+      <section
+        className="a3s-section a3s-principles"
+        id="principles"
+        aria-labelledby="a3s-principles-title"
+      >
         <div className="a3s-section-heading">
           <div>
             <span className="a3s-section-eyebrow">{tr.principles.eyebrow}</span>
@@ -203,7 +272,14 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
         <div className="a3s-principle-grid">
           {tr.principles.items.map((item, index) => (
-            <article className={index === 0 ? 'a3s-principle-card is-featured' : 'a3s-principle-card'} key={item.index}>
+            <article
+              className={
+                index === 0
+                  ? 'a3s-principle-card is-featured'
+                  : 'a3s-principle-card'
+              }
+              key={item.index}
+            >
               <div>
                 <span>{item.index}</span>
                 <i />
@@ -223,7 +299,10 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           </div>
           <div className="a3s-module-field">
             {architectureProjects.map((project, index) => (
-              <span key={project.id} style={{ '--module-index': index } as React.CSSProperties}>
+              <span
+                key={project.id}
+                style={{ '--module-index': index } as React.CSSProperties}
+              >
                 <i /> {project.name}
               </span>
             ))}
@@ -231,7 +310,11 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
       </section>
 
-      <section className="a3s-section a3s-quickstart" id="quickstart" aria-labelledby="a3s-quickstart-title">
+      <section
+        className="a3s-section a3s-quickstart"
+        id="quickstart"
+        aria-labelledby="a3s-quickstart-title"
+      >
         <div className="a3s-quickstart__copy">
           <span className="a3s-section-eyebrow">{tr.quickstart.eyebrow}</span>
           <h2 id="a3s-quickstart-title">{tr.quickstart.title}</h2>
@@ -244,13 +327,25 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
         <div className="a3s-terminal-card">
           <div className="a3s-terminal-card__bar">
-            <span><i /><i /><i /></span>
+            <span>
+              <i />
+              <i />
+              <i />
+            </span>
             <code>~/workspace</code>
-            <CopyCommand command={tr.quickstart.command} copyLabel={tr.quickstart.copy} copiedLabel={tr.quickstart.copied} />
+            <CopyCommand
+              command={tr.quickstart.command}
+              copyLabel={tr.quickstart.copy}
+              copiedLabel={tr.quickstart.copied}
+            />
           </div>
-          <pre><code>{tr.quickstart.command}</code></pre>
+          <pre>
+            <code>{tr.quickstart.command}</code>
+          </pre>
           <div className="a3s-terminal-card__status">
-            <span><i /> ready</span>
+            <span>
+              <i /> ready
+            </span>
             <span>shell / zsh</span>
           </div>
         </div>
@@ -265,11 +360,19 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <h2 id="a3s-cta-title">{tr.cta.title}</h2>
           <p>{tr.cta.description}</p>
           <div>
-            <Link className="a3s-button a3s-button--light" href={localePath('/docs', lang)}>
+            <Link
+              className="a3s-button a3s-button--light"
+              href={localePath('/docs', lang)}
+            >
               {tr.cta.primary}
               <ArrowRight aria-hidden="true" />
             </Link>
-            <Link className="a3s-button a3s-button--outline" href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer">
+            <Link
+              className="a3s-button a3s-button--outline"
+              href="https://github.com/A3S-Lab/a3s"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Github aria-hidden="true" />
               {tr.cta.secondary}
             </Link>
@@ -289,13 +392,27 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <div className="a3s-footer__column">
             <b>{tr.footer.resources}</b>
             <Link href={localePath('/docs', lang)}>{tr.footer.docs}</Link>
-            <Link href={localePath('/tutorials', lang)}>{tr.footer.tutorials}</Link>
+            <Link href={localePath('/tutorials', lang)}>
+              {tr.footer.tutorials}
+            </Link>
             <Link href={localePath('/blog', lang)}>{tr.footer.blog}</Link>
           </div>
           <div className="a3s-footer__column">
             <b>{tr.footer.community}</b>
-            <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer">{tr.footer.github}</Link>
-            <Link href="https://discord.gg/XVg6Hu6H" target="_blank" rel="noopener noreferrer">{tr.footer.discord}</Link>
+            <Link
+              href="https://github.com/A3S-Lab"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {tr.footer.github}
+            </Link>
+            <Link
+              href="https://discord.gg/XVg6Hu6H"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {tr.footer.discord}
+            </Link>
           </div>
         </div>
         <div className="a3s-footer__base">

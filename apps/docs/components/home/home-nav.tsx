@@ -1,8 +1,18 @@
+'use client';
+
 import { Github, Menu, MoveUpRight } from 'lucide-react';
 import Link from 'next/link';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { A3SMark } from '@/components/home/a3s-mark';
 import { homeContent, type Lang } from '@/components/home/home-content';
 import { localePath } from '@/lib/i18n';
+
+function closeMobileNav(event: ReactMouseEvent<HTMLDivElement>) {
+  if (!(event.target instanceof Element) || !event.target.closest('a')) return;
+
+  const details = event.currentTarget.closest('details');
+  if (details) details.open = false;
+}
 
 export function HomeNav({ lang }: { lang: Lang }) {
   const tr = homeContent[lang].nav;
@@ -34,10 +44,20 @@ export function HomeNav({ lang }: { lang: Lang }) {
         </div>
 
         <div className="a3s-home-nav__actions">
-          <Link className="a3s-home-nav__language" href={languageHref} hrefLang={lang === 'cn' ? 'en' : 'zh-Hans'}>
+          <Link
+            className="a3s-home-nav__language"
+            href={languageHref}
+            hrefLang={lang === 'cn' ? 'en' : 'zh-Hans'}
+          >
             {tr.language}
           </Link>
-          <Link className="a3s-home-nav__github" href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer" aria-label="A3S on GitHub">
+          <Link
+            className="a3s-home-nav__github"
+            href="https://github.com/A3S-Lab/a3s"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="A3S on GitHub"
+          >
             <Github aria-hidden="true" />
           </Link>
           <Link className="a3s-home-nav__docs" href={localePath('/docs', lang)}>
@@ -47,10 +67,11 @@ export function HomeNav({ lang }: { lang: Lang }) {
         </div>
 
         <details className="a3s-home-nav__mobile">
-          <summary aria-label={tr.menu}>
+          <summary aria-haspopup="menu" aria-label={tr.menu} role="button">
             <Menu aria-hidden="true" />
+            <span className="sr-only">{tr.menu}</span>
           </summary>
-          <div className="a3s-home-nav__mobile-panel">
+          <div className="a3s-home-nav__mobile-panel" onClick={closeMobileNav}>
             {anchorLinks.map((item) => (
               <a href={item.href} key={item.href}>
                 {item.label}
@@ -59,7 +80,11 @@ export function HomeNav({ lang }: { lang: Lang }) {
             <Link href={localePath('/docs', lang)}>{tr.docs}</Link>
             <Link href={localePath('/blog', lang)}>{tr.blog}</Link>
             <Link href={languageHref}>{tr.language}</Link>
-            <Link href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer">
+            <Link
+              href="https://github.com/A3S-Lab/a3s"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               GitHub
             </Link>
           </div>

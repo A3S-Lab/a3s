@@ -4,21 +4,36 @@ import { isLocale, locales, localizedUrl, openGraphLocale } from '@/lib/i18n';
 import { notFound } from 'next/navigation';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
+const socialImage = `${siteUrl.replace(/\/$/, '')}/opengraph-image`;
+const metadataCopy = {
+  cn: {
+    title: 'A3S — Agent 工具、工作流与运行时',
+    description:
+      'A3S 包含 CLI、Code、Browser、Office、Flow、Runtime、Cloud 等独立项目，可按需安装并通过公开接口组合。',
+  },
+  en: {
+    title: 'A3S — Agent tools, workflows, and runtimes',
+    description:
+      'A3S provides independently released CLI, Code, Browser, Office, Flow, Runtime, Cloud, and related projects that connect through public interfaces.',
+  },
+} as const;
 
 export function generateStaticParams() {
   return locales.map((lang) => ({ lang }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
-  const isCn = lang === 'cn';
+  const copy = metadataCopy[lang];
 
   return {
-    title: isCn ? 'A3S — 可治理 Agent 与可组合基础设施' : 'A3S — Governed Agents. Composable Infrastructure.',
-    description: isCn
-      ? '面向可治理 Agent、本地 AI 工作与可组合基础设施的 Rust 原生平台。'
-      : 'A Rust-native platform for governed agents, local AI work, and composable infrastructure.',
+    title: { absolute: copy.title },
+    description: copy.description,
     alternates: {
       canonical: localizedUrl(siteUrl, '/', lang),
       languages: {
@@ -28,11 +43,31 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
     },
     openGraph: {
       locale: openGraphLocale(lang),
+      title: copy.title,
+      description: copy.description,
+      images: [
+        {
+          url: socialImage,
+          width: 1200,
+          height: 630,
+          alt: 'A3S — Agent tools, workflows, and runtimes',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: copy.title,
+      description: copy.description,
+      images: [socialImage],
     },
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   return <HomePage lang={lang} />;

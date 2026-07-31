@@ -9,7 +9,11 @@ interface CopyCommandProps {
   copiedLabel: string;
 }
 
-export function CopyCommand({ command, copyLabel, copiedLabel }: CopyCommandProps) {
+export function CopyCommand({
+  command,
+  copyLabel,
+  copiedLabel,
+}: CopyCommandProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -28,7 +32,13 @@ export function CopyCommand({ command, copyLabel, copiedLabel }: CopyCommandProp
   }
 
   return (
-    <button className="a3s-copy-command" type="button" onClick={copy} aria-live="polite">
+    <button
+      aria-label={copied ? copiedLabel : copyLabel}
+      aria-live="polite"
+      className="a3s-copy-command"
+      onClick={copy}
+      type="button"
+    >
       {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
       <span>{copied ? copiedLabel : copyLabel}</span>
     </button>

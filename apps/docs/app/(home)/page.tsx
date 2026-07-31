@@ -3,10 +3,14 @@ import HomePage from '@/components/home-page';
 import { localizedUrl } from '@/lib/i18n';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
+const socialImage = `${siteUrl.replace(/\/$/, '')}/opengraph-image`;
+const pageTitle = 'A3S — Agent 工具、工作流与运行时';
+const pageDescription =
+  'A3S 包含 CLI、Code、Browser、Office、Flow、Runtime、Cloud 等独立项目，可按需安装并通过公开接口组合。';
 
 export const metadata: Metadata = {
-  title: 'A3S — 可治理 Agent 与可组合基础设施',
-  description: '面向可治理 Agent、本地 AI 工作与可组合基础设施的 Rust 原生平台。',
+  title: { absolute: pageTitle },
+  description: pageDescription,
   alternates: {
     canonical: siteUrl,
     languages: {
@@ -16,6 +20,22 @@ export const metadata: Metadata = {
   },
   openGraph: {
     locale: 'zh_CN',
+    title: pageTitle,
+    description: pageDescription,
+    images: [
+      {
+        url: socialImage,
+        width: 1200,
+        height: 630,
+        alt: 'A3S — Agent tools, workflows, and runtimes',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: pageTitle,
+    description: pageDescription,
+    images: [socialImage],
   },
 };
 
@@ -24,7 +44,7 @@ const jsonLd = {
   '@type': 'SoftwareApplication',
   name: 'A3S',
   description:
-    'A Rust-native platform for governed agents, local AI work, and composable infrastructure.',
+    'A3S provides independently released CLI, Code, Browser, Office, Flow, Runtime, Cloud, and related projects that connect through public interfaces.',
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Linux, macOS, Windows',
   url: siteUrl,

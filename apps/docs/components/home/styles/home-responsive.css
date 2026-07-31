@@ -1,26 +1,15 @@
-@media (max-width: 1180px) {
-  .a3s-home-nav__links {
-    gap: 0;
-  }
-
+@media (max-width: 1120px) {
   .a3s-home-nav__links a {
     padding-right: 9px;
     padding-left: 9px;
   }
 
   .a3s-hero__grid {
-    gap: 48px;
-    grid-template-columns: minmax(0, 1fr) minmax(440px, 0.92fr);
+    grid-template-columns: minmax(0, 0.82fr) minmax(480px, 1.18fr);
   }
-
-  .a3s-system-panel__body {
-    padding-right: 24px;
-    padding-left: 24px;
-  }
-
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1020px) {
   .a3s-home-nav__links,
   .a3s-home-nav__actions {
     display: none;
@@ -38,14 +27,14 @@
 
   .a3s-home-nav__mobile summary {
     display: flex;
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--a3s-line);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.025);
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--a3s-line-strong);
+    border-radius: 0;
+    background: #000;
     align-items: center;
     justify-content: center;
-    color: #bcc6d4;
+    color: var(--a3s-text);
     cursor: pointer;
     list-style: none;
   }
@@ -55,81 +44,68 @@
   }
 
   .a3s-home-nav__mobile summary svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 
   .a3s-home-nav__mobile-panel {
     position: absolute;
-    top: 48px;
+    top: 43px;
     right: 0;
     display: flex;
-    width: 230px;
-    padding: 10px;
+    width: 218px;
+    padding: 8px;
     border: 1px solid var(--a3s-line-strong);
-    border-radius: 10px;
-    background: rgba(10, 13, 19, 0.98);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.46);
+    border-radius: 0;
+    background: #000;
     flex-direction: column;
-    backdrop-filter: blur(20px);
   }
 
   .a3s-home-nav__mobile-panel a {
-    padding: 11px 12px;
-    border-radius: 6px;
-    color: #a9b4c3;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 10px;
+    border-bottom: 1px solid var(--a3s-line);
+    color: var(--a3s-muted);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .a3s-home-nav__mobile-panel a:hover {
-    background: rgba(87, 148, 255, 0.08);
-    color: #e5efff;
+    color: var(--a3s-accent);
   }
 
-  .a3s-hero {
-    min-height: 1210px;
+  .a3s-hero::before {
+    display: none;
   }
 
   .a3s-hero__grid {
-    min-height: 1210px;
-    padding-top: 86px;
-    padding-bottom: 86px;
-    gap: 68px;
+    padding-top: 76px;
+    padding-bottom: 76px;
+    gap: 62px;
     grid-template-columns: 1fr;
   }
 
   .a3s-hero__copy {
-    max-width: 840px;
+    max-width: 780px;
+    padding-right: 0;
   }
 
   .a3s-system-panel {
     width: min(100%, 760px);
-    min-height: 530px;
+    padding-top: 44px;
+    padding-left: 0;
+    border-top: 1px solid var(--a3s-line-strong);
+    border-left: 0;
     justify-self: end;
-    transform: none;
-  }
-
-  .a3s-system-panel__body {
-    min-height: 486px;
   }
 
   .a3s-section-heading {
-    gap: 50px;
-    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-  }
-
-  .a3s-product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .a3s-architecture__inner {
-    padding-top: 110px;
-    padding-bottom: 110px;
+    gap: 42px;
+    grid-template-columns: minmax(0, 1.1fr) minmax(270px, 0.9fr);
   }
 
   .a3s-architecture__copy {
-    gap: 28px;
+    gap: 26px;
     grid-template-columns: 1fr;
   }
 
@@ -138,33 +114,29 @@
   }
 
   .a3s-ecosystem__inner {
-    gap: 55px;
-    grid-template-columns: minmax(250px, 0.58fr) minmax(470px, 1.42fr);
+    gap: 48px;
+    grid-template-columns: minmax(230px, 0.58fr) minmax(450px, 1.42fr);
   }
 
   .a3s-quickstart {
-    gap: 70px;
+    gap: 60px;
     grid-template-columns: 1fr;
   }
 
   .a3s-quickstart__copy {
-    max-width: 720px;
+    max-width: 680px;
   }
 
   .a3s-terminal-card {
-    width: min(100%, 820px);
+    width: min(100%, 800px);
     justify-self: end;
   }
 }
 
-@media (max-width: 760px) {
-  .a3s-canvas-backdrop > canvas:last-child {
-    opacity: 0.18;
-  }
-
+@media (max-width: 720px) {
   .a3s-home-nav,
   .a3s-home-nav__inner {
-    height: 64px;
+    height: 58px;
   }
 
   .a3s-home-nav__inner,
@@ -172,63 +144,40 @@
   .a3s-signal-strip > div,
   .a3s-footer__inner,
   .a3s-footer__base {
-    padding-right: 20px;
-    padding-left: 20px;
+    padding-right: 18px;
+    padding-left: 18px;
   }
 
   .a3s-home-brand__mark {
-    width: 31px;
-    height: 31px;
-  }
-
-  .a3s-hero,
-  .a3s-hero__grid {
-    min-height: 1130px;
+    width: 27px;
+    height: 27px;
   }
 
   .a3s-hero__grid {
-    padding: 68px 20px 72px;
-    gap: 54px;
+    padding: 58px 18px 64px;
+    gap: 52px;
   }
 
   .a3s-hero h1 {
-    margin-top: 22px;
-    font-size: clamp(43px, 13.2vw, 68px);
-    letter-spacing: -0.062em;
-    line-height: 0.99;
+    margin-top: 21px;
+    font-size: clamp(37px, 11vw, 54px);
+    line-height: 1.04;
   }
 
   .a3s-hero__copy > p {
-    font-size: 15px;
-    line-height: 1.7;
+    font-size: 12px;
   }
 
   .a3s-system-panel {
-    min-height: 475px;
+    min-height: 520px;
   }
 
   .a3s-system-panel__body {
-    min-height: 431px;
-    padding: 25px 18px 22px;
-    gap: 22px;
+    min-height: 480px;
   }
 
-  .a3s-system-node {
-    min-height: 120px;
-    padding: 15px 10px;
-  }
-
-  .a3s-system-node > b {
-    font-size: 10px;
-  }
-
-  .a3s-system-node > small {
-    font-size: 7px;
-  }
-
-  .a3s-system-telemetry {
-    padding-right: 12px;
-    padding-left: 12px;
+  .a3s-system-orbit {
+    width: min(100%, 430px);
   }
 
   .a3s-signal-strip > div {
@@ -236,9 +185,8 @@
   }
 
   .a3s-signal-strip span {
-    min-height: 64px;
+    min-height: 54px;
     border-bottom: 1px solid var(--a3s-line);
-    font-size: 8px;
   }
 
   .a3s-signal-strip span:nth-child(3) {
@@ -246,7 +194,7 @@
   }
 
   .a3s-section-heading {
-    gap: 24px;
+    gap: 22px;
     grid-template-columns: 1fr;
   }
 
@@ -254,23 +202,23 @@
   .a3s-architecture h2,
   .a3s-ecosystem h2,
   .a3s-quickstart h2 {
-    font-size: clamp(36px, 10vw, 52px);
+    font-size: clamp(29px, 8vw, 40px);
   }
 
   .a3s-products,
   .a3s-principles {
-    padding-top: 98px;
-    padding-bottom: 100px;
+    padding-top: 86px;
+    padding-bottom: 90px;
   }
 
   .a3s-product-grid,
   .a3s-principle-grid {
-    margin-top: 42px;
+    margin-top: 38px;
     grid-template-columns: 1fr;
   }
 
   .a3s-product-card {
-    min-height: 382px;
+    min-height: 286px;
   }
 
   .a3s-principle-card.is-featured {
@@ -278,38 +226,32 @@
   }
 
   .a3s-principle-card.is-featured h3 {
-    font-size: 26px;
+    font-size: 21px;
   }
 
   .a3s-architecture__inner {
-    min-height: auto;
-    padding-top: 96px;
-    padding-bottom: 96px;
+    padding-top: 84px;
+    padding-bottom: 86px;
   }
 
   .a3s-ecosystem__inner {
     min-height: auto;
-    padding-top: 78px;
-    padding-bottom: 78px;
-    gap: 40px;
+    padding-top: 68px;
+    padding-bottom: 68px;
+    gap: 36px;
     grid-template-columns: 1fr;
-  }
-
-  .a3s-module-field span {
-    min-height: 38px;
-    padding: 0 11px;
   }
 
   .a3s-quickstart {
     min-height: auto;
-    padding-top: 96px;
-    padding-bottom: 96px;
-    gap: 50px;
+    padding-top: 84px;
+    padding-bottom: 84px;
+    gap: 44px;
   }
 
   .a3s-terminal-card__bar {
     grid-template-columns: auto 1fr auto;
-    gap: 12px;
+    gap: 10px;
   }
 
   .a3s-terminal-card__bar > code {
@@ -317,9 +259,9 @@
   }
 
   .a3s-terminal-card pre {
-    min-height: 290px;
-    padding: 38px 26px;
-    font-size: 10px;
+    min-height: 250px;
+    padding: 32px 22px;
+    font-size: 9px;
   }
 
   .a3s-copy-command span {
@@ -327,29 +269,23 @@
   }
 
   .a3s-copy-command {
-    width: 32px;
+    width: 29px;
     padding: 0;
   }
 
   .a3s-cta {
-    min-height: 520px;
+    min-height: 440px;
   }
 
   .a3s-cta h2 {
-    font-size: clamp(42px, 12vw, 64px);
-  }
-
-  .a3s-cta__mark {
-    right: -210px;
-    width: 500px;
-    height: 500px;
+    font-size: clamp(34px, 10vw, 50px);
   }
 
   .a3s-footer__inner {
     min-height: auto;
-    padding-top: 64px;
-    padding-bottom: 54px;
-    gap: 42px;
+    padding-top: 54px;
+    padding-bottom: 46px;
+    gap: 38px;
     grid-template-columns: 1fr 1fr;
   }
 
@@ -358,10 +294,10 @@
   }
 
   .a3s-footer__base {
-    min-height: 94px;
-    padding-top: 18px;
-    padding-bottom: 18px;
-    gap: 8px;
+    min-height: 86px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    gap: 7px;
     grid-template-columns: 1fr;
   }
 
@@ -376,23 +312,18 @@
     display: none;
   }
 
-  .a3s-hero,
   .a3s-hero__grid {
-    min-height: 1060px;
-  }
-
-  .a3s-hero__grid {
-    padding-top: 56px;
-    gap: 44px;
+    padding-top: 50px;
+    gap: 42px;
   }
 
   .a3s-eyebrow {
     font-size: 8px;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
   }
 
   .a3s-hero h1 {
-    font-size: clamp(39px, 12.7vw, 54px);
+    font-size: clamp(34px, 9vw, 40px);
   }
 
   .a3s-hero__actions {
@@ -405,7 +336,7 @@
   }
 
   .a3s-system-panel {
-    min-height: 440px;
+    min-height: 460px;
   }
 
   .a3s-system-panel__chrome {
@@ -417,21 +348,19 @@
   }
 
   .a3s-system-panel__body {
-    min-height: 396px;
+    min-height: 420px;
   }
 
-  .a3s-system-node {
-    min-height: 112px;
-    padding: 13px 8px;
+  .a3s-system-orbit > span {
+    width: 58px;
   }
 
-  .a3s-system-node > small {
-    display: none;
+  .a3s-system-orbit > span b {
+    font-size: 6px;
   }
 
-  .a3s-system-node > b {
-    font-size: 8px;
-    line-height: 1.4;
+  .a3s-system-orbit__core {
+    width: 118px;
   }
 
   .a3s-system-telemetry__head span:first-child {
@@ -442,29 +371,24 @@
     justify-content: flex-end;
   }
 
-  .a3s-system-telemetry__row {
-    font-size: 7px;
-  }
-
   .a3s-signal-strip > div {
     grid-template-columns: 1fr;
   }
 
   .a3s-signal-strip span,
   .a3s-signal-strip span:nth-child(3) {
-    min-height: 58px;
+    min-height: 50px;
     border-right: 1px solid var(--a3s-line);
     border-left: 1px solid var(--a3s-line);
   }
 
   .a3s-terminal-card pre {
-    padding-right: 18px;
-    padding-left: 18px;
-    font-size: 9px;
+    padding-right: 16px;
+    padding-left: 16px;
   }
 
   .a3s-cta__copy {
-    width: calc(100% - 40px);
+    width: calc(100% - 36px);
   }
 
   .a3s-footer__inner {

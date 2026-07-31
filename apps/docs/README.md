@@ -20,19 +20,20 @@ always point to the unprefixed Chinese route.
   that topic exists in the selected version.
 - **Home components** under `components/home/` keep localized content, layout,
   interaction, and design tokens separate.
-- **Architecture atlas** renders the repository map from one 34-project data
-  source. Every project exposes an interactive five-node topology with localized
-  responsibilities, keyboard-operable project and node selection, and a direct
-  documentation or repository link.
-- **Canvas UI Grid** provides the viewport-sized interactive background across
-  the homepage with a progressive CSS fallback; its notice is recorded in
-  `THIRD_PARTY_NOTICES.md`.
+- **Architecture atlas** renders the repository map from one 37-project data
+  source. Every project has its own evidence-linked topology with real component
+  names, variable node counts, explicit relationships, keyboard-operable project
+  and node selection, and direct documentation or repository links.
+- **Homepage diagrams** use repository-native SVG and CSS. The visual system is
+  deliberately monochrome: black surfaces, fine solid and dotted relationships,
+  square controls, monospace labels, and one restrained status color.
 - **GitHub Pages** receives the generated `out/` directory from the repository
   documentation workflow.
 
-The homepage structure follows the same maintainable pattern as the A3S Code
-site: one composition component, isolated client-side canvas behavior, and
-centralized visual tokens rather than route-local styling.
+The homepage keeps localized content, project architecture data, interaction,
+and visual tokens in separate modules. Search, node selection, relationship
+navigation, and mobile horizontal diagram scrolling are all client-side; the
+project topology itself stays in typed source files.
 
 ## Local development
 
