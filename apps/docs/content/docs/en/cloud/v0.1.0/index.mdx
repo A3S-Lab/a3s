@@ -12,13 +12,13 @@ Snapshot: `cloud-0.1.0`
 This is versioned documentation for the E0 integration snapshot. It is not a
 production support declaration and no matching GitHub release has been
 published. The evidence boundary is the clean-host E0 gate described in the
-[pinned Cloud development plan](https://github.com/A3S-Lab/Cloud/blob/4ca33905191d337f0cf63d5a098a24b59bf48b29/docs/development-plan.md).
+[pinned Cloud development plan](https://github.com/A3S-Lab/Cloud/blob/f83071714f1e0a34cf3e1b27604780441046d6b4/docs/development-plan.md).
 
 ## Capability status
 
 | Label | Meaning in this snapshot |
 | --- | --- |
-| **Verified** | The exact locked revisions passed the named executable gate. E0 covers one outbound Linux/Docker node, deployment A, managed TLS, ordered logs, update to B, cloned-A rollback, durable stop, and cleanup. |
+| **Verified** | The exact locked revisions passed the named executable gate. E0 covers one outbound Linux node using A3S Box, deployment A, managed TLS, ordered logs, update to B, cloned-A rollback, durable stop, and cleanup. |
 | **Experimental** | Implemented or documented with tests, but not wired through a released Cloud operator surface or production gate. The signed node/Gateway updater is in this category. |
 | **Optional** | A supported provider choice that is not required by the local profile. NATS and S3-compatible log storage are examples. |
 | **Planned** | No shipped contract may be inferred. Cloud CLI, management MCP, managed backups, multi-node evacuation, HA, and production disaster-recovery objectives remain planned. |
@@ -33,9 +33,10 @@ drifts from that lock.
 | --- | --- | --- |
 | ACL | `0.3.0` | `5317e166222495585909d81f2caffdca90273c99` |
 | Boot | `0.1.3` | `3119d61f1ae9b995913e34abd467ceaadc378a5f` |
-| Cloud | `0.1.0` | `4ca33905191d337f0cf63d5a098a24b59bf48b29` |
+| Box | `3.2.0` | `4756ad60278aa8d8d21450ea6ed046ccff29306f` |
+| Cloud | `0.1.0` | `f83071714f1e0a34cf3e1b27604780441046d6b4` |
 | Event | `0.3.0` | `6df3d6551a2a3ab68b2f8271d33a87b078fc8151` |
-| Flow | `0.4.2` | `ca17ae78968370eacd97992d9202dabf1cd82a2e` |
+| Flow | `0.4.3` | `1675376dbced0a65afce2141e799dcdceb8e475d` |
 | Gateway | `1.0.12` | `f8500b89284e75342dd0286a0200b3a6e3f51e32` |
 | ORM | `0.2.0` | `a09b4db0f55c29cff3cb7963f2d45125ed7b3936` |
 | Runtime | `0.2.0` | `25caf65ffed7ff9b82cedc4e7156c79f396896f7` |
@@ -43,7 +44,7 @@ drifts from that lock.
 | Updater | `0.3.0` | root workspace |
 
 Protocol levels are Gateway snapshot `3`, node command `1`, Flow native
-TypeScript `1`, Runtime capabilities `3`, Runtime observation `2`, and Runtime
+TypeScript `1`, Runtime capabilities `4`, Runtime observation `2`, and Runtime
 unit spec `2`.
 
 ## Operator topics

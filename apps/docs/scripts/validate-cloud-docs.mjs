@@ -44,6 +44,11 @@ function parseBlocks(source, kind) {
 
 const lockSource = readFileSync(path.join(root, release.compatibilityLock), 'utf8');
 const lockComponents = parseBlocks(lockSource, 'component');
+assert.deepEqual(
+  Object.keys(release.components).sort(),
+  [...lockComponents.keys()].sort(),
+  'component inventory drift',
+);
 for (const [name, expected] of Object.entries(release.components)) {
   const actual = lockComponents.get(name);
   assert.ok(actual, `compatibility lock is missing component ${name}`);
@@ -56,6 +61,11 @@ for (const [name, expected] of Object.entries(release.components)) {
 }
 
 const lockProtocols = parseBlocks(lockSource, 'protocol');
+assert.deepEqual(
+  Object.keys(release.protocols).sort(),
+  [...lockProtocols.keys()].sort(),
+  'protocol inventory drift',
+);
 for (const [name, expected] of Object.entries(release.protocols)) {
   const actual = lockProtocols.get(name);
   assert.ok(actual, `compatibility lock is missing protocol ${name}`);

@@ -6,13 +6,17 @@ records exact Cargo package versions, and names the protocol levels exercised
 by the gate. The root-owned Updater crate is pinned by its exact package version
 and by the root commit that contains it.
 
+Components whose package manifest is below the repository root declare a
+component-relative `manifest` path. Workspace-inherited package versions are
+resolved from the nearest enclosing Rust workspace manifest.
+
 The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
 revision drift, dirty component worktrees, Cargo manifest or lockfile drift,
-and mismatched Cloud or Gateway dependencies. It also parses and generates all
-tracked Cloud product-configuration fixtures and rejects HCL/Terraform product
-configuration in the Cloud integration surface.
+and mismatched Cloud, Box Runtime, or Gateway dependencies. It also parses and
+generates all tracked Cloud product-configuration fixtures and rejects
+HCL/Terraform product configuration in the Cloud integration surface.
 
 ## Proposing An Update
 

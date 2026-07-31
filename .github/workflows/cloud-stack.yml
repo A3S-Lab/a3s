@@ -9,6 +9,7 @@ on:
       - "compat/**"
       - "crates/acl"
       - "crates/boot"
+      - "crates/box"
       - "crates/event"
       - "crates/flow"
       - "crates/gateway"
@@ -29,6 +30,7 @@ on:
       - "compat/**"
       - "crates/acl"
       - "crates/boot"
+      - "crates/box"
       - "crates/event"
       - "crates/flow"
       - "crates/gateway"
@@ -62,6 +64,7 @@ jobs:
             apps/cloud \
             crates/acl \
             crates/boot \
+            crates/box \
             crates/event \
             crates/flow \
             crates/gateway \

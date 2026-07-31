@@ -17,7 +17,7 @@ const LOCK_SOURCE = readFileSync(LOCK_PATH, 'utf8');
 test('the checked-in Cloud stack is reproducible and clean', () => {
   const result = verifyCloudStack(ROOT);
   assert.match(result.digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(result.components.length, 10);
+  assert.equal(result.components.length, 11);
   assert.deepEqual(result.aclFiles, ['config/cloud.acl', 'config/node.example.acl']);
 });
 
@@ -30,8 +30,27 @@ test('the lock rejects unsafe and duplicate component paths', () => {
   const unsafe = LOCK_SOURCE.replace('  path = "crates/acl"\n', '  path = "../acl"\n');
   assert.throws(() => parseCloudStackLock(unsafe), /normalized repository-relative path/);
 
+  const unsafeManifest = LOCK_SOURCE.replace(
+    '  manifest = "src/runtime/Cargo.toml"\n',
+    '  manifest = "../runtime/Cargo.toml"\n',
+  );
+  assert.throws(
+    () => parseCloudStackLock(unsafeManifest),
+    /component "box" manifest must be a normalized repository-relative path/,
+  );
+
   const duplicate = LOCK_SOURCE.replace('  path = "crates/boot"\n', '  path = "crates/acl"\n');
   assert.throws(() => parseCloudStackLock(duplicate), /duplicate component path crates\/acl/);
+});
+
+test('the Box component resolves its package from the nested Rust workspace', () => {
+  const box = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'box',
+  );
+  assert.ok(box);
+  assert.equal(box.manifest, 'src/runtime/Cargo.toml');
+  assert.equal(box.package, 'a3s-box-runtime');
+  assert.equal(box.version, '3.2.0');
 });
 
 test('the lock must use canonical a3s-acl attribute ordering', () => {
@@ -69,4 +88,21 @@ test('the Cloud Runtime dependency is bound to the locked Git revision', () => {
   assert.ok(declaration.includes(`version = "=${runtime.version}"`));
   assert.ok(declaration.includes(`rev = "${runtime.revision}"`));
   assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Runtime\.git"/);
+});
+
+test('the Cloud Box Runtime dependency is bound to the locked Git revision', () => {
+  const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
+  const box = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'box',
+  );
+  assert.ok(box);
+  const declaration = tomlDependency(
+    cloudManifest,
+    'workspace.dependencies',
+    box.package,
+    'apps/cloud/Cargo.toml',
+  );
+  assert.ok(declaration.includes(`version = "=${box.version}"`));
+  assert.ok(declaration.includes(`rev = "${box.revision}"`));
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Box\.git"/);
 });
