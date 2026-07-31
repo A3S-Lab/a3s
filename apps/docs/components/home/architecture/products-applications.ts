@@ -255,8 +255,8 @@ export const productApplicationArchitectures: readonly ArchitectureProject[] = [
     name: "Web",
     category: "products",
     role: localized(
-      "本地浏览器工作台：Work 统一承载任务、文件、Office、代码和 Copilot，Knowledge、Memory 与插件保持独立页面。",
-      "A local browser workspace: Work contains tasks, files, Office, code, and Copilot while Knowledge, Memory, and plugins remain separate destinations.",
+      "本地浏览器工作区：Web 统一承载任务、文件、Office、代码和 Copilot，Knowledge、Memory 与插件保持独立页面。",
+      "A local browser workspace: Web contains tasks, files, Office, code, and Copilot while Knowledge, Memory, and plugins remain separate destinations.",
     ),
     href: "https://github.com/A3S-Lab/a3s/tree/main/apps/web",
     evidence: [
@@ -267,7 +267,7 @@ export const productApplicationArchitectures: readonly ArchitectureProject[] = [
     ],
     groups: [
       group("shell", "应用外壳", "Application shell", 2, 6, 96, 24),
-      group("work", "Work", "Work", 2, 34, 70, 62),
+      group("work", "Web 工作区", "Web workspace", 2, 34, 70, 62),
       group("service", "本地服务", "Local service", 75, 34, 23, 62),
     ],
     nodes: [
@@ -286,8 +286,8 @@ export const productApplicationArchitectures: readonly ArchitectureProject[] = [
         "entry",
         24,
         18,
-        "切换 Work、Knowledge、Memory、插件和 Settings。",
-        "Switches Work, Knowledge, Memory, plugins, and Settings.",
+        "切换 Web、Knowledge、Memory、插件和 Settings。",
+        "Switches Web, Knowledge, Memory, plugins, and Settings.",
       ),
       node(
         "knowledge",
@@ -318,7 +318,7 @@ export const productApplicationArchitectures: readonly ArchitectureProject[] = [
       ),
       node(
         "work",
-        "WorkProduct",
+        "WebProduct",
         "service",
         12,
         51,
@@ -372,12 +372,12 @@ export const productApplicationArchitectures: readonly ArchitectureProject[] = [
       ),
       node(
         "copilot",
-        "WorkCopilot",
+        "WebCopilot",
         "entry",
         63,
         48,
-        "所有 Work 场景共用一个会话和执行流。",
-        "Shares one conversation and execution stream across Work scenes.",
+        "所有 Web 场景共用一个会话和执行流。",
+        "Shares one conversation and execution stream across Web scenes.",
       ),
       node(
         "api",

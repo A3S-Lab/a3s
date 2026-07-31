@@ -21,6 +21,7 @@
   --rp-c-text-2: #9a9f9d;
   --rp-c-text-3: #606563;
   --rp-nav-height: 62px;
+  --a3s-nav-control-height: 36px;
   --rp-content-max-width: 920px;
   --rp-font-family-base:
     "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
@@ -69,6 +70,59 @@ body {
 .rp-nav__title__link > span {
   font-size: 16px;
   font-weight: 600;
+}
+
+.rp-nav .rp-nav__right,
+.rp-nav .rp-nav-menu--right,
+.rp-nav .rp-nav__others {
+  align-items: center;
+}
+
+.rp-nav .rp-nav-menu--right,
+.rp-nav .rp-nav__others {
+  gap: 4px;
+}
+
+.rp-nav .rp-nav-menu__item {
+  display: flex;
+  height: var(--a3s-nav-control-height);
+  align-items: center;
+}
+
+.rp-nav .rp-nav-menu__item__container,
+.rp-nav .rp-search-button,
+.rp-nav .rp-nav-hamburger {
+  box-sizing: border-box;
+  height: var(--a3s-nav-control-height);
+  min-height: var(--a3s-nav-control-height);
+}
+
+.rp-nav .rp-nav-menu__item__container {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.rp-nav .rp-search-button,
+.rp-nav .rp-nav-hamburger,
+.rp-nav .rp-social-links__item {
+  border: 1px solid transparent;
+}
+
+.rp-nav .rp-nav-hamburger,
+.rp-nav .rp-social-links__item {
+  box-sizing: border-box;
+  width: var(--a3s-nav-control-height);
+  height: var(--a3s-nav-control-height);
+}
+
+.rp-nav .rp-social-links__item {
+  padding: 8px;
+}
+
+.rp-nav .rp-search-button__icon,
+.rp-nav .rp-social-links__icon {
+  width: 16px;
+  height: 16px;
 }
 
 .rp-nav-menu__item,

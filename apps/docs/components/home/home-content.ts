@@ -364,7 +364,7 @@ export const homeContent = {
       reasons: [
         {
           index: "01",
-          title: "Work becomes reusable",
+          title: "Proven processes become reusable",
           description:
             "A proven process can be stored as an Agent, Skill, or Workflow, reviewed like code, and run again without rebuilding it from a chat transcript.",
         },

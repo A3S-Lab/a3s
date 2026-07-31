@@ -13,12 +13,28 @@
     "text": "项目",
     "items": [
       {
-        "text": "GitHub",
-        "link": "https://github.com/A3S-Lab/a3s"
-      },
-      {
         "text": "A3S Code",
         "link": "https://a3s-lab.github.io/Code/"
+      },
+      {
+        "text": "A3S Box",
+        "link": "https://a3s-lab.github.io/Box/"
+      },
+      {
+        "text": "A3S Cloud",
+        "link": "https://a3s-lab.github.io/Cloud/"
+      },
+      {
+        "text": "A3S Office",
+        "link": "https://a3s-lab.github.io/Office/"
+      },
+      {
+        "text": "A3S Science",
+        "link": "https://a3s-lab.github.io/Science/"
+      },
+      {
+        "text": "GitHub",
+        "link": "https://github.com/A3S-Lab/a3s"
       },
       {
         "text": "更新记录",

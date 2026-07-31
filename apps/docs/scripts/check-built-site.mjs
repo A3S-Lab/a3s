@@ -31,6 +31,8 @@ const requiredFiles = [
   "en/docs/architecture.html",
   "blog/index.html",
   "en/blog/index.html",
+  "blog/progressive-api-progressive-ui.html",
+  "en/blog/progressive-api-progressive-ui.html",
   "llms.txt",
   "llms-full.txt",
   "en/llms.txt",
@@ -85,15 +87,35 @@ for (const file of [
   }
 }
 
-const [chinese, english, chineseDocs, englishDocs, blog, englishBlog] =
-  await Promise.all([
-    readFile(path.join(outputRoot, "index.html"), "utf8"),
-    readFile(path.join(outputRoot, "en/index.html"), "utf8"),
-    readFile(path.join(outputRoot, "docs/index.html"), "utf8"),
-    readFile(path.join(outputRoot, "en/docs/index.html"), "utf8"),
-    readFile(path.join(outputRoot, "blog/index.html"), "utf8"),
-    readFile(path.join(outputRoot, "en/blog/index.html"), "utf8"),
-  ]);
+const [
+  chinese,
+  english,
+  chineseDocs,
+  englishDocs,
+  blog,
+  englishBlog,
+  chineseCommands,
+  englishCommands,
+  progressiveBlog,
+  englishProgressiveBlog,
+] = await Promise.all([
+  readFile(path.join(outputRoot, "index.html"), "utf8"),
+  readFile(path.join(outputRoot, "en/index.html"), "utf8"),
+  readFile(path.join(outputRoot, "docs/index.html"), "utf8"),
+  readFile(path.join(outputRoot, "en/docs/index.html"), "utf8"),
+  readFile(path.join(outputRoot, "blog/index.html"), "utf8"),
+  readFile(path.join(outputRoot, "en/blog/index.html"), "utf8"),
+  readFile(path.join(outputRoot, "docs/commands.html"), "utf8"),
+  readFile(path.join(outputRoot, "en/docs/commands.html"), "utf8"),
+  readFile(
+    path.join(outputRoot, "blog/progressive-api-progressive-ui.html"),
+    "utf8",
+  ),
+  readFile(
+    path.join(outputRoot, "en/blog/progressive-api-progressive-ui.html"),
+    "utf8",
+  ),
+]);
 
 for (const marker of [
   "A3S 是",
@@ -152,14 +174,23 @@ for (const command of [
 
 assert(chinese.includes("Web"), "Chinese homepage has no Web product");
 assert(english.includes("Web"), "English homepage has no Web product");
-assert(
-  !chinese.includes("Web + Work"),
-  "Chinese homepage still says Web + Work",
-);
-assert(
-  !english.includes("Web + Work"),
-  "English homepage still says Web + Work",
-);
+
+for (const projectUrl of [
+  "https://a3s-lab.github.io/Code/",
+  "https://a3s-lab.github.io/Box/",
+  "https://a3s-lab.github.io/Cloud/",
+  "https://a3s-lab.github.io/Office/",
+  "https://a3s-lab.github.io/Science/",
+]) {
+  assert(
+    chinese.includes(projectUrl),
+    `Chinese project navigation is missing: ${projectUrl}`,
+  );
+  assert(
+    english.includes(projectUrl),
+    `English project navigation is missing: ${projectUrl}`,
+  );
+}
 
 assert(
   chineseDocs.includes("A3S CLI"),
@@ -178,8 +209,73 @@ assert(
   "English blog index is missing its introduction",
 );
 
+for (const marker of [
+  "a3s version",
+  "a3s --version",
+  "a3s code session",
+  "a3s code agent",
+  "a3s code mcp",
+  "a3s code skill",
+  "a3s code flow",
+  "a3s code okf",
+  "a3s code kb",
+  "a3s code context",
+  "a3s code memory",
+  "a3s registry",
+  "a3s completion",
+]) {
+  assert(
+    chineseCommands.includes(marker),
+    `Chinese command reference is missing: ${marker}`,
+  );
+  assert(
+    englishCommands.includes(marker),
+    `English command reference is missing: ${marker}`,
+  );
+}
+
+for (const marker of [
+  "渐进式 API",
+  "渐进式 UI",
+  "list → search → describe → execute",
+  "shaped",
+  "view",
+]) {
+  assert(
+    progressiveBlog.includes(marker),
+    `Chinese Progressive API/UI blog is missing: ${marker}`,
+  );
+}
+
+for (const marker of [
+  "Progressive API",
+  "Progressive UI",
+  "list → search → describe → execute",
+  "shaped",
+  "view",
+]) {
+  assert(
+    englishProgressiveBlog.includes(marker),
+    `English Progressive API/UI blog is missing: ${marker}`,
+  );
+}
+
 const files = await collectFiles(outputRoot);
 const htmlFiles = files.filter((file) => file.endsWith(".html"));
+const allHtml = (
+  await Promise.all(htmlFiles.map((file) => readFile(file, "utf8")))
+).join("\n");
+
+for (const [pattern, label] of [
+  [/Web\s*\/\s*Work\b/i, "Web / Work"],
+  [/Web\s*\+\s*Work\b/i, "Web + Work"],
+  [/Web\s+is\s+Work\b/i, "Web is Work"],
+  [/Web\s+就是\s+Work/i, "Web 就是 Work"],
+  [/Work(?:Product|Copilot)\b/, "Work-prefixed Web label"],
+]) {
+  assert(!pattern.test(allHtml), `Built site still exposes ${label}`);
+}
+
 const brokenReferences = [];
 const referencePattern = /(?:href|src)="([^"]+)"/g;
 
@@ -252,6 +348,8 @@ const css = (
 ).join("\n");
 
 for (const selector of [
+  ".rp-nav .rp-search-button",
+  ".rp-nav .rp-nav-menu__item__container",
   ".a3s-home-nav",
   ".a3s-cli-terminal__screen",
   ".a3s-canvas-field",
@@ -266,6 +364,11 @@ for (const selector of [
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
+
+assert(
+  css.includes("--a3s-nav-control-height:36px"),
+  "Production CSS is missing the uniform 36px navigation control height",
+);
 
 for (const project of [
   "Code",

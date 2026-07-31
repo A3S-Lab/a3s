@@ -69,7 +69,7 @@ command routing. Product behavior remains with the component that implements it.
 | Surface | First action | Delivery boundary |
 | --- | --- | --- |
 | **Code** | `a3s code` | Bundled governed agent runtime and terminal workspace |
-| **Web** | `a3s web` | Bundled local Web API and release assets; Work is the default workbench at `#home`, Knowledge is a separate built-in destination, and `--api-only` needs no frontend |
+| **Web** | `a3s web` | Bundled local Web API and release assets; `#home` opens the default workspace, Knowledge is a separate built-in destination, and `--api-only` needs no frontend |
 | **Research** | `a3s code research --web "..."` | Bundled typed research runner with run-scoped Markdown and editable HTML artifacts |
 | **Box** | `a3s box ps` | Managed `a3s-box` product; eligible first use may install it visibly |
 | **Search** | `a3s search …` | Managed search product with quality-gated Browser-first discovery and lazy HTTP/RSS and API fallbacks |
@@ -107,10 +107,9 @@ the [CLI reference](docs/cli-reference.md).
 ### A3S Web
 
 `a3s web` serves the local A3S Web application when compatible assets are
-available. Work is Web's single default workbench at `#home`, not a parallel
-product. Knowledge is a separate built-in destination. Research and Finance
-destinations are reviewed A3S Use package contributions rather than hardcoded
-Web products.
+available. The `#home` route opens its default workspace, while Knowledge is a
+separate built-in destination. Research and Finance destinations are reviewed
+A3S Use package contributions rather than hardcoded Web products.
 
 The default workbench combines task conversations, Monaco editing, Git review,
 local file management, and a resizable live-preview panel. It previews static
@@ -253,7 +252,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Area | Current boundary |
 | --- | --- |
 | Code | Model execution requires a configured provider or compatible account; remote OS actions require login |
-| Web | Local-first and loopback by default; Work is the default workbench, Knowledge is a separate built-in destination, and Office format fidelity depends on the exact editor and source feature |
+| Web | Local-first and loopback by default; the default workspace and Knowledge are separate built-in destinations, and Office format fidelity depends on the exact editor and source feature |
 | Research | Evidence is admitted only from fetched text or validated workspace sources; local-only mode remains network-free |
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
@@ -358,7 +357,7 @@ distribution assets.
 | --- | --- |
 | [A3S CLI](src/) | Root-owned umbrella `a3s` command, Code TUI host, local Web API, configuration, authentication, and component lifecycle |
 | [A3S Code](crates/code/) | Governed async agent runtime with Rust Core plus Node.js and Python SDKs |
-| [A3S Web](apps/web/) | Local browser product with Work as the default `#home` workbench, a separate Knowledge destination, and reviewed Use-package destinations |
+| [A3S Web](apps/web/) | Local browser product with a default `#home` workspace, a separate Knowledge destination, and reviewed Use-package destinations |
 | [A3S Desktop](apps/desktop/) | Independently versioned native desktop host tracked by the integration snapshot |
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
 | [A3S Box](crates/box/) | Node-local Linux OCI provider with explicit MicroVM or shared-kernel Sandbox selection and local SDKs |

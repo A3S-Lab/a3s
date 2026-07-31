@@ -23,8 +23,10 @@ a3s [GLOBAL OPTIONS] <COMMAND>
 | `--color auto|always|never` | 控制颜色。 |
 | `-q, --quiet` | 只保留必要输出。 |
 | `-v, --verbose` | 增加诊断信息，可重复。 |
+| `-h, --help` | 显示根命令或当前命令路径的帮助。 |
+| `-V, --version` | 显示当前 CLI 版本。 |
 
-## 工作入口
+## 交互与自动化入口
 
 | 命令 | 作用 |
 | --- | --- |
@@ -32,10 +34,24 @@ a3s [GLOBAL OPTIONS] <COMMAND>
 | `a3s code exec [PROMPT]` | 执行一次非交互任务。 |
 | `a3s code resume [SESSION_ID]` | 恢复指定或最新 session。 |
 | `a3s code research QUERY` | 生成 Markdown 与 HTML Research 产物。 |
-| `a3s web [start]` | 前台启动本地 Web / Work。 |
+| `a3s web [start]` | 前台启动本地 Web。 |
 | `a3s web start -d` | 启动受管后台实例。 |
 | `a3s web status|logs|open|stop` | 管理当前工作区的 Web 实例。 |
 | `a3s top` | 查看智能体、容器、session、事件和进程。 |
+
+## Code 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `a3s code session list|show|export|delete` | 检查、导出或删除持久 session。 |
+| `a3s code agent list|clone|review|activity|publish|run|deploy|open|logs|status` | 管理 Agent assets 及其运行状态。 |
+| `a3s code mcp list|clone|review|activity|publish|run|test|deploy|open|logs|status` | 管理和测试 MCP assets。 |
+| `a3s code skill list|clone|review|activity|publish|deploy|open|status` | 管理 Skill assets。 |
+| `a3s code flow list|clone|review|activity|publish|run|deploy|open|logs|status` | 管理 Flow assets。 |
+| `a3s code okf list|clone|review|activity|publish|deploy|status` | 管理 OKF knowledge-package assets。 |
+| `a3s code kb stats|add|import|search|path` | 管理当前工作区的知识库。 |
+| `a3s code context search|show`（别名 `ctx`） | 搜索 context history，或查看 event 与 session。 |
+| `a3s code memory list|stats|path`（别名 `mem`） | 检查长期记忆。 |
 
 ## 产品与能力
 
@@ -69,11 +85,15 @@ a3s [GLOBAL OPTIONS] <COMMAND>
 | `a3s upgrade [COMPONENT...]` | 查看或应用组件升级。 |
 | `a3s uninstall COMPONENT...` | 删除 receipt 证明归属的文件。 |
 | `a3s doctor [COMPONENT]` | 执行只读健康检查。 |
-| `a3s registry ...` | 管理受信任的组件 registry。 |
+| `a3s registry list|show|add|remove|refresh` | 管理受信任的组件 registry。 |
 | `a3s cache path|status|prune|clean` | 管理可重建缓存。 |
 | `a3s self update` | 更新 CLI 自身。 |
-| `a3s completion SHELL` | 生成 shell completion。 |
-| `a3s help [COMMAND...]` | 查看任意命令路径的帮助。 |
+| `a3s version` / `a3s --version` | 显示 CLI 版本。 |
+| `a3s completion bash|zsh|fish|powershell|elvish` | 生成 shell completion。 |
+| `a3s help [COMMAND...]` / `a3s --help` | 查看根命令或任意命令路径的帮助。 |
+
+这份清单对应仓库里的 typed Clap grammar。已安装版本的权威帮助始终是
+`a3s help [COMMAND...]`；脚本在依赖某条路径前应先固定 CLI 版本。
 
 ## 机器输出
 

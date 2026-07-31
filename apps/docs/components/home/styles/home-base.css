@@ -202,7 +202,7 @@ body:has(.a3s-site) .rp-nav {
 }
 
 .a3s-home-nav__docs {
-  height: 35px;
+  height: 34px;
   padding: 0 13px;
   border-color: var(--a3s-line-strong);
   gap: 7px;

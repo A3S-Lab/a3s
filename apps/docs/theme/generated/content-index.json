@@ -2,6 +2,21 @@
   "blog": {
     "zh": [
       {
+        "slug": "progressive-api-progressive-ui",
+        "title": "渐进式 API 与渐进式 UI：按需发现能力，让结果长出界面",
+        "description": "从 search、describe、execute 到 shaped view，介绍 A3S 如何让智能体只展开当前需要的 API 契约，并把可交互界面作为执行结果的一部分安全交给宿主。",
+        "date": "2026-07-31",
+        "author": "A3S Lab",
+        "tags": [
+          "a3s",
+          "progressive-api",
+          "progressive-ui",
+          "agents",
+          "remote-ui",
+          "cloud"
+        ]
+      },
+      {
         "slug": "programmable-agent-workflows",
         "title": "可编程、预算受限的多智能体工作流——从你已有的接缝中生长出来",
         "description": "A3S Code 如何通过组合 AgentExecutor、WorkflowCheckpoint 与 BudgetGuard 这三处接缝，长出一套 Claude-Code 风格的动态工作流运行时——fan-out、phases、loops 以及共享的 token 预算——而不是硬塞进一个全新的子系统。",
@@ -114,6 +129,21 @@
       }
     ],
     "en": [
+      {
+        "slug": "progressive-api-progressive-ui",
+        "title": "Progressive API and Progressive UI: Discover Capabilities on Demand, Grow Interfaces From Results",
+        "description": "From search, describe, and execute to shaped views, learn how A3S reveals only the API contract an agent needs and safely hands an interactive result to its authenticated host.",
+        "date": "2026-07-31",
+        "author": "A3S Lab",
+        "tags": [
+          "a3s",
+          "progressive-api",
+          "progressive-ui",
+          "agents",
+          "remote-ui",
+          "cloud"
+        ]
+      },
       {
         "slug": "programmable-agent-workflows",
         "title": "Programmable, Budget-Bounded Multi-Agent Workflows — Built From Seams You Already Have",
