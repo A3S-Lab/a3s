@@ -473,7 +473,7 @@ describe('Work Finder file view', () => {
     const panel = await screen.findByRole('complementary', {
       name: '从所选项目创建知识库',
     });
-    expect(panel).toHaveTextContent('创建与编译');
+    expect(panel).toHaveTextContent('这一步只保存来源');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByRole('textbox', { name: '知识库名称' })).toHaveValue('Docs Pack');
     fireEvent.click(screen.getByRole('button', { name: '创建知识库' }));
@@ -486,8 +486,8 @@ describe('Work Finder file view', () => {
         compilationPolicy: 'manual',
       })
     );
-    expect(await screen.findByText(/来源已准备，尚未编译/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '立即编译' }));
+    expect(await screen.findByText(/来源已准备好/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '立即更新' }));
     await waitFor(() => expect(queue).toHaveBeenCalledWith('docs-pack', '/docs'));
     expect(await screen.findByRole('button', { name: '已加入队列' })).toBeDisabled();
   });

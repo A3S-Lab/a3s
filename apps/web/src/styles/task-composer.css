@@ -189,6 +189,119 @@
   opacity: 0.5;
 }
 
+.composer-run-settings {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.composer-run-settings-trigger i {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--a3s-blue) 11%, var(--a3s-panel));
+  color: var(--a3s-blue);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 650;
+}
+
+.composer-run-settings-chevron {
+  color: var(--a3s-faint);
+  transition: transform 150ms ease;
+}
+
+.composer-run-settings.open .composer-run-settings-chevron {
+  transform: rotate(180deg);
+}
+
+.composer-run-settings.research-active .composer-run-settings-trigger {
+  color: var(--a3s-blue);
+}
+
+.composer-run-settings-panel {
+  width: min(440px, calc(100vw - 40px));
+  overflow: visible;
+  padding: 12px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 15px;
+  background: var(--a3s-panel);
+  box-shadow: var(--a3s-shadow-soft);
+}
+
+.composer-run-settings-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1px 1px 10px;
+  border-bottom: 1px solid var(--a3s-line);
+}
+
+.composer-run-settings-panel > header > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.composer-run-settings-panel > header strong {
+  color: var(--a3s-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.composer-run-settings-panel > header small {
+  color: var(--a3s-faint);
+  font-size: 10px;
+}
+
+.composer-run-settings-panel > header > button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--a3s-muted);
+  cursor: pointer;
+}
+
+.composer-run-settings-panel > header > button:hover,
+.composer-run-settings-panel > header > button:focus-visible {
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-ink);
+}
+
+.composer-run-settings-row {
+  display: grid;
+  min-height: 46px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 1px;
+}
+
+.composer-run-settings-row + .composer-run-settings-row {
+  border-top: 1px solid var(--a3s-line);
+}
+
+.composer-run-settings-row > span {
+  color: var(--a3s-faint);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.composer-run-settings-row .composer-controls {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .composer-research-mode.active {
   border-color: color-mix(in srgb, var(--a3s-blue) 38%, var(--a3s-line));
   background: color-mix(in srgb, var(--a3s-blue) 10%, var(--a3s-panel));
@@ -730,4 +843,32 @@
 
 .composer-goal-popover > footer button:hover {
   background: var(--a3s-panel-soft);
+}
+
+@container (max-width: 520px) {
+  .composer-run-settings-trigger > span,
+  .composer-run-settings-trigger > i,
+  .composer-run-settings-chevron {
+    display: none;
+  }
+
+  .composer-run-settings-trigger {
+    width: 34px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .composer-run-settings-panel {
+    right: -48px;
+    width: min(360px, calc(100vw - 78px));
+  }
+
+  .composer-run-settings-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .composer-run-settings-row .composer-controls {
+    justify-content: flex-start;
+  }
 }

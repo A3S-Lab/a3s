@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  Folder,
   ListOrdered,
   LoaderCircle,
   Pause,
@@ -19,12 +20,11 @@ import type { TaskActions } from '../task-actions';
 import { findTaskSession } from '../task-state';
 import { ComposerResourceChips } from './composer-resource-chips';
 import { NewTaskWorkspaceControl } from './new-task-workspace-control';
-import { TaskComposerTrailingControls } from './task-composer-controls';
 import { TaskComposerGoalTiming } from './task-composer-goal-timing';
 import { TaskComposerInput } from './task-composer-input';
 import { TaskComposerModeControl } from './task-composer-mode-control';
-import { TaskComposerResearchMode } from './task-composer-research-mode';
 import { TaskComposerModelChangeNotice } from './task-composer-model-change-notice';
+import { TaskComposerRunSettings } from './task-composer-run-settings';
 
 export function TaskComposer({
   actions,
@@ -122,11 +122,13 @@ export function TaskComposer({
         <footer>
           <div>
             <TaskComposerModeControl actions={actions} />
-            <TaskComposerResearchMode disabled={anotherTaskRunning || resourcesImporting || submitting} />
             <TaskComposerGoalTiming actions={actions} />
           </div>
           <div>
-            <TaskComposerTrailingControls actions={actions} />
+            <TaskComposerRunSettings
+              actions={actions}
+              disabled={anotherTaskRunning || resourcesImporting || submitting}
+            />
             {currentTaskRunning && (
               <span className='composer-run-state'>
                 <LoaderCircle className='spin' size={13} />
@@ -157,9 +159,20 @@ export function TaskComposer({
             </button>
           </div>
         </footer>
-        {variant === 'preparation' && !currentTask && (
+        {variant === 'preparation' && (
           <div className='composer-preparation-meta'>
-            <NewTaskWorkspaceControl actions={actions} />
+            {currentTask ? (
+              <div className='composer-current-workspace' title={workspaceRoot}>
+                <Folder size={14} />
+                <span className='new-task-workspace-copy'>
+                  <strong>{workspaceDisplayName(workspaceRoot)}</strong>
+                  <small>{workspaceRoot || '当前任务未记录工作区'}</small>
+                </span>
+                <em>当前任务</em>
+              </div>
+            ) : (
+              <NewTaskWorkspaceControl actions={actions} />
+            )}
           </div>
         )}
         {anotherTaskRunning && (
@@ -383,4 +396,8 @@ function workspaceContextPath(path: string, root: string): string {
     return '';
   }
   return segments.join('/');
+}
+
+function workspaceDisplayName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() || '当前工作区';
 }

@@ -50,8 +50,10 @@ describe('A3S activity bar', () => {
     render(<ActivityBar />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons[0]).toHaveAttribute('aria-label', '工作');
-    expect(buttons[1]).toHaveAttribute('aria-label', '知识');
+    expect(buttons[0]).toHaveAttribute('aria-label', '任务');
+    expect(buttons[1]).toHaveAttribute('aria-label', '知识库');
+    expect(buttons[0]).toHaveTextContent('任务');
+    expect(buttons[1]).toHaveTextContent('知识库');
     expect(buttons[0]).toHaveAttribute('aria-current', 'page');
     expect(appState.activeProduct).toBe('work');
     expect(window.location.hash).toBe('#home');
@@ -66,19 +68,19 @@ describe('A3S activity bar', () => {
     render(<ActivityBar />);
 
     expect(screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
-      '工作',
-      '知识',
+      '任务',
+      '知识库',
       'Search',
       '科研',
       '记忆',
-      '市场',
+      '扩展',
       '设置',
     ]);
     expect(screen.queryByRole('button', { name: /科学/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Hidden' })).not.toBeInTheDocument();
-    const productSection = screen.getByRole('button', { name: '工作' }).parentElement;
+    const productSection = screen.getByRole('button', { name: '任务' }).parentElement;
     expect(productSection).toHaveClass('activity-products');
-    expect(productSection).toContainElement(screen.getByRole('button', { name: '知识' }));
+    expect(productSection).toContainElement(screen.getByRole('button', { name: '知识库' }));
     expect(productSection).toContainElement(screen.getByRole('button', { name: '科研' }));
 
     fireEvent.click(screen.getByRole('button', { name: '科研' }));
@@ -87,26 +89,26 @@ describe('A3S activity bar', () => {
     expect(window.location.hash).toBe('#plugin/science%3Aresearch');
     await waitFor(() => expect(screen.getByRole('button', { name: '科研' })).toHaveAttribute('aria-current', 'page'));
 
-    fireEvent.click(screen.getByRole('button', { name: '工作' }));
+    fireEvent.click(screen.getByRole('button', { name: '任务' }));
     expect(appState.activeProduct).toBe('work');
     expect(window.location.hash).toBe('#home');
-    await waitFor(() => expect(screen.getByRole('button', { name: '工作' })).toHaveAttribute('aria-current', 'page'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '任务' })).toHaveAttribute('aria-current', 'page'));
   });
 
   it('opens Knowledge as the built-in destination immediately below Work', async () => {
     appState.sidebarOpen = false;
     render(<ActivityBar />);
     const productButtons = screen
-      .getByRole('button', { name: '工作' })
+      .getByRole('button', { name: '任务' })
       .parentElement?.querySelectorAll<HTMLButtonElement>('.activity-button');
 
-    expect([...productButtons!].map((button) => button.getAttribute('aria-label'))).toEqual(['工作', '知识']);
-    fireEvent.click(screen.getByRole('button', { name: '知识' }));
+    expect([...productButtons!].map((button) => button.getAttribute('aria-label'))).toEqual(['任务', '知识库']);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
 
     expect(appState.activeProduct).toBe('knowledge');
     expect(appState.sidebarOpen).toBe(true);
     expect(window.location.hash).toBe('#knowledge');
-    await waitFor(() => expect(screen.getByRole('button', { name: '知识' })).toHaveAttribute('aria-current', 'page'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '知识库' })).toHaveAttribute('aria-current', 'page'));
   });
 
   it('preserves the unified Work draft while visiting Knowledge', () => {
@@ -117,8 +119,8 @@ describe('A3S activity bar', () => {
     appState.draftsByTask = {};
 
     render(<ActivityBar />);
-    fireEvent.click(screen.getByRole('button', { name: '知识' }));
-    fireEvent.click(screen.getByRole('button', { name: '工作' }));
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    fireEvent.click(screen.getByRole('button', { name: '任务' }));
 
     expect(appState.activeProduct).toBe('work');
     expect(appState.composerValue).toContain('概览当前文件夹');
@@ -127,11 +129,11 @@ describe('A3S activity bar', () => {
 
   it('opens the signed plugin marketplace as a system entry', async () => {
     render(<ActivityBar />);
-    fireEvent.click(screen.getByRole('button', { name: '市场' }));
+    fireEvent.click(screen.getByRole('button', { name: '扩展' }));
 
     expect(appState.activeProduct).toBe('plugins');
     expect(window.location.hash).toBe('#plugins');
-    await waitFor(() => expect(screen.getByRole('button', { name: '市场' })).toHaveAttribute('aria-current', 'page'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '扩展' })).toHaveAttribute('aria-current', 'page'));
   });
 
   it('keeps settings in the system section', async () => {
@@ -139,14 +141,14 @@ describe('A3S activity bar', () => {
     const systemSection = screen.getByRole('button', { name: '设置' }).parentElement;
     expect(systemSection).toHaveClass('activity-system');
     expect(systemSection).toContainElement(screen.getByRole('button', { name: '记忆' }));
-    expect(systemSection).toContainElement(screen.getByRole('button', { name: '市场' }));
+    expect(systemSection).toContainElement(screen.getByRole('button', { name: '扩展' }));
     expect(systemSection?.querySelectorAll('.activity-button')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: '账户与连接' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '设置' })).toHaveAttribute('data-activity-tooltip', '设置');
     fireEvent.click(screen.getByRole('button', { name: '设置' }));
     expect(appState.settingsOpen).toBe(true);
     expect(appState.settingsTab).toBe('general');
-    await waitFor(() => expect(screen.getByRole('button', { name: '工作' })).toHaveAttribute('aria-current', 'page'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '任务' })).toHaveAttribute('aria-current', 'page'));
     expect(screen.getByRole('button', { name: '设置' })).toHaveClass('active');
     expect(screen.getByRole('button', { name: '设置' })).toHaveAttribute('aria-expanded', 'true');
   });
@@ -158,9 +160,9 @@ describe('A3S activity bar', () => {
     expect(appState.activeProduct).toBe('memory');
     expect(window.location.hash).toBe('#memory');
     await waitFor(() => expect(screen.getByRole('button', { name: '记忆' })).toHaveAttribute('aria-current', 'page'));
-    expect(screen.getByRole('button', { name: '工作' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: '任务' })).not.toHaveAttribute('aria-current');
 
-    fireEvent.click(screen.getByRole('button', { name: '工作' }));
+    fireEvent.click(screen.getByRole('button', { name: '任务' }));
     expect(appState.activeProduct).toBe('work');
     expect(window.location.hash).toBe('#home');
   });

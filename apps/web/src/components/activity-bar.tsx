@@ -50,8 +50,8 @@ export function ActivityBar() {
       </div>
       <div className='activity-products'>
         <ActivityButton
-          label='工作'
-          tooltip='工作'
+          label='任务'
+          tooltip='任务与文件'
           active={state.activeProduct === 'work'}
           icon={BriefcaseBusiness}
           onClick={() => {
@@ -60,8 +60,8 @@ export function ActivityBar() {
           }}
         />
         <ActivityButton
-          label='知识'
-          tooltip='知识'
+          label='知识库'
+          tooltip='知识库'
           active={state.activeProduct === 'knowledge'}
           icon={BookOpen}
           onClick={() => {
@@ -83,14 +83,14 @@ export function ActivityBar() {
       <div className='activity-system'>
         <ActivityButton
           label='记忆'
-          tooltip='记忆'
+          tooltip='A3S 记住的内容'
           active={state.activeProduct === 'memory'}
           icon={BrainCircuit}
           onClick={navigateMemory}
         />
         <ActivityButton
-          label='市场'
-          tooltip='市场'
+          label='扩展'
+          tooltip='扩展能力'
           active={state.activeProduct === 'plugins'}
           icon={Store}
           onClick={navigatePlugins}
@@ -134,6 +134,7 @@ function ActivityButton({
       onClick={onClick}
     >
       <Icon size={20} />
+      <span className='activity-button-label'>{label}</span>
     </button>
   );
 }

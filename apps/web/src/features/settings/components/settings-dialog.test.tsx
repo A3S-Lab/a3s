@@ -99,9 +99,9 @@ describe('SettingsDialog', () => {
 
     render(<AppShell actions={actions as unknown as CodeActions} />);
 
-    expect(screen.getByRole('heading', { name: '从一个任务开始，完成文档、数据与文件工作' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '今天想完成什么？' })).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: '通用' })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: '会话列表' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '任务列表' })).toBeInTheDocument();
   });
 
   it('closes back to Home and restores focus to the invoker', async () => {
@@ -154,9 +154,9 @@ describe('SettingsDialog', () => {
     render(<SettingsDialog actions={actions} />);
 
     for (const [label, tab] of [
-      ['Agent 与执行', 'agent'],
-      ['上下文与存储', 'context'],
-      ['集成', 'integrations'],
+      ['执行与权限', 'agent'],
+      ['记录与上下文', 'context'],
+      ['连接与工具', 'integrations'],
     ] as const) {
       fireEvent.click(screen.getByRole('button', { name: label }));
       expect(appState.settingsOpen).toBe(true);
@@ -182,12 +182,12 @@ describe('SettingsDialog', () => {
     const settingsNavigation = screen.getByRole('navigation', { name: '设置分类' });
     expect(within(settingsNavigation).queryByRole('button', { name: '微信' })).not.toBeInTheDocument();
     expect(within(settingsNavigation).queryByRole('button', { name: '飞书' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '渠道' }));
+    fireEvent.click(screen.getByRole('button', { name: '消息渠道' }));
 
     expect(appState.settingsTab).toBe('channels');
     expect(appState.settingsChannel).toBe('weixin');
     expect(window.location.hash).toBe('#settings/channels/weixin');
-    expect(screen.getByRole('dialog', { name: '渠道' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '消息渠道' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '微信' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '飞书' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('heading', { name: '微信渠道尚未就绪' })).toBeInTheDocument();
@@ -198,7 +198,7 @@ describe('SettingsDialog', () => {
     expect(appState.settingsTab).toBe('channels');
     expect(appState.settingsChannel).toBe('feishu');
     expect(window.location.hash).toBe('#settings/channels/feishu');
-    expect(screen.getByRole('dialog', { name: '渠道' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '消息渠道' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: '飞书' })).toHaveAttribute('aria-pressed', 'true'));
     expect(await screen.findByRole('heading', { name: '飞书渠道' })).toBeInTheDocument();
     expect(screen.getByText('敬请期待')).toBeInTheDocument();
@@ -221,13 +221,13 @@ describe('SettingsDialog', () => {
     appState.settingsOpen = true;
     appState.llm = createLlmSettings();
     render(<SettingsDialog actions={actions} />);
-    fireEvent.click(screen.getByRole('button', { name: '模型与 Provider' }));
+    fireEvent.click(screen.getByRole('button', { name: '模型' }));
     fireEvent.change(await screen.findByRole('textbox', { name: 'openai 名称' }), {
       target: { value: 'renamed-provider' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: '通用' }));
-    fireEvent.click(screen.getByRole('button', { name: '模型与 Provider' }));
+    fireEvent.click(screen.getByRole('button', { name: '模型' }));
 
     expect(screen.getByRole('textbox', { name: 'renamed-provider 名称' })).toHaveValue('renamed-provider');
     expect(screen.getByRole('button', { name: '撤销' })).toBeInTheDocument();
@@ -237,7 +237,7 @@ describe('SettingsDialog', () => {
     appState.llm = createLlmSettings();
     render(<SettingsInvoker />);
     fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
-    fireEvent.click(await screen.findByRole('button', { name: '模型与 Provider' }));
+    fireEvent.click(await screen.findByRole('button', { name: '模型' }));
     fireEvent.change(await screen.findByRole('textbox', { name: 'openai 名称' }), {
       target: { value: 'renamed-provider' },
     });
@@ -259,13 +259,13 @@ describe('SettingsDialog', () => {
     appState.llm = createLlmSettings();
     render(<SettingsInvoker />);
     fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
-    fireEvent.click(await screen.findByRole('button', { name: '模型与 Provider' }));
+    fireEvent.click(await screen.findByRole('button', { name: '模型' }));
     fireEvent.change(await screen.findByRole('textbox', { name: 'openai 名称' }), {
       target: { value: 'renamed-provider' },
     });
     fireEvent.click(screen.getByRole('button', { name: '关闭设置' }));
 
-    const dialog = screen.getByRole('dialog', { name: '模型与 Provider' });
+    const dialog = screen.getByRole('dialog', { name: '模型' });
     const continueButton = screen.getByRole('button', { name: '继续编辑' });
     const discardButton = screen.getByRole('button', { name: '放弃并关闭' });
     expect(continueButton).toHaveFocus();

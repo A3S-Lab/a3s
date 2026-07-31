@@ -325,6 +325,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                   appState.sidebarOpen = true;
                 }}
                 onContinueSession={() => updateCopilotOpen(true)}
+                onNewTask={startNewConversation}
                 onTaskSubmit={() => updateCopilotOpen(true)}
                 onOpenWorkspace={() => {
                   updateSurface('files');

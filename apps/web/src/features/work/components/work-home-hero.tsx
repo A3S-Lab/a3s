@@ -7,6 +7,7 @@ import {
   FolderTree,
   Presentation,
   MessageSquareText,
+  Plus,
   Sheet,
   ShieldCheck,
   WandSparkles,
@@ -20,6 +21,7 @@ interface WorkHomeHeroProps {
   taskActions: TaskActions;
   activeSessionTitle?: string | null;
   onContinueSession?: () => void;
+  onNewTask?: () => void;
   onTaskSubmit: () => void;
   onCreate: (templateId: string) => void;
   onImport: () => void;
@@ -42,6 +44,7 @@ export function WorkHomeHero({
   taskActions,
   activeSessionTitle,
   onContinueSession,
+  onNewTask,
   onTaskSubmit,
   onCreate,
   onImport,
@@ -53,21 +56,21 @@ export function WorkHomeHero({
   const capabilities: WorkHomeCapability[] = [
     {
       id: 'document',
-      label: '文字',
+      label: '新建文档',
       icon: FileText,
       tone: 'blue',
       run: () => onCreate('blank-document'),
     },
     {
       id: 'spreadsheet',
-      label: '表格',
+      label: '新建表格',
       icon: Sheet,
       tone: 'green',
       run: () => onCreate('blank-spreadsheet'),
     },
     {
       id: 'presentation',
-      label: '演示',
+      label: '新建演示',
       icon: Presentation,
       tone: 'orange',
       run: () => onCreate('blank-presentation'),
@@ -95,7 +98,7 @@ export function WorkHomeHero({
     },
     {
       id: 'workspace',
-      label: '全部文件',
+      label: '浏览工作区',
       icon: FolderTree,
       tone: 'slate',
       run: onOpenWorkspace,
@@ -109,32 +112,42 @@ export function WorkHomeHero({
           <WandSparkles size={23} />
         </span>
         <div>
-          <p>你好，我是 A3S</p>
-          <h1 id='work-home-hero-title'>从一个任务开始，完成文档、数据与文件工作</h1>
+          <p>A3S · 本地智能工作台</p>
+          <h1 id='work-home-hero-title'>今天想完成什么？</h1>
         </div>
       </header>
       <p className='work-home-hero-description'>
-        描述目标，输入 <kbd>@</kbd> 引用文件，或输入 <kbd>/</kbd> 选择 Skill；A3S 会在你的工作区中规划、执行并交付结果。
+        选择工作区，描述你想要的结果。A3S 会读取相关文件、完成工作，并把可审阅的产物留在本地。
       </p>
-      {activeSessionTitle ? (
-        <button type='button' className='work-home-active-session' onClick={onContinueSession}>
-          <span aria-hidden='true'>
-            <MessageSquareText size={18} />
-          </span>
-          <span>
-            <small>当前会话</small>
-            <strong>{activeSessionTitle}</strong>
-          </span>
-          <span>
-            继续工作
-            <ArrowRight size={15} />
-          </span>
-        </button>
-      ) : (
-        <div className='work-home-composer'>
-          <TaskComposer actions={taskActions} variant='preparation' onSubmitStart={onTaskSubmit} />
+      {activeSessionTitle && (
+        <div className='work-home-active-session'>
+          <button
+            type='button'
+            className='work-home-active-session-link'
+            aria-label={`打开当前任务：${activeSessionTitle}`}
+            onClick={onContinueSession}
+          >
+            <span aria-hidden='true'>
+              <MessageSquareText size={17} />
+            </span>
+            <span>
+              <small>当前任务</small>
+              <strong>{activeSessionTitle}</strong>
+            </span>
+            <span>
+              打开任务
+              <ArrowRight size={15} />
+            </span>
+          </button>
+          <button type='button' className='work-home-new-task' onClick={onNewTask}>
+            <Plus size={14} />
+            新建任务
+          </button>
         </div>
       )}
+      <div className='work-home-composer'>
+        <TaskComposer actions={taskActions} variant='preparation' onSubmitStart={onTaskSubmit} />
+      </div>
       <nav className='work-home-capabilities' aria-label='Work 快捷能力'>
         {capabilities.map((capability) => {
           const Icon = capability.icon;
@@ -150,7 +163,7 @@ export function WorkHomeHero({
       </nav>
       <p className='work-home-assurance'>
         <ShieldCheck size={13} aria-hidden='true' />
-        代码与办公文件都留在你选择的本地工作区；涉及移动、重命名等更改时先展示计划。
+        当前工作区会持续显示；涉及移动、重命名等更改时，A3S 会先说明影响并请求确认。
       </p>
     </section>
   );

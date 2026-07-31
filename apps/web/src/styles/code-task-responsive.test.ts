@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const codeProductStyles = readFileSync(resolve(process.cwd(), 'src/styles/code-product.css'), 'utf8');
 const taskSurfaceStyles = readFileSync(resolve(process.cwd(), 'src/styles/task-surface.css'), 'utf8');
+const shellStyles = readFileSync(resolve(process.cwd(), 'src/styles/shell.css'), 'utf8');
 
 describe('Code task responsive styles', () => {
   it('uses an overlay task library instead of squeezing the mobile conversation', () => {
@@ -19,5 +20,10 @@ describe('Code task responsive styles', () => {
     expect(taskSurfaceStyles).toMatch(
       /@container \(max-width: 420px\)[\s\S]*?\.composer-trailing-controls[\s\S]*?\.composer-quick-trigger > span[\s\S]*?display:\s*none;/
     );
+  });
+
+  it('lets the boot screen shrink to a narrow app window', () => {
+    expect(shellStyles).toMatch(/\.code-boot-screen\s*\{[\s\S]*?min-width:\s*0;/);
+    expect(shellStyles).toMatch(/\.code-boot-card\s*\{[\s\S]*?width:\s*min\(390px, 100%\);/);
   });
 });

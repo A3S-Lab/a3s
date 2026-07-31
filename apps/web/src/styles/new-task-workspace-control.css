@@ -2,18 +2,64 @@
   min-width: 0;
 }
 
-.new-task-workspace-control .composer-quick-trigger {
-  max-width: 230px;
-  padding: 0 7px;
+.composer-current-workspace {
+  display: flex;
+  min-width: 0;
+  max-width: min(620px, 100%);
+  align-items: center;
+  gap: 6px;
+  padding: 4px 7px;
   color: var(--a3s-ink);
-  font-weight: 500;
 }
 
-.new-task-workspace-control .composer-quick-trigger > span {
+.composer-current-workspace > svg {
+  flex: 0 0 auto;
+  color: var(--a3s-muted);
+}
+
+.composer-current-workspace > em {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--a3s-blue) 9%, var(--a3s-panel));
+  color: var(--a3s-blue);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 620;
+}
+
+.new-task-workspace-control .composer-quick-trigger {
+  max-width: min(520px, 100%);
+  padding: 4px 7px;
+  color: var(--a3s-ink);
+  font-weight: 500;
+  text-align: left;
+}
+
+.new-task-workspace-copy {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.new-task-workspace-copy strong,
+.new-task-workspace-copy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.new-task-workspace-copy strong {
+  color: var(--a3s-ink);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.new-task-workspace-copy small {
+  color: var(--a3s-faint);
+  font-size: 9px;
+  font-weight: 450;
 }
 
 .new-task-workspace-control .new-task-workspace-chevron {

@@ -44,6 +44,8 @@ describe('Work file center', () => {
     appState.composerValue = '';
     appState.composerContextFiles = [];
     appState.composerSkills = [];
+    appState.composerMode = 'standard';
+    appState.activeSessionId = null;
     appState.streamingSessionId = null;
     appState.taskSubmissionState = null;
   });
@@ -66,7 +68,11 @@ describe('Work file center', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: '从一个任务开始，完成文档、数据与文件工作' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '今天想完成什么？' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /深度研究模式/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
+    expect(screen.getByRole('region', { name: '运行设置面板' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /深度研究模式/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '分析数据' }));
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: '任务指令' })).toHaveTextContent('识别关键趋势、异常和相互关系')
@@ -75,10 +81,30 @@ describe('Work file center', () => {
     expect(onTaskSubmit).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: '全部文件' }));
+    fireEvent.click(screen.getByRole('button', { name: '浏览工作区' }));
     expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: '文字' }));
+    fireEvent.click(screen.getByRole('button', { name: '新建文档' }));
     expect(onCreate).toHaveBeenCalledWith('blank-document');
+  });
+
+  it('keeps the composer available while offering explicit resume and new-task actions', () => {
+    const onContinueSession = vi.fn();
+    const onNewTask = vi.fn();
+    render(
+      <WorkHome
+        {...workHomeProps({
+          activeSessionTitle: '季度复盘',
+          onContinueSession,
+          onNewTask,
+        })}
+      />
+    );
+
+    expect(screen.getByRole('textbox', { name: '任务指令' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '打开当前任务：季度复盘' }));
+    expect(onContinueSession).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: '新建任务' }));
+    expect(onNewTask).toHaveBeenCalledTimes(1);
   });
 
   it('restores the collapsed office sidebar from the document library', () => {

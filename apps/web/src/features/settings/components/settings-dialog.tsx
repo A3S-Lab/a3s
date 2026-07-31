@@ -37,23 +37,23 @@ interface SettingsTabDefinition {
 }
 
 const primaryTabs: SettingsTabDefinition[] = [
-  { id: 'account', label: '账户', description: '管理 A3S OS 授权与本地开发工具模型', icon: UserRound },
+  { id: 'account', label: '账户', description: '管理登录、授权和本地工具连接', icon: UserRound },
   { id: 'general', label: '通用', description: '调整外观、工作区与本机偏好', icon: Settings2 },
-  { id: 'model', label: '模型与 Provider', description: '选择默认模型并管理 Provider 连接与模型目录', icon: Box },
-  { id: 'agent', label: 'Agent 与执行', description: '配置工具边界、自动委派、目录和任务队列', icon: Bot },
-  { id: 'context', label: '上下文与存储', description: '配置会话存储、记忆目录与上下文生命周期', icon: Database },
-  { id: 'integrations', label: '集成', description: '配置 MCP、搜索与文档解析', icon: Plug },
+  { id: 'model', label: '模型', description: '选择默认模型并管理模型服务', icon: Box },
+  { id: 'agent', label: '执行与权限', description: '控制工具权限、任务队列和自动协作', icon: Bot },
+  { id: 'context', label: '记录与上下文', description: '管理任务记录、记忆和上下文生命周期', icon: Database },
+  { id: 'integrations', label: '连接与工具', description: '连接搜索、文档解析和外部工具', icon: Plug },
   {
     id: 'channels',
-    label: '渠道',
+    label: '消息渠道',
     description: '管理微信、飞书等远程消息渠道',
     icon: MessagesSquare,
   },
 ];
 
 const supportTabs: SettingsTabDefinition[] = [
-  { id: 'about', label: '关于与更新', description: '查看版本、连接状态与更新', icon: Info },
-  { id: 'help', label: '帮助', description: '查找 Code 工作流、安全说明与键盘操作', icon: CircleHelp },
+  { id: 'about', label: '关于 A3S', description: '查看版本、连接状态与更新', icon: Info },
+  { id: 'help', label: '帮助', description: '查找任务、安全和键盘操作说明', icon: CircleHelp },
 ];
 
 const tabs = [...primaryTabs, ...supportTabs];

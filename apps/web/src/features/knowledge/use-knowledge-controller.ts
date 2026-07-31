@@ -127,7 +127,7 @@ export function useKnowledgeController() {
       applyMutation(mutation);
       appState.knowledgeOperationStatus = 'ready';
       appState.knowledgeOperationId = null;
-      showToast(mutation.changed ? '知识编译已加入队列。' : '知识编译已在处理中。', 'success');
+      showToast(mutation.changed ? '知识库更新已加入队列。' : '知识库正在更新。', 'success');
       void refreshKnowledge(true);
       return true;
     } catch (error) {
@@ -151,7 +151,7 @@ export function useKnowledgeController() {
       applyMutation(mutation);
       appState.knowledgeOperationStatus = 'ready';
       appState.knowledgeOperationId = null;
-      showToast(policy === 'smart_auto' ? '已开启智能自动编译。' : '已切换为手动编译。', 'success');
+      showToast(policy === 'smart_auto' ? '已开启知识库自动更新。' : '已切换为手动更新。', 'success');
       void refreshKnowledge(true);
       return true;
     } catch (error) {

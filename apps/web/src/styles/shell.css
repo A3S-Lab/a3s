@@ -4,7 +4,7 @@
 .code-boot-screen {
   display: grid;
   width: 100%;
-  min-width: 960px;
+  min-width: 0;
   height: 100%;
   place-content: center;
   justify-items: center;
@@ -16,7 +16,7 @@
 }
 
 .code-boot-card {
-  width: 390px;
+  width: min(390px, 100%);
   padding: 22px;
   border: 1px solid var(--a3s-line);
   border-radius: 16px;

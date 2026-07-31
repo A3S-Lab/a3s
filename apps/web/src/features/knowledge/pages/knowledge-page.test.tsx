@@ -188,13 +188,13 @@ describe('standalone knowledge page', () => {
     const actions = createKnowledgeActions();
     render(<KnowledgePage actions={actions} />);
 
-    expect(screen.getAllByText('来源已准备')).toHaveLength(2);
+    expect(screen.getAllByText('可以更新')).toHaveLength(2);
     fireEvent.click(screen.getAllByRole('button', { name: '打开知识库 Research Pack' })[0]);
     expect(await screen.findByRole('region', { name: 'Research Pack 知识库编辑器' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '知识编译设置' })).toHaveTextContent('尚未运行知识编译');
-    fireEvent.click(screen.getByRole('button', { name: '立即编译' }));
+    expect(screen.getByRole('region', { name: '知识库更新设置' })).toHaveTextContent('更新后即可搜索和引用');
+    fireEvent.click(screen.getByRole('button', { name: '立即更新' }));
     expect(actions.requestCompilation).toHaveBeenCalledWith(selectionBase.id);
-    fireEvent.click(screen.getByRole('checkbox', { name: '原文件变化后智能自动编译' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '原文件变化后自动更新知识库' }));
     expect(actions.setCompilationPolicy).toHaveBeenCalledWith(selectionBase.id, 'smart_auto');
   });
 

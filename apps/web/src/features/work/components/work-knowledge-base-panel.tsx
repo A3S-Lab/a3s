@@ -67,7 +67,7 @@ export function WorkKnowledgeBasePanel({
       });
       rememberKnowledgeBase(mutation.knowledgeBase, workspaceRoot);
       setCreated(mutation.knowledgeBase);
-      showToast('知识库已创建，来源已准备但尚未编译。', 'success');
+      showToast('知识库已创建，可以立即生成可搜索内容。', 'success');
     } catch (createError) {
       setError(formatApiError(createError));
     } finally {
@@ -83,7 +83,7 @@ export function WorkKnowledgeBasePanel({
       const mutation = await codeApi.requestKnowledgeCompilation(created.id, workspaceRoot);
       rememberKnowledgeBase(mutation.knowledgeBase, workspaceRoot);
       setCreated(mutation.knowledgeBase);
-      showToast(mutation.changed ? '知识编译已加入队列。' : '知识编译已在处理中。', 'success');
+      showToast(mutation.changed ? '知识库更新已加入队列。' : '知识库正在更新。', 'success');
     } catch (compileError) {
       setError(formatApiError(compileError));
     } finally {
@@ -103,12 +103,10 @@ export function WorkKnowledgeBasePanel({
           </span>
           <div>
             <strong>{created.name} 已创建</strong>
-            <p>
-              来源已准备，尚未编译。创建与编译是两个独立步骤；编译器只会把结果写入 <code>wiki/</code>。
-            </p>
+            <p>来源已准备好。更新知识库后即可搜索和引用其中的内容；失败时仍会保留上一版。</p>
           </div>
           <span className={`knowledge-compilation-chip phase-${created.compilation?.phase ?? 'source_ready'}`}>
-            {created.compilation?.phase === 'queued' ? '等待编译' : '来源已准备'}
+            {created.compilation?.phase === 'queued' ? '等待更新' : '可以更新'}
           </span>
           <div className='work-knowledge-builder-actions'>
             <Button tone='primary' loading={queueing} disabled={compilationActive} onClick={() => void compileNow()}>
@@ -116,8 +114,8 @@ export function WorkKnowledgeBasePanel({
               {created.compilation?.phase === 'queued'
                 ? '已加入队列'
                 : created.compilation?.phase === 'running'
-                  ? '编译中'
-                  : '立即编译'}
+                  ? '正在更新'
+                  : '立即更新'}
             </Button>
             <Button onClick={() => navigateKnowledgeBase(created.id, workspaceRoot)}>
               <BookOpen size={14} />
@@ -137,7 +135,7 @@ export function WorkKnowledgeBasePanel({
                 ? `${preview.selectedCount} 个选择已整理为 ${preview.sourceRootCount} 个来源根 · ${preview.fileCount} 个文件 · ${formatBytes(preview.bytes)}`
                 : '正在检查所选文件与文件夹…'}
             </p>
-            <small>创建与编译分开：本步骤只准备来源，不会立即编译。</small>
+            <small>这一步只保存来源；创建完成后，你可以立即生成可搜索内容。</small>
           </div>
           <label>
             <span>名称</span>
@@ -166,8 +164,8 @@ export function WorkKnowledgeBasePanel({
               onChange={(event) => setPolicy(event.target.checked ? 'smart_auto' : 'manual')}
             />
             <span>
-              <strong>原文件变化后智能编译</strong>
-              <small>稳定 5 秒且静默 30 秒后触发；两次自动编译至少间隔 10 分钟</small>
+              <strong>原文件变化后自动更新</strong>
+              <small>文件稳定后触发，且两次更新至少间隔 10 分钟</small>
             </span>
           </label>
           <Button tone='primary' type='submit' loading={submitting} disabled={loading || !preview || !name.trim()}>

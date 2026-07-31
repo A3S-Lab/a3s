@@ -12,7 +12,7 @@ export function TaskComposerTrailingControls({ actions }: { actions: TaskActions
   const controls = task ? state.sessionControls[task.sessionId] : undefined;
 
   return (
-    <section className='composer-controls composer-trailing-controls' aria-label='任务上下文、模型与推理'>
+    <section className='composer-controls composer-trailing-controls' aria-label='上下文、推理强度和模型'>
       {controls?.context && task && (
         <TaskComposerContextControl
           context={controls.context}

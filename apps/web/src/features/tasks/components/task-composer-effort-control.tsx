@@ -68,7 +68,7 @@ export function TaskComposerEffortControl({ actions }: { actions: TaskActions })
         <BrainCircuit size={15} />
         <span>
           <strong>Effort</strong>
-          <small>数值越高，Code 会投入更多时间进行推理和验证</small>
+          <small>数值越高，A3S 会投入更多时间进行推理和验证</small>
         </span>
       </header>
       <section className='composer-effort-slider'>

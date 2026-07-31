@@ -28,6 +28,7 @@ interface WorkHomeProps {
   activeSessionTitle?: string | null;
   onOpenSidebar: () => void;
   onContinueSession?: () => void;
+  onNewTask?: () => void;
   onTaskSubmit: () => void;
   onOpenWorkspace: () => void;
   onCreate: (templateId: string) => void;
@@ -60,6 +61,7 @@ export function WorkHome({
   activeSessionTitle = null,
   onOpenSidebar,
   onContinueSession,
+  onNewTask,
   onTaskSubmit,
   onOpenWorkspace,
   onCreate,
@@ -211,6 +213,7 @@ export function WorkHome({
             taskActions={taskActions}
             activeSessionTitle={activeSessionTitle}
             onContinueSession={onContinueSession}
+            onNewTask={onNewTask}
             onTaskSubmit={onTaskSubmit}
             onCreate={onCreate}
             onImport={onImport}

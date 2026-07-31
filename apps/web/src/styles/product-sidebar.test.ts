@@ -45,4 +45,12 @@ describe('shared product navigation styles', () => {
       /\.settings-nav nav button svg\s*\{[\s\S]*?stroke-width:\s*var\(--a3s-shell-icon-stroke\);/
     );
   });
+
+  it('shows readable product labels on desktop and returns to the compact rail on mobile', () => {
+    expect(activityBarStyles).toMatch(/\.activity-bar\s*\{[\s\S]*?width:\s*76px;[\s\S]*?flex:\s*0 0 76px;/);
+    expect(activityBarStyles).toMatch(/\.activity-button-label\s*\{[\s\S]*?font-size:\s*9px;/);
+    expect(activityBarStyles).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?\.activity-bar\s*\{[\s\S]*?width:\s*52px;[\s\S]*?\.activity-button-label\s*\{[\s\S]*?display:\s*none;/
+    );
+  });
 });

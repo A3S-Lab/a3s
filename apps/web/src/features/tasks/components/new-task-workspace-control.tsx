@@ -49,7 +49,10 @@ export function NewTaskWorkspaceControl({ actions }: { actions: TaskActions }) {
       trigger={
         <>
           <Folder size={14} />
-          <span>{workspaceName(selectedPath)}</span>
+          <span className='new-task-workspace-copy'>
+            <strong>{workspaceName(selectedPath)}</strong>
+            <small title={selectedPath}>{selectedPath || '选择 A3S 要处理的本地文件夹'}</small>
+          </span>
           <ChevronUp className='new-task-workspace-chevron' size={12} />
         </>
       }
@@ -191,5 +194,5 @@ function workspaceKey(path: string): string {
 }
 
 function workspaceName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() || '当前工作区';
+  return path.split(/[\\/]/).filter(Boolean).pop() || '选择工作区';
 }

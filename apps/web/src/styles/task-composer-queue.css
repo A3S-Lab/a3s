@@ -289,17 +289,18 @@
 
 .composer-preparation-meta {
   display: flex;
-  min-height: 38px;
+  min-height: 50px;
   align-items: center;
   gap: 8px;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-top: 1px solid var(--a3s-line);
   border-radius: 0 0 15px 15px;
   background: var(--a3s-panel-soft);
 }
 
 .composer-preparation-meta .composer-quick-trigger {
-  height: 32px;
+  min-height: 40px;
+  height: auto;
 }
 
 @container (max-width: 650px) {

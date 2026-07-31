@@ -94,6 +94,7 @@ describe('Web-native session experiences', () => {
     const compactSession = vi.fn(async () => undefined);
     render(<TaskComposer actions={{ compactSession } as unknown as CodeActions} />);
     expect(screen.queryByRole('button', { name: '任务参数' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     const trigger = screen.getByRole('button', { name: '上下文用量 12%' });
     expect(trigger).toHaveTextContent('上下文 12%');
     fireEvent.click(screen.getByRole('button', { name: '压缩上下文' }));
@@ -160,7 +161,7 @@ describe('Web-native session experiences', () => {
     expect(writeBinaryFile).not.toHaveBeenCalled();
   });
 
-  it('edits task run parameters through separate upward controls', () => {
+  it('edits task run parameters through progressive upward controls', () => {
     appState.effortLevels = [
       { id: 'medium', label: 'Medium' },
       { id: 'high', label: 'High' },
@@ -176,6 +177,7 @@ describe('Web-native session experiences', () => {
     const updatePermissionMode = vi.fn(async () => undefined);
     render(<TaskComposer actions={{ updateEffort, updatePermissionMode } as unknown as CodeActions} />);
 
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     const effortTrigger = screen.getByRole('button', { name: 'Effort：Medium' });
     expect(effortTrigger).toHaveTextContent('Effort · Medium');
     fireEvent.click(effortTrigger);
@@ -208,6 +210,7 @@ describe('Web-native session experiences', () => {
     appState.sessionControlsLoading = { [session.sessionId]: true };
     render(<TaskComposer actions={{} as CodeActions} />);
 
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     expect(screen.getByRole('button', { name: 'Effort：Medium' })).toBeDisabled();
 
     act(() => {
@@ -226,6 +229,7 @@ describe('Web-native session experiences', () => {
   it('offers DeepResearch in the unified task composer', async () => {
     const { rerender, container } = render(<TaskComposer actions={{} as CodeActions} />);
 
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     const researchMode = screen.getByRole('button', { name: '深度研究模式：关闭' });
     expect(researchMode).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(researchMode);
@@ -277,6 +281,7 @@ describe('Web-native session experiences', () => {
     render(<TaskComposer actions={{} as CodeActions} variant='preparation' />);
 
     expect(screen.getByText('Work-only queued instruction')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     expect(screen.getByRole('button', { name: '任务模型' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '新任务模型' })).not.toBeInTheDocument();
   });
@@ -292,6 +297,7 @@ describe('Web-native session experiences', () => {
     };
     render(<TaskComposer actions={{} as CodeActions} />);
 
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     expect(screen.getByRole('button', { name: /新任务模型/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Effort：Medium' }));
     expect(screen.getByRole('slider', { name: 'Effort' })).toHaveValue('0');
@@ -313,6 +319,7 @@ describe('Web-native session experiences', () => {
     });
     render(<TaskComposer actions={{} as CodeActions} />);
 
+    fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     const trigger = screen.getByRole('button', { name: '新任务模型' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);

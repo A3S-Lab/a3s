@@ -11,9 +11,9 @@ import { TaskLibraryItem } from './task-library-item';
 
 export function TaskLibrary({
   actions,
-  title = '会话',
-  label = '会话列表',
-  itemLabel = '会话',
+  title = '任务',
+  label = '任务列表',
+  itemLabel = '任务',
   onNewConversation,
   onSelectSession,
 }: {

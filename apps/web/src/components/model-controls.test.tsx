@@ -60,7 +60,7 @@ describe('model controls', () => {
     const saveLlmSettings = vi.fn(async (patch) => ({ ...appState.llm!, ...patch }));
     const actions = { saveLlmSettings } as unknown as CodeActions;
     render(<SettingsDialog actions={actions} />);
-    fireEvent.click(screen.getByRole('button', { name: '模型与 Provider' }));
+    fireEvent.click(screen.getByRole('button', { name: '模型' }));
     fireEvent.click(await screen.findByRole('button', { name: /^设置默认模型/ }));
     fireEvent.click(screen.getByRole('option', { name: /glm-5\.2/ }));
     expect(saveLlmSettings).not.toHaveBeenCalled();
@@ -94,7 +94,7 @@ describe('model controls', () => {
       )
     );
     render(<SettingsHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '关于与更新' }));
+    fireEvent.click(screen.getByRole('button', { name: '关于 A3S' }));
     expect(await screen.findByText('发现 0.7.8')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '安装更新' }));
     expect(screen.getByRole('button', { name: '确认安装 0.7.8' })).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe('model controls', () => {
       })
     );
     render(<SettingsHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '关于与更新' }));
+    fireEvent.click(screen.getByRole('button', { name: '关于 A3S' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('无法访问本地 A3S 服务');
     expect(screen.getByText('无法检查更新')).toBeInTheDocument();
     expect(screen.queryByText('当前已是最新版本')).not.toBeInTheDocument();
@@ -205,7 +205,7 @@ describe('model controls', () => {
       })
     );
     render(<SettingsHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '关于与更新' }));
+    fireEvent.click(screen.getByRole('button', { name: '关于 A3S' }));
     expect(await screen.findByText('发现 0.7.8')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '安装更新' }));
     fireEvent.click(screen.getByRole('button', { name: '确认安装 0.7.8' }));
@@ -237,7 +237,7 @@ describe('model controls', () => {
       )
     );
     render(<SettingsHarness />);
-    fireEvent.click(screen.getByRole('button', { name: '关于与更新' }));
+    fireEvent.click(screen.getByRole('button', { name: '关于 A3S' }));
     expect(await screen.findByText('连接中断')).toBeInTheDocument();
   });
 });
