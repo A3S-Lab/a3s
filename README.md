@@ -217,10 +217,10 @@ service available on an incompatible machine.
 A3S is a collection of composable boundaries, not a mandatory vertical stack:
 
 ~~~text
-terminal · browser · Rust / Node.js / Python SDKs
+coding agents · terminal · browser · Rust / Node.js / Python SDKs
                          |
                  product hosts
-        CLI · Code · Web · Research · Bench · Cloud · services
+      CLI · Code · Ash · Web · Research · Bench · Cloud · services
                          |
        governed agents · capabilities · durable state
         Code / Use       Flow / Event / Lane / Memory
@@ -258,6 +258,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Area | Current boundary |
 | --- | --- |
 | Code | Model execution requires a configured provider or compatible account; remote OS actions require login |
+| Ash | Pre-release AI Native Shell; source builds and the six-target signed release pipeline are implemented, but release credentials are not provisioned and no supported signed binary release is published yet |
 | Web | Local-first and loopback by default; the default workspace and Knowledge are separate built-in destinations, and Office format fidelity depends on the exact editor and source feature |
 | Research | Evidence is admitted only from fetched text or validated workspace sources; local-only mode remains network-free |
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
@@ -363,6 +364,7 @@ distribution assets.
 | --- | --- |
 | [A3S CLI](src/) | Root-owned umbrella `a3s` command, Code TUI host, local Web API, configuration, authentication, and component lifecycle |
 | [A3S Code](crates/code/) | Governed async agent runtime with Rust Core plus Node.js and Python SDKs |
+| [A3S Ash](crates/ash/) | AI Native Shell with typed parallel execution, compact canonical ASON evidence, capability-scoped access, and signed cross-platform delivery |
 | [A3S Web](apps/web/) | Local browser product with a default `#home` workspace, a separate Knowledge destination, and reviewed Use-package destinations |
 | [A3S Desktop](apps/desktop/) | Independently versioned native desktop host tracked by the integration snapshot |
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
