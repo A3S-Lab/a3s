@@ -15,7 +15,7 @@ import {
   WorkLocalFileExistsError,
   writeWorkLocalFileAtomically,
 } from './work-local-file-binding';
-import { joinLocalPath } from './work-local-files';
+import { joinLocalPath, localPathBasename, workFileMimeType } from './work-local-files';
 import {
   copyWorkArtifact,
   deleteWorkArtifact,
@@ -46,7 +46,7 @@ import type {
 
 const SAVE_DELAY_MS = 550;
 
-export type WorkLocalSaveState = 'idle' | 'checking' | 'saving' | 'saved' | 'conflict' | 'error';
+export type WorkLocalSaveState = 'idle' | 'dirty' | 'checking' | 'saving' | 'saved' | 'conflict' | 'error';
 
 export interface WorkLocalFileConflict {
   path: string;
@@ -87,6 +87,7 @@ export function useWorkController() {
   const activeSave = useRef<QueuedWorkSave | null>(null);
   const saveDrain = useRef<Promise<boolean> | null>(null);
   const saveTimer = useRef<number | null>(null);
+  const localSync = useRef<Promise<boolean> | null>(null);
   const persistedRevisions = useRef(new Map<string, number>());
   const activeArtifactRef = useRef<WorkArtifact | null>(activeArtifact);
   activeArtifactRef.current = activeArtifact;
@@ -318,6 +319,11 @@ export function useWorkController() {
     scheduleSave(next);
   });
 
+  const markLocalFileDirty = useMemoizedFn(() => {
+    if (!activeArtifact || !readWorkLocalFileBinding(activeArtifact.id)) return;
+    setLocalSaveState((current) => (current === 'conflict' ? current : 'dirty'));
+  });
+
   const removeArtifact = useMemoizedFn(async (id: string) => {
     const artifact = artifacts.find((item) => item.id === id);
     if (!artifact) return;
@@ -547,6 +553,105 @@ export function useWorkController() {
       showToast(saveErrorMessage(error, '文件导出失败'), 'error');
     } finally {
       setExporting(false);
+    }
+  });
+
+  const reloadLocalFile = useMemoizedFn(
+    async (snapshot?: { bytes: Uint8Array; fingerprint: string }): Promise<boolean> => {
+      const artifact = activeArtifactRef.current;
+      if (!artifact) return false;
+      const binding = readWorkLocalFileBinding(artifact.id);
+      if (!binding) return false;
+      setLocalSaveState('checking');
+      try {
+        if (!(await persistNow(artifact))) return false;
+        if (!(await codeApi.pathExists(binding.path)).exists) {
+          setLocalConflict({ path: binding.path, missing: true });
+          setLocalSaveState('conflict');
+          return false;
+        }
+        const bytes = snapshot?.bytes ?? (await codeApi.readBinaryFile(binding.path));
+        const fingerprint = snapshot?.fingerprint ?? (await fingerprintWorkFile(bytes));
+        const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+        const fileName = localPathBasename(binding.path);
+        const file = new File([data], fileName, { type: workFileMimeType(binding.path) });
+        const imported = await importWorkFile(file);
+        const now = Date.now();
+        let reloaded: WorkArtifact = {
+          ...imported,
+          id: artifact.id,
+          favorite: artifact.favorite,
+          folderId: artifact.folderId,
+          trashedAt: artifact.trashedAt,
+          createdAt: artifact.createdAt,
+          lastOpenedAt: now,
+          updatedAt: now,
+          revision: artifact.revision + 1,
+        };
+        reloaded = await saveWorkArtifact(reloaded);
+        reloaded = await saveWorkSource(reloaded, file);
+        rememberPersistedArtifact(reloaded);
+        saveWorkLocalFileBinding({
+          ...binding,
+          fingerprint,
+          size: bytes.byteLength,
+          updatedAt: now,
+        });
+        setLocalBindingVersion((value) => value + 1);
+        replaceArtifact(reloaded, setArtifacts, setActiveArtifact);
+        setLocalConflict(null);
+        setSaveState('saved');
+        setLocalSaveState('saved');
+        showToast(`已同步 ${binding.path} 的外部修改`, 'success');
+        return true;
+      } catch (error) {
+        setLocalSaveState('error');
+        showToast(saveErrorMessage(error, '无法载入本地文件的最新版本'), 'error');
+        return false;
+      }
+    }
+  );
+
+  const syncLocalFile = useMemoizedFn(async (): Promise<boolean> => {
+    if (localSync.current) return localSync.current;
+    const operation = (async () => {
+      const artifact = activeArtifactRef.current;
+      if (!artifact) return true;
+      const binding = readWorkLocalFileBinding(artifact.id);
+      if (!binding) return true;
+      const locallyDirty = localSaveState === 'dirty' || saveState === 'dirty' || saveState === 'saving';
+      if (!locallyDirty) setLocalSaveState('checking');
+      try {
+        if (!(await codeApi.pathExists(binding.path)).exists) {
+          setLocalConflict({ path: binding.path, missing: true });
+          setLocalSaveState('conflict');
+          return false;
+        }
+        const bytes = await codeApi.readBinaryFile(binding.path);
+        const fingerprint = await fingerprintWorkFile(bytes);
+        if (fingerprint === binding.fingerprint) {
+          if (!locallyDirty) {
+            setLocalConflict(null);
+            setLocalSaveState('idle');
+          }
+          return true;
+        }
+        if (locallyDirty) {
+          setLocalConflict({ path: binding.path, missing: false });
+          setLocalSaveState('conflict');
+          return false;
+        }
+        return reloadLocalFile({ bytes, fingerprint });
+      } catch {
+        if (!locallyDirty) setLocalSaveState('error');
+        return false;
+      }
+    })();
+    localSync.current = operation;
+    try {
+      return await operation;
+    } finally {
+      if (localSync.current === operation) localSync.current = null;
     }
   });
 
@@ -802,6 +907,7 @@ export function useWorkController() {
     openArtifact,
     closeArtifact,
     updateArtifact,
+    markLocalFileDirty,
     removeArtifact,
     restoreArtifact,
     copyArtifact,
@@ -817,6 +923,8 @@ export function useWorkController() {
     exportArtifact,
     exportPdf,
     checkLocalFile,
+    syncLocalFile,
+    reloadLocalFile,
     saveLocalFile,
     saveLocalFileAs,
     dismissLocalConflict,

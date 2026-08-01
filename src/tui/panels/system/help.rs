@@ -285,6 +285,7 @@ fn help_panel() -> HelpPanel {
                     "one planned retrieval pass; use `--local-only` for offline evidence",
                 )
                 .row("@<path>", "attach a workspace file from the file picker")
+                .row("$<skill>", "mention and apply an enabled Skill")
                 .row(
                     "Ctrl+V",
                     "attach image · click chip to preview · Backspace removes last",
@@ -715,6 +716,7 @@ mod tests {
         assert!(body.contains("typed OS services"));
         assert!(body.contains("one planned retrieval pass"));
         assert!(body.contains("--local-only"));
+        assert!(body.contains("$<skill>"));
         assert!(body.contains("Ctrl+T"));
         assert!(body.contains("complete live semantic transcript"));
         assert!(!body.contains("uses runtime when signed in"));

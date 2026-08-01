@@ -3,7 +3,7 @@ import type { SkillCatalogItem } from '../../../types/api';
 import { matchingSkills } from './composer-suggestion-ranking';
 
 function skill(name: string, description = ''): SkillCatalogItem {
-  return { name, description, command: `/${name}`, enabled: true, sources: [] };
+  return { name, description, command: `$${name}`, enabled: true, sources: [] };
 }
 
 describe('Skill suggestion ranking', () => {

@@ -43,6 +43,7 @@ const API_PREFIX: &str = "/api";
 const BODY_LIMIT_BYTES: usize = 52 * 1024 * 1024;
 const SERVER_DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
 const APPLICATION_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
+const USE_SETUP_STOP_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(crate) enum ServeOutcome {
     Help,
@@ -179,26 +180,30 @@ async fn run_foreground(
         code_config,
         session_repository,
     ));
-    if let Some(paths) = component_paths.as_ref() {
-        match a3s::components::find_ready_executable_with("use", paths) {
-            Ok(Some(executable)) => {
-                let (registry, warning) = crate::use_registry::start_detached(
-                    executable,
-                    options.workspace.clone(),
-                    CancellationToken::new(),
-                )
-                .await;
-                if let Some(warning) = warning {
-                    eprintln!("warning: A3S Use capabilities will continue loading: {warning}");
-                }
-                state.install_use_registry(registry);
-            }
-            Ok(None) => {}
-            Err(error) => {
-                eprintln!("warning: A3S Use hot-plug is unavailable for Code Web: {error}");
-            }
-        }
-    }
+    let use_setup_cancellation = cancellation.child_token();
+    let use_setup_task = if let Some(paths) = component_paths {
+        let state = Arc::clone(&state);
+        let workspace = options.workspace.clone();
+        let allow_first_use_install = options.allow_asset_download && !options.offline;
+        let offline = options.offline;
+        let setup_cancellation = use_setup_cancellation.clone();
+        Some(tokio::spawn(async move {
+            prepare_code_web_use(
+                state,
+                paths,
+                workspace,
+                allow_first_use_install,
+                offline,
+                setup_cancellation,
+            )
+            .await;
+        }))
+    } else {
+        state.set_use_setup_unavailable(
+            "A3S managed component paths are unavailable for this Web process",
+        );
+        None
+    };
     let restore_report = KernelService::new(Arc::clone(&state))
         .restore_persisted_sessions()
         .await
@@ -324,6 +329,16 @@ async fn run_foreground(
     };
     drop(server);
     connection_shutdown.cancel();
+    use_setup_cancellation.cancel();
+    if let Some(mut task) = use_setup_task {
+        if tokio::time::timeout(USE_SETUP_STOP_TIMEOUT, &mut task)
+            .await
+            .is_err()
+        {
+            task.abort();
+            let _ = task.await;
+        }
+    }
     let shutdown_result =
         match tokio::time::timeout(APPLICATION_SHUTDOWN_TIMEOUT, app.shutdown()).await {
             Ok(result) => result.map_err(boot_to_anyhow),
@@ -347,6 +362,71 @@ async fn run_foreground(
         (Ok(()), Err(error)) => Err(error),
         (Ok(()), Ok(())) => Ok(None),
     }
+}
+
+async fn prepare_code_web_use(
+    state: Arc<CodeWebState>,
+    component_paths: a3s::components::ComponentPaths,
+    workspace: PathBuf,
+    allow_first_use_install: bool,
+    offline: bool,
+    cancellation: CancellationToken,
+) {
+    let executable = match a3s::components::find_ready_executable_with("use", &component_paths) {
+        Ok(Some(executable)) => Some(executable),
+        Ok(None) if allow_first_use_install => {
+            match a3s::components::resolve_or_install_with(
+                "use",
+                &component_paths,
+                allow_first_use_install,
+                false,
+            )
+            .await
+            {
+                Ok(executable) => Some(executable),
+                Err(error) => {
+                    let reason = format!(
+                        "A3S Use first-use setup failed; Office automation remains unavailable: {error}"
+                    );
+                    eprintln!("warning: {reason}");
+                    state.set_use_setup_unavailable(reason);
+                    None
+                }
+            }
+        }
+        Ok(None) => {
+            let reason = if offline {
+                "A3S Use is not ready and first-use setup is disabled in offline mode"
+            } else {
+                "A3S Use is not ready and first-use setup is disabled by A3S_NO_AUTO_INSTALL"
+            };
+            state.set_use_setup_unavailable(reason);
+            None
+        }
+        Err(error) => {
+            let reason = format!("A3S Use discovery failed for Code Web: {error}");
+            eprintln!("warning: {reason}");
+            state.set_use_setup_unavailable(reason);
+            None
+        }
+    };
+    let Some(executable) = executable else {
+        return;
+    };
+    if cancellation.is_cancelled() {
+        return;
+    }
+
+    let (registry, warning) =
+        crate::use_registry::start_detached(executable, workspace, cancellation.clone()).await;
+    if cancellation.is_cancelled() {
+        registry.shutdown().await;
+        return;
+    }
+    if let Some(warning) = warning.as_deref() {
+        eprintln!("warning: A3S Use capabilities will continue loading: {warning}");
+    }
+    state.install_use_registry(registry, warning).await;
 }
 
 async fn cancel_request_on_shutdown(

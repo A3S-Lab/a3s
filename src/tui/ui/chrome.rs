@@ -197,7 +197,7 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/login", "sign in to the configured OS account"),
     ("/logout", "sign out from the configured OS account"),
     ("/plugin", "enable/disable Claude skills & plugins"),
-    ("/reload", "re-scan skills/plugins (hot-reload the / menu)"),
+    ("/reload", "re-scan skills/plugins (hot-reload the $ menu)"),
     ("/update", "upgrade a3s to the latest release"),
     ("/ide", "superfile-style file browser + editor"),
     (

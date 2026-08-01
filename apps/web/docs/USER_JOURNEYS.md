@@ -7,7 +7,8 @@
 1. Open A3S Web at `#home`.
 2. Review the active workspace and conversation sidebar.
 3. Describe the outcome in the full composer.
-4. Optionally attach `@` files, `/` Skills, model, effort, and execution mode.
+4. Optionally attach `@` files, mention `$` Skills, or choose model, effort, and
+   execution mode. `/` remains reserved for built-in commands.
 5. Submit.
 6. The shared AI Assistant opens and shows execution in the new or active
    conversation.

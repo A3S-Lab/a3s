@@ -88,11 +88,12 @@ export function TaskComposerInput({
 
   const items = useMemo(() => {
     if (!trigger || trigger.kind === 'file') return [];
+    if (trigger.kind === 'command') return matchingComposerCommands(trigger.query);
     const skillItems = matchingSkills(
       (skills ?? []).filter((skill) => !selectedSkills.includes(skill.name)),
       trigger.query
     ).map(skillSuggestion);
-    return [...matchingComposerCommands(trigger.query), ...skillItems];
+    return skillItems;
   }, [selectedSkills, skills, trigger]);
 
   useEffect(() => {
@@ -244,7 +245,7 @@ export function TaskComposerInput({
         ) : (
           <ComposerSuggestionMenu
             id={listboxId}
-            kind='skill'
+            kind={trigger.kind}
             query={trigger.query}
             items={items}
             activeIndex={currentIndex}
@@ -271,7 +272,7 @@ function skillSuggestion(skill: SkillCatalogItem): ComposerSuggestionItem {
   return {
     id: skill.name,
     kind: 'skill',
-    label: `/${skill.name}`,
+    label: `$${skill.name}`,
     description: skill.description || 'Skill',
     meta: 'Skill',
   };

@@ -30,6 +30,7 @@ export function useWorkCodeController(rootPath: string) {
   const [conflict, setConflict] = useState<WorkCodeConflict | null>(null);
   const [closeRequest, setCloseRequest] = useState<WorkCodeCloseRequest | null>(null);
   const tabsRef = useRef(tabs);
+  const syncRequests = useRef(new Map<string, Promise<boolean>>());
   tabsRef.current = tabs;
 
   useEffect(() => {
@@ -94,6 +95,47 @@ export function useWorkCodeController(rootPath: string) {
 
   const updateDraft = useMemoizedFn((path: string, draft: string) => {
     updateTab(path, (tab) => ({ ...tab, draft, location: null }));
+  });
+
+  const syncFile = useMemoizedFn(async (path = activePath ?? ''): Promise<boolean> => {
+    const pending = syncRequests.current.get(path);
+    if (pending) return pending;
+    const operation = (async () => {
+      const tab = tabsRef.current.find((candidate) => candidate.path === path);
+      if (!tab || tab.loading || tab.saving || tab.loadError) return false;
+      try {
+        const disk = await codeApi.readFile(path);
+        const current = tabsRef.current.find((candidate) => candidate.path === path);
+        if (!current) return false;
+        if (disk.content === current.content) {
+          if (conflict?.path === path) setConflict(null);
+          return true;
+        }
+        if (current.draft !== current.content) {
+          if (conflict?.path !== path || conflict?.diskContent !== disk.content) {
+            setConflict({ path, diskContent: disk.content });
+            showToast('AI 或其他应用修改了当前文件，请选择保留版本', 'info');
+          }
+          return false;
+        }
+        updateTab(path, (candidate) => ({
+          ...candidate,
+          content: disk.content,
+          draft: disk.content,
+        }));
+        if (conflict?.path === path) setConflict(null);
+        showToast('已同步 AI 或其他应用的最新代码修改', 'success');
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+    syncRequests.current.set(path, operation);
+    try {
+      return await operation;
+    } finally {
+      if (syncRequests.current.get(path) === operation) syncRequests.current.delete(path);
+    }
   });
 
   const saveFile = useMemoizedFn(async (path = activePath ?? ''): Promise<boolean> => {
@@ -204,6 +246,7 @@ export function useWorkCodeController(rootPath: string) {
     openFile,
     activateTab: setActivePath,
     updateDraft,
+    syncFile,
     saveFile,
     resolveConflict,
     dismissConflict: () => setConflict(null),

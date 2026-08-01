@@ -27,6 +27,7 @@ import type {
   MemoryOverview,
   MessageList,
   ModelCatalog,
+  OfficeAutomationStatus,
   OsAccount,
   PersonalKnowledgeBaseCatalog,
   PluginActivityCatalog,
@@ -204,6 +205,8 @@ function loadMemoryPage(offset: number, includeGraph: boolean, signal?: AbortSig
 
 export const codeApi = {
   health: () => apiRequest<HealthResponse>('/api/v1/health'),
+  officeAutomationStatus: (signal?: AbortSignal) =>
+    apiRequest<OfficeAutomationStatus>('/api/v1/capabilities/office', { signal }),
   memory: loadMemoryOverview,
   evolution: (signal?: AbortSignal) => apiRequest<EvolutionOverview>('/api/v1/evolution', { signal }),
   scanEvolution: (signal?: AbortSignal) =>

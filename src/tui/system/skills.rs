@@ -59,7 +59,7 @@ pub(crate) fn save_disabled_skills(set: &std::collections::HashSet<String>) {
     }
 }
 
-/// Load skill (name, description) pairs from the skill dirs, for the slash menu.
+/// Load skill (name, description) pairs from the skill dirs, for the `$` menu.
 pub(crate) fn load_skills(dirs: &[std::path::PathBuf]) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
     for d in dirs {
@@ -269,7 +269,7 @@ mod tests {
             "stale kb-compile dir should be pruned so /kb-compile can't resurface"
         );
 
-        // The cli loader discovers it by name → it shows in the `/` menu as `/okf`.
+        // The cli loader discovers it by name → it shows in the `$` menu as `$okf`.
         let skills = load_skills(std::slice::from_ref(&dir));
         assert!(
             skills.iter().any(|(n, _)| n == "okf"),

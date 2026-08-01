@@ -121,7 +121,8 @@ Assistant without changing route.
 then submit or queue it through the durable task controller.
 
 **Contract:** the home and AI Assistant instances read and write the same
-active draft. `@` and `/` suggestions, drag-and-drop context, workspace
+active draft. `@` file, `$` Skill, and built-in `/` command suggestions,
+drag-and-drop context, workspace
 selection, keyboard submission, queue state, and recovery behave consistently.
 
 ### `WorkspaceQuickOpen`
@@ -148,7 +149,7 @@ session.
 ### `WorkProduct`
 
 **Role:** own `#home`, the conversation sidebar, Work scene selection, and the
-right-side AI Assistant.
+left-side AI Assistant beside the right-side workspace.
 
 **Scene priority:** an active Office artifact renders `WorkEditorShell`; open
 code/text tabs render `WorkCodeWorkspace`; otherwise the persisted library or

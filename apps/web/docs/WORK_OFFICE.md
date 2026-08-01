@@ -25,7 +25,7 @@ or silently mutate data.
 
 Work targets WPS-class everyday Office editing while adding an AI-native Finder
 and WebIDE. The local path is the stable user-facing
-identity, the center surface browses or opens that path, the right rail holds a
+identity, the right workspace browses or opens that path, the left pane holds a
 continuous AI Assistant conversation, and contextual menus turn file or editor
 selections into explicit agent context. Document, spreadsheet, presentation,
 PDF, image, Markdown, and code capabilities are handlers within that shell.
@@ -138,17 +138,22 @@ The first active Work release includes:
   read;
 - a Work-native WebIDE for all non-binary text and code files. Its lazy tree,
   multiple Monaco tabs, language detection, diagnostics, semantic navigation,
-  status bar, keyboard save/close commands, external-change conflict review,
-  and AI context-menu actions operate directly on the selected local root.
+  status bar, keyboard save/close commands, clean external-change reload,
+  dirty-draft conflict review, and AI context-menu actions operate directly on the selected local root.
   Markdown always places editable source on the left and a semantic live
   preview on the right;
-- a resizable right-side AI Assistant that binds the selected local root as
+- a resizable left-side AI Assistant that binds the selected local root as
   its workspace and leaves sending to the user. Its 460 px desktop default is
   capped as the viewport narrows so common laptop widths retain a usable Office
   pane; the Office ribbon also tightens group spacing below 1120 px, and the
   assistant becomes a full Work-pane overlay at 1120 px and below instead of
   compressing the file surface. All Work scenes use the same durable sessions,
   `agentId=default`, active-session key, drafts, and conversation list;
+- asynchronously prepared native `use/office` automation. The capability
+  status distinguishes the browser editors from the projected `a3s-office` CLI/MCP
+  and `a3s-office` Skill; whole-file agent requests carry the real bound path,
+  require validate/read/bounded-mutate/save/verify ordering, and never fall back
+  to shell mutation;
 - shared Chinese Office detail chrome for documents, spreadsheets, and
   presentations, with a compact file menu, tabbed ribbon, explicit horizontal
   overflow controls, and a consistent status bar. File menus focus the first
@@ -537,7 +542,8 @@ every command in a traditional office suite.
   contextual actions.
 - [x] Open every non-binary code or text file in a Work-native Monaco WebIDE
   with multiple tabs, a lazy file tree, semantic navigation, diagnostics,
-  conflict-safe saves, and AI Assistant editor actions.
+  conflict-safe saves, clean external-write reload, active-file polling, and AI
+  Assistant editor actions.
 - [x] Edit Markdown as source on the left with a continuously updated semantic
   preview on the right.
 - [x] Use one coherent Work icon language across Finder and WebIDE surfaces,
@@ -559,9 +565,10 @@ every command in a traditional office suite.
   native change events, tags, and large-folder virtualization remain open.
 - [ ] Add durable local-path binding, safe atomic in-place save, external-change
   detection, conflict review, and Save As for DOCX/XLSX/PPTX. The current slice
-  implements device-local bindings, save-time and focus-time fingerprint
-  checks, explicit conflict choices, Save As, sibling replacement, and
-  post-write verification. This target remains open until the workspace service
+  implements device-local bindings, save-time/focus-time checks, bounded active
+  polling, automatic reload while the browser copy is clean, explicit conflict
+  choices while it is dirty, Save As, sibling replacement, and post-write
+  verification. This target remains open until the workspace service
   provides a platform-independent conditional atomic-replace primitive and
   native file watching closes the check-to-replace race.
 - [x] Extend draft-only selection-aware AI actions to spreadsheet ranges and
@@ -909,8 +916,10 @@ Office interoperability
 
 Work filesystem, WebIDE, Office editor, AI session, and AI draft state form one
 product at `#home`. Coding is a file-handler scene, not an Activity Bar product,
-and it does not own a second session store or route. Office runtime dependencies
-are loaded only when the relevant workflow needs them.
+and it does not own a second session store or route. Browser editor dependencies
+remain lazy. The Web host prepares A3S Use asynchronously and projects the
+native `use/office` MCP plus the verified `a3s-office` Skill into existing and
+new sessions without blocking Web startup.
 
 ## Native artifact model
 
@@ -944,7 +953,9 @@ write fails, Work attempts to remove the just-created recovery artifact.
 Managed autosave never silently overwrites that path. Explicit save-back and
 Save As run compatibility review, compare the current source fingerprint, write
 a hidden sibling temporary file, replace the destination, and verify the
-result. The current service does not yet expose a conditional atomic-replace
+result. While an editor is open, bounded polling reloads a clean browser copy
+after an AI/CLI or external write; a dirty browser copy becomes a reviewable
+conflict and is never silently replaced. The current service does not yet expose a conditional atomic-replace
 operation or file watcher, so a cross-process change in the narrow
 check-to-replace window is not claimed to be solved on every platform.
 Compatibility diagnostics remain attached to converted artifacts and are shown

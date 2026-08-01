@@ -449,7 +449,7 @@ impl PluginsService {
                 let enabled = !disabled.contains(&name);
                 json!({
                     "name": name,
-                    "command": format!("/{name}"),
+                    "command": format!("${name}"),
                     "description": description,
                     "enabled": enabled,
                     "sources": sources_by_name.remove(&name).unwrap_or_default(),

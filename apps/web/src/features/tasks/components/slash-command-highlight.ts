@@ -24,6 +24,13 @@ export const SlashCommandHighlight = Extension.create({
                   })
                 );
               }
+              for (const range of skillMentionRanges(node.text)) {
+                decorations.push(
+                  Decoration.inline(position + range.from, position + range.to, {
+                    class: 'composer-skill-mention',
+                  })
+                );
+              }
             });
             return DecorationSet.create(state.doc, decorations);
           },
@@ -34,13 +41,20 @@ export const SlashCommandHighlight = Extension.create({
 });
 
 export function slashCommandRanges(text: string): Array<{ from: number; to: number }> {
+  const match = text.match(/^\/([A-Za-z][\w.-]*)/);
+  const command = match?.[1]?.toLowerCase();
+  if (!command || !knownCommands.has(command)) return [];
+  return [{ from: 0, to: command.length + 1 }];
+}
+
+export function skillMentionRanges(text: string): Array<{ from: number; to: number }> {
   const ranges: Array<{ from: number; to: number }> = [];
-  const pattern = /(^|\s)\/([A-Za-z][\w.-]*)/g;
+  const pattern = /(?:^|[\s([{'"“（【])\$([\p{L}_][\p{L}\p{N}._-]*)/gu;
   for (const match of text.matchAll(pattern)) {
-    const command = match[2].toLowerCase();
-    if (!knownCommands.has(command) || match.index === undefined) continue;
-    const from = match.index + match[1].length;
-    ranges.push({ from, to: from + command.length + 1 });
+    if (match.index === undefined) continue;
+    const mention = `$${match[1]}`;
+    const from = match.index + match[0].length - mention.length;
+    ranges.push({ from, to: from + mention.length });
   }
   return ranges;
 }

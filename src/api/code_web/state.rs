@@ -102,6 +102,19 @@ pub(in crate::api::code_web) struct CodeWebSessionSettings {
     pub(in crate::api::code_web) goal_tracking: Option<bool>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::api::code_web) enum CodeWebUseSetupPhase {
+    Preparing,
+    Ready,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::api::code_web) struct CodeWebUseSetupStatus {
+    pub(in crate::api::code_web) phase: CodeWebUseSetupPhase,
+    pub(in crate::api::code_web) message: Option<String>,
+}
+
 impl Default for CodeWebSessionSettings {
     fn default() -> Self {
         Self {
@@ -135,6 +148,7 @@ pub(in crate::api) struct CodeWebState {
     pub(in crate::api::code_web) active_research_runs:
         Mutex<HashMap<String, Arc<CancellationToken>>>,
     use_registry: RwLock<Option<crate::use_registry::UseRegistryHandle>>,
+    use_setup_status: RwLock<CodeWebUseSetupStatus>,
     workspace_backends: WorkspaceBackendCache,
     preview_registry: Arc<PreviewRegistry>,
 }
@@ -168,6 +182,10 @@ impl CodeWebState {
             session_turn_queues: Mutex::new(HashMap::new()),
             active_research_runs: Mutex::new(HashMap::new()),
             use_registry: RwLock::new(None),
+            use_setup_status: RwLock::new(CodeWebUseSetupStatus {
+                phase: CodeWebUseSetupPhase::Preparing,
+                message: None,
+            }),
             workspace_backends: WorkspaceBackendCache::default(),
             preview_registry,
         }
@@ -177,14 +195,49 @@ impl CodeWebState {
         Arc::clone(&self.preview_registry)
     }
 
-    pub(in crate::api) fn install_use_registry(
+    pub(in crate::api) async fn install_use_registry(
         &self,
         registry: crate::use_registry::UseRegistryHandle,
+        warning: Option<String>,
     ) {
         *self
             .use_registry
             .write()
-            .unwrap_or_else(|poison| poison.into_inner()) = Some(registry);
+            .unwrap_or_else(|poison| poison.into_inner()) = Some(registry.clone());
+        let sessions = self
+            .sessions
+            .lock()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        for session in sessions {
+            registry.attach_session(session);
+        }
+        *self
+            .use_setup_status
+            .write()
+            .unwrap_or_else(|poison| poison.into_inner()) = CodeWebUseSetupStatus {
+            phase: CodeWebUseSetupPhase::Ready,
+            message: warning,
+        };
+    }
+
+    pub(in crate::api) fn set_use_setup_unavailable(&self, reason: impl Into<String>) {
+        *self
+            .use_setup_status
+            .write()
+            .unwrap_or_else(|poison| poison.into_inner()) = CodeWebUseSetupStatus {
+            phase: CodeWebUseSetupPhase::Unavailable,
+            message: Some(reason.into()),
+        };
+    }
+
+    pub(in crate::api::code_web) fn use_setup_status(&self) -> CodeWebUseSetupStatus {
+        self.use_setup_status
+            .read()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .clone()
     }
 
     pub(in crate::api::code_web) fn use_registry(

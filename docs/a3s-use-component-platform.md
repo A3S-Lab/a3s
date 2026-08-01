@@ -325,8 +325,9 @@ a3s uninstall use --cascade
 Code TUI may install verified Use and WebView product releases when networking
 and first-use setup are allowed. Use preparation runs concurrently with the
 remaining terminal startup and hot-plugs its registry when ready, while WebView
-preparation retains its pre-terminal lifecycle. Code Web consumes an
-already-ready Use installation without mutating product lifecycle.
+preparation retains its pre-terminal lifecycle. Code Web applies the same
+non-blocking first-use policy for Use: it serves the browser immediately, then
+hot-plugs the verified registry into existing and new Web sessions when ready.
 `A3S_NO_AUTO_INSTALL=1` and offline mode disable first-use product installation
 for CI and hermetic environments. Third-party capability runtimes require an
 explicit install or interactive confirmation; non-interactive library calls do

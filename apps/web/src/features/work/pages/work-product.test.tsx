@@ -99,14 +99,14 @@ describe('Work product shortcuts', () => {
     expect(mocks.pickRoot).toHaveBeenCalledOnce();
   });
 
-  it('lands on the AI home without forcing the copilot open, then reveals it when a task starts', () => {
+  it('lands on the AI home with the shared assistant and workspace split open', () => {
     localStorage.removeItem('a3s-work.surface');
     localStorage.removeItem('a3s-work.copilot-open');
 
     render(<WorkProduct actions={{} as CodeActions} />);
 
     expect(screen.getByRole('textbox', { name: 'AI 指令' })).toBeInTheDocument();
-    expect(screen.queryByRole('complementary', { name: 'AI 助手' })).not.toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'AI 助手' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '提交首页任务' }));
     expect(screen.getByRole('complementary', { name: 'AI 助手' })).toBeInTheDocument();
     expect(localStorage.getItem('a3s-work.copilot-open')).toBe('true');

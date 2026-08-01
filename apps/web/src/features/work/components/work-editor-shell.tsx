@@ -130,21 +130,27 @@ export function WorkEditorShell({
 
   useEffect(() => {
     const path = actions.activeLocalBinding?.path;
-    if (!path || artifact?.kind === 'pdf') return;
-    void actions.checkLocalFile();
-    const onFocus = () => void actions.checkLocalFile();
+    const syncLocalFile = actions.syncLocalFile;
+    if (!path || artifact?.kind === 'pdf' || !syncLocalFile) return;
+    void syncLocalFile();
+    const interval = window.setInterval(() => void syncLocalFile(), 2_000);
+    const onFocus = () => void syncLocalFile();
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [
     actions.activeLocalBinding?.fingerprint,
     actions.activeLocalBinding?.path,
-    actions.checkLocalFile,
+    actions.syncLocalFile,
     artifact?.kind,
   ]);
 
   if (!artifact) return null;
 
   const updateContent = (content: WorkArtifactContent) => {
+    actions.markLocalFileDirty?.();
     actions.updateArtifact((current) => ({ ...current, content }));
   };
   const requestPdfExport = (pageIndexes: number[]) => {
@@ -242,6 +248,12 @@ export function WorkEditorShell({
             {workArtifactExtension(artifact.kind).toUpperCase()}
             <i aria-hidden='true'>·</i>
             <SaveStatus state={actions.saveState} storageMode={actions.storageMode} />
+            {actions.activeLocalBinding && (
+              <>
+                <i aria-hidden='true'>·</i>
+                <span title={actions.activeLocalBinding.path}>{localSaveStatusText(actions.localSaveState)}</span>
+              </>
+            )}
           </span>
         </div>
         <div className='work-editor-header-actions'>
@@ -480,6 +492,7 @@ export function WorkEditorShell({
             actions.dismissLocalConflict();
             setShowLocalSaveAs(true);
           }}
+          onReload={actions.localConflict.missing ? undefined : actions.reloadLocalFile}
           onOverwrite={() => saveBoundLocalFile(true)}
         />
       )}
@@ -523,4 +536,14 @@ function workSaveStatusText(state: WorkActions['saveState'], storageMode: WorkAc
   if (state === 'saving') return '正在保存';
   if (state === 'dirty') return '等待保存';
   return storageMode === 'server' ? '已保存到 A3S' : '已保存到此设备';
+}
+
+function localSaveStatusText(state: WorkActions['localSaveState']): string {
+  if (state === 'dirty') return '待写回本地';
+  if (state === 'checking') return '正在同步本地文件';
+  if (state === 'saving') return '正在写回本地';
+  if (state === 'saved') return '本地已同步';
+  if (state === 'conflict') return '本地版本冲突';
+  if (state === 'error') return '本地同步失败';
+  return '本地文件已连接';
 }

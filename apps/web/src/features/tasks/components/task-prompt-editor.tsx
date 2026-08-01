@@ -60,7 +60,7 @@ export const TaskPromptEditor = forwardRef<
         heading: false,
         horizontalRule: false,
       }),
-      Placeholder.configure({ placeholder: '描述任务；输入 @ 或直接拖入文件，/ 使用 Skill 或设置 /goal…' }),
+      Placeholder.configure({ placeholder: '描述任务；@ 添加文件，$ 使用 Skill，/ 运行内置命令…' }),
       Markdown,
       SlashCommandHighlight,
     ],

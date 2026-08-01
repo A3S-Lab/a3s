@@ -9,6 +9,7 @@ use tokio::process::Command;
 use tokio::time::timeout;
 
 use crate::api::code_web::state::CodeWebState;
+use crate::api::code_web::state::CodeWebUseSetupPhase;
 use crate::config;
 
 const ACTION_TIMEOUT: Duration = Duration::from_secs(180);
@@ -52,6 +53,69 @@ impl CapabilitiesService {
 
     pub(in crate::api::code_web) fn lifecycles(&self) -> serde_json::Value {
         lifecycle_catalog()
+    }
+
+    pub(in crate::api::code_web) fn office_automation(&self) -> serde_json::Value {
+        const CAPABILITY_ID: &str = "use/office";
+        const SKILL_NAME: &str = "a3s-office";
+
+        let setup = self.state.use_setup_status();
+        let projection = self
+            .state
+            .use_registry()
+            .map(|registry| registry.capability_projection(CAPABILITY_ID, SKILL_NAME));
+        let cli_ready = projection
+            .as_ref()
+            .is_some_and(|projection| projection.mcp_ready);
+        let skill_ready = projection
+            .as_ref()
+            .is_some_and(|projection| projection.skill_ready);
+        let status = if cli_ready && skill_ready {
+            "ready"
+        } else if projection
+            .as_ref()
+            .is_some_and(|projection| !projection.revision.is_empty())
+        {
+            "degraded"
+        } else {
+            match setup.phase {
+                CodeWebUseSetupPhase::Preparing | CodeWebUseSetupPhase::Ready => "preparing",
+                CodeWebUseSetupPhase::Unavailable => "unavailable",
+            }
+        };
+        let message = setup.message.or_else(|| match status {
+            "degraded" => Some(
+                "A3S Use is ready, but the Office CLI/MCP and Skill projection is incomplete"
+                    .to_string(),
+            ),
+            "unavailable" => Some("A3S Use is unavailable for this Web process".to_string()),
+            _ => None,
+        });
+
+        json!({
+            "schemaVersion": 1,
+            "status": status,
+            "route": CAPABILITY_ID,
+            "transport": "a3s-use-native-mcp",
+            "cli": {
+                "name": "a3s-office",
+                "ready": cli_ready,
+            },
+            "skill": {
+                "name": SKILL_NAME,
+                "ready": skill_ready,
+            },
+            "editors": {
+                "office": true,
+                "code": true,
+            },
+            "generation": projection.as_ref().map_or(0, |projection| projection.generation),
+            "revision": projection.as_ref().map_or("", |projection| projection.revision.as_str()),
+            "packageEnabled": projection
+                .as_ref()
+                .is_some_and(|projection| projection.package_enabled),
+            "message": message,
+        })
     }
 
     pub(in crate::api::code_web) async fn run_action(

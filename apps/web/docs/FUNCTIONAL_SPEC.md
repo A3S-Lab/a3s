@@ -106,14 +106,15 @@ selecting a historical conversation restores its own workspace and draft.
 ## F3 — AI-native home and composer
 
 - Make the durable task composer the primary home action.
-- Keep execution mode, model, effort, `@` workspace references, `/` Skills,
+- Keep execution mode, model, effort, `@` workspace references, `$` Skill
+  mentions, built-in `/` commands,
   drag-and-drop context, queueing, and keyboard submission available.
 - Provide shortcuts only for implemented actions: create a document,
   spreadsheet, or presentation; open files; prepare analysis or organization
   drafts; and enter the local file workspace.
 - Keep prompt starters editable and never auto-send them.
-- Open the AI Assistant once after a home submission while keeping it closed on
-  a fresh visit.
+- Start with the shared AI Assistant beside the workspace, persist an explicit
+  close choice, and reopen it when a home task is submitted.
 - Keep templates, folders, and recent files available below the composer.
 
 ## F4 — Local file management

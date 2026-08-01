@@ -52,4 +52,23 @@ describe('Work local save dialogs', () => {
     expect(onSaveAs).toHaveBeenCalled();
     expect(onOverwrite).not.toHaveBeenCalled();
   });
+
+  it('can load the external Office version without overwriting it', async () => {
+    const onReload = vi.fn().mockResolvedValue(true);
+    const onOverwrite = vi.fn().mockResolvedValue(true);
+
+    render(
+      <WorkLocalFileConflictDialog
+        conflict={{ path: '/docs/Plan.docx', missing: false }}
+        onClose={vi.fn()}
+        onSaveAs={vi.fn()}
+        onReload={onReload}
+        onOverwrite={onOverwrite}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '载入外部版本' }));
+    await waitFor(() => expect(onReload).toHaveBeenCalledOnce());
+    expect(onOverwrite).not.toHaveBeenCalled();
+  });
 });

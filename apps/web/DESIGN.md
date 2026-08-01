@@ -160,9 +160,9 @@ The file explorer inside file/code scenes is a scene navigator, not a second
 product sidebar. It uses the same row height, icon stroke, focus ring, border,
 and collapse affordance.
 
-### Center workspace
+### Right workspace
 
-Work's center renders Home, local files, an Office/PDF editor, or the code/text
+Work's right side renders Home, local files, an Office/PDF editor, or the code/text
 editor. Scene headers share:
 
 - a consistent back/collapse action;
@@ -173,7 +173,7 @@ editor. Scene headers share:
 
 ### AI Assistant
 
-The assistant defaults to 460 px, is resizable within safe bounds, and uses a
+The left assistant defaults to 460 px, is resizable within safe bounds, and uses a
 shared header, execution stream, and composer. At 1120 px and below it becomes
 an overlay so the file or editor surface remains usable. The close action must
 remain visible.
@@ -202,7 +202,8 @@ Home and AI Assistant use the same component and control order:
 - mode, workspace, model, effort, and Skills on the lower control rail;
 - primary send/stop action at the lower right;
 - `@` opens a lazy workspace tree;
-- `/` opens enabled Skills and supported control commands;
+- `$` opens enabled Skills;
+- `/` is reserved for supported built-in control commands;
 - dropped files become visible context;
 - prompt starters populate the editor but never submit.
 

@@ -158,6 +158,23 @@ mod tests {
         assert_eq!(capability["schemaVersion"], 2);
         assert_eq!(capability["releaseBlockers"], serde_json::json!([]));
 
+        let office = app
+            .call(BootRequest::new(
+                HttpMethod::Get,
+                "/api/v1/capabilities/office",
+            ))
+            .await
+            .expect("read Office automation capability")
+            .body_json::<serde_json::Value>()
+            .expect("decode Office automation capability");
+        assert_eq!(office["schemaVersion"], 1);
+        assert_eq!(office["status"], "preparing");
+        assert_eq!(office["route"], "use/office");
+        assert_eq!(office["cli"]["name"], "a3s-office");
+        assert_eq!(office["skill"]["name"], "a3s-office");
+        assert_eq!(office["editors"]["office"], true);
+        assert_eq!(office["editors"]["code"], true);
+
         let targets = app
             .call(BootRequest::new(HttpMethod::Get, "/api/v1/weixin/targets"))
             .await

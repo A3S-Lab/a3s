@@ -415,15 +415,14 @@ declare native CLI, standard MCP, and/or `SKILL.md` surfaces. A3S does not
 define an extension JSON-RPC protocol; `--json` remains a one-command CLI
 result.
 
-The Code TUI treats Use as an asynchronous first-use component: terminal
-startup does not wait for Use discovery, download, installation, or initial
-projection. Those steps continue in the background when networking and
-automatic setup are allowed, and the live registry is hot-plugged into the
-current Code session when ready. Offline mode and `A3S_NO_AUTO_INSTALL=1`
-remain strict no-mutation boundaries, and a failed or slow setup does not
-prevent Code from starting. Code Web consumes an already-ready component
-without changing its lifecycle. Both surfaces keep one registry watcher for
-the process. Browser,
+The Code TUI and Code Web treat Use as an asynchronous first-use component:
+terminal and Web-server startup do not wait for Use discovery, download,
+installation, or initial projection. Those steps continue in the background
+when networking and automatic setup are allowed, and the live registry is
+hot-plugged into current and future Code sessions when ready. Offline mode and
+`A3S_NO_AUTO_INSTALL=1` remain strict no-mutation boundaries, and a failed or
+slow setup does not prevent either surface from starting. Both surfaces keep
+one registry watcher for the process. Browser,
 Office, OCR, and enabled external MCP/Skill surfaces are projected into every
 active Code session. Code registers a dedicated `use` worker that can
 invoke only `mcp__use_*` tools; workspace, shell, unrelated MCP, and recursive
@@ -1144,8 +1143,8 @@ cells adding or doubling their own outer padding.
 | Surface | What you see and control |
 | --- | --- |
 | Transcript | Assistant text, reasoning, tool cards, diff summaries, task updates, memory recall/store notices, compaction notices, and RemoteUI action links stay in one scrollable history. Drag-select copies the complete semantic range on release; committed-history selection survives streaming refresh and terminal resize, and edge dragging auto-scrolls. |
-| Input line | Type a normal prompt, use `Shift+Enter` for multiline input, prefix `!` for a direct shell turn, prefix `?` for DeepResearch, use `@<path>` to attach a workspace file through the clickable picker, or paste an image with `Ctrl+V`. |
-| Slash menu | Press `/` or type a slash command to open a wheel-browsable, clickable command palette backed by the same command registry used by `/help`. Commands are grouped into model/config, workspace, context, OS, asset, and operations surfaces. |
+| Input line | Type a normal prompt, use `Shift+Enter` for multiline input, prefix `!` for a direct shell turn, prefix `?` for DeepResearch, use `@<path>` to attach a workspace file through the clickable picker, mention an enabled Skill as `$<skill>`, or paste an image with `Ctrl+V`. |
+| Command and Skill menus | Press `/` or type a slash command to open the wheel-browsable built-in command palette backed by the same registry used by `/help`. Type `$` at the start of an active prompt token to search and insert enabled Skills; non-built-in Skills no longer occupy slash-command names. |
 | Pending queue | `/queue` shows each pending follow-up with its immutable execution mode. Keyboard or wheel selection can Send now, remove one row, or enter an explicit clear confirmation without changing the composer draft. |
 | Prompt history | `/history` or `Ctrl+R` opens a fuzzy-searchable, newest-first catalog of the current session's prompts. Enter or Tab restores the selected prompt, while Esc closes without changing the current draft. |
 | Delegated tasks | `/tasks` or `Ctrl+B` opens the authoritative task catalog while the parent turn keeps streaming. Search, inspect recent progress or full output, refresh, and cancel a running task with a second matching `X` or Delete press. |

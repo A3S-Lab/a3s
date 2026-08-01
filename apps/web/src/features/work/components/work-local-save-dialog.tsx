@@ -141,14 +141,18 @@ export function WorkLocalFileConflictDialog({
   conflict,
   onClose,
   onSaveAs,
+  onReload,
   onOverwrite,
 }: {
   conflict: WorkLocalFileConflict;
   onClose: () => void;
   onSaveAs: () => void;
+  onReload?: () => Promise<boolean>;
   onOverwrite: () => Promise<boolean>;
 }) {
   const [overwriting, setOverwriting] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const busy = overwriting || reloading;
   return (
     <Dialog
       title={conflict.missing ? '原本地文件已不存在' : '本地文件已在别处更改'}
@@ -157,19 +161,33 @@ export function WorkLocalFileConflictDialog({
           ? 'A3S 中的编辑内容仍然保留。你可以另存为，或明确重新创建原路径。'
           : '为避免覆盖其他应用的修改，A3S 已停止写回。你可以另存为，或明确覆盖外部版本。'
       }
-      closeDisabled={overwriting}
+      closeDisabled={busy}
       onClose={onClose}
       footer={
         <>
-          <Button tone='quiet' disabled={overwriting} onClick={onClose}>
+          <Button tone='quiet' disabled={busy} onClick={onClose}>
             稍后处理
           </Button>
-          <Button tone='secondary' disabled={overwriting} onClick={onSaveAs}>
+          {onReload && (
+            <Button
+              tone='primary'
+              loading={reloading}
+              disabled={busy}
+              onClick={() => {
+                setReloading(true);
+                void onReload().finally(() => setReloading(false));
+              }}
+            >
+              载入外部版本
+            </Button>
+          )}
+          <Button tone='secondary' disabled={busy} onClick={onSaveAs}>
             另存为
           </Button>
           <Button
             tone='danger'
             loading={overwriting}
+            disabled={busy}
             onClick={() => {
               setOverwriting(true);
               void onOverwrite().finally(() => setOverwriting(false));

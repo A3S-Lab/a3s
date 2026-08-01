@@ -48,6 +48,19 @@ export function WorkCodeWorkspace({
     setEditorStatus(null);
   }, [tab?.path]);
 
+  useEffect(() => {
+    const syncFile = actions.syncFile;
+    if (!tab?.path || tab.loading || tab.loadError || !syncFile) return;
+    void syncFile(tab.path);
+    const interval = window.setInterval(() => void syncFile(tab.path), 2_000);
+    const onFocus = () => void syncFile(tab.path);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [actions.syncFile, tab?.loadError, tab?.loading, tab?.path]);
+
   return (
     <section className='work-code-workspace' aria-label='代码工作区'>
       <header className='work-code-header'>
@@ -225,6 +238,7 @@ export function WorkCodeWorkspace({
                   )}
                   {isMarkdown(tab.path) && <span>左侧编辑 · 右侧实时预览</span>}
                   {previewTarget === tab.path && <span>制品预览已连接</span>}
+                  <span>{actions.conflict?.path === tab.path ? '磁盘版本待审阅' : '本地文件双写'}</span>
                 </span>
                 <span className='work-code-statusbar-group'>
                   <span>{tab.content === tab.draft ? '已保存' : '未保存'}</span>
