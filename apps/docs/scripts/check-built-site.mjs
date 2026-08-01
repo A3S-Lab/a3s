@@ -349,8 +349,10 @@ const css = (
 
 for (const selector of [
   ".rp-nav .rp-search-button",
+  ".rp-nav .rp-search-button--mobile",
   ".rp-nav .rp-nav-menu__item__container",
   ".a3s-home-nav",
+  ".a3s-home-nav__links a",
   ".a3s-cli-terminal__screen",
   ".a3s-canvas-field",
   ".a3s-cloud-terminal__screen",
@@ -368,6 +370,22 @@ for (const selector of [
 assert(
   css.includes("--a3s-nav-control-height:36px"),
   "Production CSS is missing the uniform 36px navigation control height",
+);
+assert(
+  css.includes("--a3s-nav-control-font-size:11px"),
+  "Production CSS is missing the uniform navigation control font size",
+);
+assert(
+  css.includes("--a3s-nav-control-icon-size:16px"),
+  "Production CSS is missing the uniform navigation control icon size",
+);
+assert(
+  css.includes("--a3s-home-nav-control-height:34px"),
+  "Production CSS is missing the uniform homepage navigation control height",
+);
+assert(
+  css.includes("--a3s-home-nav-control-font-size:10px"),
+  "Production CSS is missing the uniform homepage navigation font size",
 );
 
 for (const project of [

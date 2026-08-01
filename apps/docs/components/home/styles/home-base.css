@@ -29,6 +29,9 @@ body:has(.a3s-site) .rp-nav {
   --a3s-mono:
     "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
   --a3s-max: 1320px;
+  --a3s-home-nav-control-height: 34px;
+  --a3s-home-nav-control-font-size: 10px;
+  --a3s-home-nav-icon-size: 14px;
   position: relative;
   min-height: 100vh;
   overflow: clip;
@@ -122,16 +125,21 @@ body:has(.a3s-site) .rp-nav {
 
 .a3s-home-nav__links {
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
 .a3s-home-nav__links a {
   position: relative;
-  padding: 9px 13px;
+  display: inline-flex;
+  height: var(--a3s-home-nav-control-height);
+  padding: 0 13px;
+  align-items: center;
   color: var(--a3s-muted);
-  font-size: 10px;
+  font-size: var(--a3s-home-nav-control-font-size);
   font-weight: 500;
   letter-spacing: 0.08em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -169,15 +177,16 @@ body:has(.a3s-site) .rp-nav {
 .a3s-home-nav__github,
 .a3s-home-nav__docs {
   display: inline-flex;
-  height: 34px;
+  height: var(--a3s-home-nav-control-height);
   border: 1px solid transparent;
   border-radius: 0;
   align-items: center;
   justify-content: center;
   color: var(--a3s-muted);
-  font-size: 9px;
+  font-size: var(--a3s-home-nav-control-font-size);
   font-weight: 500;
   letter-spacing: 0.08em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -187,12 +196,12 @@ body:has(.a3s-site) .rp-nav {
 }
 
 .a3s-home-nav__github {
-  width: 34px;
+  width: var(--a3s-home-nav-control-height);
 }
 
 .a3s-home-nav__github svg {
-  width: 15px;
-  height: 15px;
+  width: var(--a3s-home-nav-icon-size);
+  height: var(--a3s-home-nav-icon-size);
 }
 
 .a3s-home-nav__language:hover,
@@ -202,7 +211,6 @@ body:has(.a3s-site) .rp-nav {
 }
 
 .a3s-home-nav__docs {
-  height: 34px;
   padding: 0 13px;
   border-color: var(--a3s-line-strong);
   gap: 7px;
@@ -210,8 +218,8 @@ body:has(.a3s-site) .rp-nav {
 }
 
 .a3s-home-nav__docs svg {
-  width: 12px;
-  height: 12px;
+  width: var(--a3s-home-nav-icon-size);
+  height: var(--a3s-home-nav-icon-size);
 }
 
 .a3s-home-nav__docs:hover {
