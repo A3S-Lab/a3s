@@ -19,6 +19,7 @@ import {
 } from '../../state/app-state';
 import type { AgentEvent, ChatMessage, CodeSession, QueuedTurn, SessionControls, TurnQueue } from '../../types/api';
 import { type GoalCommand, parseGoalCommand } from './goal-command';
+import { skillNamesFromMentions } from './skill-mentions';
 import {
   beginSessionControlsRequest,
   beginSessionMessagesRequest,
@@ -471,14 +472,28 @@ export function useTaskController() {
       return;
     }
     const contextFiles = [...appState.composerContextFiles];
-    const skillNames = [...appState.composerSkills];
     const mode = appState.composerMode;
     let sessionId = appState.activeSessionId;
     const submittedDraftKey = taskDraftKey(sessionId);
-    appState.draftsByTask[submittedDraftKey] = createTaskDraft(content, contextFiles, skillNames, mode);
-    reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
     appState.taskSubmissionState = sessionId ? 'queueing' : 'creating';
     try {
+      let skillNames = [...appState.composerSkills];
+      const workspace =
+        appState.sessions.find((session) => session.sessionId === sessionId)?.workspace ||
+        appState.workspaceRoot ||
+        appState.newTaskConfig.workspace ||
+        appState.health?.workspace ||
+        '';
+      if (workspace && content.includes('$')) {
+        try {
+          const catalog = await codeApi.skills(workspace);
+          skillNames = [...new Set([...skillNames, ...skillNamesFromMentions(content, catalog.items)])];
+        } catch {
+          // Explicitly selected Skill chips remain authoritative if catalog refresh is unavailable.
+        }
+      }
+      appState.draftsByTask[submittedDraftKey] = createTaskDraft(content, contextFiles, skillNames, mode);
+      reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
       if (!sessionId) sessionId = (await createSession(promptTitle(content), undefined, null)).sessionId;
       else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
         reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));

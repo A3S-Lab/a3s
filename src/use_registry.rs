@@ -385,6 +385,15 @@ pub(crate) struct UseActivityContent {
     pub(crate) scripts: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UseCapabilityProjection {
+    pub(crate) generation: u64,
+    pub(crate) revision: String,
+    pub(crate) package_enabled: bool,
+    pub(crate) mcp_ready: bool,
+    pub(crate) skill_ready: bool,
+}
+
 #[derive(Clone, Default)]
 struct DesiredCapabilities {
     generation: u64,
@@ -1387,6 +1396,35 @@ impl UseRegistryHandle {
     /// packages that do not contribute an Activity Bar view.
     pub(crate) fn package_statuses(&self) -> BTreeMap<String, bool> {
         self.inner.desired_tx.borrow().packages.clone()
+    }
+
+    /// Return the live projection state for one managed capability without
+    /// starting diagnostics or another child process. Code Web uses this to
+    /// distinguish a bundled editor from the CLI/MCP and Skill surfaces that
+    /// make the same file agent-editable.
+    pub(crate) fn capability_projection(
+        &self,
+        capability_id: &str,
+        skill_name: &str,
+    ) -> UseCapabilityProjection {
+        let desired = self.inner.desired_tx.borrow();
+        UseCapabilityProjection {
+            generation: desired.generation,
+            revision: desired.revision.clone(),
+            package_enabled: desired
+                .packages
+                .get(capability_id)
+                .copied()
+                .unwrap_or(false),
+            mcp_ready: desired
+                .mcp
+                .values()
+                .any(|capability| capability.capability_id == capability_id),
+            skill_ready: desired
+                .skills
+                .values()
+                .any(|skill| skill.package_id == capability_id && skill.skill.name == skill_name),
+        }
     }
 
     /// Return the immutable Activity Bar catalog already verified against the

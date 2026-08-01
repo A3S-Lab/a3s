@@ -18,10 +18,12 @@ import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { useWorkCodeController } from '../use-work-code-controller';
 import { useWorkController } from '../use-work-controller';
 import { useWorkFilesController } from '../use-work-files-controller';
+import { useOfficeAutomationStatus } from '../use-office-automation-status';
 import { type WorkAgentProposalRequest, workAgentProposalInstruction } from '../work-agent-proposal';
 import { prepareWorkAgentRequest, type WorkAgentRequest, type WorkEditorAgentRequest } from '../work-agent-request';
 import { WORK_IMPORT_ACCEPT } from '../work-file-io';
 import { isWorkOfficePath, isWorkTextEditorEntry, localPathBasename, workFileMimeType } from '../work-local-files';
+import { workOfficeAgentInstruction } from '../work-office-agent';
 
 const surfaceStorageKey = 'a3s-work.surface';
 const copilotStorageKey = 'a3s-work.copilot-open';
@@ -38,6 +40,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     })
   );
   const code = useWorkCodeController(files.rootPath);
+  const officeAutomation = useOfficeAutomationStatus();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [surface, setSurface] = useState<'files' | 'library'>(readSurface);
   const [copilotOpen, setCopilotOpen] = useState(readCopilotOpen);
@@ -198,12 +201,15 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
   const requestDocumentAgent = (request: WorkEditorAgentRequest) => {
     const title = actions.activeArtifact?.title || '当前文档';
     const proposal = request.proposal?.targets.length ? request.proposal : undefined;
-    const instruction = proposal ? workAgentProposalInstruction(request.instruction, proposal) : request.instruction;
+    const localPath = actions.activeLocalBinding?.path;
+    const instruction = proposal
+      ? workAgentProposalInstruction(request.instruction, proposal)
+      : workOfficeAgentInstruction({ title, instruction: request.instruction, localPath });
     return requestAgent(
       {
         workspaceRoot: files.rootPath,
-        paths: [],
-        instruction: `关于当前正在编辑的“${title}”：\n${instruction}`,
+        paths: localPath ? [localPath] : [],
+        instruction,
         selection: request.selection,
       },
       proposal
@@ -252,6 +258,25 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           actions={codeActions}
           onNewConversation={startNewConversation}
           onSelectSession={selectConversation}
+        />
+      )}
+      {copilotOpen && (
+        <WorkCopilot
+          actions={workTaskActions}
+          workspaceRoot={files.rootPath}
+          currentPath={actions.activeLocalBinding?.path || code.activePath || files.currentPath}
+          onClose={() => updateCopilotOpen(false)}
+          onPickRoot={async () => {
+            await files.pickRoot();
+          }}
+          onAgentRequest={requestAgent}
+          width={copilotWidth}
+          onWidthChange={setCopilotWidth}
+          proposal={agentProposal}
+          onDismissProposal={() => setAgentProposal(null)}
+          onNewConversation={startNewConversation}
+          workspaceMode={actions.activeArtifact ? 'office' : code.tabs.length ? 'code' : 'files'}
+          officeAutomation={officeAutomation}
         />
       )}
       <div className='work-primary-pane'>
@@ -364,23 +389,6 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           onClose={() => updatePreviewTarget(null)}
         />
       )}
-      {copilotOpen && (
-        <WorkCopilot
-          actions={workTaskActions}
-          workspaceRoot={files.rootPath}
-          currentPath={files.currentPath}
-          onClose={() => updateCopilotOpen(false)}
-          onPickRoot={async () => {
-            await files.pickRoot();
-          }}
-          onAgentRequest={requestAgent}
-          width={copilotWidth}
-          onWidthChange={setCopilotWidth}
-          proposal={agentProposal}
-          onDismissProposal={() => setAgentProposal(null)}
-          onNewConversation={startNewConversation}
-        />
-      )}
       {state.fileQuickOpenOpen && (
         <WorkspaceQuickOpen
           rootPath={files.rootPath}
@@ -408,9 +416,9 @@ function readSurface(): 'files' | 'library' {
 
 function readCopilotOpen(): boolean {
   try {
-    return localStorage.getItem(copilotStorageKey) === 'true';
+    return localStorage.getItem(copilotStorageKey) !== 'false';
   } catch {
-    return false;
+    return true;
   }
 }
 

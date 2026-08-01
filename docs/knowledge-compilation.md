@@ -1,6 +1,6 @@
 # a3s code TUI — Knowledge Compilation ("LLM Wiki")
 
-> Status: design + shipped capability (the `okf` skill, invoked as `/okf`). Audience: a3s maintainers.
+> Status: design + shipped capability (the `okf` skill, invoked as `$okf`). Audience: a3s maintainers.
 > Companion to [knowledge-base-design.md](./knowledge-base-design.md). The KB is the *store*; this is how it gets *populated* from the codebase.
 
 ## What it is
@@ -51,7 +51,7 @@ provides the skill and a trigger.
 |---|---|---|
 | **`okf` skill** | The compilation pipeline (survey → plan → generate → index → verify; incremental; anti-hallucination rules). A `kind: instruction` skill — this *is* the capability. | `skills/okf.md` |
 | **Skill loader** | Always materialized to `~/.a3s/cli/skills/okf/SKILL.md` and added to the session skill dirs, so the capability is available in every project (not login-gated or project-local). The obsolete `~/.a3s/cli-skills/` layout is removed after the canonical directory is written. | `src/tui/system/skills.rs` `ensure_builtin_skills_dir` → `skill_dirs()` (`mod.rs`) |
-| **`/okf` trigger** | The skill itself surfaces in the `/` menu as **`/okf`** (selecting it asks the agent to apply the skill); it also auto-applies when the user asks for the wiki/docs in prose. *No separate slash command* — that would just duplicate the skill's menu entry. | the slash menu's skill listing (`panels/menu.rs`) |
+| **`$okf` trigger** | The loaded Skill surfaces in the `$` menu as **`$okf`** and can be mentioned inline to apply it. The built-in `/okf` command remains a separate OKF package-authoring and lifecycle surface. The Skill can also auto-apply when the user asks for the wiki/docs in prose. | the composer Skill listing (`panels/system/menu.rs`) and prompt expansion (`app/submit.rs`) |
 | **Fan-out** | Pages generate concurrently via `parallel_task` when available, else sequentially. | the agent's existing `parallel_task`/`task` tools |
 | **Output** | `.a3s/kb/wiki/*.md` — the KB vault's compiled subtree. | the agent's `write` tool, routed through `ctx.resolve_workspace_path` |
 
@@ -115,8 +115,9 @@ bundle that tracks the code.
 
 ## Relation to the KB phases
 
-- Works **today** as the `okf` skill — invoke it via **`/okf`** (the menu entry) or
-  by asking in prose; it writes plain `.md`, browsable with `/ide` or any editor —
+- Works **today** as the `okf` skill — invoke it via **`$okf`** or by asking in
+  prose; `/okf` is reserved for the built-in OKF package lifecycle. The Skill
+  writes plain `.md`, browsable with `/ide` or any editor —
   independent of the KB panel.
 - **One format, end to end:** both the compiled bundle (`.a3s/kb/wiki/`) and any
   human-authored notes (`.a3s/kb/*.md`) are **OKF** — standard markdown links, a

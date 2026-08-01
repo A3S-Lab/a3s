@@ -135,6 +135,12 @@
   text-decoration: none;
 }
 
+.task-prompt-editor-content .composer-skill-mention {
+  color: var(--a3s-purple);
+  font-weight: 650;
+  text-decoration: none;
+}
+
 .task-prompt-editor-content p.is-editor-empty:first-child::before {
   height: 0;
   float: left;

@@ -79,7 +79,7 @@ describe('Work Copilot panel', () => {
 
     const separator = screen.getByRole('separator', { name: '调整 AI 助手宽度' });
     expect(separator).toHaveAttribute('aria-valuenow', '460');
-    fireEvent.keyDown(separator, { key: 'ArrowLeft' });
+    fireEvent.keyDown(separator, { key: 'ArrowRight' });
     expect(separator).toHaveAttribute('aria-valuenow', '480');
     expect(localStorage.getItem('a3s-work.ai-assistant-width')).toBe('480');
   });
@@ -97,10 +97,10 @@ describe('Work Copilot panel', () => {
     );
 
     const separator = screen.getByRole('separator', { name: '调整 AI 助手宽度' });
-    fireEvent.pointerDown(separator, { button: 0, pointerId: 7, clientX: window.innerWidth - 460 });
+    fireEvent.pointerDown(separator, { button: 0, pointerId: 7, clientX: 460 });
     expect(document.documentElement).toHaveAttribute('data-ds-resizing', 'vertical');
-    fireEvent.pointerMove(window, { pointerId: 7, clientX: window.innerWidth - 520 });
-    fireEvent.pointerUp(window, { pointerId: 7, clientX: window.innerWidth - 520 });
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: 520 });
+    fireEvent.pointerUp(window, { pointerId: 7, clientX: 520 });
     expect(separator).toHaveAttribute('aria-valuenow', '520');
     expect(document.documentElement).not.toHaveAttribute('data-ds-resizing');
     expect(localStorage.getItem('a3s-work.ai-assistant-width')).toBe('520');
@@ -133,6 +133,35 @@ describe('Work Copilot panel', () => {
       expect(separator).toHaveAttribute('aria-valuemax', '616');
       expect(separator).toHaveAttribute('aria-valuenow', '460');
     });
+  });
+
+  it('shows whether native Office automation is connected in the Office workspace', () => {
+    render(
+      <TestWorkCopilot
+        actions={{} as CodeActions}
+        workspaceRoot='/docs'
+        currentPath='/docs/Plan.docx'
+        onClose={vi.fn()}
+        onPickRoot={vi.fn()}
+        onAgentRequest={vi.fn()}
+        workspaceMode='office'
+        officeAutomation={{
+          schemaVersion: 1,
+          status: 'ready',
+          route: 'use/office',
+          transport: 'a3s-use-native-mcp',
+          cli: { name: 'a3s-office', ready: true },
+          skill: { name: 'a3s-office', ready: true },
+          editors: { office: true, code: true },
+          generation: 3,
+          revision: 'office-v1',
+          packageEnabled: true,
+          message: null,
+        }}
+      />
+    );
+
+    expect(screen.getByText('a3s-office CLI 与 Skill 已连接 · 本地文件双写')).toBeInTheDocument();
   });
 
   it('uses the compact assistant width throughout overlay layouts', () => {

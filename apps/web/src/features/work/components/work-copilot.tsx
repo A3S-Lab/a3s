@@ -1,8 +1,18 @@
-import { FolderOpen, MessageSquarePlus, Sparkles, WandSparkles, X } from 'lucide-react';
+import {
+  CheckCircle2,
+  FolderOpen,
+  LoaderCircle,
+  MessageSquarePlus,
+  Sparkles,
+  TriangleAlert,
+  WandSparkles,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button, IconButton, SplitHandle, StateView } from '../../../design-system/primitives';
 import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
+import type { OfficeAutomationStatus } from '../../../types/api';
 import type { CodeActions } from '../../code/use-code-controller';
 import { ExecutionStream } from '../../tasks/components/execution-stream';
 import { TaskComposer } from '../../tasks/components/task-composer';
@@ -35,6 +45,8 @@ export function WorkCopilot({
   proposal,
   onDismissProposal,
   onNewConversation,
+  workspaceMode = 'files',
+  officeAutomation,
 }: {
   actions: CodeActions;
   workspaceRoot: string;
@@ -47,6 +59,8 @@ export function WorkCopilot({
   proposal?: WorkAgentProposalRequest | null;
   onDismissProposal?: () => void;
   onNewConversation?: () => void;
+  workspaceMode?: 'files' | 'office' | 'code';
+  officeAutomation?: OfficeAutomationStatus | null;
 }) {
   const state = useSnapshot(appState);
   const actionsRef = useRef(actions);
@@ -98,7 +112,6 @@ export function WorkCopilot({
         min={minimumWidth}
         max={availableMaximumWidth}
         defaultValue={Math.min(defaultWidth, availableMaximumWidth)}
-        direction='reverse'
         valueText={(value) => `${value} 像素`}
         onChange={updateWidth}
         onCommit={(value) => updateWidth(value, true)}
@@ -133,6 +146,7 @@ export function WorkCopilot({
           <X size={16} />
         </IconButton>
       </header>
+      {workspaceMode === 'office' && <OfficeAutomationBanner status={officeAutomation} />}
       {!workspaceRoot ? (
         <StateView
           className='work-copilot-no-workspace'
@@ -174,6 +188,37 @@ export function WorkCopilot({
         </div>
       )}
     </aside>
+  );
+}
+
+function OfficeAutomationBanner({ status }: { status?: OfficeAutomationStatus | null }) {
+  const phase = status?.status ?? 'preparing';
+  const content =
+    phase === 'ready'
+      ? 'a3s-office CLI 与 Skill 已连接 · 本地文件双写'
+      : phase === 'degraded'
+        ? 'Office 自动化未完整连接，浏览器编辑仍可用'
+        : phase === 'unavailable'
+          ? 'Office 自动化不可用，浏览器编辑仍可用'
+          : '正在按需准备 a3s-office CLI 与 Skill…';
+  const icon =
+    phase === 'ready' ? (
+      <CheckCircle2 size={13} />
+    ) : phase === 'preparing' ? (
+      <LoaderCircle className='spin' size={13} />
+    ) : (
+      <TriangleAlert size={13} />
+    );
+  return (
+    <output
+      className='work-copilot-capability'
+      data-status={phase}
+      aria-live='polite'
+      title={status?.message ?? undefined}
+    >
+      {icon}
+      <span>{content}</span>
+    </output>
   );
 }
 

@@ -483,6 +483,99 @@ describe('Work controller compatibility review', () => {
     expect(result.current.activeArtifact?.id).toBe(artifact.id);
   });
 
+  it('reloads a clean bound Office artifact when AI or another application changes the file', async () => {
+    const artifact = createWorkArtifact('blank-document');
+    artifact.title = 'Plan';
+    const original = Uint8Array.from([1, 2, 3]);
+    const changed = Uint8Array.from([4, 5, 6]);
+    saveWorkLocalFileBinding({
+      artifactId: artifact.id,
+      path: '/docs/Plan.docx',
+      fingerprint: await fingerprintWorkFile(original),
+      size: original.byteLength,
+      updatedAt: Date.now(),
+    });
+    repository.loadWorkLibrary.mockResolvedValue({
+      artifacts: [artifact],
+      folders: [],
+      limits: null,
+      storage: 'local',
+    });
+    const imported = createWorkArtifact('blank-document');
+    imported.title = 'Plan from disk';
+    if (imported.content.type === 'document') {
+      imported.content.html = '<p>AI updated this file on disk.</p>';
+    }
+    fileIo.importWorkFile.mockResolvedValue(imported);
+    localFileApi.pathExists.mockResolvedValue({ exists: true });
+    localFileApi.readBinaryFile.mockResolvedValue(changed);
+    const { result } = renderHook(() => useWorkController());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(() => result.current.openArtifact(artifact.id));
+
+    let synced = false;
+    await act(async () => {
+      synced = await result.current.syncLocalFile();
+    });
+
+    expect(synced).toBe(true);
+    expect(fileIo.importWorkFile).toHaveBeenCalledWith(expect.objectContaining({ name: 'Plan.docx' }));
+    expect(repository.saveWorkSource).toHaveBeenCalledWith(
+      expect.objectContaining({ id: artifact.id, title: 'Plan from disk' }),
+      expect.objectContaining({ name: 'Plan.docx' })
+    );
+    expect(result.current.activeArtifact).toMatchObject({
+      id: artifact.id,
+      title: 'Plan from disk',
+      content: { html: '<p>AI updated this file on disk.</p>' },
+    });
+    expect(readWorkLocalFileBinding(artifact.id)).toMatchObject({
+      fingerprint: await fingerprintWorkFile(changed),
+      size: changed.byteLength,
+    });
+    expect(result.current.localSaveState).toBe('saved');
+  });
+
+  it('preserves a dirty browser edit and asks for review when the disk version changes', async () => {
+    const artifact = createWorkArtifact('blank-document');
+    artifact.title = 'Plan';
+    const original = Uint8Array.from([1, 2, 3]);
+    const changed = Uint8Array.from([4, 5, 6]);
+    saveWorkLocalFileBinding({
+      artifactId: artifact.id,
+      path: '/docs/Plan.docx',
+      fingerprint: await fingerprintWorkFile(original),
+      size: original.byteLength,
+      updatedAt: Date.now(),
+    });
+    repository.loadWorkLibrary.mockResolvedValue({
+      artifacts: [artifact],
+      folders: [],
+      limits: null,
+      storage: 'local',
+    });
+    localFileApi.pathExists.mockResolvedValue({ exists: true });
+    localFileApi.readBinaryFile.mockResolvedValue(changed);
+    const { result } = renderHook(() => useWorkController());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(() => result.current.openArtifact(artifact.id));
+    act(() => {
+      result.current.markLocalFileDirty();
+      result.current.updateArtifact((current) => ({ ...current, title: 'Human draft' }));
+    });
+
+    let synced = true;
+    await act(async () => {
+      synced = await result.current.syncLocalFile();
+    });
+
+    expect(synced).toBe(false);
+    expect(fileIo.importWorkFile).not.toHaveBeenCalled();
+    expect(result.current.activeArtifact?.title).toBe('Human draft');
+    expect(result.current.localSaveState).toBe('conflict');
+    expect(result.current.localConflict).toEqual({ path: '/docs/Plan.docx', missing: false });
+  });
+
   it('requires overwrite confirmation before Save As binds an existing destination', async () => {
     const artifact = createWorkArtifact('blank-spreadsheet');
     artifact.title = 'Untitled workbook';

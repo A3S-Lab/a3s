@@ -53,15 +53,40 @@ fn slash_menu_panel(
 }
 
 fn slash_menu_submit_text(cmd: &str) -> String {
-    if SLASH_COMMANDS
-        .iter()
-        .any(|(registered, _)| *registered == cmd)
-    {
-        cmd.to_string()
-    } else {
-        let name = cmd.trim_start_matches('/');
-        format!("Use your `{name}` skill.")
+    cmd.to_string()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ComposerMenuKind {
+    Command,
+    Skill,
+}
+
+fn composer_menu_query(input: &str) -> Option<(ComposerMenuKind, &str)> {
+    if input.starts_with('/') && !input.chars().any(char::is_whitespace) {
+        return Some((ComposerMenuKind::Command, input));
     }
+    if input.is_empty() || input.chars().last().is_some_and(char::is_whitespace) {
+        return None;
+    }
+    let token_start = input
+        .char_indices()
+        .rev()
+        .find(|(_, character)| character.is_whitespace())
+        .map_or(0, |(index, character)| index + character.len_utf8());
+    let token = &input[token_start..];
+    token
+        .starts_with('$')
+        .then_some((ComposerMenuKind::Skill, token))
+}
+
+fn complete_skill_mention(input: &str, mention: &str) -> String {
+    let token_start = input
+        .char_indices()
+        .rev()
+        .find(|(_, character)| character.is_whitespace())
+        .map_or(0, |(index, character)| index + character.len_utf8());
+    format!("{}{mention} ", &input[..token_start])
 }
 
 fn dismiss_slash_menu(input: &str, selected: &mut usize, dismissed_for: &mut Option<String>) {
@@ -91,22 +116,29 @@ fn slash_overlay_y_offset(screen_height: usize, row_count: usize, rows_below: us
 }
 
 impl App {
-    /// Built-in commands + loaded skills (as `/<skill>`) matching `input`.
+    /// Built-in `/` commands or loaded Skills (as `$skill`) matching `input`.
     pub(crate) fn slash_candidates_all(&self, input: &str) -> Vec<(String, String)> {
+        let Some((kind, query)) = composer_menu_query(input) else {
+            return Vec::new();
+        };
         // Hide session-mutating commands while a turn is streaming.
         let idle = self.state == State::Idle;
-        let mut out: Vec<(String, String)> = slash_candidates(input)
-            .into_iter()
-            .filter(|(c, _)| idle || !IDLE_ONLY.contains(c))
-            .filter(|(c, _)| self.os_config.is_some() || !matches!(*c, "/login" | "/logout"))
-            .map(|(c, d)| (c.to_string(), d.to_string()))
-            .collect();
+        if kind == ComposerMenuKind::Command {
+            return slash_candidates(query)
+                .into_iter()
+                .filter(|(c, _)| idle || !IDLE_ONLY.contains(c))
+                .filter(|(c, _)| self.os_config.is_some() || !matches!(*c, "/login" | "/logout"))
+                .map(|(c, d)| (c.to_string(), d.to_string()))
+                .collect();
+        }
+
+        let mut out = Vec::new();
         for (name, desc) in &self.skills {
             if self.disabled_skills.contains(name) {
                 continue; // hidden via /plugin
             }
-            let cmd = format!("/{name}");
-            if cmd.starts_with(input) {
+            let cmd = format!("${name}");
+            if cmd.starts_with(query) {
                 out.push((cmd, format!("skill · {}", truncate(desc, 56))));
             }
         }
@@ -117,12 +149,9 @@ impl App {
         let input = self.textarea.value();
         // Available while idle or streaming, but not during an approval prompt.
         self.state != State::Awaiting
-            && input.starts_with('/')
             && !input.contains('\n')
             && !slash_menu_is_dismissed(&input, self.slash_menu_dismissed_for.as_deref())
-            // Close once args are being typed so Enter submits the whole line
-            // instead of just the command.
-            && !input.contains(' ')
+            && composer_menu_query(&input).is_some()
             && !self.slash_candidates_all(&input).is_empty()
     }
 
@@ -148,6 +177,14 @@ impl App {
                 let cmd = cands[self.slash_sel].0.clone();
                 self.slash_sel = 0;
                 self.slash_menu_dismissed_for = None;
+                if composer_menu_query(&self.textarea.value())
+                    .is_some_and(|(kind, _)| kind == ComposerMenuKind::Skill)
+                {
+                    let input = self.textarea.value();
+                    self.textarea
+                        .set_value(&complete_skill_mention(&input, &cmd));
+                    return Some(None);
+                }
                 self.textarea.clear();
                 // Run directly on this key event so the redraw is immediate (a
                 // Submit message would be frame-throttled and look like a no-op).
@@ -155,8 +192,14 @@ impl App {
             }
             KeyCode::Tab => {
                 // Fill into the input (trailing space closes the menu) to add args.
-                self.textarea
-                    .set_value(&format!("{} ", cands[self.slash_sel].0));
+                let input = self.textarea.value();
+                let completed = match composer_menu_query(&input) {
+                    Some((ComposerMenuKind::Skill, _)) => {
+                        complete_skill_mention(&input, &cands[self.slash_sel].0)
+                    }
+                    _ => format!("{} ", cands[self.slash_sel].0),
+                };
+                self.textarea.set_value(&completed);
                 self.slash_sel = 0;
                 self.slash_menu_dismissed_for = None;
                 Some(None)
@@ -210,6 +253,14 @@ impl App {
                 let cmd = cands[index].0.clone();
                 self.slash_sel = 0;
                 self.slash_menu_dismissed_for = None;
+                if composer_menu_query(&self.textarea.value())
+                    .is_some_and(|(kind, _)| kind == ComposerMenuKind::Skill)
+                {
+                    let input = self.textarea.value();
+                    self.textarea
+                        .set_value(&complete_skill_mention(&input, &cmd));
+                    return None;
+                }
                 self.textarea.clear();
                 self.on_submit(slash_menu_submit_text(&cmd))
             }
@@ -390,11 +441,34 @@ mod tests {
     }
 
     #[test]
-    fn slash_menu_enter_turns_skills_into_skill_prompts() {
+    fn skill_menu_enter_preserves_codex_style_skill_mentions() {
         assert_eq!(
-            slash_menu_submit_text("/inspect-surface"),
-            "Use your `inspect-surface` skill."
+            slash_menu_submit_text("$inspect-surface"),
+            "$inspect-surface"
         );
+    }
+
+    #[test]
+    fn inline_skill_mentions_open_from_the_active_composer_token() {
+        assert_eq!(
+            composer_menu_query("请审阅 $inspect"),
+            Some((ComposerMenuKind::Skill, "$inspect"))
+        );
+        assert_eq!(
+            complete_skill_mention("请审阅 $inspect", "$inspect-surface"),
+            "请审阅 $inspect-surface "
+        );
+        assert_eq!(composer_menu_query("请审阅 $inspect "), None);
+    }
+
+    #[test]
+    fn slash_commands_remain_builtins_at_the_start_of_the_composer() {
+        assert_eq!(
+            composer_menu_query("/goal"),
+            Some((ComposerMenuKind::Command, "/goal"))
+        );
+        assert_eq!(composer_menu_query("请运行 /goal"), None);
+        assert_eq!(composer_menu_query("/goal release"), None);
     }
 
     #[test]

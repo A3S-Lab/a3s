@@ -16,6 +16,45 @@ pub(super) fn parse_use_status_command(rest: &str) -> Result<bool, &'static str>
     }
 }
 
+pub(super) fn expand_skill_mentions(
+    prompt: &str,
+    skills: &[(String, String)],
+    disabled_skills: &std::collections::HashSet<String>,
+) -> String {
+    let available = skills
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .filter(|name| !disabled_skills.contains(*name))
+        .collect::<std::collections::HashSet<_>>();
+    let mut selected = Vec::new();
+    for token in prompt.split_whitespace() {
+        let token = token.trim_start_matches(&['(', '[', '{', '"', '\'', '（', '【', '“'][..]);
+        let Some(name) = token.strip_prefix('$') else {
+            continue;
+        };
+        let name = name.trim_end_matches(
+            &[
+                '.', ',', '!', '?', ';', ':', ')', ']', '}', '"', '\'', '。', '，', '！', '？',
+                '；', '：', '）', '】', '”',
+            ][..],
+        );
+        if !name.is_empty() && available.contains(name) && !selected.contains(&name) {
+            selected.push(name);
+        }
+    }
+    if selected.is_empty() {
+        return prompt.to_string();
+    }
+    format!(
+        "[Selected skills]\n{}\n[/Selected skills]\n\n{prompt}",
+        selected
+            .iter()
+            .map(|name| format!("- Use your `{name}` skill."))
+            .collect::<Vec<_>>()
+            .join("\n")
+    )
+}
+
 impl App {
     pub(super) fn on_submit(&mut self, text: String) -> Option<Cmd<Msg>> {
         self.on_submit_with_intent(text, SubmissionIntent::Queue)
@@ -1001,6 +1040,8 @@ impl App {
         } else {
             trimmed.to_string()
         };
+        let typed_prompt =
+            expand_skill_mentions(&typed_prompt, &self.skills, &self.disabled_skills);
         let task_label = if trimmed.is_empty() {
             image_references
         } else {
@@ -1102,5 +1143,37 @@ impl App {
 
     pub(super) fn start_stream(&mut self, prompt: String) -> Option<Cmd<Msg>> {
         self.start_stream_inner(prompt.clone(), prompt, true, true, false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::expand_skill_mentions;
+    use std::collections::HashSet;
+
+    #[test]
+    fn dollar_mentions_select_enabled_skills_without_rewriting_the_visible_prompt() {
+        let skills = vec![
+            ("review".to_string(), "Review code".to_string()),
+            ("a3s-office".to_string(), "Edit Office files".to_string()),
+        ];
+        let expanded = expand_skill_mentions(
+            "$review 请检查，然后用 $a3s-office。",
+            &skills,
+            &HashSet::new(),
+        );
+
+        assert!(expanded.contains("- Use your `review` skill."));
+        assert!(expanded.contains("- Use your `a3s-office` skill."));
+        assert!(expanded.ends_with("$review 请检查，然后用 $a3s-office。"));
+    }
+
+    #[test]
+    fn unknown_and_disabled_dollar_tokens_remain_plain_prompt_text() {
+        let skills = vec![("review".to_string(), "Review code".to_string())];
+        let disabled = HashSet::from(["review".to_string()]);
+        let prompt = "$review costs $5 and $unknown";
+
+        assert_eq!(expand_skill_mentions(prompt, &skills, &disabled), prompt);
     }
 }

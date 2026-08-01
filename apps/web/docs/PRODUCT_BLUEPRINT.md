@@ -80,9 +80,10 @@ or conversation identity.
 
 ### AI Assistant
 
-The resizable right pane displays the active conversation, execution, tool
-decisions, recovery, evidence, artifacts, and the same composer used by Home.
-On compact desktop widths it becomes an overlay.
+The resizable left pane displays the active conversation, execution, tool
+decisions, recovery, evidence, artifacts, and the same composer used by Home;
+the files, Office, or code workspace remains on its right. On compact desktop
+widths it becomes an overlay.
 
 ## Home
 
@@ -93,8 +94,8 @@ The home page follows a task-first hierarchy:
 3. implemented capability shortcuts;
 4. templates, folders, and recent files.
 
-The assistant starts closed and opens once after task submission. Prompt
-starters populate an editable draft and never auto-send.
+The assistant starts open beside the workspace; an explicit close choice is
+persisted. Prompt starters populate an editable draft and never auto-send.
 
 ## File management
 

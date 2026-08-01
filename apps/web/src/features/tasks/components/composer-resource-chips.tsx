@@ -32,7 +32,7 @@ export function ComposerResourceChips({
       {skills.map((name) => (
         <span className='skill' key={`skill:${name}`} title={`Skill：${name}`}>
           <Sparkles size={12} />
-          <span>/{name}</span>
+          <span>${name}</span>
           <IconButton label={`移除 Skill ${name}`} onClick={() => onRemoveSkill(name)}>
             <X size={11} />
           </IconButton>

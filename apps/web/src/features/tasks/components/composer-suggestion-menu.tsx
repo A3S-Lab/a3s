@@ -23,7 +23,7 @@ export function ComposerSuggestionMenu({
   onSelect,
 }: {
   id: string;
-  kind: 'file' | 'skill';
+  kind: 'file' | 'skill' | 'command';
   query: string;
   items: ComposerSuggestionItem[];
   activeIndex: number;
@@ -32,9 +32,10 @@ export function ComposerSuggestionMenu({
   onActiveIndexChange: (index: number) => void;
   onSelect: (item: ComposerSuggestionItem) => void;
 }) {
-  const Icon = kind === 'file' ? FileCode2 : Sparkles;
-  const title = kind === 'file' ? '添加工作区文件' : '使用 Skill';
-  const empty = kind === 'file' ? '没有匹配的工作区文件' : '没有匹配的已启用 Skill';
+  const Icon = kind === 'file' ? FileCode2 : kind === 'command' ? Target : Sparkles;
+  const title = kind === 'file' ? '添加工作区文件' : kind === 'command' ? '运行内置命令' : '使用 Skill';
+  const empty =
+    kind === 'file' ? '没有匹配的工作区文件' : kind === 'command' ? '没有匹配的内置命令' : '没有匹配的已启用 Skill';
   return (
     <section className='composer-suggestion-menu' aria-label={title}>
       <header>
@@ -42,7 +43,7 @@ export function ComposerSuggestionMenu({
           <Icon size={15} />
           <strong>{title}</strong>
         </span>
-        <kbd>{kind === 'file' ? '@' : '/'}</kbd>
+        <kbd>{kind === 'file' ? '@' : kind === 'command' ? '/' : '$'}</kbd>
       </header>
       {query && <p className='composer-suggestion-query'>搜索“{query}”</p>}
       <div id={id} role='listbox' aria-label={title}>

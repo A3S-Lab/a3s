@@ -30,7 +30,7 @@ fn plugin_panel(
         .iter()
         .map(|(name, desc)| {
             let on = !disabled_skills.contains(name);
-            MenuItem::new(format!("/{name}"))
+            MenuItem::new(format!("${name}"))
                 .description(desc.clone())
                 .checked(on)
                 .color(if on { TN_CYAN } else { TN_GRAY })
@@ -207,7 +207,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(
-            plain.iter().any(|line| line.contains("[ ] /skill-14")),
+            plain.iter().any(|line| line.contains("[ ] $skill-14")),
             "{plain:?}"
         );
         assert!(

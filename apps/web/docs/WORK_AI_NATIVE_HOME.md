@@ -44,8 +44,8 @@ surfaces. They do not repeat the home hero.
 
 - A fresh A3S Web installation opens the AI home. An explicit previous choice to
   use the local-files surface is still restored.
-- The right-side AI Assistant is closed by default. It opens when the user
-  submits a home task, so the initial canvas is not needlessly compressed.
+- The left-side AI Assistant starts open beside the right-side workspace. An
+  explicit close choice is persisted, and task submission reopens it when needed.
 - The home composer and the assistant use the same task draft and durable
   runtime. Keyboard submission and the send button follow the same path.
 - Selecting an existing task keeps the composer available for a follow-up.
@@ -81,7 +81,7 @@ Implemented in the first release:
   implementation details.
 - Real capability shortcuts with no placeholder media features.
 - Task-submit-to-assistant transition.
-- Default home and collapsed-assistant behavior.
+- Default home and shared assistant/workspace split behavior.
 - Existing templates and file library preserved below the task entry.
 - Responsive layouts for a narrow Work pane and a 360 px viewport, plus dark
   theme support and keyboard-accessible controls.
@@ -91,8 +91,8 @@ Implemented in the first release:
 - Rank task starters from recent Work outcomes without exposing file content.
 - Add resumable recent tasks and generated-output previews beside recent
   files.
-- Provide a searchable Skill catalog launched from the composer while keeping
-  `/` as the keyboard path.
+- Provide a searchable Skill catalog launched with `$`, while reserving `/` for
+  built-in commands.
 - Add format-aware starters when the current workspace contains spreadsheets,
   presentations, or document collections.
 
@@ -117,12 +117,14 @@ Implemented in the first release:
 ## Release acceptance
 
 - The home composer submits through the production unified task controller.
-- `@` file references, `/` Skills, execution mode, model, and effort remain
+- `@` file references, `$` Skill mentions, built-in `/` commands, execution
+  mode, model, and effort remain
   available; advanced controls may be progressively disclosed.
 - An active task never replaces or hides the composer, and New task is available
   beside the current-task strip.
 - The selected workspace name and path are visible before task submission.
-- Starting a task opens the AI Assistant exactly once.
+- Starting a task keeps or reopens the shared AI Assistant without creating a
+  second conversation.
 - Switching among home, files, Office, and code scenes preserves the same
   session ID and draft, including when session creation completes in flight.
 - `#home` is the only Work route; removed product-prefixed routes are not

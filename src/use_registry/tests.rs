@@ -2017,6 +2017,17 @@ async fn replacement_session_receives_live_skills_without_waiting_for_projection
         handle.package_statuses(),
         BTreeMap::from([("use/acme/report".to_string(), true)])
     );
+    assert_eq!(
+        handle.capability_projection("use/acme/report", "fixture-report"),
+        UseCapabilityProjection {
+            generation: 2,
+            revision: "2222222222222222222222222222222222222222222222222222222222222222"
+                .to_string(),
+            package_enabled: true,
+            mcp_ready: false,
+            skill_ready: true,
+        }
+    );
     let catalog = handle.activity_catalog();
     assert_eq!(catalog.generation, 2);
     assert_eq!(catalog.items.len(), 1);

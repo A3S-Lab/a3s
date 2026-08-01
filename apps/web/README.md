@@ -119,23 +119,28 @@ by the
   confirmation because operating-system Trash integration is not yet available.
 - An AI-native A3S Work home that starts with the complete durable task
   composer instead of a file grid. It preserves execution mode, model, effort,
-  `@` workspace references, `/` Skills, drag-and-drop context, and the real
+  `@` workspace references, `$` Skill mentions, built-in `/` commands,
+  drag-and-drop context, and the real
   queue submission path. Implemented shortcuts create Office artifacts, open
   files, prepare editable data-analysis and file-organization drafts, or enter
-  the local-files workspace. The AI Assistant stays closed on a fresh
-  visit and opens when a home task is submitted; templates, folders, and recent
+  the local-files workspace. The shared AI Assistant starts open on a fresh
+  visit and an explicit close choice is persisted; templates, folders, and recent
   files remain directly available below the task entry, while Recent,
   Favorites, Trash, and folder views remain focused file-management surfaces.
 - A single-file detail editor for every non-binary code or text file in the
   selected root. It uses the same header and return flow as Office details while
   keeping Monaco syntax highlighting, diagnostics, semantic navigation, safe
-  Cmd/Ctrl+S writes with external-change conflict review, and editor context
-  actions for the AI Assistant. Markdown uses a fixed left-source/right-live-
+  Cmd/Ctrl+S writes, clean external-change reload, dirty-draft conflict review,
+  and editor context actions for the AI Assistant. Markdown uses a fixed left-source/right-live-
   preview layout instead of a mode switch.
-- A resizable right-side AI Assistant backed by the durable A3S task runtime.
+- A resizable left-side AI Assistant backed by the durable A3S task runtime,
+  with the active files, Office artifact, or code editor kept on its right.
   The home composer, file workspace, Office editors, and code editor all use the
   same conversation list, active session, draft, workspace, and default agent.
   Switching scenes never forks a hidden Code or Office conversation.
+  Bound Office files expose the asynchronously prepared native `use/office`
+  route and `a3s-office` Skill, reload clean AI/external writes, and stop for
+  explicit review instead of overwriting a dirty browser edit.
   At 1120 px and below the assistant becomes a full Work-pane overlay with a
   persistent close action instead of squeezing the file surface.
   File context menus can prepare ask, summarize, organize, and naming
@@ -407,8 +412,8 @@ by the
   action.
 - Natural-language task composition with a searchable recent-workspace picker,
   native local-folder selection, a lazy color-coded `@` workspace tree,
-  searchable highlighted Skill suggestions, safe file/folder drop import, and
-  inline `/goal` control.
+  searchable highlighted `$` Skill suggestions, safe file/folder drop import,
+  and inline built-in `/goal` control.
 - A calm turn-based execution document with restored Skill/file context,
   stable A3S response headers, local copy and continue-edit actions,
   lifecycle-aware Markdown reasoning, reader-controlled stream following, and

@@ -7,6 +7,29 @@ export interface HealthResponse {
   model?: string | null;
 }
 
+export interface OfficeAutomationStatus {
+  schemaVersion: number;
+  status: 'preparing' | 'ready' | 'degraded' | 'unavailable';
+  route: 'use/office';
+  transport: 'a3s-use-native-mcp';
+  cli: {
+    name: 'a3s-office';
+    ready: boolean;
+  };
+  skill: {
+    name: 'a3s-office';
+    ready: boolean;
+  };
+  editors: {
+    office: boolean;
+    code: boolean;
+  };
+  generation: number;
+  revision: string;
+  packageEnabled: boolean;
+  message?: string | null;
+}
+
 export type MemoryTier = 'short' | 'mid' | 'long';
 export type MemoryForgetSignal = 'keep' | 'cooling' | 'candidate' | 'protected';
 

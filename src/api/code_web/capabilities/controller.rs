@@ -34,6 +34,11 @@ impl CapabilitiesController {
         Ok(self.service.lifecycles())
     }
 
+    #[get("/office")]
+    async fn office_automation(&self) -> BootResult<serde_json::Value> {
+        Ok(self.service.office_automation())
+    }
+
     #[post("/actions/run")]
     async fn run_action(
         &self,

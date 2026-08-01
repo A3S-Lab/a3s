@@ -908,6 +908,36 @@ describe('task configuration', () => {
     hook.unmount();
   });
 
+  it('resolves manually typed dollar mentions into selected Skills', async () => {
+    const task = codeSession('skill-task', '/code-project');
+    appState.activeProduct = 'work';
+    appState.activeSessionId = task.sessionId;
+    appState.streamingSessionId = null;
+    appState.workspaceRoot = '/code-project';
+    appState.sessions = [task];
+    appState.messagesBySession = { [task.sessionId]: [] };
+    appState.composerValue = '$review 检查当前修改';
+    appState.composerContextFiles = [];
+    appState.composerSkills = [];
+    vi.spyOn(codeApi, 'skills').mockResolvedValue({
+      workspaceRoot: '/code-project',
+      items: [{ name: 'review', command: '$review', description: 'Review code', enabled: true, sources: [] }],
+      total: 1,
+      enabledCount: 1,
+      disabledCount: 0,
+    });
+    const enqueue = vi.spyOn(codeApi, 'enqueueTurn').mockResolvedValue(pausedQueue(task.sessionId));
+    const hook = renderHook(() => useTaskController());
+
+    await act(() => hook.result.current.sendMessage());
+
+    expect(enqueue).toHaveBeenCalledWith(
+      task.sessionId,
+      expect.objectContaining({ content: '$review 检查当前修改', skillNames: ['review'] })
+    );
+    hook.unmount();
+  });
+
   it('does not overwrite the selected session when asynchronous creation finishes after navigation', async () => {
     const selectedTask = codeSession('selected-task', '/code-project');
     const createdTask = codeSession('created-task', '/work-documents');

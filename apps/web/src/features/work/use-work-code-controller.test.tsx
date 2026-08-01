@@ -44,6 +44,34 @@ describe('Work code file controller', () => {
     expect(writeFile).toHaveBeenCalledWith('/repo/README.md', '# Local draft\n');
   });
 
+  it('reloads a clean editor when the AI or another application writes the file', async () => {
+    vi.spyOn(codeApi, 'readFile')
+      .mockResolvedValueOnce({ content: 'export const value = 1;\n' })
+      .mockResolvedValueOnce({ content: 'export const value = 2;\n' });
+    const { result } = renderHook(() => useWorkCodeController('/repo'));
+
+    await act(() => result.current.openFile({ path: '/repo/src/value.ts', isBinary: false }));
+    await act(() => result.current.syncFile('/repo/src/value.ts'));
+
+    expect(result.current.activeTab?.content).toBe('export const value = 2;\n');
+    expect(result.current.activeTab?.draft).toBe('export const value = 2;\n');
+    expect(result.current.conflict).toBeNull();
+  });
+
+  it('preserves a human draft when an external writer changes the same code file', async () => {
+    vi.spyOn(codeApi, 'readFile')
+      .mockResolvedValueOnce({ content: '# Original\n' })
+      .mockResolvedValueOnce({ content: '# AI version\n' });
+    const { result } = renderHook(() => useWorkCodeController('/repo'));
+
+    await act(() => result.current.openFile({ path: '/repo/README.md', isBinary: false }));
+    act(() => result.current.updateDraft('/repo/README.md', '# Human draft\n'));
+    await act(() => result.current.syncFile('/repo/README.md'));
+
+    expect(result.current.activeTab?.draft).toBe('# Human draft\n');
+    expect(result.current.conflict).toEqual({ path: '/repo/README.md', diskContent: '# AI version\n' });
+  });
+
   it('asks inside the product before closing unsaved files', async () => {
     vi.spyOn(codeApi, 'readFile').mockResolvedValue({ content: 'before\n' });
     const confirm = vi.spyOn(window, 'confirm');

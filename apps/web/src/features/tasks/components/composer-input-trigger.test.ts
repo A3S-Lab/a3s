@@ -11,13 +11,23 @@ describe('composer input triggers', () => {
     });
   });
 
-  it('opens Skill search for a slash token without exposing terminal commands', () => {
-    expect(findComposerInputTrigger('/report', 7)).toEqual({
+  it('opens Skill search for a Codex-style dollar mention', () => {
+    expect(findComposerInputTrigger('$report', 7)).toEqual({
       kind: 'skill',
       query: 'report',
       from: 0,
       to: 7,
     });
+  });
+
+  it('keeps slash tokens reserved for built-in commands', () => {
+    expect(findComposerInputTrigger('/goal', 5)).toEqual({
+      kind: 'command',
+      query: 'goal',
+      from: 0,
+      to: 5,
+    });
+    expect(findComposerInputTrigger('请处理 /goal', 9)).toBeNull();
   });
 
   it('does not treat email addresses or URL paths as resource triggers', () => {
