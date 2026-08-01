@@ -161,17 +161,23 @@ on a private extension protocol.
 A3S Search ships quality-gated Browser-first discovery, lazy conventional
 HTTP/RSS and native API fallbacks, and verifiable cascade receipts. A3S Office
 currently exposes five browser-native surfaces plus native CLI, MCP, and Skill
-automation; it remains pre-1.0 and its first npm release has not been published.
+automation; its Rust core also owns native OOXML semantics and optional
+host-injected PDFium page rendering. It remains pre-1.0 and its first npm
+release has not been published.
 A3S Science currently indexes 472 catalog entries, including 35 A3S-native
 Skills and 25 A3S-native MCP resources distributed through a TUF-signed package
 registry.
 
-A3S Parser is a pre-alpha evidence-first orchestration foundation for combining
-A3S Office structure and per-unit rendering with A3S OCR. Its initial crate
-defines bounded plans, typed providers, resumable manifests, and a fine-grained
-document graph whose immutable canvases and normalized polygons support source
-highlighting in frontends. Engine adapters and production format claims remain
-roadmap work in the independently versioned Parser repository.
+A3S Parser is a pre-alpha agentic document parser built on A3S Code. It combines
+A3S Office structure and source-layout rendering with A3S OCR through bounded,
+source-bound governed tools; persists resumable Parser manifests and Code
+snapshots; and emits a fine-grained canonical document graph whose immutable
+canvases and normalized polygons support source highlighting in frontends. The
+runnable CLI now covers native OOXML structure, direct images, exact-image
+PPTX, and optional host-injected native PDF pages through Visual and Planned
+routes. Rich Office layout, PDF text-layer fusion, broader imports, and
+release-scale support claims remain roadmap work in the independently versioned
+Parser repository.
 
 ~~~bash
 a3s list
@@ -258,8 +264,8 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
 | Test | The deterministic Web runner, ACL admission, structured reports, and interrupt-safe browser cleanup are working; LLM planning, GUI/CUA, TUI/PTY, MCP, and Skill surfaces remain planned |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
-| Office | Pre-1.0; five browser-native surfaces and native CLI/MCP/Skill automation exist, while the first npm package release is still pending |
-| Parser | Pre-alpha contract and architecture foundation; Office/OCR adapters, per-unit layout rendering, format breadth, and production scale evidence remain planned |
+| Office | Pre-1.0; five browser-native surfaces, native CLI/MCP/Skill automation, OOXML semantics, and optional host-injected PDFium page rendering exist, while the first npm package release is still pending |
+| Parser | Pre-alpha runnable A3S Code parser; native OOXML structure, direct-image/exact-PPTX/native-PDF visual routes, canonical overlays, and durable resume are delivered, while richer formats and production-scale evidence remain gated |
 | Cloud | R0–E0 is the verified cumulative baseline; G0, C0, and H0 are in progress; P0, A0, S0, and I0 remain planned in the [locked Cloud compatibility manifest](compat/cloud-stack.acl) |
 | OCI Runtime | The default inventory remains `probe-only`; an explicit native Linux development path is experimental and is not the default workload-launch claim |
 | Infrastructure libraries | Optional features expose integrations; external brokers, stores, providers, and services must still be operated |
@@ -366,9 +372,9 @@ distribution assets.
 | [A3S Search](crates/search/) | Quality-gated Browser-first discovery, lazy HTTP/RSS and native API fallbacks, ranking, deduplication, and cascade receipts |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
-| [A3S Parser](crates/parser/) | Evidence-first Office/OCR orchestration contracts, resumable manifests, and fine-grained source-locatable document geometry |
+| [A3S Parser](crates/parser/) | A3S Code-governed Office/OCR document parsing, resumable manifests, and MinerU-class source-locatable canonical geometry |
 | [A3S Use](crates/use/) | Built-in Browser/OCR routes, component-backed Box routing, and standard lifecycle for external packages |
-| [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces plus native CLI, MCP, and Skill automation |
+| [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces, native automation, OOXML semantics, and optional host-injected PDFium pages |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane with durable tenant-scoped finite Executions, Runtime placement, cancellation, and cleanup |
 | [A3S CLI website](apps/docs/) | Bilingual Rspress product site for installing, configuring, diagnosing, and launching the root-owned `a3s` CLI |
