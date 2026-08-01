@@ -17,6 +17,7 @@
 <p align="center">
   <a href="#start-with-one-command">Start</a> ·
   <a href="#one-entry-point-explicit-products">Products</a> ·
+  <a href="#visual-environment-roadmap">Simulator roadmap</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#repository-map">Repository map</a> ·
   <a href="#development">Development</a> ·
@@ -75,6 +76,7 @@ command routing. Product behavior remains with the component that implements it.
 | **Search** | `a3s search …` | Managed search product with quality-gated Browser-first discovery and lazy HTTP/RSS and API fallbacks |
 | **Use** | `a3s use capabilities --json` | Managed capability facade with built-in Browser and OCR routes, a component-backed Box route, and external Office and Science packages |
 | **Bench** | `a3s bench …` | Command and source are implemented; a compatible umbrella-CLI component release is not yet published, and local execution currently requires Docker |
+| **Simulator (planned)** | Read the [product plan](docs/roadmaps/a3s-simulator-development-plan.md) | Proposed graphical environment engine; no released Simulator command or platform support claim exists yet |
 | **Cloud** | Inspect the locked [Cloud compatibility manifest](compat/cloud-stack.acl) | Self-hosted control-plane project with separately documented maturity gates |
 
 A catalog entry describes discovery and installation policy. It is not proof
@@ -206,6 +208,32 @@ Isolation is explicit rather than implied: installing the umbrella CLI does not
 make Docker, a hypervisor, browser engine, model, broker, database, or external
 service available on an incompatible machine.
 
+### Visual environment roadmap
+
+> [!NOTE]
+> **A3S Simulator is a proposed product, not a released CLI surface.** The
+> roadmap targets programmable graphical Linux, Windows, macOS, Android, and
+> iOS environments, with every platform gated by real-host evidence and its own
+> licensing and hardware boundary.
+
+~~~text
+A3S Box                    A3S Simulator                  A3S CUA / Test
+build · OCI · services  -> GUI environment lifecycle  -> observe · act · evidence
+~~~
+
+Box remains the Linux OCI build and execution plane. Simulator will own
+graphical machine and device lifecycle, frames, input, guest readiness,
+checkpoints, and pools. CUA can add semantic computer-use behavior, while Test
+and Bench retain scenario and evidence ownership. The first proposed milestone
+proves this composition on a Linux desktop through QEMU/KVM before Windows,
+mobile, macOS, or fleet scope advances.
+
+Read the [product and development plan](docs/roadmaps/a3s-simulator-development-plan.md)
+for scope, milestones, staffing, gates, and risks, then use the companion
+[technical architecture](docs/roadmaps/a3s-simulator-technical-architecture.md)
+for the domain model, provider contract, visual pipeline, Box integration, and
+security design.
+
 ## Architecture
 
 A3S is a collection of composable boundaries, not a mandatory vertical stack:
@@ -258,6 +286,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
 | Test | The deterministic Web runner, ACL admission, structured reports, and interrupt-safe browser cleanup are working; LLM planning, GUI/CUA, TUI/PTY, MCP, and Skill surfaces remain planned |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
+| Simulator | Proposed only: commands, providers, images, and operating-system support remain roadmap contracts until their real-host milestone gates pass |
 | Office | Pre-1.0; five browser-native surfaces and native CLI/MCP/Skill automation exist, while the first npm package release is still pending |
 | Parser | Pre-alpha contract and architecture foundation; Office/OCR adapters, per-unit layout rendering, format breadth, and production scale evidence remain planned |
 | Cloud | R0–E0 is the verified cumulative baseline; G0, C0, and H0 are in progress; P0, A0, S0, and I0 remain planned in the [locked Cloud compatibility manifest](compat/cloud-stack.acl) |
@@ -371,6 +400,7 @@ distribution assets.
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces plus native CLI, MCP, and Skill automation |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane with durable tenant-scoped finite Executions, Runtime placement, cancellation, and cleanup |
+| [A3S Simulator roadmap](docs/roadmaps/a3s-simulator-development-plan.md) | Proposed GUI-first Visual Environment Engine; planning documents only, with no product repository or released command yet |
 | [A3S CLI website](apps/docs/) | Bilingual Rspress product site for installing, configuring, diagnosing, and launching the root-owned `a3s` CLI |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)
