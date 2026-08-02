@@ -34,9 +34,11 @@ A3S Power 使用可插拔的 `Backend` trait，并根据 feature 与配置提供
 graph execution、tokenizer、preprocessing、postprocessing 与 revision policy；Power
 提供共享的设备和权重运行时。
 
-Power 0.6.0 深化了借鉴 Colibri 的运行时机制，同时不再建设第二套 cache 或安全平面：
+Power 0.7.0 深化了借鉴 Colibri 的运行时机制，同时不再建设第二套 cache 或安全平面：
 
 - 精确的 SafeTensors inventory 与完整性校验；
+- 精确的 tensor range 索引，以及默认 mmap、有界 buffered positional read 和可选的
+  Linux/Windows aligned direct-read 策略；
 - storage、host、device 三层驻留，以及 LFRU/LRU heat；
 - 原子 hot-plan 替换与批量 expert-union 规划；
 - 带 useful/unused byte 统计的有界 prefetch；
@@ -57,15 +59,20 @@ Metal unified memory 只作为一个共享池计量，不会同时重复计入 h
 report，也不会将它们导出到 placement telemetry 或绑定到 execution receipt，因此
 Colibri 风格的内存层级仍位于同一套 TEE 与完整性平面内。
 
-精确 positional/direct tensor read 与独立 cold-storage A/B 仍由
-[Power issue #19](https://github.com/A3S-Lab/Power/issues/19) 跟踪。Power 0.6.0
-不声称已经获得这些 benchmark 结果，也不会默认启用 direct I/O。
+Power 0.7.0 已提供经过校验的 positional/direct read 路径和独立、可证明 cache state
+的 storage benchmark。在 Apple M2 Pro 上运行官方 PP-OCRv6 warm-storage 测试时，
+buffered positional read 的 detection p50 回退 9.6%，recognition p50 回退 10.6%，
+因此 mmap 仍是默认策略，direct I/O 仍需显式启用。具名 Linux/Windows 硬件上的 cold
+与 direct-I/O 证据继续由
+[Power issue #19](https://github.com/A3S-Lab/Power/issues/19) 跟踪。
 
-A3S OCR 0.5.0 使用 Power 0.6.0 执行 Rust PP-OCRv6 和 Unlimited-OCR，但 Power
+A3S OCR 0.5.0 使用 Power 0.7.0 执行 Rust PP-OCRv6 和 Unlimited-OCR，但 Power
 不内置任何一个模型。OCR 只在延迟加载模型 session 时选择同一个 typed residency
 budget；Parser 只转发 host policy，不实现另一套硬件或 mirror planner。嵌入式依赖闭包
-不包含 Power server、HTTP client、ONNX Runtime 或 browser automation。完整 ownership
-与 parity contract 见
+不包含 Power server、HTTP client、ONNX Runtime 或 browser automation。PP-OCRv6
+release gate 还会使用 SHA-256 固定的官方图片，对齐 30 个有序 upstream block、source
+polygon、confidence tolerance 与 Power execution receipt。完整 ownership 与 parity
+contract 见
 [嵌入式推理架构](https://github.com/A3S-Lab/Power/blob/main/docs/embedded-inference-architecture.md)。
 
 ## 对话补全
