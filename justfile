@@ -25,6 +25,11 @@ marketplace-e2e-submodules:
     sh scripts/ensure-dev-submodules.sh crates/use:crates/science/Cargo.toml
 
 [private]
+marketplace-browser-e2e-submodules: marketplace-e2e-submodules
+    sh scripts/ensure-dev-submodules.sh \
+        crates/code:sdk/node/examples/configs/test_config.acl
+
+[private]
 webview-submodule:
     sh scripts/ensure-dev-submodules.sh crates/webview:Cargo.toml
 
@@ -95,7 +100,7 @@ marketplace-science-e2e: marketplace-e2e-submodules
     A3S_USE_E2E_TARGET='{{ use_e2e_target }}' bash scripts/test-web-plugin-marketplace-e2e.sh
 
 # Test the release-bundled Science lifecycle through the real Web UI
-marketplace-science-browser-e2e: marketplace-e2e-submodules
+marketplace-science-browser-e2e: marketplace-browser-e2e-submodules
     A3S_USE_E2E_TARGET='{{ use_e2e_target }}' bash scripts/test-web-plugin-marketplace-browser-e2e.sh
 
 # Build and start the A3S Web application
