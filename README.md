@@ -211,8 +211,8 @@ A3S Parser is a pre-alpha agentic document parser built on A3S Code. A3S Code
 owns planning and tool governance; A3S Office owns deterministic OOXML/PDF
 structure and source-layout rendering; A3S OCR owns model implementations and
 grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
-admission, residency, bounded prefetch, verified storage topology, privacy, TEE
-execution, and receipts.
+admission, residency, bounded prefetch, ordered current-layer weight staging,
+verified storage topology, privacy, TEE execution, and receipts.
 Parser binds those components through source-bound tools, persists resumable
 Parser manifests and Code snapshots, reconciles their evidence, and emits a
 fine-grained canonical document graph whose immutable canvases and normalized
@@ -231,9 +231,14 @@ A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, stable hysteresis-bounded live tier
 adaptation, batched expert unions, private digest-bound cross-layer prefetch
-hints, bounded prefetch, exact indexed positional tensor reads, opt-in aligned direct I/O,
-integrity-checked complete or partial weighted replicas, validation-throughput
-source weighting, and usage-ranked verified partial-mirror staging.
+hints, bounded future-layer prefetch, ordered atomic current-layer staging,
+exact indexed positional tensor reads, opt-in aligned direct I/O,
+integrity-checked complete or partial weighted replicas,
+validation-throughput source weighting, and usage-ranked verified
+partial-mirror staging. Current-layer staging exposes complete resident groups
+while exact misses use the existing bounded admission, cache, source router,
+per-key serialization, and cancellation path; final groups are restored in
+canonical input order for model-owned computation.
 Mirror staging selects whole SafeTensors files under caller-owned byte and
 free-space-reserve limits, verifies every copied file, and publishes it
 atomically without replacement; plaintext staging is denied unless the caller
@@ -243,11 +248,13 @@ without a subprocess, counts Metal unified memory once, and otherwise
 preserves the zero-cache default. Power does not embed OCR or other product
 models and its embedded path never opens a listener. Hardware snapshots,
 placement heat, route-coupling history, live adaptation identities, mirror
-plans, paths, and receipts are not logged or persisted automatically. Neither
-route hints nor live placement changes can substitute experts, alter gates, or
-change tensor values. The same model-neutral path retains Power's TEE, integrity,
-cancellation, privacy, telemetry, and execution-receipt guarantees instead of
-building a second OCR runtime. Official PP-OCRv6 warm-storage measurements on
+plans, paths, staged-group identities, and receipts are not logged or persisted
+automatically. Neither route hints, live placement changes, prefetch, nor
+current-layer staging can substitute experts, alter gates, reorder canonical
+model reduction, or change tensor values. The same model-neutral path retains
+Power's TEE, integrity, cancellation, privacy, telemetry, and execution-receipt
+guarantees instead of building a second OCR runtime. Official PP-OCRv6
+warm-storage measurements on
 Apple M2 Pro keep `mmap` as the default after buffered positional reads
 regressed detection p50 by 9.6% and recognition p50 by 10.6%. Named-hardware
 Linux/Windows cold and direct-I/O evidence remains tracked in
@@ -479,7 +486,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, ordered current-layer staging, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
