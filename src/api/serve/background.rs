@@ -9,7 +9,9 @@ use fs2::FileExt;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, Signal, System, UpdateKind};
+use sysinfo::{
+    Pid, ProcessRefreshKind, ProcessStatus, ProcessesToUpdate, Signal, System, UpdateKind,
+};
 use tokio::time::{sleep, Instant};
 
 use super::options::ServeOptions;
@@ -242,6 +244,12 @@ pub(super) async fn replace_managed(workspace: &Path) -> anyhow::Result<Option<W
 }
 
 async fn stop_owned_instance(path: &Path, instance: &WebInstanceRecord) -> anyhow::Result<()> {
+    let identity = process_identity(instance.pid).await?.with_context(|| {
+        format!(
+            "managed A3S Web process {} is no longer running",
+            instance.pid
+        )
+    })?;
     let url = control_url(instance, "stop");
     let response = control_client()?
         .post(url)
@@ -251,15 +259,9 @@ async fn stop_owned_instance(path: &Path, instance: &WebInstanceRecord) -> anyho
     if !response.status().is_success() {
         bail!("A3S Web rejected the authenticated shutdown request");
     }
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while Instant::now() < deadline {
-        if !probe_instance(instance).await {
-            remove_instance_if_owned(path, &instance.nonce);
-            return Ok(());
-        }
-        sleep(POLL_INTERVAL).await;
-    }
-    bail!("A3S Web did not stop within 10 seconds; no force signal was sent")
+    wait_until_process_stopped(instance.pid, identity, OBSERVED_SHUTDOWN_TIMEOUT).await?;
+    remove_instance_if_owned(path, &instance.nonce);
+    Ok(())
 }
 
 pub(super) async fn replace_observed_instance(
@@ -309,7 +311,11 @@ pub(super) async fn replace_observed_instance(
     }
 
     signal_observed_process(pid, expected_executable, expected_port, identity).await?;
-    wait_until_port_released(existing.address).await
+    tokio::try_join!(
+        wait_until_port_released(existing.address),
+        wait_until_process_stopped(pid, identity, OBSERVED_SHUTDOWN_TIMEOUT),
+    )?;
+    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -325,6 +331,52 @@ async fn inspect_observed_process(
     tokio::task::spawn_blocking(move || inspect_observed_process_sync(pid, &executable, port))
         .await
         .context("A3S Web process inspection task failed")?
+}
+
+async fn process_identity(pid: u32) -> anyhow::Result<Option<ObservedProcessIdentity>> {
+    tokio::task::spawn_blocking(move || {
+        let system = process_snapshot(pid);
+        system
+            .process(Pid::from_u32(pid))
+            .map(|process| ObservedProcessIdentity {
+                start_time: process.start_time(),
+            })
+    })
+    .await
+    .context("A3S Web process identity task failed")
+}
+
+async fn wait_until_process_stopped(
+    pid: u32,
+    identity: ObservedProcessIdentity,
+    timeout: Duration,
+) -> anyhow::Result<()> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        let stopped = tokio::task::spawn_blocking(move || {
+            let system = process_snapshot(pid);
+            match system.process(Pid::from_u32(pid)) {
+                None => true,
+                Some(process) if process.start_time() != identity.start_time => true,
+                Some(process) => matches!(
+                    process.status(),
+                    ProcessStatus::Dead | ProcessStatus::Zombie
+                ),
+            }
+        })
+        .await
+        .context("A3S Web process exit task failed")?;
+        if stopped {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            bail!(
+                "A3S Web process {pid} did not exit within {} seconds; no force signal was sent",
+                timeout.as_secs()
+            );
+        }
+        sleep(POLL_INTERVAL).await;
+    }
 }
 
 fn inspect_observed_process_sync(
