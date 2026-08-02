@@ -1,0 +1,179 @@
+suite "web-plugin-hotplug" {
+  version = 1
+
+  scenario "release-bundle-lifecycle" {
+    name       = "Hot-plug a release-bundled Science plugin in A3S Web"
+    surface    = "web"
+    timeout_ms = 180000
+
+    navigate "open-workbench" {
+      url = "http://127.0.0.1:29654/"
+    }
+
+    wait "workbench-ready" {
+      text = "今天想完成什么？"
+    }
+
+    click "open-marketplace" {
+      target = role("button", "扩展")
+    }
+
+    wait "release-bundle-ready" {
+      text = "跨学科科研工作台"
+    }
+
+    expect "verified-source-visible" {
+      text = "A3S 发行包"
+    }
+
+    click "review-install" {
+      target = role("button", "查看并安装 科研")
+    }
+
+    expect "install-review-visible" {
+      text = "内容发生变化时，A3S 不会继续操作。"
+    }
+
+    click "confirm-install" {
+      target = role("button", "确认安装")
+    }
+
+    wait "install-applied" {
+      text = "科研插件已安装并启用，可从市场或活动栏打开。"
+    }
+
+    click "dismiss-install-notice" {
+      target = role("button", "关闭通知")
+    }
+
+    snapshot "installed-activity-tree" {
+      interactive = true
+    }
+
+    click "open-activity" {
+      target = ref("@e9")
+    }
+
+    wait "installed-plugin-route" {
+      url = "**/#plugin/science%3Aresearch"
+    }
+
+    wait "installed-plugin-host-ready" {
+      text = "已校验"
+    }
+
+    expect "installed-plugin-frame-visible" {
+      visible = css("iframe[title='科研 插件内容']")
+    }
+
+    snapshot "installed-plugin-tree" {
+      interactive = true
+    }
+
+    frame "enter-plugin-content" {
+      target = ref("@e12")
+    }
+
+    expect "plugin-content-ready" {
+      visible = css("header.hero h1")
+    }
+
+    frame "leave-plugin-content" {
+      target = main()
+    }
+
+    click "return-to-marketplace" {
+      target = role("button", "市场")
+    }
+
+    click "disable-plugin" {
+      target = role("button", "停用")
+    }
+
+    wait "plugin-disabled" {
+      text = "已停用"
+    }
+
+    click "enable-plugin" {
+      target = role("button", "启用")
+    }
+
+    wait "activity-restored" {
+      text = "已启用"
+    }
+
+    click "dismiss-enable-notice" {
+      target = role("button", "关闭通知")
+    }
+
+    snapshot "restored-activity-tree" {
+      interactive = true
+    }
+
+    click "open-restored-activity" {
+      target = ref("@e9")
+    }
+
+    wait "restored-plugin-route" {
+      url = "**/#plugin/science%3Aresearch"
+    }
+
+    wait "restored-plugin-host-ready" {
+      text = "已校验"
+    }
+
+    expect "restored-plugin-frame-visible" {
+      visible = css("iframe[title='科研 插件内容']")
+    }
+
+    snapshot "restored-plugin-tree" {
+      interactive = true
+    }
+
+    frame "enter-restored-plugin-content" {
+      target = ref("@e12")
+    }
+
+    expect "restored-content-ready" {
+      visible = css("header.hero h1")
+    }
+
+    frame "leave-restored-plugin-content" {
+      target = main()
+    }
+
+    click "return-for-uninstall" {
+      target = role("button", "市场")
+    }
+
+    click "review-uninstall" {
+      target = role("button", "卸载 科研")
+    }
+
+    expect "uninstall-review-visible" {
+      text = "确认卸载"
+    }
+
+    click "confirm-uninstall" {
+      target = role("button", "确认卸载")
+    }
+
+    wait "activity-removed" {
+      text = "已安装 0"
+    }
+
+    console "browser-console" {
+      path  = "evidence/console.json"
+      clear = false
+    }
+
+    page_errors "page-errors" {
+      path  = "evidence/page-errors.json"
+      clear = false
+    }
+
+    screenshot "final-state" {
+      path = "screenshots/uninstalled.png"
+    }
+  }
+}

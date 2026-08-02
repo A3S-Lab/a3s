@@ -28,13 +28,19 @@ pub(crate) struct RegistryArgs {
 
 #[derive(Clone, Debug, Subcommand)]
 pub(crate) enum RegistryCommand {
-    /// List the official and explicitly trusted registries.
+    /// List the default and explicitly trusted registries.
     List,
     /// Show one registry and its trust identity.
     Show(RegistryNameArgs),
     /// Trust and add a registry URL.
     Add(RegistryAddArgs),
-    /// Remove an explicitly added registry.
+    /// Replace one named registry URL and trust root.
+    Replace(RegistryReplaceArgs),
+    /// Enable a configured registry for discovery and installation.
+    Enable(RegistryNameArgs),
+    /// Disable a configured registry without deleting its trust configuration.
+    Disable(RegistryNameArgs),
+    /// Remove an explicitly configured registry.
     Remove(RegistryRemoveArgs),
     /// Check registry reachability and metadata freshness.
     Refresh(RegistryRefreshArgs),
@@ -50,10 +56,27 @@ pub(crate) struct RegistryNameArgs {
 pub(crate) struct RegistryAddArgs {
     #[arg(value_name = "URL")]
     pub url: String,
+    /// Stable source name; defaults to the first DNS label.
+    #[arg(long, value_name = "NAME")]
+    pub name: Option<String>,
     /// TUF root file or sha256 digest establishing trust.
     #[arg(long, value_name = "FILE_OR_DIGEST")]
     pub trust_root: String,
     /// Accept the explicit trust operation without prompting.
+    #[arg(long)]
+    pub yes: bool,
+}
+
+#[derive(Clone, Debug, Args)]
+pub(crate) struct RegistryReplaceArgs {
+    #[arg(value_name = "NAME")]
+    pub name: String,
+    #[arg(value_name = "URL")]
+    pub url: String,
+    /// TUF root file or sha256 digest establishing trust.
+    #[arg(long, value_name = "FILE_OR_DIGEST")]
+    pub trust_root: String,
+    /// Accept the explicit source replacement without prompting.
     #[arg(long)]
     pub yes: bool,
 }

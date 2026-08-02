@@ -226,15 +226,23 @@ installed-component record. Bench does not opt into first-use installation.
 
 External Use domains can be resolved from explicitly trusted TUF registries.
 The official `a3s` registry identity is listed but intentionally unavailable
-until its production root is published; the CLI never invents or silently
-accepts a replacement root. Add a third-party registry with a root file or a
-pinned SHA-256:
+until its production root is published. It is a default name, not an immutable
+endpoint: operators can bind or replace it with another URL and pinned root.
+Every replacement is an explicit trust operation; the CLI never invents or
+silently accepts a root.
 
 ```sh
 a3s registry add https://packages.example.org/a3s/ \
+  --name packages \
   --trust-root ./root.json \
   --yes
 a3s registry refresh packages
+
+a3s registry replace a3s https://mirror.example.org/a3s/ \
+  --trust-root sha256:<64-hex-digits> \
+  --yes
+a3s registry disable a3s
+a3s registry enable a3s
 
 a3s --output json install use/a3s/science --dry-run
 a3s --output json install use/a3s/science \
@@ -245,6 +253,14 @@ a3s --output json upgrade use/a3s/science \
   --plan-digest <reviewed-upgrade-sha256>
 ```
 
+`registry add` creates a named source; `--name` is optional and otherwise uses
+the first DNS label. `registry replace` changes the URL and pinned root under a
+stable name while preserving its enabled state. `disable` removes
+the source from discovery, Marketplace refresh, install, and upgrade selection
+without deleting its ACL trust configuration; an explicit named `refresh` may
+still verify it before re-enabling. Removing an operator-defined `a3s` entry
+returns the list to the unconfigured default hint.
+
 Root files are copied beneath the owned `registries/<name>/root.json` path and
 checked against the recorded digest whenever configuration is loaded. A
 digest-only registry bootstraps from `<registry>/metadata/root.json`; the root
@@ -253,15 +269,15 @@ TUF root, timestamp, snapshot, and targets verification, including expiration
 and rollback checks. It does not use a reachability-only `HEAD` request and does
 not download package targets.
 
-Package lookup queries configured registries in stable name order. No match is
-an error, and the same package resolving from more than one trusted registry is
-rejected as ambiguous. Registry installs cannot use `--allow-unsigned`; that
+Package lookup queries enabled, configured registries in stable name order. No
+match is an error, and the same package resolving from more than one trusted
+registry is rejected as ambiguous. Registry installs cannot use `--allow-unsigned`; that
 flag remains limited to an explicit local `--from` package. Registry URLs must
 use HTTPS, except loopback HTTP used by the hermetic test suite.
 
 A signed-extension upgrade reads the complete source provenance from the
 installed Use receipt and queries only that registry and release channel. It
-refuses a removed registry, a changed URL or trust root, and a semantic-version
+refuses a removed or disabled registry, a changed URL or trust root, and a semantic-version
 downgrade. `a3s upgrade --all` includes signed Registry extensions but excludes
 explicit local packages, whose next source must be supplied by the operator.
 Plain `a3s upgrade` includes newer signed targets in its update listing. When

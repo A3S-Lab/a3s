@@ -179,6 +179,7 @@ impl PluginsService {
                     "url": "a3s-use://release-bundles",
                     "sourceKind": "release-bundle",
                     "configured": true,
+                    "enabled": true,
                     "verified": true,
                     "hostTarget": format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH),
                     "metadata": {
@@ -193,6 +194,7 @@ impl PluginsService {
                     "url": "a3s-use://release-bundles",
                     "sourceKind": "release-bundle",
                     "configured": true,
+                    "enabled": true,
                     "verified": false,
                     "error": concise_error(&error.to_string()),
                 }));
@@ -205,6 +207,18 @@ impl PluginsService {
                     "url": record.url,
                     "sourceKind": "registry",
                     "configured": false,
+                    "enabled": record.enabled,
+                    "verified": false,
+                }));
+                continue;
+            }
+            if !record.enabled {
+                registries.push(json!({
+                    "name": record.name,
+                    "url": record.url,
+                    "sourceKind": "registry",
+                    "configured": true,
+                    "enabled": false,
                     "verified": false,
                 }));
                 continue;
@@ -217,6 +231,7 @@ impl PluginsService {
                         "url": record.url,
                         "sourceKind": "registry",
                         "configured": true,
+                        "enabled": true,
                         "verified": false,
                         "error": concise_error(&error.to_string()),
                     }));
@@ -236,6 +251,7 @@ impl PluginsService {
                         "url": record.url,
                         "sourceKind": "registry",
                         "configured": true,
+                        "enabled": true,
                         "verified": false,
                         "error": concise_error(&error.to_string()),
                     }));
@@ -247,6 +263,7 @@ impl PluginsService {
                         "url": record.url,
                         "sourceKind": "registry",
                         "configured": true,
+                        "enabled": true,
                         "verified": false,
                         "error": format!("registry verification timed out after {} seconds", MARKETPLACE_REFRESH_TIMEOUT.as_secs()),
                     }));
@@ -289,6 +306,7 @@ impl PluginsService {
                 "url": record.url,
                 "sourceKind": "registry",
                 "configured": true,
+                "enabled": true,
                 "verified": true,
                 "metadata": catalog.metadata,
                 "hostTarget": catalog.host_target,

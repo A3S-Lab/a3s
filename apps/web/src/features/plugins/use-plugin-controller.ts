@@ -139,10 +139,11 @@ export function usePluginController() {
   const applyReviewedOperation = useMemoizedFn(async () => {
     const review = appState.pluginOperationReview;
     if (!review) return;
-    const previousRevision = appState.pluginCatalog.revision;
     appState.pluginOperationStatus = 'loading';
     appState.pluginOperationError = null;
     try {
+      await refreshActivities(true);
+      const previousRevision = appState.pluginCatalog.revision;
       const result = await codeApi.applyPluginOperation({
         ...review.request,
         planDigest: review.plan.planDigest,
@@ -151,9 +152,12 @@ export function usePluginController() {
       appState.pluginOperationStatus = 'ready';
       const changed = result.operations.some((operation) => operation.changed);
       await refreshActivities(true);
+      if (changed) {
+        await refreshMarketplaceAfterRevisionSettles(previousRevision, refreshActivities, refreshMarketplace);
+      } else {
+        await refreshMarketplace();
+      }
       showToast(pluginOperationSuccessMessage(review.request, changed), 'success');
-      void refreshMarketplace();
-      void refreshMarketplaceAfterRevisionSettles(previousRevision, refreshActivities, refreshMarketplace);
     } catch (error) {
       appState.pluginOperationStatus = 'error';
       appState.pluginOperationError = formatApiError(error);
@@ -161,16 +165,16 @@ export function usePluginController() {
   });
 
   const setPackageEnabled = useMemoizedFn(async (componentId: string, enabled: boolean) => {
-    const previousRevision = appState.pluginCatalog.revision;
     appState.pluginOperationStatus = 'loading';
     appState.pluginOperationError = null;
     try {
+      await refreshActivities(true);
+      const previousRevision = appState.pluginCatalog.revision;
       await codeApi.setPluginPackageEnabled(componentId, enabled);
       appState.pluginOperationStatus = 'ready';
       await refreshActivities(true);
+      await refreshMarketplaceAfterRevisionSettles(previousRevision, refreshActivities, refreshMarketplace);
       showToast(enabled ? '插件已启用。' : '插件已停用。', 'success');
-      void refreshMarketplace();
-      void refreshMarketplaceAfterRevisionSettles(previousRevision, refreshActivities, refreshMarketplace);
     } catch (error) {
       appState.pluginOperationStatus = 'error';
       appState.pluginOperationError = formatApiError(error);

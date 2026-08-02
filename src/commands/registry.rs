@@ -13,7 +13,18 @@ pub(crate) async fn run(args: RegistryArgs, context: &InvocationContext) -> anyh
     match args.command {
         RegistryCommand::List => list(context),
         RegistryCommand::Show(args) => show(&args.name, context),
-        RegistryCommand::Add(args) => add(&args.url, &args.trust_root, args.yes, context),
+        RegistryCommand::Add(args) => add(
+            args.name.as_deref(),
+            &args.url,
+            &args.trust_root,
+            args.yes,
+            context,
+        ),
+        RegistryCommand::Replace(args) => {
+            replace(&args.name, &args.url, &args.trust_root, args.yes, context)
+        }
+        RegistryCommand::Enable(args) => set_enabled(&args.name, true, context),
+        RegistryCommand::Disable(args) => set_enabled(&args.name, false, context),
         RegistryCommand::Remove(args) => remove(&args.name, args.yes, context),
         RegistryCommand::Refresh(args) => refresh(args.name.as_deref(), context).await,
     }
@@ -33,6 +44,8 @@ fn list(context: &InvocationContext) -> anyhow::Result<()> {
                 println!("  {}", registry.url);
                 if !registry.configured {
                     println!("  unavailable: production TUF root is not configured");
+                } else if !registry.enabled {
+                    println!("  disabled");
                 }
             }
         },
@@ -54,6 +67,7 @@ fn show(name: &str, context: &InvocationContext) -> anyhow::Result<()> {
             println!("trust root: {}", registry.trust_root);
             println!("built in: {}", registry.built_in);
             println!("configured: {}", registry.configured);
+            println!("enabled: {}", registry.enabled);
             if let Some(path) = &registry.trusted_root_path {
                 println!("trusted root file: {}", path.display());
             }
@@ -61,7 +75,13 @@ fn show(name: &str, context: &InvocationContext) -> anyhow::Result<()> {
     )
 }
 
-fn add(url: &str, trust_root: &str, yes: bool, context: &InvocationContext) -> anyhow::Result<()> {
+fn add(
+    name: Option<&str>,
+    url: &str,
+    trust_root: &str,
+    yes: bool,
+    context: &InvocationContext,
+) -> anyhow::Result<()> {
     let output = context.output_mode();
     let store = store(context)?;
     let path;
@@ -71,7 +91,7 @@ fn add(url: &str, trust_root: &str, yes: bool, context: &InvocationContext) -> a
         path = context.resolve_path(trust_root);
         TrustRootSource::File(&path)
     };
-    let enrollment = store.prepare_enrollment(url, source)?;
+    let enrollment = store.prepare_named_enrollment(name, url, source)?;
     if !yes {
         confirm(
             &format!(
@@ -93,6 +113,72 @@ fn add(url: &str, trust_root: &str, yes: bool, context: &InvocationContext) -> a
     )
 }
 
+fn replace(
+    name: &str,
+    url: &str,
+    trust_root: &str,
+    yes: bool,
+    context: &InvocationContext,
+) -> anyhow::Result<()> {
+    let output = context.output_mode();
+    let store = store(context)?;
+    let path;
+    let source = if trust_root.starts_with("sha256:") {
+        TrustRootSource::Digest(trust_root)
+    } else {
+        path = context.resolve_path(trust_root);
+        TrustRootSource::File(&path)
+    };
+    let enrollment = store.prepare_named_enrollment(Some(name), url, source)?;
+    let previous = store
+        .get(name)?
+        .with_context(|| format!("registry '{name}' is not configured"))?;
+    if !yes {
+        confirm(
+            &format!(
+                "Replace registry '{}' at {} with {} and root {}?",
+                name, previous.url, enrollment.record.url, enrollment.record.trust_root
+            ),
+            context,
+            "registry replacement requires '--yes' in non-interactive mode",
+        )?;
+    }
+    let record = store.replace(&enrollment)?;
+    render_value(
+        output,
+        "registry.replace",
+        json!({"registry": record, "previous": previous, "replaced": true}),
+        || println!("replaced trusted registry '{name}'"),
+    )
+}
+
+fn set_enabled(name: &str, enabled: bool, context: &InvocationContext) -> anyhow::Result<()> {
+    let output = context.output_mode();
+    let store = store(context)?;
+    let previous = store
+        .get(name)?
+        .with_context(|| format!("registry '{name}' is not configured"))?;
+    if previous.built_in {
+        bail!(
+            "the default registry is only a placeholder until it is explicitly configured or replaced"
+        );
+    }
+    let changed = previous.enabled != enabled;
+    let registry = store.set_enabled(name, enabled)?;
+    let command = if enabled {
+        "registry.enable"
+    } else {
+        "registry.disable"
+    };
+    let action = if enabled { "enabled" } else { "disabled" };
+    render_value(
+        output,
+        command,
+        json!({"registry": registry, "changed": changed}),
+        || println!("{action} registry '{name}'"),
+    )
+}
+
 fn remove(name: &str, yes: bool, context: &InvocationContext) -> anyhow::Result<()> {
     let output = context.output_mode();
     let store = store(context)?;
@@ -100,7 +186,7 @@ fn remove(name: &str, yes: bool, context: &InvocationContext) -> anyhow::Result<
         .get(name)?
         .with_context(|| format!("registry '{name}' is not configured"))?;
     if record.built_in {
-        bail!("the built-in official registry cannot be removed");
+        bail!("the unconfigured default registry hint cannot be removed");
     }
     if !yes {
         confirm(
@@ -145,6 +231,17 @@ async fn refresh(name: Option<&str>, context: &InvocationContext) -> anyhow::Res
                 "name": registry.name,
                 "url": registry.url,
                 "configured": false,
+                "enabled": registry.enabled,
+                "verified": false,
+            }));
+            continue;
+        }
+        if !registry.enabled && name.is_none() {
+            results.push(json!({
+                "name": registry.name,
+                "url": registry.url,
+                "configured": true,
+                "enabled": false,
                 "verified": false,
             }));
             continue;
@@ -156,6 +253,7 @@ async fn refresh(name: Option<&str>, context: &InvocationContext) -> anyhow::Res
             "name": registry.name,
             "url": registry.url,
             "configured": true,
+            "enabled": registry.enabled,
             "verified": true,
             "metadata": metadata,
         }));
@@ -184,10 +282,14 @@ async fn refresh(name: Option<&str>, context: &InvocationContext) -> anyhow::Res
                             .unwrap_or_default(),
                     );
                 } else {
-                    println!(
-                        "unavailable {} (production TUF root is not configured)",
-                        result["name"].as_str().unwrap_or_default()
-                    );
+                    let name = result["name"].as_str().unwrap_or_default();
+                    if result["enabled"].as_bool() == Some(false)
+                        && result["configured"].as_bool() == Some(true)
+                    {
+                        println!("disabled {name}");
+                    } else {
+                        println!("unavailable {name} (production TUF root is not configured)");
+                    }
                 }
             }
         },

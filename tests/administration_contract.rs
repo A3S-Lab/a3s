@@ -82,6 +82,140 @@ fn registry_lifecycle_uses_isolated_acl_files() {
 }
 
 #[test]
+fn official_registry_source_can_be_replaced_disabled_and_restored() {
+    let temp = TempWorkspace::new("replaceable-registry-source");
+    let config = temp.path("config/config.acl");
+    let first_digest = format!("sha256:{}", "c".repeat(64));
+    let second_digest = format!("sha256:{}", "d".repeat(64));
+
+    let mut replace = Command::new(a3s_bin());
+    configure_component_env(&mut replace, &temp);
+    let output = replace
+        .arg("--config")
+        .arg(&config)
+        .args([
+            "--output",
+            "json",
+            "registry",
+            "replace",
+            "a3s",
+            "https://mirror.example/a3s/",
+            "--trust-root",
+            &first_digest,
+            "--yes",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["command"], "registry.replace");
+    assert_eq!(result["data"]["registry"]["name"], "a3s");
+    assert_eq!(result["data"]["registry"]["builtIn"], false);
+    assert_eq!(result["data"]["registry"]["enabled"], true);
+    let registry_file = temp.path("config/registries/a3s.acl");
+    let acl = std::fs::read_to_string(&registry_file).unwrap();
+    assert!(acl.contains("registry \"a3s\""), "{acl}");
+    assert!(acl.contains("enabled = true"), "{acl}");
+
+    let mut disable = Command::new(a3s_bin());
+    configure_component_env(&mut disable, &temp);
+    let output = disable
+        .arg("--config")
+        .arg(&config)
+        .args(["--output", "json", "registry", "disable", "a3s"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["command"], "registry.disable");
+    assert_eq!(result["data"]["registry"]["enabled"], false);
+
+    let mut enable = Command::new(a3s_bin());
+    configure_component_env(&mut enable, &temp);
+    let output = enable
+        .arg("--config")
+        .arg(&config)
+        .args(["--output", "json", "registry", "enable", "a3s"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let mut replace_again = Command::new(a3s_bin());
+    configure_component_env(&mut replace_again, &temp);
+    let output = replace_again
+        .arg("--config")
+        .arg(&config)
+        .args([
+            "--output",
+            "json",
+            "registry",
+            "replace",
+            "a3s",
+            "https://private.example/packages/",
+            "--trust-root",
+            &second_digest,
+            "--yes",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        result["data"]["registry"]["url"],
+        "https://private.example/packages/"
+    );
+    assert_eq!(result["data"]["registry"]["trustRoot"], second_digest);
+
+    let mut remove = Command::new(a3s_bin());
+    configure_component_env(&mut remove, &temp);
+    let output = remove
+        .arg("--config")
+        .arg(&config)
+        .args(["--output", "json", "registry", "remove", "a3s", "--yes"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!registry_file.exists());
+
+    let mut show = Command::new(a3s_bin());
+    configure_component_env(&mut show, &temp);
+    let output = show
+        .arg("--config")
+        .arg(&config)
+        .args(["--output", "json", "registry", "show", "a3s"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["data"]["registry"]["builtIn"], true);
+    assert_eq!(result["data"]["registry"]["configured"], false);
+    assert_eq!(
+        result["data"]["registry"]["url"],
+        "https://components.a3s.dev/"
+    );
+}
+
+#[test]
 fn registry_rejects_urls_that_can_leak_secrets_or_change_identity() {
     let temp = TempWorkspace::new("registry-url-policy");
     let config = temp.path("config/config.acl");

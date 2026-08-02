@@ -42,6 +42,7 @@ apps/safeclaw/*
 
 # A3S runtime data & config (contains API keys)
 .a3s/
+.a3s-test/
 config.hcl
 config.acl
 

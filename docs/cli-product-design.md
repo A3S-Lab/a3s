@@ -509,7 +509,10 @@ installer commands or scripts.
 ```text
 a3s registry list
 a3s registry show <name>
-a3s registry add <url> --trust-root <file-or-digest> [--yes]
+a3s registry add <url> [--name <name>] --trust-root <file-or-digest> [--yes]
+a3s registry replace <name> <url> --trust-root <file-or-digest> [--yes]
+a3s registry enable <name>
+a3s registry disable <name>
 a3s registry remove <name> [--yes]
 a3s registry refresh [name]
 
@@ -524,10 +527,14 @@ a3s completion bash|zsh|fish|powershell|elvish
 a3s help [command...]
 ```
 
-The official registry trust root ships with A3S. Adding a third-party registry
-is an explicit trust operation; HTTPS alone is not a trust root. Registry
-configuration is ACL. Signed transport metadata and machine receipts may use
-versioned JSON because they are generated machine state, not product config.
+Registry sources are named, host-owned ACL configuration. The `a3s` name is a
+default discovery hint, not a fixed endpoint: it can be explicitly configured,
+replaced, disabled, and removed like another operator-owned source. Adding or
+replacing a registry is an explicit trust operation; HTTPS alone is not a trust
+root. Replacement does not rewrite installed receipts, which continue to bind
+the original name, URL, root, channel, and target. Signed transport metadata
+and machine receipts may use versioned JSON because they are generated machine
+state, not product config.
 
 `cache prune` removes only unreferenced or expired entries. `cache clean`
 removes all recreatable cache content, never configuration, receipts, sessions,
