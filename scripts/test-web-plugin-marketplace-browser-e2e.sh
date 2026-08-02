@@ -82,6 +82,8 @@ mkdir -p \
   "${workspace}" \
   "$(dirname "${config}")" \
   "${web_state}"
+bash "${repository_root}/scripts/ensure-dev-submodules.sh" \
+  crates/code:sdk/node/examples/configs/test_config.acl
 cp "${repository_root}/crates/code/sdk/node/examples/configs/test_config.acl" "${config}"
 
 CARGO_TARGET_DIR="${use_target}" cargo build \
