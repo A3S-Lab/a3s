@@ -162,6 +162,11 @@ Tools, standard MCP servers, sandboxed UI, and non-executable Open Knowledge
 Format (OKF) bundles. Installation, authorization, Runtime binding, Knowledge
 promotion, and live capability projection remain separate evidence, so a
 downloaded package does not become an active capability by implication.
+The current Use integration snapshot includes the M0K-C-A byte-exact injected
+Knowledge port and durable generation store: failed candidates can retain only
+an exact promoted last-good record, while removal cannot resurrect an older
+generation. Production Knowledge indexing, cited retrieval, and parent-saga
+publication remain pending.
 The independent Browser and OCR repositories own their provider contracts,
 implementations, tests, and release assets. Office and Science remain external
 packages with native CLI, MCP, and/or `SKILL.md` surfaces rather than depending
