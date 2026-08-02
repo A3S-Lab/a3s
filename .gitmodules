@@ -97,3 +97,6 @@
 [submodule "crates/ash"]
 	path = crates/ash
 	url = git@github.com:A3S-Lab/ash.git
+[submodule "packages/ui"]
+	path = packages/ui
+	url = git@github.com:A3S-Lab/UI.git
