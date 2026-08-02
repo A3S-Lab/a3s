@@ -229,8 +229,9 @@ confidence tolerances, and Power execution receipts.
 
 A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
-device tiers, LFRU heat, atomic hot plans, batched expert unions, bounded
-prefetch, exact indexed positional tensor reads, opt-in aligned direct I/O,
+device tiers, LFRU heat, atomic hot plans, stable hysteresis-bounded live tier
+adaptation, batched expert unions, private digest-bound cross-layer prefetch
+hints, bounded prefetch, exact indexed positional tensor reads, opt-in aligned direct I/O,
 integrity-checked complete or partial weighted replicas, validation-throughput
 source weighting, and usage-ranked verified partial-mirror staging.
 Mirror staging selects whole SafeTensors files under caller-owned byte and
@@ -241,8 +242,10 @@ aware cache budget discovers Linux/macOS/Windows and CUDA/Metal capacity
 without a subprocess, counts Metal unified memory once, and otherwise
 preserves the zero-cache default. Power does not embed OCR or other product
 models and its embedded path never opens a listener. Hardware snapshots,
-placement heat, mirror plans, paths, and receipts are not logged or persisted
-automatically. The same model-neutral path retains Power's TEE, integrity,
+placement heat, route-coupling history, live adaptation identities, mirror
+plans, paths, and receipts are not logged or persisted automatically. Neither
+route hints nor live placement changes can substitute experts, alter gates, or
+change tensor values. The same model-neutral path retains Power's TEE, integrity,
 cancellation, privacy, telemetry, and execution-receipt guarantees instead of
 building a second OCR runtime. Official PP-OCRv6 warm-storage measurements on
 Apple M2 Pro keep `mmap` as the default after buffered positional reads
@@ -476,7 +479,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
