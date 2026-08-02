@@ -221,14 +221,18 @@ exact-image PPTX, and optional host-injected PDFium page rendering. Rich
 paginated Office layout, broader imports, and release-scale support claims
 remain roadmap work in the independently versioned Parser repository.
 
-A3S Power 0.5.0 keeps its HTTP server and embedded library paths separate. The
+A3S Power 0.5.1 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, batched expert unions, bounded
-prefetch, and integrity-checked complete or partial weighted replicas. It does
-not embed OCR or other product models and never opens a listener. The same
-model-neutral path retains Power's TEE, integrity, cancellation, privacy
-telemetry, and execution-receipt guarantees instead of building a second OCR
-runtime.
+prefetch, integrity-checked complete or partial weighted replicas, and an
+opt-in native hardware-aware cache budget. Callers own explicit fractions,
+reserves, caps, and allocation order; Power discovers Linux/macOS/Windows and
+CUDA/Metal capacity without a subprocess, counts Metal unified memory once,
+and otherwise preserves the zero-cache default. It does not embed OCR or other
+product models and never opens a listener. Memory snapshots are not logged,
+persisted, added to telemetry, or bound into receipts automatically. The same
+model-neutral path retains Power's TEE, integrity, cancellation, privacy, and
+execution-receipt guarantees instead of building a second OCR runtime.
 
 ~~~bash
 a3s list
