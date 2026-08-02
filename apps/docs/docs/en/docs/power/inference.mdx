@@ -35,10 +35,12 @@ listener, or downloads a model. Model-owning crates provide graph execution,
 tokenizers, preprocessing, postprocessing, and revision policy; Power provides
 the shared device and weight runtime.
 
-Power 0.6.0 deepens the Colibri-inspired parts of that runtime without creating
+Power 0.7.0 deepens the Colibri-inspired parts of that runtime without creating
 a second cache or security plane:
 
 - exact SafeTensors inventory and integrity verification;
+- exact indexed tensor ranges with mmap-default, bounded buffered positional,
+  and opt-in aligned Linux/Windows direct-read strategies;
 - storage, host, and device residency tiers with LFRU/LRU heat;
 - atomic hot-plan replacement and batched expert-union planning;
 - bounded prefetch with useful/unused byte accounting;
@@ -66,17 +68,21 @@ reports, export them through placement telemetry, or bind them into execution
 receipts. This keeps the Colibri-inspired hierarchy inside the same TEE and
 integrity plane.
 
-Exact positional/direct tensor reads and an independent cold-storage A/B are
+Power 0.7.0 ships the verified positional/direct read path and a standalone
+cache-state-aware storage benchmark. Official warm-storage PP-OCRv6 runs on an
+Apple M2 Pro found buffered positional p50 regressions of 9.6% for detection
+and 10.6% for recognition, so mmap remains the default and direct I/O remains
+opt-in. Named-hardware Linux/Windows cold and direct-I/O evidence remains
 tracked in [Power issue #19](https://github.com/A3S-Lab/Power/issues/19).
-Power 0.6.0 does not claim those benchmark results or enable direct I/O by
-default.
 
-A3S OCR 0.5.0 uses Power 0.6.0 for its Rust PP-OCRv6 and Unlimited-OCR
+A3S OCR 0.5.0 uses Power 0.7.0 for its Rust PP-OCRv6 and Unlimited-OCR
 implementations, but Power does not embed either model. OCR can opt into the
 same typed residency budget during lazy model-session loading; Parser only
 forwards host policy and does not implement another hardware or mirror planner.
 The embedded dependency closure excludes the Power server, HTTP clients, ONNX
-Runtime, and browser automation.
+Runtime, and browser automation. The PP-OCRv6 release gate also checks a
+SHA-256-pinned official image against 30 ordered upstream blocks, source
+polygons, confidence tolerances, and Power execution receipts.
 See the
 [embedded inference architecture](https://github.com/A3S-Lab/Power/blob/main/docs/embedded-inference-architecture.md)
 for the ownership and parity contracts.

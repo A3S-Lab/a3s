@@ -221,15 +221,18 @@ native OOXML structure, native PDF text and geometry, direct images,
 exact-image PPTX, and optional host-injected PDFium page rendering. Rich
 paginated Office layout, broader imports, and release-scale support claims
 remain roadmap work in the independently versioned Parser repository. This
-integration snapshot pins A3S OCR 0.5.0 and A3S Power 0.6.0 through Parser's
+integration snapshot pins A3S OCR 0.5.0 and A3S Power 0.7.0 through Parser's
 embedded OCR path; it does not add an OCR service or grant the coding agent
-browser authority.
+browser authority. A3S OCR also gates the native PP-OCRv6 path against a
+SHA-256-pinned official image, 30 ordered upstream blocks, source polygons,
+confidence tolerances, and Power execution receipts.
 
-A3S Power 0.6.0 keeps its HTTP server and embedded library paths separate. The
+A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, batched expert unions, bounded
-prefetch, integrity-checked complete or partial weighted replicas, validation-
-throughput source weighting, and usage-ranked verified partial-mirror staging.
+prefetch, exact indexed positional tensor reads, opt-in aligned direct I/O,
+integrity-checked complete or partial weighted replicas, validation-throughput
+source weighting, and usage-ranked verified partial-mirror staging.
 Mirror staging selects whole SafeTensors files under caller-owned byte and
 free-space-reserve limits, verifies every copied file, and publishes it
 atomically without replacement; plaintext staging is denied unless the caller
@@ -241,10 +244,12 @@ models and its embedded path never opens a listener. Hardware snapshots,
 placement heat, mirror plans, paths, and receipts are not logged or persisted
 automatically. The same model-neutral path retains Power's TEE, integrity,
 cancellation, privacy, telemetry, and execution-receipt guarantees instead of
-building a second OCR runtime. Exact positional/direct tensor reads and an
-independent cold-storage A/B remain tracked follow-up work in
-[Power issue #19](https://github.com/A3S-Lab/Power/issues/19); version 0.6.0
-does not claim those results.
+building a second OCR runtime. Official PP-OCRv6 warm-storage measurements on
+Apple M2 Pro keep `mmap` as the default after buffered positional reads
+regressed detection p50 by 9.6% and recognition p50 by 10.6%. Named-hardware
+Linux/Windows cold and direct-I/O evidence remains tracked in
+[Power issue #19](https://github.com/A3S-Lab/Power/issues/19); version 0.7.0
+does not overclaim those results.
 
 ~~~bash
 a3s list
