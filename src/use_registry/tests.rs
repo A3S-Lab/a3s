@@ -23,6 +23,46 @@ async fn registry_slot_waits_without_blocking_and_settles_when_setup_finishes() 
 }
 
 #[tokio::test]
+async fn registry_slot_reports_setup_state_and_exposes_the_ready_handle() {
+    let temp = tempfile::tempdir().unwrap();
+    let agent = a3s_code_core::Agent::from_config(test_config())
+        .await
+        .unwrap();
+    let session = Arc::new(
+        agent
+            .session_async(temp.path().display().to_string(), None)
+            .await
+            .unwrap(),
+    );
+    let slot = UseRegistrySlot::preparing();
+
+    let preparing = slot.status_text(Arc::clone(&session), false).await;
+    assert!(preparing.contains("discovering or installing in the background"));
+
+    slot.set_unavailable("fixture setup failure");
+    let unavailable = slot.status_text(Arc::clone(&session), false).await;
+    assert!(unavailable.contains("binary  not discovered"));
+    assert!(unavailable.contains("setup   fixture setup failure"));
+
+    let cancellation = CancellationToken::new();
+    let (desired_tx, _) = watch::channel(Arc::new(DesiredCapabilities::default()));
+    let handle = UseRegistryHandle {
+        inner: Arc::new(UseRegistryInner {
+            executable: PathBuf::from("unused-a3s-use"),
+            directory: temp.path().to_path_buf(),
+            desired_tx,
+            cancellation,
+            projections: Mutex::new(BTreeMap::new()),
+            registry_task: Mutex::new(None),
+        }),
+    };
+    slot.set_ready(handle, Some("fixture setup warning".to_string()));
+    assert!(slot.ready_handle().is_some());
+
+    session.close().await;
+}
+
+#[tokio::test]
 async fn dropping_the_last_registry_handle_cancels_owned_background_work() {
     let cancellation = CancellationToken::new();
     let (desired_tx, _) = watch::channel(Arc::new(DesiredCapabilities::default()));
