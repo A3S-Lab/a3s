@@ -207,16 +207,28 @@ gate pushes a non-root image to an ephemeral Registry, executes the returned
 manifest digest, exercises MCP initialize/list/request, verifies bounded
 SIGTERM shutdown, and starts a clean second generation.
 
-A3S Parser is a pre-alpha agentic document parser built on A3S Code. It combines
-A3S Office structure and source-layout rendering with A3S OCR through bounded,
-source-bound governed tools; persists resumable Parser manifests and Code
-snapshots; and emits a fine-grained canonical document graph whose immutable
-canvases and normalized polygons support source highlighting in frontends. The
-runnable CLI now covers native OOXML structure, direct images, exact-image
-PPTX, and optional host-injected native PDF pages through Visual and Planned
-routes. Rich Office layout, PDF text-layer fusion, broader imports, and
-release-scale support claims remain roadmap work in the independently versioned
-Parser repository.
+A3S Parser is a pre-alpha agentic document parser built on A3S Code. A3S Code
+owns planning and tool governance; A3S Office owns deterministic OOXML/PDF
+structure and source-layout rendering; A3S OCR owns model implementations and
+grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
+admission, residency, bounded prefetch, privacy, TEE execution, and receipts.
+Parser binds those components through source-bound tools, persists resumable
+Parser manifests and Code snapshots, reconciles their evidence, and emits a
+fine-grained canonical document graph whose immutable canvases and normalized
+polygons support source highlighting in frontends. The runnable CLI covers
+native OOXML structure, native PDF text and geometry, direct images,
+exact-image PPTX, and optional host-injected PDFium page rendering. Rich
+paginated Office layout, broader imports, and release-scale support claims
+remain roadmap work in the independently versioned Parser repository.
+
+A3S Power 0.5.0 keeps its HTTP server and embedded library paths separate. The
+embedded path deepens Colibri-inspired weight management with storage/host/
+device tiers, LFRU heat, atomic hot plans, batched expert unions, bounded
+prefetch, and integrity-checked complete or partial weighted replicas. It does
+not embed OCR or other product models and never opens a listener. The same
+model-neutral path retains Power's TEE, integrity, cancellation, privacy
+telemetry, and execution-receipt guarantees instead of building a second OCR
+runtime.
 
 ~~~bash
 a3s list
@@ -412,8 +424,8 @@ distribution assets.
 | [A3S Test](crates/test/) | Agent-ready typed E2E runtime with a working Web driver and shared contracts for planned GUI and TUI testing |
 | [A3S Search](crates/search/) | Quality-gated Browser-first discovery, lazy HTTP/RSS and native API fallbacks, ranking, deduplication, and cascade receipts |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
-| [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
-| [A3S Parser](crates/parser/) | A3S Code-governed Office/OCR document parsing, resumable manifests, and MinerU-class source-locatable canonical geometry |
+| [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence plus embedded Rust PP-OCRv6 and Unlimited-OCR models executed through A3S Power |
+| [A3S Parser](crates/parser/) | A3S Code-governed Office/OCR orchestration, resumable manifests, evidence reconciliation, and MinerU-class source-locatable canonical geometry |
 | [A3S Use](crates/use/) | Cross-platform AI Native Package Manager with replaceable TUF registries and immutable Skill, Tool, MCP, UI, and OKF cognitive-plugin lifecycle |
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces, native automation, OOXML semantics, and optional host-injected PDFium pages |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
@@ -443,7 +455,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Privacy-oriented model inference components |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |

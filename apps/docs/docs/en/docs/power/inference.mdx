@@ -27,6 +27,33 @@ A3S Power uses a pluggable `Backend` trait. Four implementations are available d
   }}
 />
 
+## Embedded Inference Library
+
+The `embedded-inference` feature is a model-neutral Rust library path, separate
+from the HTTP server and `Backend` registry. It never starts a process, opens a
+listener, or downloads a model. Model-owning crates provide graph execution,
+tokenizers, preprocessing, postprocessing, and revision policy; Power provides
+the shared device and weight runtime.
+
+Power 0.5.0 deepens the Colibri-inspired parts of that runtime without creating
+a second cache or security plane:
+
+- exact SafeTensors inventory and integrity verification;
+- storage, host, and device residency tiers with LFRU/LRU heat;
+- atomic hot-plan replacement and batched expert-union planning;
+- bounded prefetch with useful/unused byte accounting;
+- complete or exact-subset weighted read-only replicas, including validation
+  throughput weighting and verified fallback;
+- bounded request admission, cancellation, privacy-safe telemetry, and canonical
+  execution receipts; and
+- the existing TEE, attestation, integrity, and privacy invariants.
+
+A3S OCR uses this path for its Rust PP-OCRv6 and Unlimited-OCR implementations,
+but Power does not embed either model. The embedded dependency closure excludes
+the Power server, HTTP clients, ONNX Runtime, and browser automation. See the
+[embedded inference architecture](https://github.com/A3S-Lab/Power/blob/main/docs/embedded-inference-architecture.md)
+for the ownership and parity contracts.
+
 ## Chat Completion
 
 ```bash
