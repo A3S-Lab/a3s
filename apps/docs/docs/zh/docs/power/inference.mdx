@@ -34,13 +34,16 @@ A3S Power 使用可插拔的 `Backend` trait，并根据 feature 与配置提供
 graph execution、tokenizer、preprocessing、postprocessing 与 revision policy；Power
 提供共享的设备和权重运行时。
 
-Power 0.5.1 深化了借鉴 Colibri 的运行时机制，同时不再建设第二套 cache 或安全平面：
+Power 0.6.0 深化了借鉴 Colibri 的运行时机制，同时不再建设第二套 cache 或安全平面：
 
 - 精确的 SafeTensors inventory 与完整性校验；
 - storage、host、device 三层驻留，以及 LFRU/LRU heat；
 - 原子 hot-plan 替换与批量 expert-union 规划；
 - 带 useful/unused byte 统计的有界 prefetch；
 - 完整或精确子集的加权只读副本，以及 validation throughput weighting 和已校验 fallback；
+- 基于 usage ranking 的部分 mirror 规划与 staging：仅选择完整且已校验的 SafeTensors
+  文件，遵守显式 byte budget 与 free-space reserve，复用精确文件，并以原子 no-replace
+  方式发布；
 - 可选的 Linux、macOS、Windows、CUDA、Metal 原生容量探测，以及基于调用方显式
   fraction、reserve、cap 与 host/device allocation order 的确定性 cache budget；
 - 有界请求准入、取消、隐私安全 telemetry 与规范 execution receipt；
@@ -48,14 +51,21 @@ Power 0.5.1 深化了借鉴 Colibri 的运行时机制，同时不再建设第�
 
 自动预算不会改变默认零 cache，也不会启动 `nvidia-smi`、`vm_stat` 或其它辅助进程。
 Metal unified memory 只作为一个共享池计量，不会同时重复计入 host 与 device。硬件快照
-与派生 plan 只作为显式 operator value 返回；Power 不会自动记录、持久化、导出到
-placement telemetry 或绑定到 execution receipt，因此 Colibri 风格的内存层级仍位于
-同一套 TEE 与完整性平面内。
+与派生 plan 只作为显式 operator value 返回。部分 mirror 默认拒绝明文目标；调用方必须
+显式承担该 confidentiality 决策，且每个选中文件都会与已校验的 primary descriptor
+复核。Power 不会自动记录或持久化硬件快照、派生 plan、mirror path、usage heat 或 stage
+report，也不会将它们导出到 placement telemetry 或绑定到 execution receipt，因此
+Colibri 风格的内存层级仍位于同一套 TEE 与完整性平面内。
 
-A3S OCR 用这条路径执行 Rust PP-OCRv6 和 Unlimited-OCR，但 Power 不内置任何一个
-模型。OCR 只在延迟加载模型 session 时选择同一个 typed residency budget；Parser
-只转发 host policy，不实现另一套硬件 planner。嵌入式依赖闭包不包含 Power server、
-HTTP client、ONNX Runtime 或 browser automation。完整 ownership 与 parity contract 见
+精确 positional/direct tensor read 与独立 cold-storage A/B 仍由
+[Power issue #19](https://github.com/A3S-Lab/Power/issues/19) 跟踪。Power 0.6.0
+不声称已经获得这些 benchmark 结果，也不会默认启用 direct I/O。
+
+A3S OCR 0.5.0 使用 Power 0.6.0 执行 Rust PP-OCRv6 和 Unlimited-OCR，但 Power
+不内置任何一个模型。OCR 只在延迟加载模型 session 时选择同一个 typed residency
+budget；Parser 只转发 host policy，不实现另一套硬件或 mirror planner。嵌入式依赖闭包
+不包含 Power server、HTTP client、ONNX Runtime 或 browser automation。完整 ownership
+与 parity contract 见
 [嵌入式推理架构](https://github.com/A3S-Lab/Power/blob/main/docs/embedded-inference-architecture.md)。
 
 ## 对话补全

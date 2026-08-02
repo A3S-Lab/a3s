@@ -211,7 +211,8 @@ A3S Parser is a pre-alpha agentic document parser built on A3S Code. A3S Code
 owns planning and tool governance; A3S Office owns deterministic OOXML/PDF
 structure and source-layout rendering; A3S OCR owns model implementations and
 grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
-admission, residency, bounded prefetch, privacy, TEE execution, and receipts.
+admission, residency, bounded prefetch, verified storage topology, privacy, TEE
+execution, and receipts.
 Parser binds those components through source-bound tools, persists resumable
 Parser manifests and Code snapshots, reconciles their evidence, and emits a
 fine-grained canonical document graph whose immutable canvases and normalized
@@ -219,20 +220,31 @@ polygons support source highlighting in frontends. The runnable CLI covers
 native OOXML structure, native PDF text and geometry, direct images,
 exact-image PPTX, and optional host-injected PDFium page rendering. Rich
 paginated Office layout, broader imports, and release-scale support claims
-remain roadmap work in the independently versioned Parser repository.
+remain roadmap work in the independently versioned Parser repository. This
+integration snapshot pins A3S OCR 0.5.0 and A3S Power 0.6.0 through Parser's
+embedded OCR path; it does not add an OCR service or grant the coding agent
+browser authority.
 
-A3S Power 0.5.1 keeps its HTTP server and embedded library paths separate. The
+A3S Power 0.6.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, batched expert unions, bounded
-prefetch, integrity-checked complete or partial weighted replicas, and an
-opt-in native hardware-aware cache budget. Callers own explicit fractions,
-reserves, caps, and allocation order; Power discovers Linux/macOS/Windows and
-CUDA/Metal capacity without a subprocess, counts Metal unified memory once,
-and otherwise preserves the zero-cache default. It does not embed OCR or other
-product models and never opens a listener. Memory snapshots are not logged,
-persisted, added to telemetry, or bound into receipts automatically. The same
-model-neutral path retains Power's TEE, integrity, cancellation, privacy, and
-execution-receipt guarantees instead of building a second OCR runtime.
+prefetch, integrity-checked complete or partial weighted replicas, validation-
+throughput source weighting, and usage-ranked verified partial-mirror staging.
+Mirror staging selects whole SafeTensors files under caller-owned byte and
+free-space-reserve limits, verifies every copied file, and publishes it
+atomically without replacement; plaintext staging is denied unless the caller
+explicitly owns that confidentiality decision. The opt-in native hardware-
+aware cache budget discovers Linux/macOS/Windows and CUDA/Metal capacity
+without a subprocess, counts Metal unified memory once, and otherwise
+preserves the zero-cache default. Power does not embed OCR or other product
+models and its embedded path never opens a listener. Hardware snapshots,
+placement heat, mirror plans, paths, and receipts are not logged or persisted
+automatically. The same model-neutral path retains Power's TEE, integrity,
+cancellation, privacy, telemetry, and execution-receipt guarantees instead of
+building a second OCR runtime. Exact positional/direct tensor reads and an
+independent cold-storage A/B remain tracked follow-up work in
+[Power issue #19](https://github.com/A3S-Lab/Power/issues/19); version 0.6.0
+does not claim those results.
 
 ~~~bash
 a3s list

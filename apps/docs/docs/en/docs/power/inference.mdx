@@ -35,7 +35,7 @@ listener, or downloads a model. Model-owning crates provide graph execution,
 tokenizers, preprocessing, postprocessing, and revision policy; Power provides
 the shared device and weight runtime.
 
-Power 0.5.1 deepens the Colibri-inspired parts of that runtime without creating
+Power 0.6.0 deepens the Colibri-inspired parts of that runtime without creating
 a second cache or security plane:
 
 - exact SafeTensors inventory and integrity verification;
@@ -44,6 +44,9 @@ a second cache or security plane:
 - bounded prefetch with useful/unused byte accounting;
 - complete or exact-subset weighted read-only replicas, including validation
   throughput weighting and verified fallback;
+- usage-ranked partial-mirror planning and staging for complete verified
+  SafeTensors files, with explicit byte and free-space-reserve budgets,
+  resumable exact files, and atomic no-replace publication;
 - opt-in native Linux, macOS, Windows, CUDA, and Metal capacity discovery plus
   deterministic cache budgets from caller-owned fractions, reserves, caps, and
   host/device allocation order;
@@ -54,15 +57,26 @@ a second cache or security plane:
 Automatic budgeting does not change the zero-cache default and never launches
 `nvidia-smi`, `vm_stat`, or another helper process. Metal unified memory is one
 shared pool, not duplicate host and device capacity. Hardware snapshots and
-derived plans remain explicit operator values: Power does not log, persist,
-export through placement telemetry, or bind them into execution receipts. This
-keeps the Colibri-inspired hierarchy inside the same TEE and integrity plane.
+derived plans remain explicit operator values. Partial-mirror staging denies
+plaintext destinations by default; a caller must explicitly own that
+confidentiality decision, and every selected file is checked against the
+already verified primary descriptor. Power does not automatically log or
+persist hardware snapshots, derived plans, mirror paths, usage heat, or stage
+reports, export them through placement telemetry, or bind them into execution
+receipts. This keeps the Colibri-inspired hierarchy inside the same TEE and
+integrity plane.
 
-A3S OCR uses this path for its Rust PP-OCRv6 and Unlimited-OCR implementations,
-but Power does not embed either model. OCR can opt into the same typed residency
-budget during lazy model-session loading; Parser only forwards host policy and
-does not implement another hardware planner. The embedded dependency closure
-excludes the Power server, HTTP clients, ONNX Runtime, and browser automation.
+Exact positional/direct tensor reads and an independent cold-storage A/B are
+tracked in [Power issue #19](https://github.com/A3S-Lab/Power/issues/19).
+Power 0.6.0 does not claim those benchmark results or enable direct I/O by
+default.
+
+A3S OCR 0.5.0 uses Power 0.6.0 for its Rust PP-OCRv6 and Unlimited-OCR
+implementations, but Power does not embed either model. OCR can opt into the
+same typed residency budget during lazy model-session loading; Parser only
+forwards host policy and does not implement another hardware or mirror planner.
+The embedded dependency closure excludes the Power server, HTTP clients, ONNX
+Runtime, and browser automation.
 See the
 [embedded inference architecture](https://github.com/A3S-Lab/Power/blob/main/docs/embedded-inference-architecture.md)
 for the ownership and parity contracts.
