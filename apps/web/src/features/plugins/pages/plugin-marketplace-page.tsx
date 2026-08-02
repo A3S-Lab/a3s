@@ -403,9 +403,11 @@ function RegistryCatalog() {
                         ? registry.sourceKind === 'release-bundle'
                           ? '发行包已校验'
                           : '已验证'
-                        : registry.configured
-                          ? '验证失败'
-                          : '未配置'}
+                        : !registry.enabled
+                          ? '已停用'
+                          : registry.configured
+                            ? '验证失败'
+                            : '未配置'}
                     </small>
                   </header>
                   <details className='plugin-registry-details'>

@@ -523,6 +523,7 @@ export interface PluginMarketplaceRegistry {
   url: string;
   sourceKind?: 'registry' | 'release-bundle';
   configured: boolean;
+  enabled: boolean;
   verified: boolean;
   error?: string;
   hostTarget?: string;

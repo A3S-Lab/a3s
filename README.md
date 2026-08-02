@@ -151,8 +151,12 @@ a confident answer.
 
 ### Typed capabilities and components
 
-A3S Use owns the built-in Browser/OCR route projection, a component-backed Box
-route, and the lifecycle and routing layer for external capability packages.
+A3S Use is the AI Native Package Manager for A3S-native executables and
+cognitive plugins. It owns the built-in Browser/OCR route projection, a
+component-backed Box route, and the lifecycle and routing layer for external
+capability packages. Package sources are host-configured: release bundles and
+named TUF registries are parallel trust paths, and the default `a3s` registry
+identity is replaceable rather than a hardcoded network dependency.
 The independent Browser and OCR repositories own their provider contracts,
 implementations, tests, and release assets. Office and Science remain external
 packages with native CLI, MCP, and/or `SKILL.md` surfaces rather than depending
@@ -167,6 +171,22 @@ release has not been published.
 A3S Science currently indexes 472 catalog entries, including 35 A3S-native
 Skills and 25 A3S-native MCP resources distributed through a TUF-signed package
 registry.
+
+~~~bash
+# Bind the default name to an operator-selected TUF source.
+a3s registry replace a3s https://packages.example.org/a3s/ \
+  --trust-root ./root.json --yes
+
+# Pause network/catalog use without deleting trust configuration.
+a3s registry disable a3s
+a3s registry enable a3s
+a3s registry refresh a3s
+~~~
+
+Registry replacement never rewrites provenance. Installed package receipts bind
+the source name, URL, TUF root, channel, and target digest; an upgrade fails
+closed after source identity changes until the original source is restored or
+the package is explicitly migrated or reinstalled.
 
 A3S Parser is a pre-alpha agentic document parser built on A3S Code. It combines
 A3S Office structure and source-layout rendering with A3S OCR through bounded,
@@ -264,7 +284,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
 | Test | The deterministic Web runner, ACL admission, structured reports, and interrupt-safe browser cleanup are working; LLM planning, GUI/CUA, TUI/PTY, MCP, and Skill surfaces remain planned |
-| Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
+| Use | Registry sources are replaceable host configuration and release bundles remain independent; domain readiness still depends on installed runtimes, model assets, and package-owned compatibility |
 | Office | Pre-1.0; five browser-native surfaces, native CLI/MCP/Skill automation, OOXML semantics, and optional host-injected PDFium page rendering exist, while the first npm package release is still pending |
 | Parser | Pre-alpha runnable A3S Code parser; native OOXML structure, direct-image/exact-PPTX/native-PDF visual routes, canonical overlays, and durable resume are delivered, while richer formats and production-scale evidence remain gated |
 | Cloud | R0–E0 is the verified cumulative baseline; G0, C0, and H0 are in progress; P0, A0, S0, and I0 remain planned in the [locked Cloud compatibility manifest](compat/cloud-stack.acl) |
@@ -375,7 +395,7 @@ distribution assets.
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
 | [A3S Parser](crates/parser/) | A3S Code-governed Office/OCR document parsing, resumable manifests, and MinerU-class source-locatable canonical geometry |
-| [A3S Use](crates/use/) | Built-in Browser/OCR routes, component-backed Box routing, and standard lifecycle for external packages |
+| [A3S Use](crates/use/) | Cross-platform AI Native Package Manager with replaceable TUF registries, release bundles, native routes, and cognitive plugin lifecycle |
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces, native automation, OOXML semantics, and optional host-injected PDFium pages |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane with durable tenant-scoped finite Executions, Runtime placement, cancellation, and cleanup |
@@ -435,6 +455,8 @@ just web               # build and run the browser workspace
 just docs              # start the A3S CLI website
 just windhole          # start the Bench visual laboratory
 just use-hotplug-e2e   # verify Use hot-plug and release-shaped first use
+just marketplace-science-e2e         # verify real signed and bundled Web plugins
+just marketplace-science-browser-e2e # verify the Marketplace hot-plug UI lifecycle
 just cloud-stack-check # verify the locked Cloud integration stack
 ~~~
 

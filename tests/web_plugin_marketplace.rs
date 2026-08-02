@@ -450,6 +450,73 @@ fn enroll_registry(
     );
 }
 
+fn replace_registry(
+    temp: &TempWorkspace,
+    config: &Path,
+    use_bin: &Path,
+    name: &str,
+    url: &str,
+    root_sha256: &str,
+) {
+    let mut command = Command::new(a3s_bin());
+    configure_component_env(&mut command, temp);
+    let output = command
+        .arg("--config")
+        .arg(config)
+        .args([
+            "--output",
+            "json",
+            "registry",
+            "replace",
+            name,
+            url,
+            "--trust-root",
+            &format!("sha256:{root_sha256}"),
+            "--yes",
+        ])
+        .env("A3S_USE_INSTALL_DIR", use_bin)
+        .env_remove("A3S_USE_HOME")
+        .output()
+        .expect("replace signed registry");
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn set_registry_enabled(
+    temp: &TempWorkspace,
+    config: &Path,
+    use_bin: &Path,
+    name: &str,
+    enabled: bool,
+) {
+    let mut command = Command::new(a3s_bin());
+    configure_component_env(&mut command, temp);
+    let output = command
+        .arg("--config")
+        .arg(config)
+        .args([
+            "--output",
+            "json",
+            "registry",
+            if enabled { "enable" } else { "disable" },
+            name,
+        ])
+        .env("A3S_USE_INSTALL_DIR", use_bin)
+        .env_remove("A3S_USE_HOME")
+        .output()
+        .expect("change registry enabled state");
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 fn start_web(
     temp: &TempWorkspace,
     workspace: &Path,

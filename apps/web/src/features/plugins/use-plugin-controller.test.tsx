@@ -157,6 +157,60 @@ describe('usePluginController', () => {
     hook.unmount();
   });
 
+  it('captures a registry baseline and waits for an installed contribution before reporting success', async () => {
+    const emptyCatalog: PluginActivityCatalog = {
+      ...catalog,
+      generation: 1,
+      revision: 'a'.repeat(64),
+      items: [],
+    };
+    const activities = vi
+      .spyOn(codeApi, 'pluginActivities')
+      .mockResolvedValueOnce(emptyCatalog)
+      .mockResolvedValueOnce(emptyCatalog)
+      .mockResolvedValue(catalog);
+    const marketplace = vi.spyOn(codeApi, 'pluginMarketplace').mockResolvedValue({
+      schemaVersion: 1,
+      verifiedAt: '2026-07-22T00:00:00Z',
+      registries: [],
+      items: [],
+    });
+    vi.spyOn(codeApi, 'applyPluginOperation').mockResolvedValue({
+      planDigest: 'd'.repeat(64),
+      operations: [{ component: contribution.packageId, changed: true, message: 'Installed.' }],
+    });
+    appState.pluginCatalog = { ...emptyCatalog, revision: '' };
+    appState.pluginOperationReview = {
+      request: { action: 'install', componentId: contribution.packageId, version: contribution.version },
+      plan: {
+        dryRun: true,
+        planSchemaVersion: 1,
+        planCommand: `a3s install ${contribution.packageId} --dry-run`,
+        planDigest: 'd'.repeat(64),
+        plans: [
+          {
+            component: contribution.packageId,
+            action: 'install',
+            source: 'registry:replacement',
+            mutates: true,
+            message: 'Install the research plugin.',
+          },
+        ],
+      },
+    };
+    const hook = renderHook(() => usePluginController());
+    await waitFor(() => expect(activities).toHaveBeenCalledOnce());
+
+    await act(() => hook.result.current.applyReviewedOperation());
+
+    expect(activities.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(marketplace).toHaveBeenCalledOnce();
+    expect(appState.pluginCatalog).toEqual(catalog);
+    expect(appState.pluginOperationReview).toBeNull();
+    expect(appState.toast?.message).toBe('科研插件已安装并启用，可从市场或活动栏打开。');
+    hook.unmount();
+  });
+
   it('converges Marketplace state after uninstall removes the live contribution', async () => {
     const removedCatalog: PluginActivityCatalog = {
       ...catalog,
@@ -166,6 +220,7 @@ describe('usePluginController', () => {
     };
     const activities = vi
       .spyOn(codeApi, 'pluginActivities')
+      .mockResolvedValueOnce(catalog)
       .mockResolvedValueOnce(catalog)
       .mockResolvedValue(removedCatalog);
     const marketplace = vi.spyOn(codeApi, 'pluginMarketplace').mockResolvedValue({
@@ -211,7 +266,7 @@ describe('usePluginController', () => {
 
     await act(() => hook.result.current.applyReviewedOperation());
 
-    await waitFor(() => expect(marketplace.mock.calls.length).toBeGreaterThanOrEqual(2));
+    expect(marketplace).toHaveBeenCalledOnce();
     expect(appState.pluginCatalog).toEqual(removedCatalog);
     expect(appState.pluginContextProposal).toBeNull();
     expect(appState.pluginOperationReview).toBeNull();

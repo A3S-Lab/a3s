@@ -9,9 +9,9 @@ use flate2::Compression;
 use serde_json::{json, Value};
 
 use super::{
-    configure_component_env, enroll_registry, http_json, sha256, start_web, test_config,
-    wait_for_activity, wait_for_activity_absent, wait_until_stopped, TempWorkspace, TestRepository,
-    TestServer, FUTURE,
+    configure_component_env, http_json, replace_registry, set_registry_enabled, sha256, start_web,
+    test_config, wait_for_activity, wait_for_activity_absent, wait_until_stopped, TempWorkspace,
+    TestRepository, TestServer, FUTURE,
 };
 
 #[test]
@@ -53,13 +53,15 @@ fn real_marketplace_installs_uses_and_removes_packaged_science_extension() {
 
     let version = run_use_json(&temp, &use_binary, &["--version", "--json"]);
     assert_eq!(version["data"]["version"], manifest.version);
-    enroll_registry(
+    replace_registry(
         &temp,
         &config,
         use_bin,
+        "a3s",
         &registry_url,
         &repository.root_sha256,
     );
+    set_registry_enabled(&temp, &config, use_bin, "a3s", false);
 
     let (mut daemon, address) = start_web(
         &temp,
@@ -73,12 +75,44 @@ fn real_marketplace_installs_uses_and_removes_packaged_science_extension() {
         http_json(&address, "GET", "/api/v1/plugins/activities", None)["items"],
         json!([])
     );
+    registry_server.clear_requests();
+    let disabled_marketplace = http_json(&address, "GET", "/api/v1/plugins/marketplace", None);
+    assert!(disabled_marketplace["items"]
+        .as_array()
+        .is_some_and(|items| items
+            .iter()
+            .all(|item| item["componentId"] != "use/a3s/science")));
+    assert!(disabled_marketplace["registries"]
+        .as_array()
+        .is_some_and(|registries| registries.iter().any(|registry| {
+            registry["name"] == "a3s"
+                && registry["url"] == registry_url
+                && registry["configured"] == true
+                && registry["enabled"] == false
+                && registry["verified"] == false
+        })));
+    assert!(
+        registry_server.requests().is_empty(),
+        "a disabled registry must not receive Marketplace requests"
+    );
+
+    set_registry_enabled(&temp, &config, use_bin, "a3s", true);
     let marketplace = http_json(&address, "GET", "/api/v1/plugins/marketplace", None);
     let item = science_marketplace_item(&marketplace);
     assert_eq!(item["displayName"], "科研");
+    assert_eq!(item["registryName"], "a3s");
+    assert_eq!(item["registryUrl"], registry_url);
     assert_eq!(item["version"], manifest.version);
     assert_eq!(item["sha256"], repository.target_sha256);
     assert_eq!(item["installed"], false);
+    assert!(marketplace["registries"]
+        .as_array()
+        .is_some_and(|registries| registries.iter().any(|registry| {
+            registry["name"] == "a3s"
+                && registry["url"] == registry_url
+                && registry["enabled"] == true
+                && registry["verified"] == true
+        })));
 
     registry_server.clear_requests();
     let plan = http_json(

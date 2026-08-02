@@ -63,6 +63,7 @@ describe('plugin marketplace page', () => {
           name: 'a3s',
           url: 'https://packages.a3s.dev',
           configured: true,
+          enabled: true,
           verified: true,
           metadata: {
             rootVersion: 1,
@@ -136,6 +137,7 @@ describe('plugin marketplace page', () => {
           url: 'a3s-use://release-bundles',
           sourceKind: 'release-bundle',
           configured: true,
+          enabled: true,
           verified: true,
           hostTarget: 'darwin-aarch64',
           metadata: { packageTargets: 1 },
@@ -161,6 +163,31 @@ describe('plugin marketplace page', () => {
     fireEvent.click(screen.getByRole('tab', { name: '来源' }));
     expect(screen.getByText('发行包已校验')).toBeInTheDocument();
     expect(screen.getByText('a3s-use://release-bundles')).toBeInTheDocument();
+  });
+
+  it('shows a configured but disabled registry without treating it as verified', () => {
+    appState.pluginMarketplace = {
+      schemaVersion: 1,
+      verifiedAt: '2026-07-21T00:00:00Z',
+      registries: [
+        {
+          name: 'private',
+          url: 'https://packages.example.test/a3s/',
+          sourceKind: 'registry',
+          configured: true,
+          enabled: false,
+          verified: false,
+        },
+      ],
+      items: [],
+    };
+    render(<PluginMarketplacePage actions={createPluginActions()} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: '来源' }));
+    expect(screen.getByText('已停用')).toBeInTheDocument();
+    expect(screen.getByText('https://packages.example.test/a3s/')).toBeInTheDocument();
+    expect(screen.getAllByText('0', { selector: '.plugin-source-summary dd' })).toHaveLength(2);
+    expect(screen.getByText('1', { selector: '.plugin-source-summary dd' })).toBeInTheDocument();
   });
 
   it('opens an installed Science workbench and exposes a reviewed uninstall action', () => {

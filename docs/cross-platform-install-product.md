@@ -342,8 +342,10 @@ rather than a new signature protocol. TUF's standard machine metadata remains
 TUF JSON; it is signed transport metadata, not A3S product configuration. ACL
 remains the human-authored component and policy format.
 
-The official registry has a built-in trust root. A third-party registry must be
-added explicitly in ACL configuration and accepted with its root identity.
+Registry endpoints and trust roots are named, replaceable ACL configuration.
+The official `a3s` name is only a default selection; an operator may bind it to
+another signed endpoint, disable it, or use private registries instead. Every
+configured registry must be explicitly accepted with its root identity.
 Registry trust establishes metadata provenance, not permission to execute an
 untrusted component without policy checks.
 
