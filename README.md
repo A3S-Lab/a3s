@@ -226,7 +226,12 @@ integration snapshot pins A3S OCR 0.5.0 and A3S Power 0.7.0 through Parser's
 embedded OCR path; it does not add an OCR service or grant the coding agent
 browser authority. A3S OCR also gates the native PP-OCRv6 path against a
 SHA-256-pinned official image, 30 ordered upstream blocks, source polygons,
-confidence tolerances, and Power execution receipts.
+confidence tolerances, and Power execution receipts. Its optional Unlimited-OCR
+path now binds the pinned upstream Git/LFS identity, all 2,710 BF16 tensor
+names, shapes, and byte ranges, and Power's fully hashed checkpoint inventory
+to one canonical digest. Numerical token-generation and grounding parity for
+Unlimited-OCR remains an explicit acceptance gate rather than a completed
+claim.
 
 A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
@@ -468,7 +473,7 @@ distribution assets.
 | [A3S Test](crates/test/) | Agent-ready typed E2E runtime with a working Web driver and shared contracts for planned GUI and TUI testing |
 | [A3S Search](crates/search/) | Quality-gated Browser-first discovery, lazy HTTP/RSS and native API fallbacks, ranking, deduplication, and cascade receipts |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
-| [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence plus embedded Rust PP-OCRv6 and Unlimited-OCR models executed through A3S Power |
+| [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence plus embedded Rust PP-OCRv6 and revision/inventory-bound Unlimited-OCR models executed through A3S Power |
 | [A3S Parser](crates/parser/) | A3S Code-governed Office/OCR orchestration, resumable manifests, evidence reconciliation, and MinerU-class source-locatable canonical geometry |
 | [A3S Use](crates/use/) | Cross-platform AI Native Package Manager with replaceable TUF registries and immutable Skill, Tool, MCP, UI, and OKF cognitive-plugin lifecycle |
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces, native automation, OOXML semantics, and optional host-injected PDFium pages |
