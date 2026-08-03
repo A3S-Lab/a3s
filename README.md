@@ -162,17 +162,21 @@ Tools, standard MCP servers, sandboxed UI, and non-executable Open Knowledge
 Format (OKF) bundles. Installation, authorization, Runtime binding, Knowledge
 promotion, and live capability projection remain separate evidence, so a
 downloaded package does not become an active capability by implication.
-The current Use integration snapshot adds one canonical Tool/MCP/OKF/Skill/UI
-graph, a package-level lifecycle intent and crash-safe journal, forward
-dependency preparation, reverse receipt-owned removal, and typed Runtime,
-immutable Skill/UI, and OKF Knowledge adapters. P0 adds production
-package/capability hosts with schema-v3 generation-bound receipts,
-deterministic immutable roots, atomic snapshot publication and hiding,
-route-lease draining, exact removal, and legacy-bypass rejection. The package
-remains the only install, upgrade, enable, disable, and uninstall unit. Umbrella
-CLI/Web and grant composition, prior Runtime-generation retirement, the real
-A3S Knowledge backend, and cited retrieval remain pending, so P0 does not yet
-make schema-v3 activation a finished product.
+The current Use integration snapshot adds npm-like schema-v3 package
+dependencies, a required package `README.md`, bounded deterministic SemVer
+resolution, and an exact Registry/TUF-bound lock for the complete transitive
+closure. It revalidates every source before download, prepares dependencies
+before dependents, reuses only exact published shared dependencies, cuts over
+the changed graph through one capability snapshot, and removes packages in
+reverse dependency order. The same package-level lifecycle intent and
+crash-safe journal coordinate typed Runtime, immutable Skill/UI, and OKF
+Knowledge adapters. P0 package/capability hosts use generation-bound receipts,
+deterministic immutable roots, route-lease draining, exact removal, and
+legacy-bypass rejection. The package remains the only install, upgrade, enable,
+disable, and uninstall unit. Umbrella CLI/Web graph apply, grant composition,
+prior Runtime-generation retirement, the real A3S Knowledge backend, and cited
+retrieval remain pending, so the dependency foundation is not yet a finished
+schema-v3 CLI product.
 The independent Browser and OCR repositories own their provider contracts,
 implementations, tests, and release assets. Office and Science remain external
 packages with native CLI, MCP, and/or `SKILL.md` surfaces rather than depending
@@ -417,7 +421,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
 | Test | The deterministic Web runner, ACL admission, structured reports, and interrupt-safe browser cleanup are working; LLM planning, GUI/CUA, TUI/PTY, MCP, and Skill surfaces remain planned |
-| Use | Registry sources are replaceable host configuration and release bundles remain independent; P0 generation-bound package/capability hosts enforce one Tool/MCP/OKF/Skill/UI lifecycle, while umbrella composition, prior-generation retirement, and promoted Knowledge evidence still gate production schema-v3 publication |
+| Use | Replaceable Registry sources and release bundles remain independent; the schema-v3 SemVer resolver, exact lock graph, generation-bound Tool/MCP/OKF/Skill/UI lifecycle, forward install, atomic publication, and reverse removal are implemented foundations, while umbrella CLI/Web graph apply, prior-generation retirement, and promoted Knowledge evidence still gate production publication |
 | Office | Pre-1.0; five browser-native surfaces, native CLI/MCP/Skill automation, OOXML semantics, and optional host-injected PDFium page rendering exist, while the first npm package release is still pending |
 | Parser | Pre-alpha runnable A3S Code parser; native OOXML structure, direct-image/exact-PPTX/native-PDF visual routes, canonical overlays, and durable resume are delivered, while richer formats and production-scale evidence remain gated |
 | Cloud | R0–E0 is the verified cumulative baseline; G0, C0, and H0 are in progress; P0, A0, S0, and I0 remain planned in the [locked Cloud compatibility manifest](compat/cloud-stack.acl) |
@@ -528,7 +532,7 @@ distribution assets.
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence plus embedded Rust PP-OCRv6 and revision/inventory-bound Unlimited-OCR models executed through A3S Power |
 | [A3S Parser](crates/parser/) | A3S Code-governed Office/OCR orchestration, resumable manifests, evidence reconciliation, and MinerU-class source-locatable canonical geometry |
-| [A3S Use](crates/use/) | Cross-platform AI Native Package Manager with replaceable TUF registries and one journaled package lifecycle for immutable Tool, MCP, OKF, Skill, and UI contributions |
+| [A3S Use](crates/use/) | Cross-platform AI Native Package Manager with replaceable TUF registries, npm-like SemVer cognitive-package dependencies, exact lock graphs, and one journaled Tool/MCP/OKF/Skill/UI lifecycle |
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces, native automation, OOXML semantics, and optional host-injected PDFium pages |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane with durable tenant-scoped finite Executions, Runtime placement, cancellation, and cleanup |
