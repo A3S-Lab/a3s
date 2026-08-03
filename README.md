@@ -218,7 +218,7 @@ owns planning and tool governance; A3S Office owns deterministic OOXML/PDF
 structure and source-layout rendering; A3S OCR owns model implementations and
 grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
 admission, residency, bounded background loading, event-driven current-layer
-weight staging,
+weight staging, bounded continuous/ragged execution lifecycles,
 attestation-bound accelerator batches and heterogeneous device meshes, sealed
 warm-state transport, verified storage topology, privacy, TEE execution, and
 receipts.
@@ -244,8 +244,9 @@ claim.
 A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, stable hysteresis-bounded live tier
-adaptation, batched expert unions, private digest-bound cross-layer prefetch
-hints, bounded future-layer prefetch, event-driven atomic current-layer staging,
+adaptation, batched expert unions, bounded continuous/ragged execution
+lifecycles, private digest-bound cross-layer prefetch hints, bounded future-layer
+prefetch, event-driven atomic current-layer staging,
 exact indexed positional tensor reads, opt-in aligned direct I/O,
 integrity-checked complete or partial weighted replicas,
 validation-throughput source weighting, and usage-ranked verified
@@ -256,6 +257,18 @@ computation through `next_ready_group().await` without polling, while exact
 misses retain the existing task admission, cache, source router, per-key
 serialization, and cancellation path. Groups may become ready out of order,
 but final completion is restored in canonical input order.
+
+Continuous/ragged lifecycles reuse one distinct existing runtime permit per
+member instead of adding another semaphore or queue. A declaration binds exact
+weights, model-owned state layout, scheduler semantics, runtime device, and
+limits. Every step contains all members present at its boundary exactly once in
+admission order while allowing different row positions and shapes; later
+admissions join the next step. State commits are atomic, cancellation discards
+only the affected row, and public evidence contains aggregate counters and
+canonical digests rather than member/state identities or model bytes. Model
+crates retain sequence policy, KV/recurrent topology, tensors, kernels, and
+arithmetic.
+
 Accelerator declarations bind the active device-residency plan, weight and
 execution-policy digests, model-owned fused Candle kernel, exact fallback, and
 optional confidential-GPU claims. Fused batches acquire only complete
@@ -532,7 +545,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches and bounded device meshes, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, bounded continuous/ragged lifecycles, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches and bounded device meshes, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
