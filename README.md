@@ -219,9 +219,9 @@ structure and source-layout rendering; A3S OCR owns model implementations and
 grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
 admission, residency, bounded background loading, event-driven current-layer
 weight staging, bounded continuous/ragged execution lifecycles,
-attestation-bound accelerator batches and heterogeneous device meshes, sealed
-warm-state transport, verified storage topology, privacy, TEE execution, and
-receipts.
+canonical hardware-evidence replay, attestation-bound accelerator batches and
+heterogeneous device meshes, sealed warm-state transport, verified storage
+topology, privacy, TEE execution, and receipts.
 Parser binds those components through source-bound tools, persists resumable
 Parser manifests and Code snapshots, reconciles their evidence, and emits a
 fine-grained canonical document graph whose immutable canvases and normalized
@@ -245,8 +245,9 @@ A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, stable hysteresis-bounded live tier
 adaptation, batched expert unions, bounded continuous/ragged execution
-lifecycles, private digest-bound cross-layer prefetch hints, bounded future-layer
-prefetch, event-driven atomic current-layer staging,
+lifecycles, canonical privacy-reviewed hardware evidence, private digest-bound
+cross-layer prefetch hints, bounded future-layer prefetch, event-driven atomic
+current-layer staging,
 exact indexed positional tensor reads, opt-in aligned direct I/O,
 integrity-checked complete or partial weighted replicas,
 validation-throughput source weighting, and usage-ranked verified
@@ -268,6 +269,17 @@ only the affected row, and public evidence contains aggregate counters and
 canonical digests rather than member/state identities or model bytes. Model
 crates retain sequence policy, KV/recurrent topology, tensors, kernels, and
 arithmetic.
+
+Canonical hardware evidence bundles compose the existing path-free storage
+reports, replayed storage comparison, raw lossless tuning evidence and policy,
+replayed tuning decision, and model-owned exact-parity artifact pins under one
+Power revision, model, graph/source, typed runtime device, and named-hardware
+binding. They preserve baseline-retained negative results and require an
+external attestation, signed release, or equivalent pin for authenticity;
+their SHA-256 alone proves only mutation relative to that pin. Power never
+logs, persists, uploads, serves, or authorizes TEE export of a bundle
+automatically, and it does not add another collector, receipt, or attestation
+schema.
 
 Accelerator declarations bind the active device-residency plan, weight and
 execution-policy digests, model-owned fused Candle kernel, exact fallback, and
@@ -545,7 +557,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, bounded continuous/ragged lifecycles, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches and bounded device meshes, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, bounded continuous/ragged lifecycles, canonical hardware evidence, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches and bounded device meshes, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
