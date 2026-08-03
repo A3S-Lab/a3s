@@ -216,8 +216,9 @@ structure and source-layout rendering; A3S OCR owns model implementations and
 grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
 admission, residency, bounded background loading, event-driven current-layer
 weight staging,
-attestation-bound accelerator batches, sealed warm-state transport, verified
-storage topology, privacy, TEE execution, and receipts.
+attestation-bound accelerator batches and heterogeneous device meshes, sealed
+warm-state transport, verified storage topology, privacy, TEE execution, and
+receipts.
 Parser binds those components through source-bound tools, persists resumable
 Parser manifests and Code snapshots, reconciles their evidence, and emits a
 fine-grained canonical document graph whose immutable canvases and normalized
@@ -264,6 +265,17 @@ primary/backup/pending publication supports crash recovery and monotonic saves,
 while caller-pinned rollback floors and model-bound hardware-TEE authorization
 govern restore and export. Power deliberately does not define KV-cache,
 recurrent-state, or OCR-model topology.
+Heterogeneous accelerator meshes extend the same active residency plan and
+device cache with at most 16 canonical devices and a strongly connected set of
+directed, byte-bounded transfer edges. Mesh execution performs real Candle
+device copies, preserves model-owned graph partitioning, kernels, arithmetic,
+and reduction order, and fails closed on malformed bounds, cancellation, or
+backend copy failure. Confidential CUDA nodes bind explicit NVIDIA claim-array
+indices and require exact GPU/NVSwitch claim-index sets; CUDA ordinals are not
+treated as claim indices or UEIDs, and NVSwitch presence is not presented as
+proof of peer connectivity. Receipts expose canonical actual-device identities
+and mesh/transfer digests rather than plaintext topology or tensor contents.
+The existing single-device declaration and evidence schemas remain compatible.
 Mirror staging selects whole SafeTensors files under caller-owned byte and
 free-space-reserve limits, verifies every copied file, and publishes it
 atomically without replacement; plaintext staging is denied unless the caller
@@ -517,7 +529,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches and bounded device meshes, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
