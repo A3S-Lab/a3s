@@ -269,12 +269,18 @@ free-space-reserve limits, verifies every copied file, and publishes it
 atomically without replacement; plaintext staging is denied unless the caller
 explicitly owns that confidentiality decision. The opt-in native hardware-
 aware cache budget discovers Linux/macOS/Windows and CUDA/Metal capacity
-without a subprocess, counts Metal unified memory once, and otherwise
-preserves the zero-cache default. Power does not embed OCR or other product
-models and its embedded path never opens a listener. Hardware snapshots,
-placement heat, route-coupling history, live adaptation identities, mirror
-plans, paths, staged-group identities, and receipts are not logged or persisted
-automatically. Neither route hints, live placement changes, prefetch, nor
+without a subprocess. The existing planner accepts caller-owned host/device
+fixed-state and peak-scratch byte reservations, removes them before assigning
+hot-weight cache capacity, and counts both reservation sets once on Metal
+unified memory. Plans with non-zero runtime reservations require a fresh native
+availability/topology check before cache policy changes; Power does not infer
+or own the model's KV, recurrent, activation, or scratch topology. Automatic
+budgeting remains opt-in and preserves the zero-cache default. Power does not
+embed OCR or other product models and its embedded path never opens a listener.
+Hardware snapshots, runtime reservations, pressure decisions, placement heat,
+route-coupling history, live adaptation identities, mirror plans, paths,
+staged-group identities, and receipts are not logged or persisted automatically.
+Neither route hints, live placement changes, prefetch, nor
 current-layer staging can substitute experts, alter gates, reorder canonical
 model reduction, or change tensor values. The same model-neutral path retains
 Power's TEE, integrity, cancellation, privacy, telemetry, and execution-receipt
@@ -511,7 +517,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, fixed-state/scratch-aware live-revalidated budgets, event-driven staging with shared worker/byte admission, attestation-bound fused accelerator batches, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
