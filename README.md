@@ -212,7 +212,8 @@ owns planning and tool governance; A3S Office owns deterministic OOXML/PDF
 structure and source-layout rendering; A3S OCR owns model implementations and
 grounding; and model-neutral A3S Power owns embedded devices, weight integrity,
 admission, residency, bounded prefetch, ordered current-layer weight staging,
-verified storage topology, privacy, TEE execution, and receipts.
+attestation-bound accelerator batches, sealed warm-state transport, verified
+storage topology, privacy, TEE execution, and receipts.
 Parser binds those components through source-bound tools, persists resumable
 Parser manifests and Code snapshots, reconciles their evidence, and emits a
 fine-grained canonical document graph whose immutable canvases and normalized
@@ -239,6 +240,18 @@ partial-mirror staging. Current-layer staging exposes complete resident groups
 while exact misses use the existing bounded admission, cache, source router,
 per-key serialization, and cancellation path; final groups are restored in
 canonical input order for model-owned computation.
+Accelerator declarations bind the active device-residency plan, weight and
+execution-policy digests, model-owned fused Candle kernel, exact fallback, and
+optional confidential-GPU claims. Fused batches acquire only complete
+device-resident groups and report the actual execution device; pressure or an
+unavailable kernel follows an explicit exact-fallback path without relabeling
+host work as accelerator execution. Bounded AES-256-GCM warm-state envelopes
+authenticate the model, state layout, logical session, generation, export
+scope, and runtime limits around model-owned opaque state. Their synchronized
+primary/backup/pending publication supports crash recovery and monotonic saves,
+while caller-pinned rollback floors and model-bound hardware-TEE authorization
+govern restore and export. Power deliberately does not define KV-cache,
+recurrent-state, or OCR-model topology.
 Mirror staging selects whole SafeTensors files under caller-owned byte and
 free-space-reserve limits, verifies every copied file, and publishes it
 atomically without replacement; plaintext staging is denied unless the caller
@@ -486,7 +499,7 @@ main-repository release ownership.
 | --- | --- |
 | [A3S Boot](crates/boot/) | Adapter-first modular async service framework |
 | [A3S Gateway](crates/gateway/) | Local AI traffic and protocol data plane |
-| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, ordered current-layer staging, digest-bound lossless tuning evidence, verified lossless weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
+| [A3S Power](crates/power/) | Model-neutral server and embedded inference with Colibri-inspired tiered weight residency, ordered staging, attestation-bound fused accelerator batches, sealed warm-state recovery, lossless tuning and weight representations, private routing hints, stable live adaptation, integrity, TEE privacy, and receipts |
 | [A3S AHP](crates/ahp/) | Transport-neutral Agent Harness Protocol supervision |
 | [A3S ACL](crates/acl/) | Parser and generator for the A3S Agent Configuration Language |
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
