@@ -1,0 +1,160 @@
+---
+title: A3S Gateway
+description: Install and understand the local Rust data plane for routing, protecting, and streaming AI traffic.
+---
+
+# A3S Gateway
+
+A3S Gateway is the local data plane for AI traffic. It validates a complete
+policy before cutover, evaluates each request against one immutable runtime
+snapshot, and forwards HTTP, SSE, WebSocket, gRPC, TCP, or UDP traffic to an
+allowed healthy backend.
+
+[Product website](https://a3s-lab.github.io/Gateway/) ·
+[Source and full reference](https://github.com/A3S-Lab/Gateway) ·
+[Roadmap](https://github.com/A3S-Lab/Gateway/blob/main/ROADMAP.md)
+
+## Install in one command
+
+macOS or Linux:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://a3s-lab.github.io/Gateway/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; irm https://a3s-lab.github.io/Gateway/install.ps1 | iex
+```
+
+The installers detect the platform and architecture, download the matching
+release archive and checksum, require an exact SHA-256 match, verify the
+binary-reported version, and only then replace the user-local binary.
+
+| Platform | Supported release architectures | Default location |
+| --- | --- | --- |
+| Linux | x86_64, ARM64 | `~/.local/bin/a3s-gateway` |
+| macOS | Intel, Apple silicon | `~/.local/bin/a3s-gateway` |
+| Windows | x86_64, ARM64 | `%LOCALAPPDATA%\A3S\bin\a3s-gateway.exe` |
+
+Homebrew and Cargo are also supported:
+
+```bash
+brew install a3s-lab/tap/a3s-gateway
+# or
+cargo install a3s-gateway
+```
+
+## Run the first request
+
+With a backend listening on `127.0.0.1:8000`, create `gateway.acl`:
+
+```text
+mode { kind = "standalone" }
+
+entrypoints "web" {
+  address = "127.0.0.1:8080"
+}
+
+routers "models" {
+  rule        = "PathPrefix(`/v1`)"
+  service     = "models"
+  entrypoints = ["web"]
+}
+
+services "models" {
+  load_balancer {
+    strategy             = "least-connections"
+    request_timeout      = "30s"
+    stream_idle_timeout  = "5m"
+    stream_total_timeout = "60m"
+    servers = [{ url = "http://127.0.0.1:8000" }]
+  }
+}
+```
+
+Validate the complete policy, inspect the compiled shape, then start Gateway:
+
+```bash
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl summary
+a3s-gateway --config gateway.acl
+```
+
+Send a request through the configured route:
+
+```bash
+curl http://127.0.0.1:8080/v1/models
+```
+
+Invalid references, middleware, health bounds, feature requirements, and
+listener policy are rejected before startup or reload. A rejected reload keeps
+the prior proven snapshot and active listeners.
+
+## What Gateway provides
+
+| Area | Capability |
+| --- | --- |
+| Protocol fidelity | HTTP/1.1, HTTP/2, SSE, WebSocket, gRPC over h2c, TCP, UDP, TLS termination, and certificate-verified upstream TLS |
+| Routing and resilience | Host/path/method/header/SNI rules, four balancing strategies, active and passive health, sticky sessions, failover, mirroring, and static revision weights |
+| Policy | Fifteen middleware types covering authentication, rate limits, retries, circuit state, request limits, transforms, compression, and network controls |
+| Safe change | Complete validation, serialized lifecycle transactions, atomic snapshot swaps, listener reconciliation, and bounded graceful drain |
+| Managed OpenAI | Models, chat completions, legacy completions, and embeddings with local grants, request limits, model rewriting, request identities, and pre-response fallback |
+| Evidence | Structured JSON access logs, Prometheus metrics, trace propagation, non-token service telemetry, and a durable prompt-free request/attempt usage spool |
+
+The core request contract is:
+
+```text
+desired state → validate + compile → atomic snapshot
+                                          ↓
+client → entrypoint → route → middleware → service → healthy backend
+```
+
+No synchronous Cloud API, database, or scheduler call is required after the
+snapshot is active.
+
+## Standalone and Cloud-managed modes
+
+| Mode | Desired-state owner | Gateway responsibility |
+| --- | --- | --- |
+| `standalone` | Local operator ACL | Execute local traffic, middleware, health, provider, and optional experimental scaling policy |
+| `cloud-managed` | A3S Cloud | Enforce isolation and execute one complete identity/revision/digest/expiry-bound snapshot |
+
+A3S Cloud owns human-facing operations, tenants, workload placement,
+production rollout, managed replica decisions, and the long-term usage ledger.
+Gateway owns protocol handling and local enforcement.
+
+### The Node API is machine-only
+
+The historical `management` ACL block configures a dedicated machine API. It
+does not expose a web console, active configuration, routes, services,
+backends, audit events, raw ACL validation, or raw reload endpoints.
+
+```text
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_NODE_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
+}
+```
+
+The bounded contract contains process health, Prometheus metrics, version,
+managed snapshot apply, and exact instance-local snapshot readiness. Keep this
+listener private and let A3S Cloud provide human operations.
+
+## Capability status
+
+| Status | Scope |
+| --- | --- |
+| Available | Core protocols, routing, middleware, TLS, health, atomic reload, bounded drain, managed snapshots, managed OpenAI request paths, telemetry, and local durable usage evidence |
+| Experimental | Standalone scale-to-zero, Kubernetes Scale integration, and executor recovery; complete real-cluster evidence remains open |
+| Unavailable | Automatic gradual rollout. `rollout {}` is retained only to return an explicit validation error; use static revision weights |
+| Open across Gateway and Cloud | Trusted token accounting, token-budget enforcement, usage upload/ingestion, private upstream identity, mixed-version HA, production placement/rollout thresholds, load and disaster-recovery gates |
+| Planned | Native MCP or remote Agent data plane after the cross-product identity/session/route/deployment contract closes |
+
+The repository [README](https://github.com/A3S-Lab/Gateway#readme) contains the
+complete feature map, deployment examples, agent/Skill utilities, and current
+development commands.
