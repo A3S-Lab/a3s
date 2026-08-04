@@ -241,9 +241,10 @@ SHA-256-pinned official image, 30 ordered upstream blocks, source polygons,
 confidence tolerances, and Power execution receipts. Its optional Unlimited-OCR
 path now binds the pinned upstream Git/LFS identity, all 2,710 BF16 tensor
 names, shapes, and byte ranges, and Power's fully hashed checkpoint inventory
-to one canonical digest. Numerical token-generation and grounding parity for
-Unlimited-OCR remains an explicit acceptance gate rather than a completed
-claim.
+to one canonical digest. Its local numerical gate validates all 64 pinned CPU
+reference tokens exactly, bounds the reviewed Metal rank/logit drift, and
+requires the same three grounded blocks within the documented pixel tolerance.
+The 6.7 GiB numerical gate remains local rather than ordinary pull-request CI.
 
 A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
