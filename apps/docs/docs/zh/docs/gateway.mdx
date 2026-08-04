@@ -1,0 +1,152 @@
+---
+title: A3S Gateway
+description: 安装并理解用于路由、保护和流式转发 AI 流量的本地 Rust 数据平面。
+---
+
+# A3S Gateway
+
+A3S Gateway 是 AI 流量的本地数据平面。它在切换前验证完整策略，让每个请求只在一个
+不可变运行时快照上执行，并将 HTTP、SSE、WebSocket、gRPC、TCP 或 UDP 流量转发到
+被授权且健康的后端。
+
+[产品网站](https://a3s-lab.github.io/Gateway/) ·
+[源码与完整参考](https://github.com/A3S-Lab/Gateway) ·
+[路线图](https://github.com/A3S-Lab/Gateway/blob/main/ROADMAP.md)
+
+## 一条命令安装
+
+macOS 或 Linux：
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://a3s-lab.github.io/Gateway/install.sh | sh
+```
+
+Windows PowerShell：
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; irm https://a3s-lab.github.io/Gateway/install.ps1 | iex
+```
+
+安装器会检测平台与架构，下载匹配的发布归档和校验和，要求 SHA-256 精确匹配，验证
+二进制自身报告的版本，然后才替换用户目录中的二进制。
+
+| 平台 | 支持的发布架构 | 默认位置 |
+| --- | --- | --- |
+| Linux | x86_64、ARM64 | `~/.local/bin/a3s-gateway` |
+| macOS | Intel、Apple silicon | `~/.local/bin/a3s-gateway` |
+| Windows | x86_64、ARM64 | `%LOCALAPPDATA%\A3S\bin\a3s-gateway.exe` |
+
+也支持 Homebrew 和 Cargo：
+
+```bash
+brew install a3s-lab/tap/a3s-gateway
+# 或
+cargo install a3s-gateway
+```
+
+## 发出第一个请求
+
+假设后端监听在 `127.0.0.1:8000`，创建 `gateway.acl`：
+
+```text
+mode { kind = "standalone" }
+
+entrypoints "web" {
+  address = "127.0.0.1:8080"
+}
+
+routers "models" {
+  rule        = "PathPrefix(`/v1`)"
+  service     = "models"
+  entrypoints = ["web"]
+}
+
+services "models" {
+  load_balancer {
+    strategy             = "least-connections"
+    request_timeout      = "30s"
+    stream_idle_timeout  = "5m"
+    stream_total_timeout = "60m"
+    servers = [{ url = "http://127.0.0.1:8000" }]
+  }
+}
+```
+
+先验证完整策略并检查编译结果，再启动 Gateway：
+
+```bash
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl summary
+a3s-gateway --config gateway.acl
+```
+
+通过已配置的路由发送请求：
+
+```bash
+curl http://127.0.0.1:8080/v1/models
+```
+
+无效引用、中间件、健康边界、feature 要求和监听器策略会在启动或 reload 之前被拒绝。
+reload 被拒绝时，之前通过验证的快照和活跃监听器保持不变。
+
+## Gateway 提供什么
+
+| 领域 | 能力 |
+| --- | --- |
+| 协议忠实性 | HTTP/1.1、HTTP/2、SSE、WebSocket、基于 h2c 的 gRPC、TCP、UDP、TLS 终止和证书验证的上游 TLS |
+| 路由与韧性 | Host/path/method/header/SNI 规则、四种均衡策略、主动与被动健康检查、会话保持、故障转移、镜像和静态 revision 权重 |
+| 策略 | 15 种中间件，覆盖鉴权、限流、重试、熔断状态、请求边界、转换、压缩与网络控制 |
+| 安全变更 | 完整验证、串行生命周期事务、原子快照切换、监听器收敛与有界优雅退出 |
+| 受管 OpenAI | models、chat completions、legacy completions 和 embeddings，以及本地授权、请求限制、模型重写、请求身份与响应前 fallback |
+| 证据 | 结构化 JSON 访问日志、Prometheus 指标、追踪传播、非 token 服务遥测，以及不包含 prompt 的持久 request/attempt 用量 spool |
+
+核心请求契约是：
+
+```text
+期望状态 → 验证 + 编译 → 原子快照
+                              ↓
+客户端 → 入口 → 路由 → 中间件 → 服务 → 健康后端
+```
+
+快照激活后，请求不需要同步访问 Cloud API、数据库或调度器。
+
+## Standalone 与 Cloud-managed 模式
+
+| 模式 | 期望状态所有者 | Gateway 职责 |
+| --- | --- | --- |
+| `standalone` | 本地运维者 ACL | 执行本地流量、中间件、健康、provider 与可选实验性扩缩容策略 |
+| `cloud-managed` | A3S Cloud | 强制隔离，并执行一个受 identity/revision/digest/expiry 约束的完整快照 |
+
+A3S Cloud 负责面向人的运维、租户、工作负载放置、生产发布、受管副本决策与长期用量
+账本。Gateway 负责协议处理和本地执行。
+
+### Node API 只面向机器
+
+历史 `management` ACL 块现在配置专用机器 API。它不提供 Web 控制台，也不暴露活跃
+配置、路由、服务、后端、审计事件、原始 ACL 验证或原始 reload 端点。
+
+```text
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_NODE_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
+}
+```
+
+这个有界契约只包含进程健康、Prometheus 指标、版本、受管快照应用，以及精确的实例本地
+快照就绪状态。应保持该监听器私有，并由 A3S Cloud 提供面向人的运维能力。
+
+## 能力状态
+
+| 状态 | 范围 |
+| --- | --- |
+| 可用 | 核心协议、路由、中间件、TLS、健康检查、原子 reload、有界 drain、受管快照、受管 OpenAI 请求路径、遥测和本地持久用量证据 |
+| 实验 | 独立 scale-to-zero、Kubernetes Scale 集成和执行器恢复；完整真实集群证据仍未关闭 |
+| 不可用 | 自动渐进发布。`rollout {}` 仅保留用于返回明确验证错误；当前请使用静态 revision 权重 |
+| Gateway 与 Cloud 之间仍开放 | 可信 token 计量、token 预算执行、用量上传/接入、私有上游身份、混合版本 HA、生产放置/发布阈值、负载和灾难恢复门禁 |
+| 规划 | 在跨产品 identity/session/route/deployment 契约关闭后实现原生 MCP 或远程 Agent 数据平面 |
+
+仓库 [README](https://github.com/A3S-Lab/Gateway#readme) 提供完整特性图、部署示例、
+Agent/Skill 工具和当前开发命令。

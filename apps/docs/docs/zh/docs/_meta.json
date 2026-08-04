@@ -15,6 +15,11 @@
   "web",
   {
     "type": "section-header",
+    "label": "产品"
+  },
+  "gateway",
+  {
+    "type": "section-header",
     "label": "管理"
   },
   "components",

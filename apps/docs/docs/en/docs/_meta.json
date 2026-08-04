@@ -15,6 +15,11 @@
   "web",
   {
     "type": "section-header",
+    "label": "Products"
+  },
+  "gateway",
+  {
+    "type": "section-header",
     "label": "Manage"
   },
   "components",
