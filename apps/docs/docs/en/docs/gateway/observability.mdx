@@ -1,6 +1,6 @@
 ---
 title: Observability
-description: Prometheus metrics, structured JSON access logs, distributed tracing (W3C + B3/Zipkin), the observability toggles, and the Dashboard/management API
+description: Prometheus metrics, structured JSON access logs, distributed tracing, and the machine-only Gateway Node API.
 ---
 
 
@@ -8,11 +8,12 @@ description: Prometheus metrics, structured JSON access logs, distributed tracin
 
 A3S Gateway ships a dependency-free observability stack: an in-process
 Prometheus metrics collector, structured JSON access-log entries, inbound
-distributed-trace context extraction (W3C + B3/Zipkin) with outbound W3C
-propagation, and an optional Dashboard/management API on a dedicated listener.
+  distributed-trace context extraction (W3C + B3/Zipkin) with outbound W3C
+  propagation, and an optional machine-only Node API on a dedicated listener.
 
 Everything in the data plane is governed by one top-level block,
-`observability {}`, plus the separate `management {}` block for the Dashboard.
+`observability {}`. The historical `management {}` block configures only the
+bounded Node API used by the control plane; it is not an operator surface.
 
 ## The `observability` Block
 
@@ -43,7 +44,7 @@ observability {
 ## Prometheus Metrics
 
 Metrics are an in-process collector (`GatewayMetrics`) with atomic
-counters/gauges. The dashboard renders them in Prometheus 0.0.4 text exposition
+counters/gauges. The Node API renders them in Prometheus 0.0.4 text exposition
 format. The following series are populated on the live request path when
 `metrics_enabled = true`:
 
@@ -225,12 +226,14 @@ injects a fresh child `traceparent` on the outbound request.
   `b3` / `X-B3-*` headers to be re-emitted to backends.
 </Callout>
 
-## Dashboard / Management API
+## Machine-only Node API
 
-The Dashboard is a **dedicated, optional listener** (`management {}` block). It
-is **disabled by default**, binds to `127.0.0.1:9090`, and never intercepts user
-traffic — `{path_prefix}/*` on your data-plane entrypoints stays normal user
-traffic.
+The Node API is a **dedicated, optional listener** configured through the
+historical `management {}` compatibility block. It is **disabled by default**,
+binds to `127.0.0.1:9090`, and never intercepts user traffic. It exposes no
+dashboard, active configuration, routes, services, backends, audit events, raw
+ACL validation, or raw reload endpoint. Human-facing operations belong to A3S
+Cloud.
 
 ```text
 management {
@@ -241,9 +244,9 @@ management {
   allowed_ips    = ["127.0.0.1", "::1"]
 
   tls {
-    cert_file           = "/etc/a3s/admin/server.crt"
-    key_file            = "/etc/a3s/admin/server.key"
-    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    cert_file           = "/etc/a3s/node/server.crt"
+    key_file            = "/etc/a3s/node/server.key"
+    client_ca_file      = "/etc/a3s/node/client-ca.crt"
     require_client_cert = true
     min_version         = "1.2"
   }
@@ -254,7 +257,7 @@ management {
 
 | Key | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `enabled` | bool | `false` | Master switch for the management listener. |
+| `enabled` | bool | `false` | Master switch for the Node API listener. |
 | `address` | string | `127.0.0.1:9090` | Listen address; parsed as a socket address. |
 | `path_prefix` | string | `/api/gateway` | Must start with `/`. All endpoints are served under it. |
 | `auth_token_env` | string | `A3S_GATEWAY_ADMIN_TOKEN` | Name of the **env var** holding the bearer token (not the token itself). |
@@ -273,7 +276,7 @@ management {
   **Auth and IP-allowlist gotchas.**
   <ul>
     <li>`auth_token_env` names an **env var**. If that env var is unset at
-    startup, the management listener fails to start. Setting
+    startup, the Node API listener fails to start. Setting
     `auth_token_env = ""` in ACL disables bearer auth entirely.</li>
     <li>The `allowed_ips` default (`127.0.0.1`, `::1`) applies only when the key
     is **omitted**. Providing an explicit empty list (`allowed_ips = []`)
@@ -286,15 +289,15 @@ management {
 
 ### Request Authorization Order
 
-Each Dashboard request is checked in order: **path-prefix match → IP allowlist →
+Each Node API request is checked in order: **path-prefix match → IP allowlist →
 bearer token**, with optional TLS/mTLS at the connection layer.
 
 - Requests outside `path_prefix` return `404 {"error":"Not found"}`.
-- IP rejections return `403` and record an `ip-rejected` audit event.
-- Token failures return `401` and record an `auth-rejected` audit event.
-- When the configured token env var resolves to no token (unset/empty),
-  `authorize()` passes all requests.
-- All Dashboard responses set `Cache-Control: no-store`.
+- IP rejections return `403`.
+- Token failures return `401`.
+- Setting `auth_token_env = ""` disables bearer authentication; an unset named
+  environment variable prevents the listener from starting.
+- All Node API responses set `Cache-Control: no-store`.
 
 ### Endpoints
 
@@ -302,27 +305,11 @@ All paths are relative to `path_prefix` (default `/api/gateway`).
 
 | Endpoint | Method | Response |
 | --- | --- | --- |
-| `/` and `/health` | GET | Health JSON: `state`, `uptime_secs`, `active_connections`, `total_requests`. |
+| `/` and `/health` | GET | Process state, mode, Gateway identity, uptime, connections, request count, and usage-spool health. |
 | `/metrics` | GET | Prometheus text (`Content-Type: text/plain; version=0.0.4`). |
-| `/config` | GET | Active `GatewayConfig` as JSON. |
-| `/routes` (+ `/routes/{name}`) | GET | Route info: `name`, `rule`, `service`, `entrypoints`, `middlewares`, `priority`. |
-| `/services` (+ `/services/{name}`) | GET | Services with live backend health (`backends_total` / `healthy`). |
-| `/backends` | GET | Backend details with `active_connections`. |
-| `/events` | GET | Recent management security audit events. Supports `?limit=N` (default 100, max 500). |
 | `/version` | GET | `name` (`a3s-gateway`), `version` (crate version), `api_version` (`v1`). |
-| `/config/validate` | POST | Validate an ACL payload without applying it. |
-| `/config/reload` | POST | Validate then reload from an ACL payload (503 if no reload callback). |
-
-The two POST mutation endpoints cap their request body at 1 MiB and respond with
-`{ valid, reloaded, message }`.
-
-### Security Audit Log
-
-The management listener keeps an in-memory ring buffer (capacity 512) of
-security events surfaced via `/events`. Each event records `sequence`,
-`timestamp` (RFC 3339), `kind`, `remote_addr`, `path`, `status`, and `reason`.
-Event kinds: `not-found`, `ip-rejected`, `auth-rejected`, `tls-rejected`,
-`config-validated`, `config-reloaded`, `config-rejected`.
+| `/snapshots/apply` | POST | Validate and atomically apply one identity/revision/CAS/digest/expiry-bound A3S Cloud snapshot. |
+| `/snapshots/status` | GET | Report exact instance-local managed readiness and the active snapshot identity. |
 
 ## CLI Inspection
 
@@ -338,13 +325,8 @@ a3s-gateway config --config gateway.acl services
 a3s-gateway config --config gateway.acl middlewares
 a3s-gateway config --config gateway.acl providers
 a3s-gateway config --config gateway.acl json
-
-# Against a running management listener
-a3s-gateway management events   --url http://127.0.0.1:9090/api/gateway
-a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
-a3s-gateway management reload   --url http://127.0.0.1:9090/api/gateway --file gateway.acl
 ```
 
-For mTLS-protected management listeners, add `--ca-cert`, `--client-cert`, and
-`--client-key` to the `management` subcommands, and send
-`Authorization: Bearer <token>` when `auth_token_env` is set.
+These commands inspect operator-owned local configuration without a running
+Gateway. In `cloud-managed` mode, A3S Cloud applies complete desired-state
+snapshots through the authenticated Node API.

@@ -1,6 +1,6 @@
 ---
 title: 可观测性
-description: Prometheus 指标、结构化 JSON 访问日志、分布式追踪（W3C + B3/Zipkin）、可观测性开关，以及 Dashboard/管理 API
+description: Prometheus 指标、结构化 JSON 访问日志、分布式追踪，以及仅面向机器的 Gateway Node API。
 ---
 
 
@@ -8,10 +8,10 @@ description: Prometheus 指标、结构化 JSON 访问日志、分布式追踪�
 
 A3S Gateway 内置一套无外部依赖的可观测性栈：进程内的 Prometheus 指标采集器、
 结构化 JSON 访问日志条目、入站分布式追踪上下文提取（W3C + B3/Zipkin）以及出站
-W3C 传播，还有一个运行在独立 listener 上的可选 Dashboard/管理 API。
+  W3C 传播，以及一个运行在独立 listener 上、仅面向机器的可选 Node API。
 
-数据平面的所有内容都由一个顶层块 `observability {}` 统一控制，Dashboard 则由
-单独的 `management {}` 块控制。
+数据平面的所有内容都由一个顶层块 `observability {}` 统一控制。历史
+`management {}` 块只配置控制面使用的有界 Node API，并非运维界面。
 
 ## `observability` 块
 
@@ -41,7 +41,7 @@ observability {
 ## Prometheus 指标
 
 指标由一个进程内采集器（`GatewayMetrics`）维护，使用原子的 counters/gauges。
-Dashboard 以 Prometheus 0.0.4 文本暴露格式渲染它们。当 `metrics_enabled = true`
+Node API 以 Prometheus 0.0.4 文本暴露格式渲染它们。当 `metrics_enabled = true`
 时，以下序列会在实时请求路径上被填充：
 
 ```text
@@ -219,11 +219,12 @@ RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.acl
   发往 backend。
 </Callout>
 
-## Dashboard / 管理 API
+## 仅面向机器的 Node API
 
-Dashboard 是一个**独立的、可选的 listener**（`management {}` 块）。它**默认禁用**，
-绑定到 `127.0.0.1:9090`，且永不拦截用户流量 —— 数据平面 entrypoint 上的
-`{path_prefix}/*` 仍然是正常的用户流量。
+Node API 是一个**独立的、可选的 listener**，通过历史 `management {}` 兼容配置块
+定义。它**默认禁用**并绑定到 `127.0.0.1:9090`，且永不拦截用户流量。它不暴露
+Dashboard、活跃配置、路由、服务、后端、审计事件、原始 ACL 校验或原始 reload 端点。
+面向人的运维能力归 A3S Cloud 所有。
 
 ```text
 management {
@@ -234,9 +235,9 @@ management {
   allowed_ips    = ["127.0.0.1", "::1"]
 
   tls {
-    cert_file           = "/etc/a3s/admin/server.crt"
-    key_file            = "/etc/a3s/admin/server.key"
-    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    cert_file           = "/etc/a3s/node/server.crt"
+    key_file            = "/etc/a3s/node/server.key"
+    client_ca_file      = "/etc/a3s/node/client-ca.crt"
     require_client_cert = true
     min_version         = "1.2"
   }
@@ -247,7 +248,7 @@ management {
 
 | 键 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `enabled` | bool | `false` | 管理 listener 的总开关。 |
+| `enabled` | bool | `false` | Node API listener 的总开关。 |
 | `address` | string | `127.0.0.1:9090` | 监听地址；按 socket address 解析。 |
 | `path_prefix` | string | `/api/gateway` | 必须以 `/` 开头。所有 endpoint 都在它之下提供。 |
 | `auth_token_env` | string | `A3S_GATEWAY_ADMIN_TOKEN` | 持有 bearer token 的**环境变量**名称（而非 token 本身）。 |
@@ -266,7 +267,7 @@ management {
   **认证与 IP 白名单的注意事项。**
   <ul>
     <li>`auth_token_env` 指定的是一个**环境变量**。如果该环境变量在启动时未设置，
-    管理 listener 将启动失败。在 ACL 中设置 `auth_token_env = ""` 会完全禁用
+    Node API listener 将启动失败。在 ACL 中设置 `auth_token_env = ""` 会完全禁用
     bearer 认证。</li>
     <li>`allowed_ips` 的默认值（`127.0.0.1`、`::1`）仅在该键被**省略**时生效。提供
     一个显式的空列表（`allowed_ips = []`）会**禁用** IP 过滤（允许全部）—— 而不会
@@ -278,15 +279,15 @@ management {
 
 ### 请求授权顺序
 
-每个 Dashboard 请求按以下顺序检查：**path-prefix 匹配 → IP 白名单 → bearer
+每个 Node API 请求按以下顺序检查：**path-prefix 匹配 → IP 白名单 → bearer
 token**，并在连接层提供可选的 TLS/mTLS。
 
 - 不在 `path_prefix` 范围内的请求返回 `404 {"error":"Not found"}`。
-- IP 拒绝返回 `403`，并记录一条 `ip-rejected` 审计事件。
-- Token 校验失败返回 `401`，并记录一条 `auth-rejected` 审计事件。
-- 当配置的 token 环境变量解析不到 token（未设置/为空）时，`authorize()` 会放行
-  所有请求。
-- 所有 Dashboard 响应都设置 `Cache-Control: no-store`。
+- IP 拒绝返回 `403`。
+- Token 校验失败返回 `401`。
+- 设置 `auth_token_env = ""` 会禁用 bearer 认证；如果指定的环境变量未设置，listener
+  将无法启动。
+- 所有 Node API 响应都设置 `Cache-Control: no-store`。
 
 ### Endpoints
 
@@ -294,27 +295,11 @@ token**，并在连接层提供可选的 TLS/mTLS。
 
 | Endpoint | Method | 响应 |
 | --- | --- | --- |
-| `/` and `/health` | GET | Health JSON：`state`、`uptime_secs`、`active_connections`、`total_requests`。 |
+| `/` and `/health` | GET | 进程状态、模式、Gateway 身份、运行时间、连接数、请求数和 usage spool 健康状态。 |
 | `/metrics` | GET | Prometheus 文本（`Content-Type: text/plain; version=0.0.4`）。 |
-| `/config` | GET | 当前生效的 `GatewayConfig`（JSON）。 |
-| `/routes` (+ `/routes/{name}`) | GET | Route 信息：`name`、`rule`、`service`、`entrypoints`、`middlewares`、`priority`。 |
-| `/services` (+ `/services/{name}`) | GET | Services 及实时 backend 健康状态（`backends_total` / `healthy`）。 |
-| `/backends` | GET | Backend 详情，含 `active_connections`。 |
-| `/events` | GET | 最近的管理安全审计事件。支持 `?limit=N`（默认 100，最大 500）。 |
 | `/version` | GET | `name`（`a3s-gateway`）、`version`（crate 版本）、`api_version`（`v1`）。 |
-| `/config/validate` | POST | 校验一份 ACL payload 而不应用它。 |
-| `/config/reload` | POST | 先校验再从 ACL payload 重新加载（若无 reload 回调则返回 503）。 |
-
-这两个 POST 变更类 endpoint 将请求体上限设为 1 MiB，并以
-`{ valid, reloaded, message }` 作为响应。
-
-### 安全审计日志
-
-管理 listener 维护一个进程内的环形缓冲区（容量 512），保存通过 `/events` 暴露的
-安全事件。每条事件记录 `sequence`、`timestamp`（RFC 3339）、`kind`、
-`remote_addr`、`path`、`status` 和 `reason`。事件种类包括：`not-found`、
-`ip-rejected`、`auth-rejected`、`tls-rejected`、`config-validated`、
-`config-reloaded`、`config-rejected`。
+| `/snapshots/apply` | POST | 校验并原子应用一个受 identity/revision/CAS/digest/expiry 约束的 A3S Cloud 快照。 |
+| `/snapshots/status` | GET | 报告精确的实例本地受管就绪状态与活跃快照身份。 |
 
 ## CLI 检查
 
@@ -330,13 +315,7 @@ a3s-gateway config --config gateway.acl services
 a3s-gateway config --config gateway.acl middlewares
 a3s-gateway config --config gateway.acl providers
 a3s-gateway config --config gateway.acl json
-
-# Against a running management listener
-a3s-gateway management events   --url http://127.0.0.1:9090/api/gateway
-a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
-a3s-gateway management reload   --url http://127.0.0.1:9090/api/gateway --file gateway.acl
 ```
 
-对于受 mTLS 保护的管理 listener，请在 `management` 子命令中添加 `--ca-cert`、
-`--client-cert` 和 `--client-key`，并在设置了 `auth_token_env` 时发送
-`Authorization: Bearer <token>`。
+这些命令无需运行中的 Gateway，仅检查运维方维护的本地配置。在 `cloud-managed` 模式
+下，A3S Cloud 通过经过认证的 Node API 应用完整期望状态快照。

@@ -1,18 +1,39 @@
 ---
 title: A3S Gateway
-description: Install and understand the local Rust data plane for routing, protecting, and streaming AI traffic.
+description: Install and understand A3S Gateway, the AI Native Traffic Layer for protocol routing, streaming, and local policy enforcement.
 ---
 
 # A3S Gateway
 
-A3S Gateway is the local data plane for AI traffic. It validates a complete
-policy before cutover, evaluates each request against one immutable runtime
-snapshot, and forwards HTTP, SSE, WebSocket, gRPC, TCP, or UDP traffic to an
-allowed healthy backend.
+A3S Gateway is the **AI Native Traffic Layer**. It validates a complete policy
+before cutover, evaluates each request against one immutable runtime snapshot,
+and forwards HTTP, SSE, WebSocket, gRPC, TCP, or UDP model traffic to an allowed
+healthy backend.
 
 [Product website](https://a3s-lab.github.io/Gateway/) ·
 [Source and full reference](https://github.com/A3S-Lab/Gateway) ·
 [Roadmap](https://github.com/A3S-Lab/Gateway/blob/main/ROADMAP.md)
+
+## Performance evidence
+
+The published Criterion baseline was generated from commit
+[`bd56487`](https://github.com/A3S-Lab/Gateway/commit/bd56487d78a12474a3aa7d4806a5414beec1cab1)
+on an Ubuntu 24.04 runner with 4 vCPUs and an AMD EPYC 7763 host CPU.
+
+| In-process operation | Input size | Median | 95% confidence interval |
+| --- | ---: | ---: | ---: |
+| Highest-priority route match | 1,000 routes | 199.3 ns | 198.4–200.5 ns |
+| Full route scan with no match | 1,000 routes | 29.484 µs | 29.445–29.506 µs |
+| Request middleware pipeline | 10 entries | 1.730 µs | 1.729–1.731 µs |
+| Complete ACL parse | 300 services and routes | 6.800 ms | 6.769–6.818 ms |
+
+These numbers measure internal operation cost, not end-to-end requests per
+second. Socket, TLS, upstream, response-body, and client costs are excluded.
+See the [interactive results and traditional-gateway scope comparison](https://a3s-lab.github.io/Gateway/#performance),
+the [benchmark run](https://github.com/A3S-Lab/Gateway/actions/runs/30876947829),
+and the [methodology](https://github.com/A3S-Lab/Gateway/blob/main/benchmarks/README.md).
+The product site also provides an [animated ACL walkthrough](https://a3s-lab.github.io/Gateway/#config)
+that maps each block to runtime behavior.
 
 ## Install in one command
 

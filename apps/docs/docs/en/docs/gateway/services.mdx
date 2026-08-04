@@ -378,44 +378,11 @@ block is named `revision` (with `revisions` accepted as an alias).
 
 ## Gradual Rollout
 
-Shift traffic from one revision to another with auto-rollback guardrails.
-
-```text
-services "api" {
-  load_balancer {
-    strategy = "round-robin"
-    servers  = [{ url = "http://127.0.0.1:8001" }]
-  }
-  rollout {
-    from                 = "v1"
-    to                   = "v2"
-    step_percent         = 10
-    step_interval_secs   = 60
-    error_rate_threshold = 0.05
-    latency_threshold_ms = 5000
-  }
-}
-```
-
-<TypeTable
-  type={{
-    from: { type: 'string', required: true, description: 'Source revision (must exist)' },
-    to: { type: 'string', required: true, description: 'Target revision (must exist)' },
-    step_percent: { type: 'u32', default: '10', description: 'Traffic % shifted per step' },
-    step_interval_secs: { type: 'u64', default: '60', description: 'Seconds between steps' },
-    error_rate_threshold: { type: 'f64', default: '0.05', description: 'Error rate (0.0–1.0) that triggers rollback' },
-    latency_threshold_ms: { type: 'u64', default: '5000', description: 'P99 latency (ms) that triggers rollback' },
-  }}
-/>
-
-Rollout requires at least one revision, and `from`/`to` must name existing
-revisions.
-
 <Callout type="warn">
-  The rollout controller is fully implemented and validated, but in v1.0.11 it is
-  **not driven by any runtime loop** — no scheduler calls its advance step. So
-  `step_percent`, `step_interval_secs`, `error_rate_threshold`, and
-  `latency_threshold_ms` are parsed and validated but currently inert at runtime.
+  Automatic gradual rollout is unavailable in Gateway. Any `rollout {}` block
+  returns an explicit validation error so inert policy cannot be mistaken for a
+  running controller. Use static revision weights for local traffic splitting;
+  A3S Cloud owns production rollout orchestration and guardrails.
 </Callout>
 
 ---

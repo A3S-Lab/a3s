@@ -325,40 +325,10 @@ services "api" {
 
 ## 渐进式发布
 
-在两个 revision 之间迁移流量，并带有自动回滚护栏。
-
-```text
-services "api" {
-  load_balancer {
-    strategy = "round-robin"
-    servers  = [{ url = "http://127.0.0.1:8001" }]
-  }
-  rollout {
-    from                 = "v1"
-    to                   = "v2"
-    step_percent         = 10
-    step_interval_secs   = 60
-    error_rate_threshold = 0.05
-    latency_threshold_ms = 5000
-  }
-}
-```
-
-<TypeTable
-  type={{
-    from: { type: 'string', required: true, description: '源 revision（必须存在）' },
-    to: { type: 'string', required: true, description: '目标 revision（必须存在）' },
-    step_percent: { type: 'u32', default: '10', description: '每步迁移的流量百分比' },
-    step_interval_secs: { type: 'u64', default: '60', description: '每步之间的间隔秒数' },
-    error_rate_threshold: { type: 'f64', default: '0.05', description: '触发回滚的错误率（0.0–1.0）' },
-    latency_threshold_ms: { type: 'u64', default: '5000', description: '触发回滚的 P99 延迟（毫秒）' },
-  }}
-/>
-
-渐进式发布要求至少有一个 revision，且 `from`/`to` 必须命名已存在的 revision。
-
 <Callout type="warn">
-  渐进式发布控制器已完整实现并通过校验，但在 v1.0.11 中它**未被任何运行时循环驱动**——没有调度器调用其推进步骤。因此 `step_percent`、`step_interval_secs`、`error_rate_threshold` 和 `latency_threshold_ms` 会被解析和校验，但目前在运行时处于惰性状态。
+  Gateway 当前不提供自动渐进发布。任何 `rollout {}` 块都会返回明确的校验错误，
+  避免把惰性策略误认为运行中的控制器。请使用静态 revision 权重进行本地流量切分；
+  生产发布编排与门禁由 A3S Cloud 负责。
 </Callout>
 
 ---

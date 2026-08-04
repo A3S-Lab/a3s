@@ -82,7 +82,7 @@ After=network.target
 ExecStart=/usr/local/bin/a3s-gateway --config /etc/gateway/gateway.acl
 Restart=always
 User=a3s-gateway
-# Required only if the management listener uses bearer auth (default token env var):
+# Required only if the private Node API uses bearer auth (default token env var):
 # Environment=A3S_GATEWAY_ADMIN_TOKEN=...
 
 [Install]
@@ -111,18 +111,9 @@ a3s-gateway config --config gateway.acl middlewares   # list middleware names
 a3s-gateway config --config gateway.acl providers     # list enabled providers
 a3s-gateway config --config gateway.acl json          # full parsed config as JSON
 
-# Talk to a running management listener (see Management API below)
-a3s-gateway management events  --url http://127.0.0.1:9090/api/gateway
-a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
-a3s-gateway management reload   --url http://127.0.0.1:9090/api/gateway --file gateway.acl
-
 # Self-update
 a3s-gateway update
 ```
-
-The `management` subcommands accept `--token` / `--token-env` for bearer auth and
-`--ca-cert` / `--client-cert` / `--client-key` for TLS / mTLS against a
-TLS-protected management listener (plus `--insecure` for local diagnostics only).
 
 ## Docker
 
@@ -134,24 +125,23 @@ non-root `gateway` user, multi-platform: `linux/amd64`, `linux/arm64`,
 docker run -d \
   -v "$(pwd)/gateway.acl:/etc/gateway/gateway.acl" \
   -p 8080:8080 \
-  -p 9090:9090 \
   ghcr.io/a3s-lab/gateway:latest \
   --config /etc/gateway/gateway.acl
 ```
 
-The image `EXPOSE`s `80 443 8080`. Map whatever ports your entrypoints actually
-bind. The example above also publishes `9090` so the optional
-[management listener](#management-api--dashboard) is reachable.
+The image `EXPOSE`s `80 443 8080`. Map only the ports your traffic entrypoints
+actually bind. A Cloud-managed deployment can expose the private Node API on a
+separate internal network; it should not be published as an operator endpoint.
 
 > **Healthcheck caveat.** The image ships a Docker `HEALTHCHECK` that runs
 > `wget http://localhost:8080/health`. The **data plane has no built-in
 > `/health` endpoint** — that path only succeeds if you define a router for it
 > (or proxy it to an upstream). The real health endpoint lives on the
-> *management* listener at `{path_prefix}/health` (default
+> machine-only Node API listener at `{path_prefix}/health` (default
 > `http://127.0.0.1:9090/api/gateway/health`), not on a traffic entrypoint.
 > For orchestrators, prefer a **TCP** readiness/liveness probe against a bound
 > entrypoint port (this is what the Helm chart does), or point an HTTP probe at
-> the management `health` endpoint.
+> the private Node API `health` endpoint.
 
 ### docker compose
 
@@ -162,12 +152,8 @@ services:
     command: ["--config", "/etc/gateway/gateway.acl"]
     ports:
       - "8080:8080"
-      - "9090:9090"   # management listener (optional)
     volumes:
       - ./gateway.acl:/etc/gateway/gateway.acl:ro
-    environment:
-      # Only needed if management.enabled = true with default bearer auth
-      A3S_GATEWAY_ADMIN_TOKEN: "${A3S_GATEWAY_ADMIN_TOKEN}"
     restart: unless-stopped
 ```
 
@@ -375,11 +361,13 @@ subjects:
 > Scope the `ClusterRole` to a `Role`/`RoleBinding` in a single namespace if you
 > set `providers.kubernetes.namespace` to a specific namespace.
 
-## Management API / Dashboard
+## Machine-only Node API
 
-The optional management listener is a **dedicated, separate** TCP socket
-(`management {}` block; there is no separate `dashboard` block). It never
-intercepts user traffic. It is **disabled by default**.
+The optional Node API listener is a **dedicated, separate** TCP socket configured
+through the historical `management {}` compatibility block. It never intercepts
+user traffic and is **disabled by default**. It is not a dashboard or operator
+API: A3S Cloud owns deployments, rollout, replicas, tenants, and the long-term
+usage ledger.
 
 ```text
 management {
@@ -389,7 +377,7 @@ management {
   auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"  # env var NAME holding the bearer token
   allowed_ips    = ["127.0.0.1", "::1"]  # default when key omitted
 
-  # Optional TLS / mTLS for the management listener:
+  # Optional TLS / mTLS for the Node API listener:
   tls {
     cert_file          = "/etc/gateway/tls/mgmt.crt"
     key_file           = "/etc/gateway/tls/mgmt.key"
@@ -403,7 +391,7 @@ management {
 Behavioral notes:
 
 - `auth_token_env` holds the **name of an env var**, not the token. If that env
-  var is unset at startup the management listener **fails to start**. Setting
+  var is unset at startup the Node API listener **fails to start**. Setting
   `auth_token_env = ""` disables bearer auth entirely.
 - `allowed_ips` defaults to loopback **only when the key is omitted**. Providing
   the key replaces the default; an explicit `allowed_ips = []` disables IP
@@ -412,11 +400,10 @@ Behavioral notes:
 - `management.tls.min_version` is validated to be exactly `"1.2"` or `"1.3"`
   (unlike entrypoint TLS, which is not validated at config time).
 
-Endpoints (all under `{path_prefix}`): `GET health`, `GET metrics` (Prometheus
-text), `GET config`, `GET routes` / `routes/{name}`, `GET services` /
-`services/{name}`, `GET backends`, `GET events` (`?limit=N`, default 100, max
-500), `GET version`, plus the two mutating endpoints `POST config/validate` and
-`POST config/reload` (request body capped at 1 MiB).
+The bounded endpoints, all under `{path_prefix}`, are `GET health`, `GET metrics`
+(Prometheus text), `GET version`, `POST snapshots/apply`, and `GET
+snapshots/status`. Active configuration, routes, services, backends, audit
+events, raw validation, and raw reload are deliberately not exposed.
 
 ```bash
 # Set the token the env var refers to, then hit the API
@@ -458,14 +445,6 @@ Reload strategy is chosen automatically:
    running.
 3. **Full restart.** Any UDP entrypoint, or larger changes, force a full
    abort-and-rebind of all listeners.
-
-You can also drive a reload remotely through the management API:
-
-```bash
-a3s-gateway management reload \
-  --url http://127.0.0.1:9090/api/gateway \
-  --file gateway.acl
-```
 
 When running under Helm, edit the `config` value and `helm upgrade`. Because the
 config is mounted from a ConfigMap, you must trigger the pods to pick up the new

@@ -1,17 +1,36 @@
 ---
 title: A3S Gateway
-description: 安装并理解用于路由、保护和流式转发 AI 流量的本地 Rust 数据平面。
+description: 安装并理解 A3S Gateway——用于协议路由、流式传输与本地策略执行的 AI Native Traffic Layer。
 ---
 
 # A3S Gateway
 
-A3S Gateway 是 AI 流量的本地数据平面。它在切换前验证完整策略，让每个请求只在一个
-不可变运行时快照上执行，并将 HTTP、SSE、WebSocket、gRPC、TCP 或 UDP 流量转发到
-被授权且健康的后端。
+A3S Gateway 是 **AI Native Traffic Layer**。它在切换前验证完整策略，让每个请求只在
+一个不可变运行时快照上执行，并将 HTTP、SSE、WebSocket、gRPC、TCP 或 UDP 模型流量
+转发到被授权且健康的后端。
 
 [产品网站](https://a3s-lab.github.io/Gateway/) ·
 [源码与完整参考](https://github.com/A3S-Lab/Gateway) ·
 [路线图](https://github.com/A3S-Lab/Gateway/blob/main/ROADMAP.md)
+
+## 性能证据
+
+已发布的 Criterion 基线来自提交
+[`bd56487`](https://github.com/A3S-Lab/Gateway/commit/bd56487d78a12474a3aa7d4806a5414beec1cab1)，
+运行环境为 Ubuntu 24.04、4 vCPU，宿主 CPU 为 AMD EPYC 7763。
+
+| 进程内操作 | 输入规模 | 中位数 | 95% 置信区间 |
+| --- | ---: | ---: | ---: |
+| 最高优先级路由匹配 | 1,000 条路由 | 199.3 ns | 198.4–200.5 ns |
+| 无匹配路由的完整扫描 | 1,000 条路由 | 29.484 µs | 29.445–29.506 µs |
+| 请求中间件处理链 | 10 个条目 | 1.730 µs | 1.729–1.731 µs |
+| 完整 ACL 解析 | 300 个服务与路由 | 6.800 ms | 6.769–6.818 ms |
+
+这些数字衡量进程内操作开销，不是端到端每秒请求数；不包含 socket、TLS、上游、响应
+body 和客户端成本。可查看[交互式结果及与传统网关的产品范围对比](https://a3s-lab.github.io/Gateway/#performance)、
+[基准运行](https://github.com/A3S-Lab/Gateway/actions/runs/30876947829)与
+[测试方法](https://github.com/A3S-Lab/Gateway/blob/main/benchmarks/README.md)。产品网站还提供
+[ACL 配置动画](https://a3s-lab.github.io/Gateway/#config)，逐块说明配置对应的运行时行为。
 
 ## 一条命令安装
 

@@ -36,7 +36,7 @@ Each block instance is named either with a string label (`routers "api" { ... }`
 | `services` | Backend pools, load balancing, scaling, traffic splitting |
 | `middlewares` | Reusable request/response processors |
 | `observability` | Metrics, access log, tracing toggles |
-| `management` | Dedicated dashboard / admin API listener |
+| `management` | Compatibility block for the machine-only Node API listener |
 | `providers` | Dynamic config sources (file / discovery / kubernetes / docker) |
 | `shutdown_timeout_secs` | Graceful shutdown timeout in seconds (default `30`) |
 
@@ -426,7 +426,7 @@ services "ai-model" {
 At runtime the autoscaler tick is hardcoded to 2 seconds, `in_flight` is reported as `0`, and the box executor URL is fixed to `http://localhost:9090` — so in practice only queued (scale-from-zero) requests drive scaling. `executor = "k8s"` falls back to the box executor at startup.
 </Callout>
 
-### Revisions and rollout
+### Revisions and rollout boundary
 
 Revision-based traffic splitting. The `traffic_percent` values across all revisions of a service **must sum to exactly 100** or config loading fails. Revisions accept an inline `revisions = [ { ... } ]` list, an object, or repeated `revision` / `revisions` child blocks.
 
@@ -438,14 +438,6 @@ pub struct RevisionConfig {
     pub strategy: Strategy,         // default: round-robin
 }
 
-pub struct RolloutConfig {
-    pub from: String,              // required, must name an existing revision
-    pub to: String,               // required, must name an existing revision
-    pub step_percent: u32,        // default: 10
-    pub step_interval_secs: u64,  // default: 60
-    pub error_rate_threshold: f64,// default: 0.05
-    pub latency_threshold_ms: u64,// default: 5000
-}
 ```
 
 ```text
@@ -462,20 +454,11 @@ services "api-service" {
       servers         = [{ url = "http://127.0.0.1:8002" }]
     }
   ]
-
-  rollout {
-    from                 = "v1"
-    to                   = "v2"
-    step_percent         = 10
-    step_interval_secs   = 60
-    error_rate_threshold = 0.05
-    latency_threshold_ms = 5000
-  }
 }
 ```
 
 <Callout type="warn">
-`rollout` is parsed and validated but **inert at runtime** in v1.0.11 — no loop drives the rollout controller, so `step_interval_secs`, `step_percent`, `error_rate_threshold`, and `latency_threshold_ms` have no live effect yet. Revision selection is deterministic weighted round-robin (not random).
+Automatic gradual rollout is unavailable in Gateway. The legacy `rollout {}` syntax is parsed only so validation can return an explicit unsupported-feature error. Use static `traffic_percent` weights; A3S Cloud owns production rollout orchestration. Revision selection is deterministic weighted round-robin (not random).
 </Callout>
 
 See [Services](./services) for load balancing, health, and scaling behavior in depth.
@@ -614,9 +597,11 @@ observability {
 
 There are no `otlp` / `sample_rate` / `propagation` / `service_name` keys in this block. See [Observability](./observability) for which metrics and trace formats are actually emitted in v1.0.11.
 
-## Management
+## Machine-only Node API
 
-The Dashboard / management API is an optional, dedicated listener (disabled by default, bound to `127.0.0.1:9090`) that never intercepts traffic entrypoints. There is **no separate `dashboard` block** — this is it. Requests are guarded in order: path-prefix match → IP allowlist → bearer token, with optional TLS/mTLS. Rejected requests and TLS handshake failures are retained in an in-memory audit ring buffer exposed at `{path_prefix}/events`.
+The historical `management` block is retained as the compatibility name for an optional, dedicated **Node API** listener (disabled by default and bound to `127.0.0.1:9090`). It never intercepts traffic entrypoints and does not provide an operator dashboard, configuration browser, route/service inventory, audit-event feed, raw ACL validation, or raw reload API. Human-facing operations belong to A3S Cloud.
+
+The bounded machine contract contains `GET /health`, `GET /metrics`, `GET /version`, `POST /snapshots/apply`, and `GET /snapshots/status`, all under `path_prefix`. Requests are guarded in order by path-prefix matching, IP allowlist, and bearer token, with optional TLS/mTLS.
 
 ```rust
 pub struct ManagementConfig {
@@ -646,7 +631,7 @@ pub struct ManagementTlsConfig {
 | `allowed_ips` | `[String]` | `["127.0.0.1", "::1"]` | CIDR or single IP. Omitting keeps loopback default; an explicit `[]` disables IP filtering. |
 | `tls` | block | none | Optional TLS / mTLS. |
 
-Management TLS keys:
+Node API TLS keys:
 
 | Key | Type | Default | Notes |
 |-----|------|---------|-------|
@@ -665,9 +650,9 @@ management {
   allowed_ips    = ["127.0.0.1", "::1"]
 
   tls {
-    cert_file           = "/etc/a3s/admin/server.crt"
-    key_file            = "/etc/a3s/admin/server.key"
-    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    cert_file           = "/etc/a3s/node/server.crt"
+    key_file            = "/etc/a3s/node/server.key"
+    client_ca_file      = "/etc/a3s/node/client-ca.crt"
     require_client_cert = true
     min_version         = "1.3"
   }
@@ -675,7 +660,7 @@ management {
 ```
 
 <Callout type="warn">
-If `auth_token_env` names a variable that is unset at startup, the management listener fails to start. Set `auth_token_env = ""` to disable bearer auth, or `allowed_ips = []` to disable IP filtering — these are distinct from omitting the keys.
+If `auth_token_env` names a variable that is unset at startup, the Node API listener fails to start. Set `auth_token_env = ""` to disable bearer auth, or `allowed_ips = []` to disable IP filtering — these are distinct from omitting the keys. Keep the listener private; A3S Cloud is its intended control-plane client.
 </Callout>
 
 ## Providers
@@ -867,7 +852,7 @@ middlewares "cors" {
   allowed_methods = ["GET", "POST"]
 }
 
-# Management API
+# Machine-only Node API
 management {
   enabled        = true
   auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"

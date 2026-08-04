@@ -36,7 +36,7 @@ pub struct GatewayConfig {
 | `services` | 后端池、负载均衡、扩缩容、流量切分 |
 | `middlewares` | 可复用的请求/响应处理器 |
 | `observability` | 指标、访问日志、追踪开关 |
-| `management` | 独立的 dashboard / 管理 API 监听器 |
+| `management` | 仅面向机器的 Node API 监听器兼容配置块 |
 | `providers` | 动态配置源（file / discovery / kubernetes / docker） |
 | `shutdown_timeout_secs` | 优雅关停超时（秒），默认 `30` |
 
@@ -426,7 +426,7 @@ services "ai-model" {
 在运行时，自动扩缩容 tick 被硬编码为 2 秒，`in_flight` 上报为 `0`，box executor URL 固定为 `http://localhost:9090`——因此实际上只有排队（从零扩容）的请求会驱动扩缩容。`executor = "k8s"` 在启动时回退到 box executor。
 </Callout>
 
-### Revision 与 rollout
+### Revision 与 rollout 边界
 
 基于 revision 的流量切分。一个服务所有 revision 的 `traffic_percent` 值**必须恰好加和为 100**，否则配置加载失败。Revision 接受内联 `revisions = [ { ... } ]` 列表、单个对象，或重复的 `revision` / `revisions` 子块。
 
@@ -438,14 +438,6 @@ pub struct RevisionConfig {
     pub strategy: Strategy,         // default: round-robin
 }
 
-pub struct RolloutConfig {
-    pub from: String,              // required, must name an existing revision
-    pub to: String,               // required, must name an existing revision
-    pub step_percent: u32,        // default: 10
-    pub step_interval_secs: u64,  // default: 60
-    pub error_rate_threshold: f64,// default: 0.05
-    pub latency_threshold_ms: u64,// default: 5000
-}
 ```
 
 ```text
@@ -462,20 +454,11 @@ services "api-service" {
       servers         = [{ url = "http://127.0.0.1:8002" }]
     }
   ]
-
-  rollout {
-    from                 = "v1"
-    to                   = "v2"
-    step_percent         = 10
-    step_interval_secs   = 60
-    error_rate_threshold = 0.05
-    latency_threshold_ms = 5000
-  }
 }
 ```
 
 <Callout type="warn">
-在 v1.0.11 中，`rollout` 会被解析和校验，但在运行时**处于惰性状态**——没有循环驱动 rollout 控制器，因此 `step_interval_secs`、`step_percent`、`error_rate_threshold` 和 `latency_threshold_ms` 目前尚无实际效果。Revision 选择采用确定性加权 round-robin（而非随机）。
+Gateway 当前不提供自动渐进发布。旧 `rollout {}` 语法仅被解析，以便校验返回明确的“不支持”错误。请使用静态 `traffic_percent` 权重；生产发布编排由 A3S Cloud 负责。Revision 选择采用确定性加权 round-robin（而非随机）。
 </Callout>
 
 负载均衡、健康检查和扩缩容行为的深入说明，参见 [服务](./services)。
@@ -614,9 +597,11 @@ observability {
 
 此块中没有 `otlp` / `sample_rate` / `propagation` / `service_name` 键。关于 v1.0.11 实际发出哪些指标和追踪格式，参见 [可观测性](./observability)。
 
-## 管理
+## 仅面向机器的 Node API
 
-Dashboard / 管理 API 是一个可选的、独立的监听器（默认禁用，绑定到 `127.0.0.1:9090`），它从不拦截业务流量入口。**没有单独的 `dashboard` 块**——这就是它。请求按顺序受保护：路径前缀匹配 → IP 允许列表 → bearer token，并可选 TLS/mTLS。被拒绝的请求和 TLS 握手失败会保留在内存审计环形缓冲区中，并在 `{path_prefix}/events` 处暴露。
+历史 `management` 块作为兼容名称保留，用于配置一个可选的专用 **Node API** 监听器（默认禁用并绑定到 `127.0.0.1:9090`）。它不会拦截业务流量入口，也不提供运维 Dashboard、配置浏览器、路由/服务清单、审计事件流、原始 ACL 校验或原始 reload API。面向人的运维能力归 A3S Cloud 所有。
+
+有界机器契约只包含 `GET /health`、`GET /metrics`、`GET /version`、`POST /snapshots/apply` 和 `GET /snapshots/status`，全部位于 `path_prefix` 下。请求依次经过路径前缀、IP 允许列表和 bearer token 检查，并可选 TLS/mTLS。
 
 ```rust
 pub struct ManagementConfig {
@@ -646,7 +631,7 @@ pub struct ManagementTlsConfig {
 | `allowed_ips` | `[String]` | `["127.0.0.1", "::1"]` | CIDR 或单个 IP。省略保留回环默认值；显式 `[]` 禁用 IP 过滤。 |
 | `tls` | block | 无 | 可选 TLS / mTLS。 |
 
-管理 TLS 键：
+Node API TLS 键：
 
 | 键 | 类型 | 默认值 | 说明 |
 |-----|------|---------|-------|
@@ -665,9 +650,9 @@ management {
   allowed_ips    = ["127.0.0.1", "::1"]
 
   tls {
-    cert_file           = "/etc/a3s/admin/server.crt"
-    key_file            = "/etc/a3s/admin/server.key"
-    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    cert_file           = "/etc/a3s/node/server.crt"
+    key_file            = "/etc/a3s/node/server.key"
+    client_ca_file      = "/etc/a3s/node/client-ca.crt"
     require_client_cert = true
     min_version         = "1.3"
   }
@@ -675,7 +660,7 @@ management {
 ```
 
 <Callout type="warn">
-如果 `auth_token_env` 指定的变量在启动时未设置，管理监听器将启动失败。设置 `auth_token_env = ""` 以禁用 bearer 鉴权，或 `allowed_ips = []` 以禁用 IP 过滤——这些与省略相应键是不同的。
+如果 `auth_token_env` 指定的变量在启动时未设置，Node API 监听器将启动失败。设置 `auth_token_env = ""` 以禁用 bearer 鉴权，或 `allowed_ips = []` 以禁用 IP 过滤——这些与省略相应键是不同的。应保持该监听器私有；其预期控制面客户端是 A3S Cloud。
 </Callout>
 
 ## 提供者
@@ -867,7 +852,7 @@ middlewares "cors" {
   allowed_methods = ["GET", "POST"]
 }
 
-# Management API
+# 仅面向机器的 Node API
 management {
   enabled        = true
   auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"

@@ -1,12 +1,14 @@
 ---
 title: A3S Gateway
-description: The traffic layer for AI-native services — SSE streaming, scale-to-zero, revision splitting and traffic mirroring, in a single Rust binary.
+description: A3S Gateway is the AI Native Traffic Layer for protocol routing, streaming, and local policy enforcement.
 ---
 
 
 # A3S Gateway
 
-A3S Gateway is the traffic layer for AI-native services. It is built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls), ships as a single statically-linked binary, and is configured exclusively in ACL (Agent Configuration Language). Configuration files must use the `.acl` extension — HCL, TOML, YAML, and JSON config files are rejected at load.
+A3S Gateway is the **AI Native Traffic Layer**. It is built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls), ships as a single statically-linked binary, and is configured exclusively in ACL (Agent Configuration Language). Configuration files must use the `.acl` extension — HCL, TOML, YAML, and JSON config files are rejected at load.
+
+[Performance evidence](https://a3s-lab.github.io/Gateway/#performance) · [Traditional-gateway scope comparison](https://a3s-lab.github.io/Gateway/#comparison) · [Animated ACL walkthrough](https://a3s-lab.github.io/Gateway/#config)
 
 This page is an orientation. Each capability below links to the page that documents it in full:
 
@@ -16,7 +18,7 @@ This page is an orientation. Each capability below links to the page that docume
 - [Routing](./routing) — Traefik-style rule matching and priority
 - [Middleware](./middleware/index) — the built-in request/response pipeline
 - [Services](./services) — load balancing, health checks, sticky sessions, failover, and AI-native scaling
-- [Observability](./observability) — Prometheus metrics, access logs, tracing, and the management API
+- [Observability](./observability) — Prometheus metrics, access logs, tracing, and the machine-only Node API
 - [Deployment](./deployment) — Docker, Helm/Kubernetes, Homebrew, Cargo
 
 ## Why A3S Gateway
@@ -42,7 +44,7 @@ A3S Gateway is designed for the right column:
 Everything else — routing, TLS, rate limiting, auth, Prometheus — is standard infrastructure that A3S Gateway includes so you don't need a second tool.
 
 <Callout type="info">
-**Gradual rollout** (`rollout { }`) is fully implemented and validated — `from`/`to` revisions, `step_percent`, `step_interval_secs`, and auto-rollback on `error_rate_threshold` / `latency_threshold_ms`. In v1.0.11 the rollout controller is **parsed and validated but not yet driven by a runtime loop**, so the config is inert at runtime. Use static [revision splitting](./services) to shift traffic manually today.
+**Automatic gradual rollout is unavailable.** The retained `rollout { }` syntax returns an explicit validation error. Use static [revision splitting](./services) to shift traffic manually today; A3S Cloud owns production rollout orchestration.
 </Callout>
 
 ## Architecture
@@ -146,7 +148,7 @@ pub enum GatewayState {
 - Scale-to-zero — Knative autoscaling formula with optional cold-start request buffering (`buffer_enabled`, off by default)
 - Revision splitting — deterministic weighted traffic split across named revisions (must sum to 100%)
 - Traffic mirroring — copy a percentage of live traffic to a shadow service, fire-and-forget
-- Gradual rollout — step-by-step traffic shift with auto-rollback on error rate or latency (implemented and validated; not yet driven at runtime in v1.0.11)
+- Automatic gradual rollout — unavailable in Gateway; use static revision weights while A3S Cloud owns production rollout orchestration
 
 **Core proxy** — see [Routing](./routing) and [Services](./services)
 - Traefik-compatible rule syntax — `Host()`, `Path()`, `PathPrefix()`, `Headers()`, `Method()`, joined with `&&` (AND only)
@@ -168,11 +170,11 @@ pub enum GatewayState {
 **Observability** — see [Observability](./observability)
 - Prometheus metrics — request counters per router / service / backend, response status classes, bytes, and active connections (in-process, dependency-free)
 - Distributed tracing — inbound W3C Trace Context and B3 / Zipkin extraction; outbound injects a W3C `traceparent`
-- Management / Dashboard API — optional dedicated listener (disabled by default, loopback-bound) with bearer token, IP allowlist, and optional TLS/mTLS
+- Machine-only Node API — bounded health, metrics, version, and managed-snapshot endpoints; no operator dashboard or configuration browser
 
 **Operations** — see [Deployment](./deployment)
 - Single statically-linked binary — no runtime dependencies, no OpenSSL
 - ACL-only configuration — human-readable, version-controlled (`.acl` extension required)
 - Hot reload via file watcher; optional file/discovery/kubernetes/docker config providers
 - Helm chart for Kubernetes, Docker image (`ghcr.io/a3s-lab/gateway`), Homebrew formula, `cargo install a3s-gateway`
-- Current release: **v1.0.11** (MSRV Rust 1.88); published Linux images/binaries enable the `kube` + `redis` features
+- MSRV Rust 1.88; see the [latest release](https://github.com/A3S-Lab/Gateway/releases/latest) for published artifacts and enabled features

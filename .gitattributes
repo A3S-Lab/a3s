@@ -1,5 +1,6 @@
 *.sh text eol=lf
 *.ps1 text eol=lf
+compat/cloud-stack.acl text eol=lf
 
 # Report the root repository as Rust on GitHub.
 * -linguist-detectable

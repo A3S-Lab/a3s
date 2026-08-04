@@ -72,7 +72,7 @@ After=network.target
 ExecStart=/usr/local/bin/a3s-gateway --config /etc/gateway/gateway.acl
 Restart=always
 User=a3s-gateway
-# Required only if the management listener uses bearer auth (default token env var):
+# Required only if the private Node API uses bearer auth (default token env var):
 # Environment=A3S_GATEWAY_ADMIN_TOKEN=...
 
 [Install]
@@ -99,16 +99,9 @@ a3s-gateway config --config gateway.acl middlewares   # list middleware names
 a3s-gateway config --config gateway.acl providers     # list enabled providers
 a3s-gateway config --config gateway.acl json          # full parsed config as JSON
 
-# Talk to a running management listener (see Management API below)
-a3s-gateway management events  --url http://127.0.0.1:9090/api/gateway
-a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
-a3s-gateway management reload   --url http://127.0.0.1:9090/api/gateway --file gateway.acl
-
 # Self-update
 a3s-gateway update
 ```
-
-`management` 子命令接受 `--token` / `--token-env` 用于 bearer 认证，以及 `--ca-cert` / `--client-cert` / `--client-key` 用于针对受 TLS 保护的管理监听器进行 TLS / mTLS 通信（此外还有 `--insecure`，仅用于本地诊断）。
 
 ## Docker
 
@@ -118,14 +111,14 @@ a3s-gateway update
 docker run -d \
   -v "$(pwd)/gateway.acl:/etc/gateway/gateway.acl" \
   -p 8080:8080 \
-  -p 9090:9090 \
   ghcr.io/a3s-lab/gateway:latest \
   --config /etc/gateway/gateway.acl
 ```
 
-该镜像 `EXPOSE` 了 `80 443 8080`。请映射你的 entrypoint 实际绑定的端口。上面的示例还发布了 `9090`，以便可访问可选的[管理监听器](#management-api--dashboard)。
+该镜像 `EXPOSE` 了 `80 443 8080`。只映射业务流量 entrypoint 实际绑定的端口。
+Cloud-managed 部署可以在独立内部网络暴露私有 Node API，但不应将它发布为运维端点。
 
-> **健康检查注意事项。** 该镜像自带一个 Docker `HEALTHCHECK`，它运行 `wget http://localhost:8080/health`。**数据平面并没有内置的 `/health` 端点** —— 只有当你为它定义了一个 router（或将其代理到某个上游）时，该路径才会成功。真正的健康端点位于*管理*监听器上的 `{path_prefix}/health`（默认为 `http://127.0.0.1:9090/api/gateway/health`），而不是在某个流量 entrypoint 上。对于编排系统，更推荐针对某个已绑定的 entrypoint 端口使用 **TCP** 就绪/存活探针（Helm chart 就是这么做的），或者将 HTTP 探针指向管理监听器的 `health` 端点。
+> **健康检查注意事项。** 该镜像自带一个 Docker `HEALTHCHECK`，它运行 `wget http://localhost:8080/health`。**数据平面并没有内置的 `/health` 端点** —— 只有当你为它定义了一个 router（或将其代理到某个上游）时，该路径才会成功。真正的健康端点位于仅面向机器的 Node API 监听器上的 `{path_prefix}/health`（默认为 `http://127.0.0.1:9090/api/gateway/health`），而不是在某个流量 entrypoint 上。对于编排系统，更推荐针对某个已绑定的 entrypoint 端口使用 **TCP** 就绪/存活探针（Helm chart 就是这么做的），或者将 HTTP 探针指向私有 Node API 的 `health` 端点。
 
 ### docker compose
 
@@ -136,12 +129,8 @@ services:
     command: ["--config", "/etc/gateway/gateway.acl"]
     ports:
       - "8080:8080"
-      - "9090:9090"   # management listener (optional)
     volumes:
       - ./gateway.acl:/etc/gateway/gateway.acl:ro
-    environment:
-      # Only needed if management.enabled = true with default bearer auth
-      A3S_GATEWAY_ADMIN_TOKEN: "${A3S_GATEWAY_ADMIN_TOKEN}"
     restart: unless-stopped
 ```
 
@@ -306,9 +295,11 @@ subjects:
 
 > 如果你将 `providers.kubernetes.namespace` 设置为某个特定命名空间，请将 `ClusterRole` 收窄为单个命名空间内的 `Role`/`RoleBinding`。
 
-## Management API / Dashboard
+## 仅面向机器的 Node API
 
-可选的管理监听器是一个**专用、独立**的 TCP socket（`management {}` 块；不存在单独的 `dashboard` 块）。它绝不会拦截用户流量。它**默认是禁用的**。
+可选 Node API 监听器是一个**专用、独立**的 TCP socket，通过历史 `management {}`
+兼容配置块定义。它绝不会拦截用户流量，并且**默认禁用**。它不是 Dashboard 或运维
+API：部署、发布、副本、租户和长期用量账本由 A3S Cloud 负责。
 
 ```text
 management {
@@ -318,7 +309,7 @@ management {
   auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"  # env var NAME holding the bearer token
   allowed_ips    = ["127.0.0.1", "::1"]  # default when key omitted
 
-  # Optional TLS / mTLS for the management listener:
+  # Optional TLS / mTLS for the Node API listener:
   tls {
     cert_file          = "/etc/gateway/tls/mgmt.crt"
     key_file           = "/etc/gateway/tls/mgmt.key"
@@ -331,12 +322,15 @@ management {
 
 行为说明：
 
-- `auth_token_env` 保存的是**某个环境变量的名称**，而不是 token 本身。如果该环境变量在启动时未设置，管理监听器将**启动失败**。设置 `auth_token_env = ""` 会完全禁用 bearer 认证。
+- `auth_token_env` 保存的是**某个环境变量的名称**，而不是 token 本身。如果该环境变量在启动时未设置，Node API 监听器将**启动失败**。设置 `auth_token_env = ""` 会完全禁用 bearer 认证。
 - `allowed_ips` 仅在**省略该键时**才默认为回环地址。提供该键会替换默认值；显式的 `allowed_ips = []` 会禁用 IP 过滤（允许全部）。
 - 请求按顺序检查：path-prefix → IP allowlist → bearer token。
 - `management.tls.min_version` 会被校验为恰好是 `"1.2"` 或 `"1.3"`（与 entrypoint TLS 不同，后者在配置时不做校验）。
 
-端点（全部位于 `{path_prefix}` 之下）：`GET health`、`GET metrics`（Prometheus 文本）、`GET config`、`GET routes` / `routes/{name}`、`GET services` / `services/{name}`、`GET backends`、`GET events`（`?limit=N`，默认 100，最大 500）、`GET version`，外加两个会产生变更的端点 `POST config/validate` 和 `POST config/reload`（请求体上限为 1 MiB）。
+有界端点全部位于 `{path_prefix}` 之下，只包含 `GET health`、`GET metrics`
+（Prometheus 文本）、`GET version`、`POST snapshots/apply` 和 `GET
+snapshots/status`。活跃配置、路由、服务、后端、审计事件、原始校验和原始 reload
+不会被暴露。
 
 ```bash
 # Set the token the env var refers to, then hit the API
@@ -367,14 +361,6 @@ providers {
 1. **热交换（不重新绑定）。** 如果 `old.entrypoints == new.entrypoints` 且双方都没有任何 UDP entrypoint，运行时状态会就地交换，而不触碰 socket（“Runtime state hot-swapped without rebinding ports”）。
 2. **增量重启。** 如果只有部分 HTTP/TCP entrypoint 发生变化（且没有 UDP），则只重新绑定新增/变化的监听器；未变化的监听器继续运行。
 3. **完全重启。** 任何 UDP entrypoint，或更大范围的变更，都会强制对所有监听器执行一次 abort-and-rebind。
-
-你也可以通过管理 API 远程触发重载：
-
-```bash
-a3s-gateway management reload \
-  --url http://127.0.0.1:9090/api/gateway \
-  --file gateway.acl
-```
 
 在 Helm 下运行时，编辑 `config` 值并执行 `helm upgrade`。由于配置是从 ConfigMap 挂载的，你必须触发 Pod 去拾取新文件（例如滚动重启，或依赖 Kubernetes 最终的 ConfigMap 投影加上 Pod 内的文件监视器）。
 
