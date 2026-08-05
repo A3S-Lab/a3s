@@ -29,7 +29,7 @@ interface WorkHomeProps {
   onOpenSidebar: () => void;
   onContinueSession?: () => void;
   onNewTask?: () => void;
-  onTaskSubmit: () => void;
+  onTaskSubmit: (content: string) => void;
   onOpenWorkspace: () => void;
   onCreate: (templateId: string) => void;
   onOpen: (id: string) => void;

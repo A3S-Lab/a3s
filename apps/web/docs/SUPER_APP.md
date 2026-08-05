@@ -15,9 +15,10 @@ A3S Web
     └── Settings
 ```
 
-Work is the first and default Activity Bar entry and owns `#home`. Coding is a
-file-handling scene inside Work. It is not a second product, route tree,
-sidebar, or session store.
+Work is the first and default Activity Bar entry. It owns `#home` for task
+preparation and `#conversation/<opaque-session-key>` for each durable task.
+Coding is a file-handling scene inside Work. It is not a second product, route
+tree, sidebar, or session store.
 
 ## Shell and product boundary
 
@@ -46,6 +47,9 @@ research behavior, or knowledge compilation.
 - The user chooses an outcome before implementation detail.
 - Work keeps one conversation list visible across home, files, Office, and
   code scenes.
+- A durable conversation is a canonical page, not a transient assistant pane.
+- The contextual AI Assistant appears only when a file, Office document, PDF,
+  or code editor is the primary object.
 - Product changes preserve the current Work session and draft.
 - Reversible naming and row actions remain inline.
 - Sensitive, destructive, conflicting, or compatibility-sensitive actions
@@ -77,7 +81,8 @@ without making the user choose between an Office app and a coding app.
 Open #home
 → describe an outcome or open a file
 → select visible context
-→ execute with the shared AI Assistant
+→ submit into #conversation/<session>
+→ supervise execution, decisions, and recovery on the conversation page
 → inspect evidence or a structured proposal
 → edit or approve explicitly
 → save and validate
@@ -164,7 +169,7 @@ Every handoff records:
 ┌──────┬────────────────────┬──────────────────────────────────────┐
 │ Bar  │ Product sidebar    │ Active product workspace             │
 │      │                    │                                      │
-│ Work │ Work conversations │ Home / files / Office / code + AI   │
+│ Work │ Work conversations │ Home / conversation / files / editors│
 │ Know │ Knowledge tree     │ Knowledge editor / reader            │
 │ Use  │ Activity objects   │ Verified plugin host                 │
 └──────┴────────────────────┴──────────────────────────────────────┘
@@ -177,19 +182,21 @@ collection with a second product sidebar.
 ## Route contract
 
 - `#home` — Work;
+- `#conversation/<opaque-session-key>` — durable Work task conversation;
 - `#knowledge` — Knowledge;
 - `#memory` — Memory;
 - `#plugins` — Marketplace;
 - `#plugin/<key>` — verified contribution;
 - `#settings/<tab>` — Settings.
 
-Work scene state is not encoded as a product-prefixed hash. Unknown or removed
-routes normalize to `#home`.
+File and editor scene state is not encoded as a product-prefixed hash. The
+durable conversation route is the one intentional Work subroute. Unknown,
+empty, or malformed routes normalize to `#home`.
 
 ## Delivery order
 
-1. Keep Work coherent: one route, one conversation list, and working file
-   handlers.
+1. Keep Work coherent: one canonical route family, one conversation list, and
+   working file handlers.
 2. Improve file management, inline operations, context transfer, and review.
 3. Complete knowledge creation and independent compilation workflows.
 4. Add vertical capabilities through verified packages and explicit handoffs.

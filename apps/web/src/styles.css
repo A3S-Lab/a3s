@@ -27,7 +27,7 @@
 @import "./styles/task-library.css";
 @import "./styles/new-task-preparation.css";
 @import "./styles/task-surface.css";
-@import "./styles/active-task-layout.css";
+@import "./styles/work-conversation.css";
 @import "./styles/task-runtime-floating-panel.css";
 @import "./styles/tool-calls.css";
 @import "./styles/tool-command.css";

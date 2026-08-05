@@ -1,0 +1,240 @@
+.work-conversation {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--a3s-panel);
+  container: work-conversation / inline-size;
+}
+
+.work-conversation-header {
+  position: relative;
+  z-index: 42;
+  display: flex;
+  height: 54px;
+  min-width: 0;
+  flex: 0 0 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--a3s-line);
+  background: var(--a3s-panel);
+}
+
+.work-conversation-leading,
+.work-conversation-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.work-conversation-leading {
+  flex: 1;
+  gap: 7px;
+}
+
+.work-conversation-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.work-conversation-back.ds-icon-button,
+.work-conversation-leading > .product-sidebar-open-button.ds-icon-button {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+}
+
+.work-conversation-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--a3s-blue) 10%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
+.work-conversation-identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.work-conversation-identity h1,
+.work-conversation-identity p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-conversation-identity h1 {
+  max-width: min(42vw, 520px);
+  margin: 0;
+  color: var(--a3s-ink);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.work-conversation-identity p {
+  display: flex;
+  max-width: min(42vw, 520px);
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--a3s-muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.work-conversation-identity p svg {
+  flex: 0 0 auto;
+}
+
+.work-conversation-status.ds-status-badge {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.work-conversation-actions .ds-button {
+  gap: 6px;
+}
+
+.work-conversation-body {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  animation: work-conversation-arrive 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.work-conversation-body > .task-runtime-floating-panel {
+  z-index: 24;
+  --task-runtime-panel-top: 8px;
+}
+
+.work-conversation-body > .execution-scroll-shell {
+  width: 100%;
+}
+
+.work-conversation .execution-column {
+  width: min(820px, calc(100% - 64px));
+  padding-top: 32px;
+}
+
+.work-conversation .task-welcome h1 {
+  margin-top: 0;
+}
+
+.work-conversation > .task-composer-dock {
+  z-index: 30;
+}
+
+.work-conversation-state-shell {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  padding: 32px;
+  place-items: center;
+}
+
+.work-conversation-state-shell .ds-state-view {
+  width: min(520px, 100%);
+}
+
+@keyframes work-conversation-arrive {
+  from {
+    opacity: 0.82;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@container work-conversation (max-width: 760px) {
+  .work-conversation-header {
+    height: auto;
+    min-height: 84px;
+    flex-basis: auto;
+    align-items: stretch;
+    padding: 8px 10px;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .work-conversation-actions {
+    min-height: 30px;
+    justify-content: flex-end;
+  }
+
+  .work-conversation-status {
+    margin-right: auto;
+  }
+
+  .work-conversation-identity h1,
+  .work-conversation-identity p {
+    max-width: none;
+  }
+
+  .work-conversation .execution-column {
+    width: min(calc(100% - 36px), 720px);
+    padding-top: 24px;
+  }
+
+  .work-conversation > .task-composer-dock.active {
+    padding: 16px 18px 12px;
+  }
+}
+
+@container work-conversation (max-width: 430px) {
+  .work-conversation-mark {
+    display: none;
+  }
+
+  .work-conversation-identity p {
+    display: none;
+  }
+
+  .work-conversation-actions .ds-button {
+    width: 32px;
+    min-width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .work-conversation-actions .ds-button > span {
+    display: none;
+  }
+
+  .work-conversation .execution-column {
+    width: calc(100% - 28px);
+  }
+
+  .work-conversation-state-shell {
+    padding: 24px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-conversation-body {
+    animation: none;
+  }
+}

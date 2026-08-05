@@ -185,8 +185,8 @@ function readNewTaskConfig(): NewTaskConfig {
     return { workspace: '', model: '', effort: 'medium', permissionMode: 'default', goal: '' };
   }
 }
-export function createTaskState(): TaskState {
-  const activeSessionId = readActiveTask();
+export function createTaskState(activeSessionOverride?: string | null): TaskState {
+  const activeSessionId = activeSessionOverride === undefined ? readActiveTask() : activeSessionOverride;
   const draftsByTask = readTaskDrafts();
   const activeDraft = draftsByTask[taskDraftKey(activeSessionId)];
   return {

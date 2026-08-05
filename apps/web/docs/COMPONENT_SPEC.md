@@ -11,7 +11,10 @@ Component rules:
 - one component owns one user-visible concern;
 - feature components receive typed actions and do not duplicate API clients;
 - Home, files, Office, and code are scenes inside Work;
-- one conversation list and one AI Assistant serve every Work scene;
+- one conversation list, one canonical conversation page, and one shared task
+  state serve every Work scene;
+- `WorkCopilot` is contextual to file/editor scenes and is not the destination
+  for Home submission or task selection;
 - inline interactions own reversible naming and row mutations;
 - dialogs are reserved for destructive, conflicting, or compatibility-sensitive
   decisions;
@@ -26,12 +29,15 @@ App
 └── AppShell
     ├── ActivityBar
     ├── ProductWorkspace
-    │   ├── WorkProduct                  #home
+    │   ├── WorkProduct                  #home / #conversation/<session>
     │   │   ├── TaskLibrary              unified conversation list
     │   │   ├── WorkHome
     │   │   │   ├── WorkHomeHero
     │   │   │   │   └── TaskComposer
     │   │   │   └── WorkLibraryCards
+    │   │   ├── WorkConversation
+    │   │   │   ├── ExecutionStream / TaskRuntimeFloatingPanel
+    │   │   │   └── TaskComposer
     │   │   ├── WorkFilesWorkspace
     │   │   │   ├── WorkFilesSidebar
     │   │   │   ├── WorkFilesView
@@ -88,7 +94,8 @@ without discarding unsaved client state.
 **Role:** open Work, Knowledge, verified plugin contributions, Memory,
 Marketplace, and Settings.
 
-**Contract:** Work is first, selected by default, and navigates to `#home`.
+**Contract:** Work is first, selected by default, and its Activity Bar action
+navigates to `#home`. Durable task links use `#conversation/<session>`.
 Knowledge follows Work. Memory, Marketplace, and Settings remain pinned in the
 system group. There is no separate coding or Office icon.
 
@@ -112,16 +119,17 @@ inside the affected row, with Enter/Escape behavior and inline failure state.
 
 **Data contract:** render the unified session catalog, including historical
 sessions created before the product merge. New conversations use the default
-agent. Selecting a session restores its workspace and opens the shared AI
-Assistant without changing route.
+agent. Selecting a session restores its workspace and opens its canonical
+conversation route.
 
 ### `TaskComposer`
 
 **Role:** collect a goal, context, Skills, execution mode, model, and effort,
 then submit or queue it through the durable task controller.
 
-**Contract:** the home and AI Assistant instances read and write the same
-active draft. `@` file, `$` Skill, and built-in `/` command suggestions,
+**Contract:** the Home, conversation-page, and contextual AI Assistant instances
+read and write the same active draft. `@` file, `$` Skill, and built-in `/`
+command suggestions,
 drag-and-drop context, workspace
 selection, keyboard submission, queue state, and recovery behave consistently.
 
@@ -144,15 +152,28 @@ actions open a supported Work file scene; controls that require a retired
 workspace are not rendered. Streaming updates stay scoped to their originating
 session.
 
+### `WorkConversation`
+
+**Role:** own the full-center, reload-safe task conversation addressed by
+`#conversation/<opaque-session-key>`.
+
+**Contract:** render only when the requested route session exists and is active;
+otherwise show opening, service-recovery, or missing-task state without leaking
+another transcript. Keep task identity/status, `ExecutionStream`,
+`TaskRuntimeFloatingPanel`, and the active `TaskComposer` in one responsive
+surface. It never mounts `WorkCopilot`.
+
 ## Work scene owner
 
 ### `WorkProduct`
 
-**Role:** own `#home`, the conversation sidebar, Work scene selection, and the
-left-side AI Assistant beside the right-side workspace.
+**Role:** own the Work route family, conversation sidebar, scene selection,
+Home-to-conversation handoff, and contextual assistant beside file/editor
+workspaces.
 
-**Scene priority:** an active Office artifact renders `WorkEditorShell`; open
-code/text tabs render `WorkCodeWorkspace`; otherwise the persisted library or
+**Scene priority:** a conversation route renders `WorkConversation` before any
+stale file state. Otherwise an active Office artifact renders `WorkEditorShell`;
+open code/text tabs render `WorkCodeWorkspace`; then the persisted library or
 local-files surface renders.
 
 **Continuity:** scene changes preserve the same active session and draft. A
@@ -172,9 +193,10 @@ inline; permanent deletion remains confirmed.
 
 **Role:** frame the user's intended outcome and host the production composer.
 
-**Contract:** starters populate an editable draft. Submission opens the shared
-AI Assistant exactly once. The hero does not imitate unavailable media or
-remote-generation features.
+**Contract:** starters populate an editable draft. Submission opens the active
+session route immediately or waits for the newly created durable session key;
+failure remains on Home. The hero never opens the contextual assistant and does
+not imitate unavailable media or remote-generation features.
 
 ## Local file scene
 
@@ -248,12 +270,14 @@ against live targets before application.
 
 ### `WorkCopilot`
 
-**Role:** host the shared AI Assistant beside any Work scene.
+**Role:** host the shared contextual AI Assistant beside a file, Office, PDF, or
+code scene.
 
 **Contract:** bind to the selected workspace, render only the active compatible
 session, and use the unified composer and execution stream. New conversation
 creates a default-agent session in the same sidebar. At compact desktop widths
-the assistant becomes an overlay instead of squeezing the editor.
+the assistant becomes an overlay instead of squeezing the editor. It is absent
+from Home and `WorkConversation`.
 
 ## Knowledge and Memory
 

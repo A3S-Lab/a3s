@@ -55,6 +55,20 @@ describe('resolveTaskRuntimePanelPlacement', () => {
 
     expect(placement).toEqual({ contentMaxHeight: 642, top: 54 });
   });
+
+  it('uses the conversation body as its containing block on a short stacked surface', () => {
+    const placement = resolveTaskRuntimePanelPlacement({
+      composerTop: 520,
+      instruction: null,
+      pane: rect({ bottom: 520, left: 52, right: 390, top: 84 }),
+      panelHeight: 484,
+      panelHeaderHeight: 54,
+      panelWidth: 306,
+      topInset: 8,
+    });
+
+    expect(placement).toEqual({ contentMaxHeight: 360, top: 8 });
+  });
 });
 
 describe('resolveTaskRuntimePanelLayout', () => {

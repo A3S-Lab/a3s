@@ -122,7 +122,6 @@ function TaskWelcome() {
   return (
     <section className='task-welcome'>
       <img src='/logo.png' alt='' />
-      <span className='eyebrow'>A3S</span>
       <h1>交给 A3S 一个明确任务</h1>
       <p>描述目标、约束和验收条件。执行计划、工具调用、权限和交付结果会在同一条工作流中持续更新。</p>
     </section>

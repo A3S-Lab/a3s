@@ -1,8 +1,11 @@
 import { proxy } from 'valtio';
 import {
+  conversationHash,
   type CodeShellState,
   createCodeShellState,
+  parseShellLocation,
   type ProductId,
+  type ShellLocation,
   type TaskView,
   type ThemePreference,
   type ToastState,
@@ -16,7 +19,9 @@ import {
   createSettingsState,
   type SettingsState,
   type SettingsTab,
+  settingsChannelFromHash,
   settingsHashForTab,
+  settingsTabFromHash,
 } from '../features/settings/settings-state';
 import { rememberTaskContextFocus, restoreTaskContextFocus } from '../features/tasks/task-context-focus';
 import {
@@ -40,7 +45,7 @@ import {
 } from '../features/workspace/workspace-state';
 import type { CodeSession } from '../types/api';
 
-export type { ProductId, TaskView, ThemePreference } from '../features/code/code-state';
+export type { ProductId, TaskView, ThemePreference, WorkRoute } from '../features/code/code-state';
 
 type AppState = CodeShellState &
   TaskState &
@@ -57,7 +62,9 @@ const themeStorageKey = 'a3s-code-web.theme';
 let modelChangeNoticeId = 0;
 
 const initialShellState = createCodeShellState();
-const initialTaskState = createTaskState();
+const initialTaskState = createTaskState(
+  initialShellState.workRoute === 'conversation' ? initialShellState.conversationSessionId : undefined
+);
 const initialTaskKey = taskDraftKey(initialTaskState.activeSessionId);
 const initialWorkspaceState = createWorkspaceState(initialTaskKey);
 const initialWorkspaceSnapshot = initialWorkspaceState.workspaceSnapshotsByTask[initialTaskKey];
@@ -321,14 +328,73 @@ export function appendTaskInstruction(content: string): void {
   appState.composerValue = [appState.composerValue.trim(), content.trim()].filter(Boolean).join('\n\n');
 }
 
+type WorkNavigationHistory = 'push' | 'replace';
+
+export function navigateConversation(
+  sessionId: string,
+  { history = 'push' }: { history?: WorkNavigationHistory } = {}
+): void {
+  appState.settingsOpen = false;
+  appState.commandPaletteOpen = false;
+  appState.fileQuickOpenOpen = false;
+  appState.activeProduct = 'work';
+  appState.workRoute = 'conversation';
+  appState.conversationSessionId = sessionId;
+  const hash = conversationHash(sessionId);
+  writeRoute(hash, history === 'push' && window.location.hash === hash ? 'replace' : history);
+}
+
+export function navigateWorkHome({ history = 'replace' }: { history?: WorkNavigationHistory } = {}): void {
+  appState.settingsOpen = false;
+  appState.commandPaletteOpen = false;
+  appState.fileQuickOpenOpen = false;
+  appState.activeProduct = 'work';
+  appState.workRoute = 'home';
+  appState.conversationSessionId = null;
+  writeRoute('#home', history);
+}
+
+export function syncShellRouteFromLocation(): ShellLocation {
+  const requested = parseShellLocation(window.location.hash);
+  const route = requested.valid ? requested : parseShellLocation('#home');
+  if (!requested.valid) window.history.replaceState(null, '', '#home');
+
+  if (route.settingsOpen) {
+    appState.settingsOpen = true;
+    const settingsTab = settingsTabFromHash(window.location.hash);
+    const settingsChannel = settingsChannelFromHash(window.location.hash);
+    if (settingsTab) appState.settingsTab = settingsTab;
+    if (settingsChannel) appState.settingsChannel = settingsChannel;
+    return route;
+  }
+
+  appState.settingsOpen = false;
+  appState.commandPaletteOpen = false;
+  appState.fileQuickOpenOpen = false;
+  appState.activeProduct = route.activeProduct;
+  if (route.activeProduct === 'work') {
+    appState.workRoute = route.workRoute;
+    appState.conversationSessionId = route.conversationSessionId;
+  }
+  if (route.activeProduct === 'plugin' && route.pluginKey) appState.activePluginKey = route.pluginKey;
+  return route;
+}
+
+function writeRoute(hash: string, history: WorkNavigationHistory): void {
+  if (history === 'push') window.history.pushState(null, '', hash);
+  else window.history.replaceState(null, '', hash);
+}
+
 export function navigateTask(view: TaskView): void {
   const previousView = appState.taskView;
   if (previousView === 'conversation' && view !== 'conversation') rememberTaskContextFocus(view);
-  appState.settingsOpen = false;
-  appState.activeProduct = 'work';
   if (view === 'conversation') appState.workspacePresentation = 'docked';
   appState.taskView = view;
-  window.history.replaceState(null, '', '#home');
+  if (view === 'conversation' && appState.activeSessionId) {
+    navigateConversation(appState.activeSessionId, { history: 'replace' });
+  } else {
+    navigateWorkHome({ history: 'replace' });
+  }
   if (previousView !== 'conversation' && view === 'conversation') restoreTaskContextFocus(previousView);
 }
 
@@ -356,6 +422,10 @@ export function navigateProduct(product: ProductId): void {
   }
   if (product === 'knowledge') {
     navigateKnowledge();
+    return;
+  }
+  if (product === 'work') {
+    navigateWorkHome({ history: 'replace' });
     return;
   }
   appState.settingsOpen = false;
@@ -435,7 +505,9 @@ export function closeSettings(): void {
           ? '#knowledge'
           : appState.activeProduct === 'memory'
             ? '#memory'
-            : '#home'
+            : appState.workRoute === 'conversation' && appState.conversationSessionId
+              ? conversationHash(appState.conversationSessionId)
+              : '#home'
   );
 }
 

@@ -119,7 +119,7 @@ describe('Web-native session experiences', () => {
 
     fireEvent.keyDown(editor, { key: 'Enter' });
     expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(onSubmitStart).toHaveBeenCalledTimes(1);
+    expect(onSubmitStart).toHaveBeenCalledWith('Run the focused test');
     fireEvent.keyDown(editor, { key: 'Enter', shiftKey: true });
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(onSubmitStart).toHaveBeenCalledTimes(1);

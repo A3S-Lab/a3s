@@ -10,7 +10,8 @@ Describe → inspect context → execute → review evidence → edit → valida
 
 Work is the only task workbench. File management, Office editing, coding, and
 AI execution are scenes within Work, not separate products or conversation
-stores. The canonical Work route is `#home`.
+stores. `#home` is the canonical task entry and
+`#conversation/<opaque-session-key>` is the canonical durable conversation.
 
 The current release supports one local user, multiple durable conversations,
 one active local workspace per conversation, and optional A3S OS connectivity.
@@ -20,7 +21,8 @@ It is desktop-first and remains useful without an A3S OS account.
 
 | Route | Surface |
 | --- | --- |
-| `#home` | Unified Work home and all Work scenes |
+| `#home` | Unified Work home and contextual file/editor scenes |
+| `#conversation/<opaque-session-key>` | Independent durable task conversation |
 | `#memory` | Memory exploration |
 | `#knowledge` | Knowledge-base management and editing |
 | `#plugins` | Verified plugin marketplace |
@@ -28,8 +30,9 @@ It is desktop-first and remains useful without an A3S OS account.
 | `#settings/<tab>` | Settings dialog over the current product |
 | `#settings/channels/<channel>` | Channel settings |
 
-Unknown and removed product-prefixed routes normalize to `#home`. A scene
-change inside Work does not create a route or a second product identity.
+Unknown, empty, malformed, and removed product-prefixed routes normalize to
+`#home`. File/editor scene changes do not create a route or a second product
+identity; the durable conversation route is the intentional exception.
 
 ## Functional success criteria
 
@@ -38,6 +41,8 @@ change inside Work does not create a route or a second product identity.
 - The left sidebar always represents the same conversation collection.
 - Home, files, Office editors, and code editors preserve the same active
   conversation, draft, context, queue, model, effort, and workspace.
+- Home submission and task-list selection enter exactly one independent
+  conversation page; the contextual file assistant is never their destination.
 - Every running conversation reports whether it is waiting, executing,
   interrupted, failed, or complete.
 - File context is visible before submission and destructive changes remain
@@ -53,9 +58,10 @@ change inside Work does not create a route or a second product identity.
 
 ```mermaid
 flowchart TB
-    Work[Work at #home]
+    Work[Work route family]
     Work --> Sessions[Unified conversation list]
     Work --> Home[AI-native home]
+    Work --> Conversation[Durable conversation page]
     Work --> Files[Local file manager]
     Work --> Office[Office and PDF handlers]
     Work --> Code[Code and text editor]
@@ -64,7 +70,8 @@ flowchart TB
     Office --> Context
     Code --> Context
     Context --> Compose
-    Compose --> Execute[AI execution and decisions]
+    Compose --> Conversation
+    Conversation --> Execute[AI execution and decisions]
     Execute --> Evidence[Evidence and proposals]
     Work --> Knowledge[Knowledge]
     Work --> Memory[Memory]
@@ -75,6 +82,8 @@ flowchart TB
 - Bootstrap health, account state, model catalog, conversations, workspace,
   plugin catalog, and product-specific data from the local service.
 - Default an empty or unknown location to `#home`.
+- Decode a conversation route before bootstrap, restore the addressed session
+  on refresh and browser history, and show a truthful missing-session state.
 - Keep Work as the first and only task entry in the Activity Bar. Knowledge and
   enabled plugin contributions follow; Memory, Marketplace, and Settings stay
   in the system section.
@@ -82,7 +91,7 @@ flowchart TB
   state. Raw request details remain collapsed.
 - Keep unsaved browser state available while the service is disconnected.
 - Settings opens over the active product and closes back to its canonical
-  route.
+  route, including an active conversation.
 
 Acceptance: neither startup nor browser navigation can expose the deleted Code
 or Office product shells.
@@ -95,6 +104,8 @@ or Office product shells.
 - Persist one active conversation key and one new-conversation draft.
 - Search, select, rename, and delete conversations directly in the sidebar;
   rename and delete recovery remain in the affected row.
+- Selecting a conversation opens `#conversation/<opaque-session-key>` and never
+  mounts the contextual `WorkCopilot` as the primary surface.
 - Preserve drafts, selected context, model, effort, queue state, and workspace
   when switching conversations.
 - Correlate asynchronous conversation creation with its initiating draft so a
@@ -113,8 +124,9 @@ selecting a historical conversation restores its own workspace and draft.
   spreadsheet, or presentation; open files; prepare analysis or organization
   drafts; and enter the local file workspace.
 - Keep prompt starters editable and never auto-send them.
-- Start with the shared AI Assistant beside the workspace, persist an explicit
-  close choice, and reopen it when a home task is submitted.
+- Keep Home free of the contextual AI Assistant. Existing tasks navigate
+  immediately; new tasks navigate only after receiving a durable session key.
+  Failed creation or submission stays recoverable with the draft intact.
 - Keep templates, folders, and recent files available below the composer.
 
 ## F4 — Local file management
@@ -209,6 +221,7 @@ selecting a historical conversation restores its own workspace and draft.
 - Deleted shells and routes have no navigation entry or mount path.
 - Type checking, linting, formatting, focused tests, full tests, and production
   build pass from `apps/web`.
-- Browser regression covers `#home`, conversation switching, file entry,
+- Browser regression covers `#home`, the durable conversation route, browser
+  history and deep-link recovery, conversation switching, file entry,
   Office and code scenes, `#memory`, `#knowledge`, Settings, and removed-route
   normalization.

@@ -5,6 +5,7 @@ export type BootPhase = 'loading' | 'ready' | 'error';
 export type ServiceStatus = 'connected' | 'checking' | 'disconnected';
 export type ProductId = 'work' | 'memory' | 'knowledge' | 'plugin' | 'plugins';
 export type TaskView = 'conversation' | 'review' | 'activity';
+export type WorkRoute = 'home' | 'conversation';
 export interface ToastState {
   id: number;
   tone: 'info' | 'success' | 'error';
@@ -18,6 +19,8 @@ export interface CodeShellState {
   health: HealthResponse | null;
   theme: ThemePreference;
   activeProduct: ProductId;
+  workRoute: WorkRoute;
+  conversationSessionId: string | null;
   sidebarOpen: boolean;
   taskView: TaskView;
   settingsOpen: boolean;
@@ -26,20 +29,59 @@ export interface CodeShellState {
   toast: ToastState | null;
 }
 
-function readActiveProduct(): ProductId {
-  if (window.location.hash.startsWith('#plugin/')) return 'plugin';
-  if (window.location.hash === '#plugins') return 'plugins';
-  if (window.location.hash === '#knowledge') return 'knowledge';
-  if (window.location.hash === '#memory') return 'memory';
-  if (
-    window.location.hash !== '#home' &&
-    window.location.hash !== '#settings' &&
-    !window.location.hash.startsWith('#settings/')
-  ) {
-    window.history.replaceState(null, '', '#home');
-  }
-  return 'work';
+export interface ShellLocation {
+  activeProduct: ProductId;
+  workRoute: WorkRoute;
+  conversationSessionId: string | null;
+  pluginKey: string | null;
+  settingsOpen: boolean;
+  valid: boolean;
 }
+
+export function conversationHash(sessionId: string): string {
+  if (!sessionId.trim()) throw new Error('Conversation routes require a session id.');
+  return `#conversation/${encodeURIComponent(sessionId)}`;
+}
+
+export function parseShellLocation(hash: string): ShellLocation {
+  const workHome: ShellLocation = {
+    activeProduct: 'work',
+    workRoute: 'home',
+    conversationSessionId: null,
+    pluginKey: null,
+    settingsOpen: false,
+    valid: true,
+  };
+  if (hash === '#home') return workHome;
+  if (hash === '#settings' || hash.startsWith('#settings/')) {
+    return { ...workHome, settingsOpen: true };
+  }
+  if (hash === '#memory') return { ...workHome, activeProduct: 'memory' };
+  if (hash === '#knowledge') return { ...workHome, activeProduct: 'knowledge' };
+  if (hash === '#plugins') return { ...workHome, activeProduct: 'plugins' };
+  if (hash.startsWith('#plugin/')) {
+    const pluginKey = decodeRouteValue(hash.slice('#plugin/'.length));
+    return pluginKey ? { ...workHome, activeProduct: 'plugin', pluginKey } : { ...workHome, valid: false };
+  }
+  if (hash.startsWith('#conversation/')) {
+    const conversationSessionId = decodeRouteValue(hash.slice('#conversation/'.length));
+    return conversationSessionId
+      ? { ...workHome, workRoute: 'conversation', conversationSessionId }
+      : { ...workHome, valid: false };
+  }
+  return { ...workHome, valid: false };
+}
+
+function decodeRouteValue(value: string): string | null {
+  if (!value) return null;
+  try {
+    const decoded = decodeURIComponent(value);
+    return decoded.trim() ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
 function readTheme(): ThemePreference {
   try {
     const value = localStorage.getItem('a3s-code-web.theme');
@@ -48,10 +90,9 @@ function readTheme(): ThemePreference {
     return 'system';
   }
 }
-function readSettingsOpen() {
-  return window.location.hash === '#settings' || window.location.hash.startsWith('#settings/');
-}
 export function createCodeShellState(): CodeShellState {
+  const location = parseShellLocation(window.location.hash);
+  if (!location.valid) window.history.replaceState(null, '', '#home');
   return {
     bootPhase: 'loading',
     bootError: null,
@@ -59,10 +100,12 @@ export function createCodeShellState(): CodeShellState {
     serviceError: null,
     health: null,
     theme: readTheme(),
-    activeProduct: readActiveProduct(),
+    activeProduct: location.activeProduct,
+    workRoute: location.workRoute,
+    conversationSessionId: location.conversationSessionId,
     sidebarOpen: true,
     taskView: 'conversation',
-    settingsOpen: readSettingsOpen(),
+    settingsOpen: location.settingsOpen,
     commandPaletteOpen: false,
     fileQuickOpenOpen: false,
     toast: null,

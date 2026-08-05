@@ -44,20 +44,23 @@ surfaces. They do not repeat the home hero.
 
 - A fresh A3S Web installation opens the AI home. An explicit previous choice to
   use the local-files surface is still restored.
-- The left-side AI Assistant starts open beside the right-side workspace. An
-  explicit close choice is persisted, and task submission reopens it when needed.
-- The home composer and the assistant use the same task draft and durable
-  runtime. Keyboard submission and the send button follow the same path.
+- Home does not mount the contextual AI Assistant. After an existing session is
+  submitted, or a new session receives its durable key, Work enters
+  `#conversation/<opaque-session-key>`.
+- The Home and conversation composers use the same task draft and durable
+  runtime. Keyboard submission and the send button follow the same path. A
+  creation failure remains on Home with the draft and selected context intact.
 - Selecting an existing task keeps the composer available for a follow-up.
-  Starting a different outcome is always an explicit New task action, so task
-  transcripts do not blend unrelated results.
+  Resume opens that task's dedicated conversation page. Starting a different
+  outcome is always an explicit New task action, so transcripts do not blend.
 - Workspace identity is persistent context, not an advanced setting. The full
   path remains visible before a new task is submitted.
 - Defaults carry the common path. Model choice, inference effort, deep research,
   and context maintenance remain available without competing with Send.
 - Home, files, Office editing, and code editing are scenes in one Work product.
-  They share one conversation list, active session, draft, context, queue, and
-  default agent. Scene changes never create or restore a second hidden session.
+  The conversation page and contextual file assistant share the same
+  conversation list, active session, draft, context, queue, and default agent.
+  Scene changes never create or restore a second hidden session.
 - Asynchronous session creation is correlated with the draft that initiated it,
   so a late response cannot replace a conversation the user selected while the
   request was in flight.
@@ -80,8 +83,10 @@ Implemented in the first release:
 - User-facing Knowledge and Settings terminology that describes outcomes before
   implementation details.
 - Real capability shortcuts with no placeholder media features.
-- Task-submit-to-assistant transition.
-- Default home and shared assistant/workspace split behavior.
+- Task-submit-to-independent-conversation transition.
+- Reload-safe conversation route, browser-history restoration, and truthful
+  missing-session recovery.
+- Contextual assistant limited to file, Office, PDF, and code scenes.
 - Existing templates and file library preserved below the task entry.
 - Responsive layouts for a narrow Work pane and a 360 px viewport, plus dark
   theme support and keyboard-accessible controls.
@@ -111,7 +116,7 @@ Implemented in the first release:
 - Share of home sessions that start a task, open an existing file, or create an
   artifact without navigation detours.
 - Task submission failure and recovery rate.
-- Assistant close/reopen rate after home submission.
+- Successful Home-to-conversation transition and deep-link recovery rate.
 - Keyboard completion and narrow-pane overflow regressions.
 
 ## Release acceptance
@@ -123,11 +128,12 @@ Implemented in the first release:
 - An active task never replaces or hides the composer, and New task is available
   beside the current-task strip.
 - The selected workspace name and path are visible before task submission.
-- Starting a task keeps or reopens the shared AI Assistant without creating a
-  second conversation.
+- Starting a task enters exactly one independent conversation page without
+  opening the contextual assistant or creating a second conversation.
 - Switching among home, files, Office, and code scenes preserves the same
   session ID and draft, including when session creation completes in flight.
-- `#home` is the only Work route; removed product-prefixed routes are not
+- `#home` is the Work entry and `#conversation/<opaque-session-key>` is the only
+  durable Work subroute; removed or malformed product-prefixed routes are not
   retained.
 - Non-home library views retain direct file-management behavior.
 - The page has no horizontal overflow at 360 px and remains legible in light and

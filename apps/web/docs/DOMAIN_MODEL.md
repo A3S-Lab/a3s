@@ -2,21 +2,24 @@
 
 ## Work product
 
-Work is the single task product at `#home`.
+Work is the single task product. `#home` is its outcome-first entry and
+`#conversation/<opaque-session-key>` addresses a durable conversation.
 
 ```text
 Work
 ├── unified conversations
+├── canonical conversation page
 ├── active workspace
 ├── home and managed artifacts
 ├── local filesystem
 ├── Office/PDF handlers
 ├── code/text handler
-└── AI Assistant
+└── contextual file AI Assistant
 ```
 
-Home, files, Office, and code are presentation scenes. They do not own product
-identity, routes, or separate session stores.
+Home, the conversation page, files, Office, and code are presentation scenes.
+Only the durable conversation has its own Work subroute; no scene owns a second
+product identity or session store.
 
 ## Workspace
 
@@ -68,8 +71,9 @@ Draft
 └── execution mode
 ```
 
-The Home composer and AI Assistant edit the same active draft. Switching Work
-scenes does not snapshot or replace it; switching conversations does.
+The Home composer, conversation-page composer, and contextual file assistant
+edit the same active draft. Switching Work scenes does not snapshot or replace
+it; switching conversations does.
 
 ## Turn
 
@@ -223,19 +227,23 @@ stale successful data available.
 
 ```text
 ProductId = work | memory | knowledge | plugins | plugin
+WorkRoute = home | conversation
+conversationSessionId = opaque session key | null
 ```
 
 Work scene selection is not part of `ProductId`. Settings is an overlay with a
-canonical tab route and closes back to the underlying product.
+canonical tab route and closes back to the underlying product route, including
+an addressed conversation.
 
 ## State ownership
 
 - The service owns sessions, messages, execution controls, output, disk files,
   repository truth, durable Knowledge, and durable Memory.
-- shared client state owns the active product, unified conversation selection,
-  drafts, queues, workspace snapshots, overlays, and request guards;
-- `WorkProduct` owns current Work scene, local code tabs, and AI Assistant
-  presentation;
+- shared client state owns the active product, Work route, addressed and active
+  conversation selection, drafts, queues, workspace snapshots, overlays, and
+  request guards;
+- `WorkProduct` owns current Work scene, Home-to-conversation transition, local
+  code tabs, and contextual AI Assistant presentation;
 - file and editor controllers own their bounded operation state;
 - local storage is best effort for theme, active conversation, drafts, safe
   workspace continuity, and Work presentation preferences;

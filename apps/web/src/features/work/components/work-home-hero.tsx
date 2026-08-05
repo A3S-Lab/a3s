@@ -22,7 +22,7 @@ interface WorkHomeHeroProps {
   activeSessionTitle?: string | null;
   onContinueSession?: () => void;
   onNewTask?: () => void;
-  onTaskSubmit: () => void;
+  onTaskSubmit: (content: string) => void;
   onCreate: (templateId: string) => void;
   onImport: () => void;
   onOpenWorkspace: () => void;

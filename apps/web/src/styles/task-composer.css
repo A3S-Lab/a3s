@@ -144,7 +144,7 @@
 .task-prompt-editor-content p.is-editor-empty:first-child::before {
   height: 0;
   float: left;
-  color: var(--a3s-faint);
+  color: var(--a3s-muted);
   content: attr(data-placeholder);
   pointer-events: none;
 }

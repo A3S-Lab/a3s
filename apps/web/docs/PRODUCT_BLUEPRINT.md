@@ -7,14 +7,15 @@ outcome, work directly with real files, supervise execution, and retain control
 of every meaningful change.
 
 The product is not a generic chat client and does not make Office and coding
-compete as separate destinations. Work at `#home` is the single task surface;
-file type and user intent determine the scene.
+compete as separate destinations. Work at `#home` is the single task entry;
+each durable outcome continues at `#conversation/<opaque-session-key>`, and file
+type plus user intent determine any contextual editor scene.
 
 ## Product principles
 
 1. **Outcome first.** The home composer asks what the user wants to accomplish.
-2. **One work identity.** Home, files, Office, code, and AI use one conversation
-   list and one active draft.
+2. **One work identity.** Home, the canonical conversation page, files, Office,
+   code, and contextual AI use one conversation list and one active draft.
 3. **Real files remain visible.** Local paths and source fingerprints are
    user-facing identities, not implementation details hidden behind uploads.
 4. **Review before consequence.** Sensitive tool use, destructive filesystem
@@ -34,7 +35,8 @@ Open #home
 → describe an outcome, resume a conversation, or open a file
 → inspect and select context
 → submit through the shared composer
-→ supervise execution and decisions in the AI Assistant
+→ enter #conversation/<session>
+→ supervise execution, decisions, and recovery in the full Work center
 → open resulting files in the applicable Work scene
 → edit, review, save, and validate
 → optionally package selected sources into Knowledge
@@ -71,19 +73,21 @@ them. New sessions use the default agent.
 The center renders one scene at a time:
 
 - AI-native home and managed artifact library;
+- dedicated task conversation;
 - local file manager;
 - Office/PDF editor;
 - code/text/Markdown editor.
 
-The active scene is local UI state. It does not change the canonical Work route
-or conversation identity.
+File and editor scenes are local UI state. The conversation scene is addressed
+by its durable route and session identity; opening a result enters the
+applicable file scene without forking that identity.
 
 ### AI Assistant
 
-The resizable left pane displays the active conversation, execution, tool
-decisions, recovery, evidence, artifacts, and the same composer used by Home;
-the files, Office, or code workspace remains on its right. On compact desktop
-widths it becomes an overlay.
+The AI Assistant is a contextual, resizable left pane for files, Office, PDF,
+and code. It reuses the active session and composer while the document remains
+primary on its right. It is absent from Home and the canonical conversation
+page; on compact file scenes it becomes an overlay.
 
 ## Home
 
@@ -94,8 +98,9 @@ The home page follows a task-first hierarchy:
 3. implemented capability shortcuts;
 4. templates, folders, and recent files.
 
-The assistant starts open beside the workspace; an explicit close choice is
-persisted. Prompt starters populate an editable draft and never auto-send.
+Home does not mount the contextual assistant. A successful submission enters
+the created or active session's canonical conversation page; a failed creation
+keeps the editable draft and context on Home. Prompt starters never auto-send.
 
 ## File management
 

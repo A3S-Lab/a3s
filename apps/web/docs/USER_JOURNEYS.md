@@ -10,11 +10,15 @@
 4. Optionally attach `@` files, mention `$` Skills, or choose model, effort, and
    execution mode. `/` remains reserved for built-in commands.
 5. Submit.
-6. The shared AI Assistant opens and shows execution in the new or active
-   conversation.
+6. For an existing task, Work immediately enters its
+   `#conversation/<opaque-session-key>` route. For a new task, Home shows the
+   creation state until the service returns its durable session key, then enters
+   that route.
+7. The independent conversation page shows the task identity, status, execution
+   document, runtime plan/subagents, and follow-up composer.
 
-Success: Home and the assistant show the same draft and session; no product
-switch occurs.
+Success: exactly one durable conversation opens, Home never substitutes the
+contextual file assistant, and a failed creation preserves the Home draft.
 
 ## 2. Resume a conversation
 
@@ -23,10 +27,13 @@ switch occurs.
 1. Search or select a row in the left conversation list.
 2. The current draft and workspace snapshot are saved.
 3. The selected conversation, draft, queue, and workspace are restored.
-4. The AI Assistant opens on that conversation.
+4. Work opens that conversation's canonical route in the full center.
+5. Browser Back returns to the previous Work location; refresh or a copied local
+   link restores the same task. If it was deleted, the page names the problem
+   and offers Home or New task instead of showing another conversation.
 
 Success: historical sessions from earlier releases remain visible, and a
-running status never leaks onto another row.
+running status or transcript never leaks onto another row or route.
 
 ## 3. Browse and organize local files
 

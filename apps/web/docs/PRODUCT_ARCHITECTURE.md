@@ -13,7 +13,7 @@ flowchart TB
     App --> Boot[Bootstrap and recovery]
     Boot --> Shell[AppShell]
     Shell --> Bar[ActivityBar]
-    Bar --> Work[WorkProduct at #home]
+    Bar --> Work[WorkProduct route family]
     Bar --> Knowledge[KnowledgePage]
     Bar --> Plugins[Verified plugin host]
     Bar --> Memory[MemoryPage]
@@ -21,15 +21,19 @@ flowchart TB
     Work --> Sessions[TaskLibrary]
     Work --> Scene{Active Work scene}
     Scene --> Home[WorkHome]
+    Scene --> Conversation[WorkConversation]
     Scene --> Files[WorkFilesWorkspace]
     Scene --> Office[WorkEditorShell]
     Scene --> Code[WorkCodeWorkspace]
-    Work --> Assistant[WorkCopilot]
+    Files --> Assistant[Contextual WorkCopilot]
+    Office --> Assistant
+    Code --> Assistant
 ```
 
 `ProductId` contains Work, Memory, Knowledge, Marketplace, and a plugin host.
-It does not contain Code. Work scenes are local state owned by `WorkProduct` and
-all use `#home`.
+It does not contain Code. `WorkRoute` distinguishes `home` from a durable
+`conversation` and stores the addressed session key. File and editor scenes
+remain local state owned by `WorkProduct`.
 
 ## Runtime layout
 
@@ -40,8 +44,9 @@ App
     ├── ActivityBar
     ├── WorkProduct
     │   ├── TaskLibrary
-    │   ├── WorkHome / WorkFilesWorkspace / WorkEditorShell / WorkCodeWorkspace
-    │   ├── WorkCopilot
+    │   ├── WorkHome / WorkConversation
+    │   ├── WorkFilesWorkspace / WorkEditorShell / WorkCodeWorkspace
+    │   ├── WorkCopilot                     contextual file scenes only
     │   └── WorkspaceQuickOpen
     ├── KnowledgePage / MemoryPage / PluginHostPage / Marketplace
     └── SettingsDialog / CommandPalette / service banner
@@ -217,6 +222,7 @@ only after stability, quiet, interval, retry, and bulk-change gates.
 ```text
 unknown/empty ───────────────→ #home / Work
 #home ───────────────────────→ Work
+#conversation/<session> ─────→ Work / requested durable conversation
 #memory ─────────────────────→ Memory
 #knowledge ──────────────────→ Knowledge
 #plugins ────────────────────→ Marketplace
@@ -224,8 +230,12 @@ unknown/empty ───────────────→ #home / Work
 #settings/<canonical tab> ───→ Settings over current product
 ```
 
-Removed or malformed hashes normalize to `#home`. Settings closes to the
-canonical route of the underlying product.
+Removed or malformed hashes normalize to `#home`. A conversation hash is
+decoded as an opaque session key before bootstrap so refresh loads the intended
+task and draft. Browser history synchronizes shell state and selects an existing
+addressed session; a missing session remains on the requested route and renders
+a recovery state instead of another task. Settings closes to the canonical
+route of the underlying product, including the active conversation.
 
 ## Overlay and focus rules
 
@@ -234,8 +244,9 @@ canonical route of the underlying product.
   a non-dismissible phase.
 - Quick open is rendered by `WorkProduct` so file selection reaches the current
   Work handler.
-- Compact AI Assistant mode overlays the Work pane and retains a visible close
-  action.
+- Compact contextual AI Assistant mode overlays file and editor scenes and
+  retains a visible close action. It is never the destination of Home
+  submission or task-list selection.
 
 ## API boundary
 

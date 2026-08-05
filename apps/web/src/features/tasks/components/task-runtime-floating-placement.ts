@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 const BASE_TOP = 54;
+const CONVERSATION_BODY_TOP = 8;
 const CONTENT_HEIGHT_LIMIT = 430;
 const PANEL_HEADER_HEIGHT = 54;
 const PANEL_RIGHT_INSET = 16;
@@ -23,6 +24,7 @@ interface RuntimePanelPlacementInput {
   panelHeight: number;
   panelHeaderHeight: number;
   panelWidth: number;
+  topInset?: number;
 }
 
 export interface RuntimePanelPlacement {
@@ -49,12 +51,13 @@ export function resolveTaskRuntimePanelPlacement({
   panelHeight,
   panelHeaderHeight,
   panelWidth,
+  topInset = BASE_TOP,
 }: RuntimePanelPlacementInput): RuntimePanelPlacement {
   const defaultPanel = {
-    bottom: pane.top + BASE_TOP + panelHeight,
+    bottom: pane.top + topInset + panelHeight,
     left: pane.right - PANEL_RIGHT_INSET - panelWidth,
     right: pane.right - PANEL_RIGHT_INSET,
-    top: pane.top + BASE_TOP,
+    top: pane.top + topInset,
   };
   const collides =
     instruction !== null &&
@@ -64,10 +67,10 @@ export function resolveTaskRuntimePanelPlacement({
     instruction.top < defaultPanel.bottom;
 
   if (!collides || instruction === null) {
-    return placementWithinComposer(BASE_TOP, composerTop, pane.top, panelHeaderHeight);
+    return placementWithinComposer(topInset, composerTop, pane.top, panelHeaderHeight);
   }
 
-  const belowInstruction = Math.max(BASE_TOP, Math.ceil(instruction.bottom - pane.top + INSTRUCTION_GAP));
+  const belowInstruction = Math.max(topInset, Math.ceil(instruction.bottom - pane.top + INSTRUCTION_GAP));
   const availableBelow = composerTop - pane.top - PANEL_BOTTOM_GAP - belowInstruction;
   if (availableBelow >= panelHeaderHeight) {
     return placementWithinComposer(belowInstruction, composerTop, pane.top, panelHeaderHeight);
@@ -75,11 +78,11 @@ export function resolveTaskRuntimePanelPlacement({
 
   const contentAboveInstruction = Math.max(
     0,
-    Math.floor(instruction.top - pane.top - INSTRUCTION_GAP - BASE_TOP - panelHeaderHeight)
+    Math.floor(instruction.top - pane.top - INSTRUCTION_GAP - topInset - panelHeaderHeight)
   );
   return {
     contentMaxHeight: contentAboveInstruction,
-    top: BASE_TOP,
+    top: topInset,
   };
 }
 
@@ -93,34 +96,37 @@ export function useTaskRuntimeFloatingPlacement(identity: string, expanded: bool
 
   useLayoutEffect(() => {
     const panel = panelRef.current;
-    const pane = panel?.closest<HTMLElement>('.task-conversation-pane');
-    const surface = pane ?? panel?.closest<HTMLElement>('.new-task-product');
-    if (!panel || !surface) return;
+    const conversationPane = panel?.closest<HTMLElement>('.task-conversation-pane');
+    const layoutSurface = conversationPane ?? panel?.closest<HTMLElement>('.new-task-product');
+    const geometrySurface = panel?.closest<HTMLElement>('.work-conversation-body') ?? layoutSurface;
+    if (!panel || !layoutSurface || !geometrySurface) return;
 
-    const scroll = surface.querySelector<HTMLElement>('.execution-scroll');
+    const scroll = layoutSurface.querySelector<HTMLElement>('.execution-scroll');
     let frame: number | undefined;
 
     const measure = () => {
-      const instruction = surface.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
-      const composer = surface.querySelector<HTMLElement>('.task-composer-dock');
+      const instruction = layoutSurface.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
+      const composer = layoutSurface.querySelector<HTMLElement>('.task-composer-dock');
       const trigger = panel.querySelector<HTMLElement>('.task-runtime-floating-trigger');
       const content = panel.querySelector<HTMLElement>('.task-runtime-floating-content');
-      const surfaceRect = surface.getBoundingClientRect();
+      const layoutRect = layoutSurface.getBoundingClientRect();
+      const geometryRect = geometrySurface.getBoundingClientRect();
       const panelRect = panel.getBoundingClientRect();
-      const nextLayout = resolveTaskRuntimePanelLayout(surfaceRect.width);
-      surface.dataset.taskRuntimeLayout = nextLayout;
+      const nextLayout = resolveTaskRuntimePanelLayout(layoutRect.width);
+      layoutSurface.dataset.taskRuntimeLayout = nextLayout;
       setLayout((current) => (current === nextLayout ? current : nextLayout));
       const triggerHeight = trigger?.getBoundingClientRect().height || PANEL_HEADER_HEIGHT;
       const contentHeight = content
         ? Math.min(content.scrollHeight || content.getBoundingClientRect().height, CONTENT_HEIGHT_LIMIT)
         : 0;
       const next = resolveTaskRuntimePanelPlacement({
-        composerTop: composer?.getBoundingClientRect().top ?? surfaceRect.bottom,
+        composerTop: composer?.getBoundingClientRect().top ?? geometryRect.bottom,
         instruction: instruction?.getBoundingClientRect() ?? null,
-        pane: surfaceRect,
+        pane: geometryRect,
         panelHeight: triggerHeight + contentHeight,
         panelHeaderHeight: triggerHeight,
         panelWidth: panelRect.width || 360,
+        topInset: geometrySurface === layoutSurface ? BASE_TOP : CONVERSATION_BODY_TOP,
       });
       setPlacement((current) =>
         current.top === next.top && current.contentMaxHeight === next.contentMaxHeight ? current : next
@@ -144,17 +150,20 @@ export function useTaskRuntimeFloatingPlacement(identity: string, expanded: bool
     scroll?.addEventListener('scroll', scheduleMeasure, { passive: true });
 
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleMeasure);
-    observer?.observe(surface);
+    observer?.observe(layoutSurface);
+    if (geometrySurface !== layoutSurface) observer?.observe(geometrySurface);
     observer?.observe(panel);
-    const instruction = surface.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
+    const instruction = layoutSurface.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
     if (instruction) observer?.observe(instruction);
+    const composer = layoutSurface.querySelector<HTMLElement>('.task-composer-dock');
+    if (composer) observer?.observe(composer);
 
     return () => {
       if (frame !== undefined) window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', scheduleMeasure);
       scroll?.removeEventListener('scroll', scheduleMeasure);
       observer?.disconnect();
-      delete surface.dataset.taskRuntimeLayout;
+      delete layoutSurface.dataset.taskRuntimeLayout;
     };
   }, [expanded, identity, visible]);
 

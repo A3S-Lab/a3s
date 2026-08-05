@@ -12,7 +12,7 @@ import type { PluginActions } from '../features/plugins/use-plugin-controller';
 import { SettingsDialog } from '../features/settings/components/settings-dialog';
 import type { WeixinRemoteActions } from '../features/weixin-remote/use-weixin-remote-controller';
 import { WorkProduct } from '../features/work/pages/work-product';
-import { appState } from '../state/app-state';
+import { appState, syncShellRouteFromLocation } from '../state/app-state';
 import { ActivityBar } from './activity-bar';
 import { CommandPalette } from './shell/command-palette';
 
@@ -40,6 +40,30 @@ export function AppShell({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const syncRoute = () => {
+      syncShellRouteFromLocation();
+    };
+    window.addEventListener('popstate', syncRoute);
+    window.addEventListener('hashchange', syncRoute);
+    return () => {
+      window.removeEventListener('popstate', syncRoute);
+      window.removeEventListener('hashchange', syncRoute);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sessionId = state.workRoute === 'conversation' ? state.conversationSessionId : null;
+    if (
+      !sessionId ||
+      sessionId === state.activeSessionId ||
+      !state.sessions.some((session) => session.sessionId === sessionId)
+    ) {
+      return;
+    }
+    void actions.selectSession(sessionId);
+  }, [actions.selectSession, state.activeSessionId, state.conversationSessionId, state.sessions, state.workRoute]);
 
   return (
     <main className='app-shell'>

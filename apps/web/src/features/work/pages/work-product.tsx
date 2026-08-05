@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { codeApi } from '../../../lib/api';
-import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
+import {
+  appState,
+  formatApiError,
+  navigateConversation,
+  navigateWorkHome,
+  sessionTitle,
+  showToast,
+} from '../../../state/app-state';
 import type { CodeSession, WorkspaceEntry, WorkspaceFileCatalogItem } from '../../../types/api';
 import type { CodeActions } from '../../code/use-code-controller';
+import { parseGoalCommand } from '../../tasks/goal-command';
 import { TaskLibrary } from '../../tasks/components/task-library';
 import { codeDefaultWorkspace } from '../../workspace/code-default-workspace';
 import { WorkspaceQuickOpen } from '../../workspace/components/workspace-quick-open';
 import { WorkCodeWorkspace } from '../components/work-code-workspace';
 import { WorkCompatibilityDialog } from '../components/work-compatibility-dialog';
+import { WorkConversation } from '../components/work-conversation';
 import { readWorkCopilotWidth, WorkCopilot } from '../components/work-copilot';
 import { WorkEditorShell } from '../components/work-editor-shell';
 import { WorkFilesWorkspace } from '../components/work-files-workspace';
@@ -55,16 +64,18 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     directory: string;
   } | null>(null);
   const localCreateRequestIdRef = useRef(0);
+  const pendingHomeSubmissionRef = useRef(false);
+  const homeSubmissionStartedRef = useRef(false);
   const previousArtifactIdRef = useRef(actions.activeArtifact?.id ?? null);
   const openFilePicker = () => fileInputRef.current?.click();
   const updateSurface = (next: 'files' | 'library') => {
     setSurface(next);
     persistValue(surfaceStorageKey, next);
   };
-  const updateCopilotOpen = (open: boolean) => {
+  const updateCopilotOpen = useCallback((open: boolean) => {
     setCopilotOpen(open);
     persistValue(copilotStorageKey, String(open));
-  };
+  }, []);
   const updatePreviewTarget = useCallback((target: string | null) => {
     setPreviewTarget(target);
     try {
@@ -138,6 +149,22 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
       setAgentProposal(null);
     }
   }, [actions.activeArtifact?.id]);
+  useEffect(() => {
+    if (!pendingHomeSubmissionRef.current) return;
+    if (state.taskSubmissionState) homeSubmissionStartedRef.current = true;
+    if (state.activeSessionId) {
+      pendingHomeSubmissionRef.current = false;
+      homeSubmissionStartedRef.current = false;
+      updateCopilotOpen(false);
+      updatePreviewTarget(null);
+      navigateConversation(state.activeSessionId);
+      return;
+    }
+    if (homeSubmissionStartedRef.current && !state.taskSubmissionState) {
+      pendingHomeSubmissionRef.current = false;
+      homeSubmissionStartedRef.current = false;
+    }
+  }, [state.activeSessionId, state.taskSubmissionState, updateCopilotOpen, updatePreviewTarget]);
   const openLocalItem = async (
     entry: Pick<WorkspaceEntry, 'path' | 'name' | 'isBinary' | 'isDirectory'>
   ): Promise<boolean> => {
@@ -175,13 +202,19 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     });
   const workTaskActions: CodeActions = {
     ...codeActions,
-    selectFile: async (selection) =>
-      openLocalItem({
+    selectFile: async (selection) => {
+      const opened = await openLocalItem({
         path: selection.path,
         name: localPathBasename(selection.path),
         isBinary: selection.isBinary,
         isDirectory: false,
-      }),
+      });
+      if (opened) {
+        updateCopilotOpen(false);
+        navigateWorkHome({ history: 'push' });
+      }
+      return opened;
+    },
   };
   const requestAgent = async (request: WorkAgentRequest, proposal?: WorkAgentProposalRequest) => {
     let workspaceRoot = request.workspaceRoot || files.rootPath;
@@ -216,15 +249,60 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     );
   };
   const startNewConversation = () => {
+    pendingHomeSubmissionRef.current = false;
+    homeSubmissionStartedRef.current = false;
     codeActions.newConversation();
     updateCopilotOpen(false);
     setAgentProposal(null);
     updateSurface('library');
+    actions.setLibraryView('home');
+    code.closeWorkspace();
+    updatePreviewTarget(null);
+    void actions.closeArtifact();
+    navigateWorkHome({ history: 'replace' });
   };
   const selectConversation = async (session: CodeSession) => {
-    await codeActions.selectSession(session.sessionId);
+    const selection = codeActions.selectSession(session.sessionId);
+    updateCopilotOpen(false);
+    updatePreviewTarget(null);
+    navigateConversation(session.sessionId);
+    await selection;
     if (session.workspace) await files.selectRoot(session.workspace);
-    updateCopilotOpen(true);
+  };
+  const openHome = async () => {
+    updateCopilotOpen(false);
+    updatePreviewTarget(null);
+    code.closeWorkspace();
+    if (actions.activeArtifact) await actions.closeArtifact();
+    updateSurface('library');
+    actions.setLibraryView('home');
+    navigateWorkHome({ history: 'replace' });
+  };
+  const openWorkspaceFromConversation = async () => {
+    updateCopilotOpen(false);
+    updatePreviewTarget(null);
+    code.closeWorkspace();
+    if (actions.activeArtifact) await actions.closeArtifact();
+    updateSurface('files');
+    if (files.rootPath) files.navigateTo(files.rootPath);
+    navigateWorkHome({ history: 'push' });
+  };
+  const openActiveConversation = () => {
+    if (!state.activeSessionId) return;
+    updateCopilotOpen(false);
+    updatePreviewTarget(null);
+    navigateConversation(state.activeSessionId);
+  };
+  const submitHomeTask = (content: string) => {
+    if (parseGoalCommand(content)) return;
+    updateCopilotOpen(false);
+    updatePreviewTarget(null);
+    if (appState.activeSessionId) {
+      navigateConversation(appState.activeSessionId);
+      return;
+    }
+    pendingHomeSubmissionRef.current = true;
+    homeSubmissionStartedRef.current = false;
   };
   const activeSession = state.activeSessionId
     ? state.sessions.find((session) => session.sessionId === state.activeSessionId)
@@ -260,27 +338,45 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           onSelectSession={selectConversation}
         />
       )}
-      {copilotOpen && (
-        <WorkCopilot
-          actions={workTaskActions}
-          workspaceRoot={files.rootPath}
-          currentPath={actions.activeLocalBinding?.path || code.activePath || files.currentPath}
-          onClose={() => updateCopilotOpen(false)}
-          onPickRoot={async () => {
-            await files.pickRoot();
-          }}
-          onAgentRequest={requestAgent}
-          width={copilotWidth}
-          onWidthChange={setCopilotWidth}
-          proposal={agentProposal}
-          onDismissProposal={() => setAgentProposal(null)}
-          onNewConversation={startNewConversation}
-          workspaceMode={actions.activeArtifact ? 'office' : code.tabs.length ? 'code' : 'files'}
-          officeAutomation={officeAutomation}
-        />
-      )}
+      {copilotOpen &&
+        state.workRoute !== 'conversation' &&
+        (actions.activeArtifact || code.tabs.length || surface === 'files') && (
+          <WorkCopilot
+            actions={workTaskActions}
+            workspaceRoot={files.rootPath}
+            currentPath={actions.activeLocalBinding?.path || code.activePath || files.currentPath}
+            onClose={() => updateCopilotOpen(false)}
+            onPickRoot={async () => {
+              await files.pickRoot();
+            }}
+            onAgentRequest={requestAgent}
+            width={copilotWidth}
+            onWidthChange={setCopilotWidth}
+            proposal={agentProposal}
+            onDismissProposal={() => setAgentProposal(null)}
+            onNewConversation={startNewConversation}
+            workspaceMode={actions.activeArtifact ? 'office' : code.tabs.length ? 'code' : 'files'}
+            officeAutomation={officeAutomation}
+          />
+        )}
       <div className='work-primary-pane'>
-        {actions.activeArtifact ? (
+        {state.workRoute === 'conversation' ? (
+          <WorkConversation
+            actions={workTaskActions}
+            sessionId={state.conversationSessionId}
+            sidebarOpen={state.sidebarOpen}
+            onOpenSidebar={() => {
+              appState.sidebarOpen = true;
+            }}
+            onHome={() => {
+              void openHome();
+            }}
+            onNewTask={startNewConversation}
+            onOpenWorkspace={() => {
+              void openWorkspaceFromConversation();
+            }}
+          />
+        ) : actions.activeArtifact ? (
           <WorkEditorShell
             actions={actions}
             copilotOpen={copilotOpen}
@@ -349,9 +445,9 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                 onOpenSidebar={() => {
                   appState.sidebarOpen = true;
                 }}
-                onContinueSession={() => updateCopilotOpen(true)}
+                onContinueSession={openActiveConversation}
                 onNewTask={startNewConversation}
-                onTaskSubmit={() => updateCopilotOpen(true)}
+                onTaskSubmit={submitHomeTask}
                 onOpenWorkspace={() => {
                   updateSurface('files');
                   if (files.rootPath) files.navigateTo(files.rootPath);
@@ -377,7 +473,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           </>
         )}
       </div>
-      {previewTarget && (
+      {state.workRoute !== 'conversation' && previewTarget && (
         <WorkLivePreviewPanel
           target={previewTarget}
           width={previewWidth}
@@ -389,7 +485,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           onClose={() => updatePreviewTarget(null)}
         />
       )}
-      {state.fileQuickOpenOpen && (
+      {state.workRoute !== 'conversation' && state.fileQuickOpenOpen && (
         <WorkspaceQuickOpen
           rootPath={files.rootPath}
           generation={state.workspaceGeneration}

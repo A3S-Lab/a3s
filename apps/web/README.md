@@ -1,8 +1,10 @@
 # A3S Web
 
-A3S Web is a local-first AI workspace. Work is the single default workbench at
-`#home`; file management, Office editing, coding, and AI execution are scenes
-inside that workbench rather than separate products or conversations. The
+A3S Web is a local-first AI workspace. Work is the single default workbench:
+`#home` is its outcome-first entry, while each durable task continues at
+`#conversation/<opaque-session-key>`. File management, Office editing, coding,
+and contextual AI are scenes inside that workbench rather than separate
+products or conversation stores. The
 standalone Knowledge destination follows Work, while installed A3S Use packages
 can add reviewed workbench views for vertical capabilities such as Research and
 Finance.
@@ -10,6 +12,7 @@ Finance.
 Product implementation is governed by the
 [super-app plan](docs/SUPER_APP.md),
 [product blueprint](docs/PRODUCT_BLUEPRINT.md),
+[product roadmap](ROADMAP.md),
 [functional specification](docs/FUNCTIONAL_SPEC.md),
 [component specification](docs/COMPONENT_SPEC.md),
 [product architecture](docs/PRODUCT_ARCHITECTURE.md),
@@ -37,7 +40,8 @@ by the
 ## Current product surface
 
 - A VS Code-style Activity Bar with built-in Work and Knowledge entries. Work
-  is the only task entry and always opens the canonical `#home` route; coding is
+  is the only task entry and opens `#home`; submitting or resuming a durable task
+  opens its canonical `#conversation/<opaque-session-key>` route. Coding is
   entered by opening a code or text file inside Work. Knowledge sits immediately
   below Work, followed by enabled package
   contributions ordered from the live A3S Use registry. Memory, the verified
@@ -123,9 +127,10 @@ by the
   drag-and-drop context, and the real
   queue submission path. Implemented shortcuts create Office artifacts, open
   files, prepare editable data-analysis and file-organization drafts, or enter
-  the local-files workspace. The shared AI Assistant starts open on a fresh
-  visit and an explicit close choice is persisted; templates, folders, and recent
-  files remain directly available below the task entry, while Recent,
+  the local-files workspace. Home remains focused on preparation: successful
+  submission enters the created or active task's independent conversation page,
+  while a failed creation stays on Home with its draft intact. Templates,
+  folders, and recent files remain directly available below the task entry, while Recent,
   Favorites, Trash, and folder views remain focused file-management surfaces.
 - A single-file detail editor for every non-binary code or text file in the
   selected root. It uses the same header and return flow as Office details while
@@ -133,10 +138,15 @@ by the
   Cmd/Ctrl+S writes, clean external-change reload, dirty-draft conflict review,
   and editor context actions for the AI Assistant. Markdown uses a fixed left-source/right-live-
   preview layout instead of a mode switch.
-- A resizable left-side AI Assistant backed by the durable A3S task runtime,
-  with the active files, Office artifact, or code editor kept on its right.
-  The home composer, file workspace, Office editors, and code editor all use the
-  same conversation list, active session, draft, workspace, and default agent.
+- A dedicated full-center conversation page backed by the durable A3S task
+  runtime. It keeps task identity and service-authoritative status in a compact
+  header, the execution document in the center, inspectable plan/subagent state,
+  and the follow-up composer at the bottom. Reload, copied deep links, browser
+  Back, missing sessions, and Settings return all preserve an explicit route.
+- A resizable left-side AI Assistant only for file, Office, PDF, and code scenes,
+  with the active document kept primary on its right. Home, the conversation
+  page, file workspace, Office editors, and code editor all use the same session
+  catalog, active session, draft, workspace, queue, and default agent.
   Switching scenes never forks a hidden Code or Office conversation.
   Bound Office files expose the asynchronously prepared native `use/office`
   route and `a3s-office` Skill, reload clean AI/external writes, and stop for
@@ -406,10 +416,12 @@ by the
   raw fields, and identifiers are not shown. A separate Learning tab shows only
   items that need review by default and supports save, ignore, reconsider,
   update, and recoverable version rollback.
-- A continuous task conversation in the resizable AI Assistant. Home,
-  files, Office, and code scenes share its active session, draft, queue, model,
-  effort, and workspace; compact widths use an overlay with a persistent close
-  action.
+- A continuous task conversation at its own reload-safe route. Home submission
+  and task-list selection enter that page; opening a resulting file moves into
+  the appropriate Work scene and browser Back returns to the conversation.
+  Contextual file assistants reuse the same active session, draft, queue, model,
+  effort, and workspace; compact file scenes use an overlay with a persistent
+  close action.
 - Natural-language task composition with a searchable recent-workspace picker,
   native local-folder selection, a lazy color-coded `@` workspace tree,
   searchable highlighted `$` Skill suggestions, safe file/folder drop import,
@@ -489,11 +501,10 @@ The primary journey is:
 
 ```text
 Open #home → describe an outcome or choose a local folder
-→ browse and select real files → prepare visible context in AI Assistant
-→ execute and decide permissions → inspect evidence or proposals
-→ open the resulting Office or code file in Work
+→ submit into #conversation/<session> → supervise execution and permissions
+→ inspect evidence or open a resulting file in its contextual Work scene
 → edit, validate, and explicitly save back or Save As
-→ continue the same conversation
+→ use browser Back or the task list to continue the same conversation
 ```
 
 ## Code Intelligence

@@ -44,6 +44,9 @@ a promotional landing page.
    conflicting, or compatibility-sensitive decisions.
 7. **AI remains accountable.** Selected context, tool scope, proposals, and
    verification evidence are inspectable.
+8. **Conversation is a place, not a panel.** Home prepares or selects work;
+   durable task conversations own the center scene, while the contextual AI
+   Assistant appears only beside a file or editor.
 
 ## Foundations
 

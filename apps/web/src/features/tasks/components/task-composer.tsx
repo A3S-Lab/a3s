@@ -33,7 +33,7 @@ export function TaskComposer({
 }: {
   actions: TaskActions;
   variant?: 'preparation' | 'active';
-  onSubmitStart?: () => void;
+  onSubmitStart?: (content: string) => void;
 }) {
   const state = useSnapshot(appState);
   const [resourcesImporting, setResourcesImporting] = useState(false);
@@ -52,8 +52,9 @@ export function TaskComposer({
   const turnQueue = sessionId ? state.turnQueues[sessionId] : undefined;
   const queue = turnQueue?.items ?? [];
   const submitMessage = () => {
-    if (!state.composerValue.trim() || anotherTaskRunning || resourcesImporting || submitting) return;
-    onSubmitStart?.();
+    const content = state.composerValue.trim();
+    if (!content || anotherTaskRunning || resourcesImporting || submitting) return;
+    onSubmitStart?.(content);
     void actions.sendMessage();
   };
   const addContext = (path: string) => {
