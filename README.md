@@ -234,19 +234,22 @@ native OOXML structure, native PDF text and geometry, direct images,
 exact-image PPTX, and optional host-injected PDFium page rendering. Rich
 paginated Office layout, broader imports, and release-scale support claims
 remain roadmap work in the independently versioned Parser repository. This
-integration snapshot pins A3S OCR 0.5.0 and A3S Power 0.7.0 through Parser's
+integration snapshot pins A3S OCR 0.5.0 and A3S Power 0.8.0 through Parser's
 embedded OCR path; it does not add an OCR service or grant the coding agent
-browser authority. A3S OCR also gates the native PP-OCRv6 path against a
-SHA-256-pinned official image, 30 ordered upstream blocks, source polygons,
-confidence tolerances, and Power execution receipts. Its optional Unlimited-OCR
-path now binds the pinned upstream Git/LFS identity, all 2,710 BF16 tensor
-names, shapes, and byte ranges, and Power's fully hashed checkpoint inventory
-to one canonical digest. Its local numerical gate validates all 64 pinned CPU
-reference tokens exactly, bounds the reviewed Metal rank/logit drift, and
-requires the same three grounded blocks within the documented pixel tolerance.
+browser authority. Parser product milestones set delivery priority: OCR work
+must close a measured Parser recognition or geometry gap, and Power work must
+supply a primitive required by that OCR/Parser path. A3S OCR also gates the
+native PP-OCRv6 path against a SHA-256-pinned official image, 30 ordered
+upstream blocks, source polygons, confidence tolerances, and Power execution
+receipts. Its optional Unlimited-OCR path now binds the pinned upstream
+Git/LFS identity, all 2,710 BF16 tensor names, shapes, and byte ranges, and
+Power's fully hashed checkpoint inventory to one canonical digest. Its local
+numerical gate validates all 64 pinned CPU reference tokens exactly, bounds
+the reviewed Metal rank/logit drift, and requires the same three grounded
+blocks within the documented pixel tolerance.
 The 6.7 GiB numerical gate remains local rather than ordinary pull-request CI.
 
-A3S Power 0.7.0 keeps its HTTP server and embedded library paths separate. The
+A3S Power 0.8.0 keeps its HTTP server and embedded library paths separate. The
 embedded path deepens Colibri-inspired weight management with storage/host/
 device tiers, LFRU heat, atomic hot plans, stable hysteresis-bounded live tier
 adaptation, batched expert unions, bounded continuous/ragged execution
@@ -334,7 +337,7 @@ warm-storage measurements on
 Apple M2 Pro keep `mmap` as the default after buffered positional reads
 regressed detection p50 by 9.6% and recognition p50 by 10.6%. Named-hardware
 Linux/Windows cold and direct-I/O evidence remains tracked in
-[Power issue #19](https://github.com/A3S-Lab/Power/issues/19); version 0.7.0
+[Power issue #19](https://github.com/A3S-Lab/Power/issues/19); version 0.8.0
 does not overclaim those results.
 
 ~~~bash
