@@ -17,7 +17,7 @@
     "cloud": { "version": "0.1.0", "revision": "bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340" },
     "event": { "version": "0.3.0", "revision": "6df3d6551a2a3ab68b2f8271d33a87b078fc8151" },
     "flow": { "version": "0.4.3", "revision": "1675376dbced0a65afce2141e799dcdceb8e475d" },
-    "gateway": { "version": "1.0.12", "revision": "246aea995d1346a9fdad27d052bc6dc56c531768" },
+    "gateway": { "version": "1.0.12", "revision": "c4d0f962b440f5ff1bc424a9d289d500730e67c5" },
     "orm": { "version": "0.2.0", "revision": "a09b4db0f55c29cff3cb7963f2d45125ed7b3936" },
     "runtime": { "version": "0.2.0", "revision": "061cde95e16eb4cbd9f58724e6cbb60de6ace77e" },
     "sentry": { "version": "0.7.0", "revision": "c1b45120662224fe1f3065d6888da0d291b4ff07" },
