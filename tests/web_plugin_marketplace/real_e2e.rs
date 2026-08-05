@@ -52,7 +52,13 @@ fn real_marketplace_installs_uses_and_removes_packaged_science_extension() {
     fs::write(&config, test_config()).expect("write config fixture");
 
     let version = run_use_json(&temp, &use_binary, &["--version", "--json"]);
-    assert_eq!(version["data"]["version"], manifest.version);
+    assert_eq!(version["schemaVersion"], 1);
+    assert_eq!(version["ok"], true);
+    let engine_version = version["data"]["version"]
+        .as_str()
+        .filter(|version| !version.is_empty())
+        .expect("A3S Use engine version");
+    assert_eq!(version["version"], engine_version);
     replace_registry(
         &temp,
         &config,
