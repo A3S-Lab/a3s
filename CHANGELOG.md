@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Synced the Bench integration snapshot to v0.1.2 and documented its managed
+  Linux x86_64 and macOS arm64 component release boundary.
 - Stopped Code TUI startup from waiting for A3S Use discovery, verified
   first-use installation, and capability projection; they now continue in the
   background. Ready
