@@ -150,7 +150,7 @@ that implements it.
 | **Top** | `a3s top` | Bundled view of agents, containers, sessions, and events |
 | **Box** | `a3s box ps` | Managed product for explicit local isolation and OCI workloads |
 | **Search** | `a3s search …` | Managed Browser-first search product with quality-gated fallbacks |
-| **Use** | `a3s use capabilities --json` | Managed package and capability facade; packages keep their own release boundaries |
+| **Use** | `a3s use capabilities --json` | Independently versioned AI-native package manager for signed dependency graphs and hot-pluggable Tool, MCP, OKF, A3S Flow, Skill, and UI surfaces |
 | **Bench** | `a3s bench …` | Managed evaluation product; [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) ships compatible components for Linux x86_64 and macOS arm64 |
 | **Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Self-hosted control plane governed by a revision and protocol compatibility lock |
 
@@ -175,7 +175,8 @@ integration snapshot pinned by `main`:
 | Area | Current boundary |
 | --- | --- |
 | Root CLI | Code, Web, Research, configuration, auth, models, diagnostics, component lifecycle, and self-management are root-owned |
-| Managed products | Box, Search, and Use install and run as independently versioned components; artifact availability is platform- and channel-specific |
+| Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
+| Use | `main` pins the v0.3 cognitive-package line: replaceable TUF registries, exact SemVer dependency locks, atomic graph upgrade and removal, and one capability cutover across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge, Service/HTTP hosts, grant composition, distributed Flow, and complete cross-platform real-process E2E remain release gates. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
@@ -263,6 +264,9 @@ just code
 just web
 just docs
 just windhole
+just use-hotplug-e2e
+just marketplace-science-e2e
+just marketplace-science-browser-e2e
 just cloud-stack-check
 ```
 
