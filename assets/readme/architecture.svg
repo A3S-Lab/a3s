@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">A3S layered architecture</title>
+  <desc id="desc">Product hosts own policy, Code and Use govern agent work, Flow Event Lane and Bench coordinate evidence, Runtime provides Task and Service contracts, and replaceable providers execute locally, in containers, in MicroVMs, or remotely. ACL, durable state, and governance cross every layer.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#0d74ce"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="678" rx="20" fill="#ffffff" stroke="#dcdee0"/>
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <text x="48" y="58" fill="#171717" font-size="34" font-weight="600" letter-spacing="-0.8">Hosts own policy. Contracts stay replaceable.</text>
+    <text x="48" y="91" fill="#60646c" font-size="20">Start with one local session; introduce capabilities, coordination, isolation, and fleet control progressively.</text>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" letter-spacing="1.2" fill="#60646c">
+      <text x="48" y="157">PRODUCT HOSTS</text>
+      <text x="48" y="284">AGENT SYSTEM</text>
+      <text x="48" y="463">RUNTIME CONTRACT</text>
+      <text x="48" y="577">PROVIDERS</text>
+    </g>
+
+    <g>
+      <rect x="220" y="126" width="714" height="74" rx="12" fill="#fafafa" stroke="#dcdee0"/>
+      <g font-size="22" font-weight="600" fill="#171717">
+        <text x="254" y="172">CLI</text>
+        <text x="354" y="172">Code</text>
+        <text x="472" y="172">Web</text>
+        <text x="578" y="172">Desktop</text>
+        <text x="724" y="172">Cloud</text>
+        <text x="834" y="172">SDKs</text>
+      </g>
+      <g stroke="#dcdee0">
+        <path d="M329 145V181M447 145V181M553 145V181M699 145V181M809 145V181"/>
+      </g>
+    </g>
+
+    <path d="M577 200V230" stroke="#0d74ce" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect x="220" y="242" width="222" height="142" rx="12" fill="#171717"/>
+      <text x="246" y="277" fill="#9ad0ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">CODE / CONTROL</text>
+      <text x="246" y="316" fill="#ffffff" font-size="21" font-weight="600">AgentSession</text>
+      <text x="246" y="348" fill="#b0b4ba" font-size="18">model · tools · context</text>
+      <text x="246" y="374" fill="#b0b4ba" font-size="18">permissions · HITL</text>
+
+      <rect x="456" y="242" width="222" height="142" rx="12" fill="#fafafa" stroke="#dcdee0"/>
+      <text x="482" y="277" fill="#0d74ce" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">USE / EXTEND</text>
+      <text x="482" y="316" fill="#171717" font-size="21" font-weight="600">Capabilities</text>
+      <text x="482" y="348" fill="#60646c" font-size="18">packages · authorization</text>
+      <text x="482" y="374" fill="#60646c" font-size="18">Browser · OCR · Office</text>
+
+      <rect x="692" y="242" width="242" height="142" rx="12" fill="#fafafa" stroke="#dcdee0"/>
+      <text x="718" y="277" fill="#0d74ce" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">COORDINATE</text>
+      <text x="718" y="316" fill="#171717" font-size="21" font-weight="600">Durable evidence</text>
+      <text x="718" y="348" fill="#60646c" font-size="18">Flow · Event · Lane</text>
+      <text x="718" y="374" fill="#60646c" font-size="18">Bench · Test</text>
+
+      <path d="M442 313H456M678 313H692" stroke="#0d74ce" stroke-width="3" marker-end="url(#arrow)"/>
+    </g>
+
+    <path d="M577 384V418" stroke="#0d74ce" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect x="220" y="430" width="714" height="80" rx="12" fill="#171717"/>
+      <text x="250" y="462" fill="#9ad0ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">A3S RUNTIME</text>
+      <text x="250" y="491" fill="#ffffff" font-size="21" font-weight="600">Task · Service · provider-neutral lifecycle · typed handles</text>
+    </g>
+
+    <path d="M577 510V542" stroke="#0d74ce" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <g font-size="20" font-weight="600" text-anchor="middle">
+      <rect x="220" y="554" width="162" height="70" rx="10" fill="#fafafa" stroke="#dcdee0"/>
+      <text x="301" y="596" fill="#171717">Process</text>
+      <rect x="394" y="554" width="162" height="70" rx="10" fill="#fafafa" stroke="#dcdee0"/>
+      <text x="475" y="596" fill="#171717">Container</text>
+      <rect x="568" y="554" width="162" height="70" rx="10" fill="#fafafa" stroke="#dcdee0"/>
+      <text x="649" y="596" fill="#171717">MicroVM</text>
+      <rect x="742" y="554" width="192" height="70" rx="10" fill="#fafafa" stroke="#dcdee0"/>
+      <text x="838" y="596" fill="#171717">Remote provider</text>
+    </g>
+
+    <g>
+      <text x="982" y="143" fill="#60646c" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" letter-spacing="1.2">CROSS-CUTTING</text>
+      <rect x="970" y="164" width="182" height="104" rx="12" fill="#f7fbff" stroke="#a8c8e8"/>
+      <text x="994" y="201" fill="#171717" font-size="20" font-weight="600">ACL + identity</text>
+      <text x="994" y="232" fill="#60646c" font-size="17">config · provenance</text>
+      <text x="994" y="255" fill="#60646c" font-size="17">protocol levels</text>
+
+      <rect x="970" y="286" width="182" height="104" rx="12" fill="#f7fbff" stroke="#a8c8e8"/>
+      <text x="994" y="323" fill="#171717" font-size="20" font-weight="600">Durable state</text>
+      <text x="994" y="354" fill="#60646c" font-size="17">sessions · events</text>
+      <text x="994" y="377" fill="#60646c" font-size="17">artifacts · memory</text>
+
+      <rect x="970" y="408" width="182" height="128" rx="12" fill="#f7fbff" stroke="#a8c8e8"/>
+      <text x="994" y="445" fill="#171717" font-size="20" font-weight="600">Governance</text>
+      <text x="994" y="476" fill="#60646c" font-size="17">Observer · Sentry</text>
+      <text x="994" y="499" fill="#60646c" font-size="17">Updater · receipts</text>
+      <text x="994" y="522" fill="#60646c" font-size="17">health · rollback</text>
+
+      <path d="M970 216H948V589H934" fill="none" stroke="#a8c8e8" stroke-width="2" stroke-dasharray="6 6"/>
+      <path d="M970 338H948M970 472H948" stroke="#a8c8e8" stroke-width="2" stroke-dasharray="6 6"/>
+    </g>
+
+    <text x="220" y="655" fill="#60646c" font-size="18">Policy stays with hosts. Enforcement stays with concrete providers. External dependencies remain explicit.</text>
+  </g>
+</svg>
