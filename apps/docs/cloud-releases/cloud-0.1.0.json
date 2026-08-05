@@ -4,7 +4,7 @@
   "releaseKind": "integration-snapshot",
   "milestone": "E0",
   "milestoneStatus": "verified",
-  "cloudRevision": "1cd435fe21f5ac22a0034b530f3b1054579073ad",
+  "cloudRevision": "bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340",
   "compatibilityLock": "compat/cloud-stack.acl",
   "documents": {
     "en": "/en/docs/cloud/v0.1.0",
@@ -13,8 +13,8 @@
   "components": {
     "acl": { "version": "0.3.0", "revision": "5317e166222495585909d81f2caffdca90273c99" },
     "boot": { "version": "0.1.3", "revision": "3119d61f1ae9b995913e34abd467ceaadc378a5f" },
-    "box": { "version": "3.2.0", "revision": "85826a48ea70aaa6dcb76614b5bcaac5592dfd65" },
-    "cloud": { "version": "0.1.0", "revision": "1cd435fe21f5ac22a0034b530f3b1054579073ad" },
+    "box": { "version": "3.2.0", "revision": "5fdf07d134cb2bfe6fb844b600c9c1e82916af63" },
+    "cloud": { "version": "0.1.0", "revision": "bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340" },
     "event": { "version": "0.3.0", "revision": "6df3d6551a2a3ab68b2f8271d33a87b078fc8151" },
     "flow": { "version": "0.4.3", "revision": "1675376dbced0a65afce2141e799dcdceb8e475d" },
     "gateway": { "version": "1.0.12", "revision": "246aea995d1346a9fdad27d052bc6dc56c531768" },
