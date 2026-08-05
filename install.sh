@@ -11,7 +11,7 @@
 
 set -eu
 
-REPOSITORY="A3S-Lab/a3s"
+REPOSITORY="A3S-Lab/CLI"
 DEFAULT_INSTALL_DIR="${HOME:+$HOME/.local/bin}"
 
 version="${A3S_VERSION:-latest}"
@@ -271,7 +271,7 @@ expected_version=${release_tag#v}
 
 asset_name="a3s-$release_tag-$target.tar.gz"
 asset_marker="\"name\":\"$asset_name\""
-asset_separator='},{"url":"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/'
+asset_separator='},{"url":"https://api.github.com/repos/'"$REPOSITORY"'/releases/assets/'
 asset_json=$(printf '%s' "$compact_json" | awk \
     -v separator="$asset_separator" -v needle="$asset_marker" '
     function inspect(segment) {

@@ -1,43 +1,46 @@
-# CLI Repository Migration
+# CLI Repository Ownership
 
-The `a3s` CLI is owned directly by the `A3S-Lab/a3s` repository root as of
-version 0.11.0. It is no longer a `crates/cli` submodule.
+The `a3s` CLI is owned by the standalone
+[`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository. The A3S monorepo
+mounts one reviewed CLI revision at `crates/cli`; its root is orchestration and
+does not contain another Rust package.
 
-## Provenance
+## History
 
-- Final standalone source tag: `v0.10.14`
-- Final standalone source commit:
-  `58f1bc6565f393ab693d4babebf5671978b560d6`
-- Preserved history in this repository: branch `archive/a3s-cli`
-- Preserved final source tag in this repository:
-  `cli-legacy/v0.10.14`
+The CLI was originally integrated as a submodule. Version 0.11.0 temporarily
+moved the package into the `A3S-Lab/a3s` root in commit `d9261341`, and versions
+0.11.0 and 0.11.1 used the monorepo release endpoint. This made source, CI,
+documentation, tags, and releases span two ownership models.
 
-The root `Cargo.toml`, `src/`, `tests/`, `skills/`, and CLI documents were
-imported from that immutable source commit. The monorepo README and shared
-installer files remain the canonical integration documentation.
+The standalone repository is canonical again. It owns:
 
-## Release Ownership
+- `Cargo.toml`, `Cargo.lock`, `build.rs`, `src/`, `tests/`, `skills/`, and
+  `release-compat/`;
+- CLI pull requests and CI;
+- stable `vMAJOR.MINOR.PATCH` tags and GitHub releases;
+- the `a3s` crates.io package and Homebrew formula updates; and
+- CLI product, architecture, and command documentation.
 
-Stable CLI tags retain the `vMAJOR.MINOR.PATCH` form. The
-`.github/workflows/a3s-cli-release.yml` workflow builds and verifies the CLI,
-matching Web workspace, native binaries, crates.io package, GitHub release,
-and Homebrew formula from a tag reachable from `A3S-Lab/a3s` `main`.
+The monorepo owns only the exact `crates/cli` gitlink, cross-project integration
+scripts, the Web application, the documentation site, and installer entrypoint
+copies. A CLI change must merge in `A3S-Lab/CLI` before the monorepo advances
+its gitlink.
 
-Standalone installers, matching Web downloads, and self-update all resolve
-published stable CLI releases from `A3S-Lab/a3s`. They deliberately ignore
-component release tags such as `a3s-code-vX.Y.Z`.
+## Release Compatibility
 
-## Legacy Update Endpoint
+Current installers and CLI self-update resolve releases from `A3S-Lab/CLI`.
+Versions 0.11.0 and 0.11.1 still query `A3S-Lab/a3s`, so the monorepo retains a
+manual `relay-cli-release.yml` workflow. It accepts only a published stable CLI
+tag, verifies the exact platform asset set, GitHub digests, checksum manifests,
+and inert legacy update marker, then publishes byte-identical GitHub assets.
 
-A3S 0.9.9 through 0.10.10 hard-code `A3S-Lab/CLI` as their release endpoint and
-require a `support/managed-srt` tree before replacing the executable. Starting
-with 0.11.1, canonical binary archives include a four-file, inert compatibility
-marker that satisfies that retired package check and exits with failure if it
-is ever invoked. It does not contain the Anthropic sandbox runtime.
+The relay does not build the CLI, publish crates.io, or update Homebrew. Its
+release notes record the canonical source tag, commit, and release identity so
+an existing relay can be verified and resumed safely.
 
-The exact canonical archives are relayed to the former repository after their
-asset set, GitHub digests, checksum manifests, and marker contract pass
-verification. The relay publishes GitHub assets only; it has no crates.io or
-Homebrew authority. `A3S-Lab/CLI` must remain readable as an archived
-compatibility endpoint so an old installation can perform its one migration to
-the canonical release channel.
+## Documentation
+
+Use the [pinned CLI reference](../crates/cli/docs/cli-reference.md) when
+validating this integration snapshot. Use the
+[`A3S-Lab/CLI` main branch](https://github.com/A3S-Lab/CLI/tree/main/docs) for
+the latest CLI design documents.

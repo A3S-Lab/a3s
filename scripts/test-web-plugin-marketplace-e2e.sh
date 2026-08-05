@@ -33,7 +33,7 @@ CARGO_TARGET_DIR="${web_target}" \
 A3S_USE_E2E_BIN="${use_target}/debug/a3s-use" \
 A3S_USE_SCIENCE_E2E_PACKAGE="${science_package}" \
   cargo test \
-    --manifest-path "${repository_root}/Cargo.toml" \
+    --manifest-path "${repository_root}/crates/cli/Cargo.toml" \
     --locked \
     --test web_plugin_marketplace \
     real_marketplace_ \

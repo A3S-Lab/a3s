@@ -96,7 +96,7 @@ CARGO_TARGET_DIR="${use_target}" \
   "${science_package}"
 
 CARGO_TARGET_DIR="${web_target}" cargo build \
-  --manifest-path "${repository_root}/Cargo.toml" \
+  --manifest-path "${repository_root}/crates/cli/Cargo.toml" \
   --locked \
   --bin a3s
 
@@ -118,9 +118,9 @@ env -u A3S_USE_HOME "${component_env[@]}" \
   --web-dir "${repository_root}/apps/web/dist/workspace"
 
 curl --fail --silent --show-error "http://127.0.0.1:${test_port}/api/health" >/dev/null
-a3s-test check "${repository_root}/tests/e2e/web-plugin-hotplug.acl" --json
+a3s-test check "${repository_root}/scripts/fixtures/web-plugin-hotplug.acl" --json
 AGENT_BROWSER_DEFAULT_TIMEOUT="${browser_action_timeout_ms}" \
-  a3s-test run "${repository_root}/tests/e2e/web-plugin-hotplug.acl" \
+  a3s-test run "${repository_root}/scripts/fixtures/web-plugin-hotplug.acl" \
   --browser-driver a3s \
   --browser-executable "${browser_executable}" \
   --command-timeout-ms 60000 \

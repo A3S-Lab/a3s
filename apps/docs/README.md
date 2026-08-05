@@ -12,7 +12,7 @@ English uses `/en`, for example `/en/docs`.
   shell.
 - CodeHike renders syntax-highlighted code blocks.
 - MDX content and Rspress `_nav.json` / `_meta.json` files live under `docs/`.
-- The public `/docs` tree covers the root-owned A3S CLI plus concise direct
+- The public `/docs` tree covers the standalone A3S CLI plus concise direct
   product orientation pages. Historical nested project manuals are excluded;
   detailed product references stay in each product repository.
 - The custom `HomeLayout` renders the interactive homepage.
