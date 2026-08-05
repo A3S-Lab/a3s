@@ -212,6 +212,7 @@ fn root_command_name(command: &RootCommand) -> &'static str {
                 MemoryCommand::Stats => "code.memory.stats",
                 MemoryCommand::Path => "code.memory.path",
             },
+            Some(CodeCommand::Harness(_)) => "code.harness",
             Some(CodeCommand::LegacyLogin(_))
             | Some(CodeCommand::LegacyLogout)
             | Some(CodeCommand::LegacyAuth(_)) => "auth",

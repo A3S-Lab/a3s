@@ -40,6 +40,8 @@ pub(crate) enum CodeCommand {
     /// Inspect long-term memory.
     #[command(alias = "mem")]
     Memory(MemoryArgs),
+    /// Run the release-bound A3S Code Agent Harness service.
+    Harness(CodeHarnessArgs),
 
     /// Deprecated alias for top-level authentication.
     #[command(name = "login", hide = true)]
@@ -71,6 +73,13 @@ pub(crate) enum CodeCommand {
     /// Removed alias for A3S Web.
     #[command(name = "serve", hide = true)]
     RemovedServe(PassthroughArgs),
+}
+
+#[derive(Clone, Debug, Args)]
+pub(crate) struct CodeHarnessArgs {
+    /// Read the immutable Agent release contract from this ACL manifest.
+    #[arg(long, value_name = "PATH")]
+    pub manifest: PathBuf,
 }
 
 #[derive(Clone, Debug, Default, Args)]
@@ -369,4 +378,32 @@ pub(crate) struct LegacyLoginArgs {
     /// Captures unsafe legacy positional credentials for redacted rejection.
     #[arg(value_name = "LEGACY_TOKEN", hide = true)]
     pub values: Vec<OsString>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::args::{Cli, RootCommand};
+    use clap::Parser;
+
+    #[test]
+    fn harness_requires_and_preserves_the_manifest_path() {
+        let cli = Cli::try_parse_from([
+            "a3s",
+            "code",
+            "harness",
+            "--manifest",
+            "/app/.a3s/asset.acl",
+        ])
+        .unwrap();
+        let Some(RootCommand::Code(CodeArgs {
+            command: Some(CodeCommand::Harness(args)),
+        })) = cli.command
+        else {
+            panic!("expected the native Code Harness command");
+        };
+        assert_eq!(args.manifest, PathBuf::from("/app/.a3s/asset.acl"));
+
+        assert!(Cli::try_parse_from(["a3s", "code", "harness"]).is_err());
+    }
 }

@@ -553,6 +553,29 @@ approval, such as unbounded shell commands, terminate immediately in this
 non-interactive surface with a nonzero `approval.required` result. Default and
 plan modes never silently approve workspace mutations.
 
+Run the release-bound native Harness inside an admitted Runtime Service:
+
+```sh
+a3s code harness --manifest /app/.a3s/asset.acl
+```
+
+The manifest fixes `/usr/bin/a3s code harness` as the only executable Harness.
+The CLI owns HTTP and health transport only; Code Core remains authoritative
+for Agent sessions, runs, cancellation, checkpoint recovery, and source event
+pages. Cloud and the Node Agent call those routes through their existing
+Workload/Runtime and Fleet paths and do not implement another run loop or run
+store. The service binds the manifest-declared HTTP port, stays unready until
+Code is initialized, stops admission before shutdown, and honors the declared
+grace period for SIGINT and SIGTERM.
+
+For `persistent_data = "external"`, configure an absolute, existing
+Runtime-mounted `sessions_dir` in the active Code ACL file; an optional absolute
+`memory_dir` uses the same external boundary. With `persistent_data = "none"`,
+the Harness suppresses configured file stores and keeps those values in memory.
+Required secret slots must already be injected at their declared environment or
+file destinations, and neither their values nor request bodies enter health or
+error responses.
+
 Start the local Web API and bundled 书小安 frontend:
 
 ```sh

@@ -4,6 +4,7 @@ mod assets;
 mod context_history;
 mod exec;
 mod exec_policy;
+mod harness;
 mod knowledge;
 mod memory;
 pub(crate) mod naming;
@@ -45,6 +46,7 @@ pub(crate) async fn run(args: CodeArgs, context: &InvocationContext) -> anyhow::
         Some(CodeCommand::Kb(args)) => knowledge::run(args, context),
         Some(CodeCommand::Context(args)) => context_history::run(args, context).await,
         Some(CodeCommand::Memory(args)) => memory::run(args, context),
+        Some(CodeCommand::Harness(args)) => harness::run(args, context).await,
         Some(CodeCommand::LegacyLogin(args)) => legacy_login(args.values, context).await,
         Some(CodeCommand::LegacyLogout) => {
             warn(output, "`a3s code logout`", "`a3s auth logout os`");

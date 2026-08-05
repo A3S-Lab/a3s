@@ -70,6 +70,23 @@ a3s code research --web "Compare the current implementation with its design"
 See [Installation](#installation) for Windows, Homebrew, Cargo, offline use, and
 release-channel details.
 
+Runtime-hosted Agent releases use the same bundled Code engine through the one
+native process declared by the release contract:
+
+~~~bash
+a3s code harness --manifest /app/.a3s/asset.acl
+~~~
+
+This process exposes only the bounded Code command, event-page, and declared
+health routes. Cloud, Fleet, and the Node Agent transport those contracts; they
+do not own another Harness loop, run store, scheduler, or event log. If the
+manifest declares `persistent_data = "external"`, the active Code ACL config
+must point `sessions_dir` at an existing absolute Runtime-mounted directory.
+`persistent_data = "none"` keeps Harness session and memory state process-local.
+
+The complete TUI, permission, session, and component command reference lives in
+the [CLI reference](docs/cli-reference.md).
+
 ## Why A3S
 
 - **Local first.** Ordinary work stays on the developer machine. Box and Cloud

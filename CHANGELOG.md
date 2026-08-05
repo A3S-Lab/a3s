@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the sole native `a3s code harness --manifest <path>` process for
+  release-bound Code Agent workloads. Its bounded HTTP command/event-page
+  transport, manifest-declared health routes, secret-slot admission, and
+  graceful SIGINT/SIGTERM shutdown delegate execution and recovery directly to
+  Code Core's existing Agent/Session/Run/Event authority.
+
 ### Changed
 
 - Synced the Bench integration snapshot to v0.1.2 and documented its managed
