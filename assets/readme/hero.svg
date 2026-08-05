@@ -1,107 +1,94 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-  <title id="title">A3S — one CLI for bundled hosts and managed components</title>
-  <desc id="desc">The a3s command runs bundled Code, Web, and Research hosts; manages Box, Search, and Use; and exposes the pending Bench component boundary.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">A3S — the open-source operating system for agents</title>
+  <desc id="desc">A light editorial hero shows the A3S CLI running a local Code session and a progressive path from Code through Use and Runtime to Box or Cloud.</desc>
   <defs>
-    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="460" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#101118"/>
-      <stop offset="0.62" stop-color="#151725"/>
-      <stop offset="1" stop-color="#1d1436"/>
+    <linearGradient id="sky" x1="90" y1="24" x2="1110" y2="496" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="0.56" stop-color="#f7fbff"/>
+      <stop offset="1" stop-color="#cfe7ff"/>
     </linearGradient>
-    <linearGradient id="brand" x1="58" y1="42" x2="1128" y2="412" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2587f5"/>
-      <stop offset="0.5" stop-color="#3b53dc"/>
-      <stop offset="1" stop-color="#5420bd"/>
+    <linearGradient id="terminal" x1="698" y1="58" x2="1138" y2="388" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171717"/>
+      <stop offset="1" stop-color="#20242b"/>
     </linearGradient>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0L8 4L0 8Z" fill="#6ca3ff"/>
-    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#171717" flood-opacity="0.10"/>
+    </filter>
   </defs>
 
-  <rect width="1200" height="460" rx="24" fill="url(#background)"/>
-  <path d="M0 364H1200" stroke="#2a2d35"/>
-  <path d="M493 0V364" stroke="#2a2d35"/>
+  <rect x="1" y="1" width="1198" height="518" rx="24" fill="url(#sky)" stroke="#dcdee0"/>
+  <path d="M1 410H1199" stroke="#e9eef4"/>
+  <path d="M84 1V519M302 1V519M520 1V519M738 1V519M956 1V519M1174 1V519" stroke="#f0f4f8"/>
 
-  <g id="identity" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
-    <g transform="translate(58 42)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M58 8A50 50 0 1 0 103 80" stroke="url(#brand)" stroke-width="9"/>
-      <path d="M34 76L57 26L80 76M44 55H70" stroke="#f2f3f5" stroke-width="8"/>
-      <path d="M13 75C31 62 44 63 58 72C72 81 88 78 106 61" stroke="url(#brand)" stroke-width="9"/>
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <g transform="translate(62 48)">
+      <rect width="58" height="58" rx="14" fill="#171717"/>
+      <path d="M14 42L29 13L44 42M20 31H38" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 43C19 36 25 37 31 41C38 45 44 42 49 35" fill="none" stroke="#9ad0ff" stroke-width="4" stroke-linecap="round"/>
+      <text x="76" y="24" fill="#60646c" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" font-weight="700" letter-spacing="2">A3S / AI NATIVE</text>
+      <text x="76" y="51" fill="#171717" font-size="22" font-weight="600">Open source · Local first</text>
     </g>
 
-    <text x="180" y="72" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="2">RUST-NATIVE A3S CLI</text>
-    <text x="180" y="190" fill="#f2f3f5" font-size="88" font-weight="760" letter-spacing="-4">A3S</text>
-    <text x="58" y="243" fill="#f2f3f5" font-size="35" font-weight="720" letter-spacing="-1.1">One entry point.</text>
-    <text x="58" y="286" fill="url(#brand)" font-size="35" font-weight="720" letter-spacing="-1.1">Explicit boundaries.</text>
+    <text x="62" y="176" fill="#171717" font-size="64" font-weight="600" letter-spacing="-2.4">
+      <tspan x="62" dy="0">The operating system</tspan>
+      <tspan x="62" dy="72">for agents.</tspan>
+    </text>
+    <text x="62" y="296" fill="#60646c" font-size="23">
+      <tspan x="62" dy="0">Build locally. Add capabilities, isolation,</tspan>
+      <tspan x="62" dy="34">and fleet control only when the job needs them.</tspan>
+    </text>
 
-    <g transform="translate(58 316)">
-      <rect width="380" height="62" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="22" y="39" fill="#6ca3ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="700">$</text>
-      <text x="49" y="39" fill="#f2f3f5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="700">a3s</text>
-      <text x="105" y="39" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20">code</text>
-      <path d="M176 31H349" stroke="#3a3d48" stroke-width="2"/>
-      <circle cx="354" cy="31" r="5" fill="#6ca3ff"/>
-    </g>
-  </g>
-
-  <g id="product-system" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
-    <text x="542" y="52" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="1.8">PRODUCT SURFACES</text>
-    <path d="M438 347H514V213H558" fill="none" stroke="#6ca3ff" stroke-width="2" marker-end="url(#arrow)"/>
-    <path d="M562 88V310" stroke="#3a3d48" stroke-width="2"/>
-
-    <g transform="translate(590 76)">
-      <rect width="166" height="78" rx="10" fill="#171820" stroke="#2864e8" stroke-width="2"/>
-      <text x="20" y="31" fill="#6ca3ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">01 / BUNDLED</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Code</text>
-    </g>
-    <g transform="translate(772 76)">
-      <rect width="166" height="78" rx="10" fill="#171820" stroke="#4034cc" stroke-width="2"/>
-      <text x="20" y="31" fill="#8c83ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">02 / BUNDLED</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Web</text>
-    </g>
-    <g transform="translate(954 76)">
-      <rect width="188" height="78" rx="10" fill="#171820" stroke="#5420bd" stroke-width="2"/>
-      <text x="20" y="31" fill="#ad87ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">03 / BUNDLED</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Research</text>
+    <g transform="translate(62 360)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700">
+      <rect width="134" height="34" rx="17" fill="#ffffff" stroke="#dcdee0"/>
+      <text x="18" y="23" fill="#171717">OPEN SOURCE</text>
+      <rect x="146" width="126" height="34" rx="17" fill="#ffffff" stroke="#dcdee0"/>
+      <text x="166" y="23" fill="#171717">RUST NATIVE</text>
+      <rect x="284" width="120" height="34" rx="17" fill="#ffffff" stroke="#dcdee0"/>
+      <text x="304" y="23" fill="#171717">LOCAL FIRST</text>
     </g>
 
-    <g transform="translate(590 174)">
-      <rect width="166" height="78" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">04 / MANAGED</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Box</text>
-    </g>
-    <g transform="translate(772 174)">
-      <rect width="166" height="78" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">05 / MANAGED</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Search</text>
-    </g>
-    <g transform="translate(954 174)">
-      <rect width="188" height="78" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">06 / MANAGED</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Use</text>
+    <g filter="url(#shadow)">
+      <rect x="676" y="48" width="464" height="344" rx="16" fill="url(#terminal)"/>
+      <rect x="676" y="48" width="464" height="52" rx="16" fill="#24272d"/>
+      <path d="M676 84H1140" stroke="#343840"/>
+      <circle cx="704" cy="74" r="6" fill="#eb8e90"/>
+      <circle cx="727" cy="74" r="6" fill="#e8bf68"/>
+      <circle cx="750" cy="74" r="6" fill="#6fcb89"/>
+      <text x="782" y="81" fill="#b0b4ba" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">a3s cli / ~/workspace</text>
+
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20">
+        <text x="706" y="139" fill="#9ad0ff" font-weight="700">$</text>
+        <text x="732" y="139" fill="#ffffff">a3s config paths</text>
+        <text x="706" y="174" fill="#b0b4ba">config</text>
+        <text x="836" y="174" fill="#d9eaff">~/.config/a3s/config.acl</text>
+        <text x="706" y="207" fill="#b0b4ba">state</text>
+        <text x="836" y="207" fill="#d9eaff">~/.local/state/a3s</text>
+
+        <text x="706" y="259" fill="#9ad0ff" font-weight="700">$</text>
+        <text x="732" y="259" fill="#ffffff">a3s code</text>
+        <text x="706" y="298" fill="#6fcb89">✓</text>
+        <text x="736" y="298" fill="#ffffff">workspace boundary loaded</text>
+        <text x="706" y="333" fill="#6fcb89">✓</text>
+        <text x="736" y="333" fill="#ffffff">session ready</text>
+        <rect x="706" y="356" width="10" height="18" rx="2" fill="#ffffff"/>
+      </g>
     </g>
 
-    <path d="M562 115H578M562 213H578M562 310H578M756 115H772M938 115H954M756 213H772M938 213H954M756 310H772" stroke="#3a3d48" stroke-width="2"/>
-
-    <g transform="translate(590 276)">
-      <rect width="166" height="68" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="27" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">07 / PENDING</text>
-      <text x="20" y="54" fill="#f2f3f5" font-size="22" font-weight="720">Bench</text>
+    <g transform="translate(62 444)">
+      <path d="M62 20H960" stroke="#a8c8e8" stroke-width="3"/>
+      <path d="M960 20L948 13V27Z" fill="#0d74ce"/>
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">
+        <circle cx="62" cy="20" r="10" fill="#171717"/>
+        <text x="82" y="27" fill="#171717">CODE</text>
+        <circle cx="270" cy="20" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="290" y="27" fill="#171717">USE</text>
+        <circle cx="472" cy="20" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="492" y="27" fill="#171717">FLOW</text>
+        <circle cx="690" cy="20" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="710" y="27" fill="#171717">RUNTIME</text>
+        <circle cx="908" cy="20" r="10" fill="#0d74ce"/>
+        <text x="928" y="27" fill="#171717">BOX / CLOUD</text>
+      </g>
     </g>
-    <rect x="772" y="276" width="370" height="68" rx="10" fill="#111d32" stroke="#2864e8"/>
-    <text x="796" y="305" fill="#6ca3ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" letter-spacing="1.1">SHARED CLI STATE</text>
-    <text x="796" y="331" fill="#f2f3f5" font-size="19" font-weight="700">ACL · accounts · models · lifecycle</text>
-  </g>
-
-  <g id="foundations" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
-    <text x="58" y="406" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" font-weight="700" letter-spacing="1.4">COMPOSABLE LAYER</text>
-    <text x="292" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Runtime</text>
-    <text x="388" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Flow</text>
-    <text x="454" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Event</text>
-    <text x="530" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Lane</text>
-    <text x="602" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Memory</text>
-    <text x="706" y="406" fill="#f2f3f5" font-size="19" font-weight="680">ORM</text>
-    <text x="773" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Boot</text>
-    <text x="844" y="406" fill="#f2f3f5" font-size="19" font-weight="680">Gateway</text>
-    <path d="M58 430H1142" stroke="url(#brand)" stroke-width="4" stroke-linecap="round"/>
   </g>
 </svg>
