@@ -90,7 +90,7 @@
 	url = git@github.com:A3S-Lab/OCR.git
 [submodule "crates/parser"]
 	path = crates/parser
-	url = git@github.com:A3S-Lab/Parser.git
+	url = git@github.com:contra-sense/agentic-parser.git
 [submodule "crates/test"]
 	path = crates/test
 	url = git@github.com:A3S-Lab/Test.git
