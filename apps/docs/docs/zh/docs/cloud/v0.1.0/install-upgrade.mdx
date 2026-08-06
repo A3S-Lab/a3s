@@ -15,7 +15,7 @@ Cloud 0.1.0 尚无生产安装包。当前证据路径从精确兼容锁构建�
 ## 前置条件
 
 - Linux、Rust 1.88 或更高版本、A3S Box 和 PostgreSQL 17；
-- 兼容锁指定 revision 的 Gateway `1.0.12` 与 Runtime `0.2.0`；
+- 兼容锁指定 revision 的 Gateway `1.0.13` 与 Runtime `0.2.0`；
 - PostgreSQL、artifact、日志和节点状态持久化路径的写权限；
 - 数据库、bootstrap、Gateway 和 provider 凭据分别通过环境变量提供；
 - 升级前完成可验证备份，并安排维护窗口。
@@ -42,9 +42,9 @@ apps/cloud/target/release/a3s-cloud-control-plane apps/cloud/config/cloud.acl
 ```
 
 启动时会应用已检入 migration。应以完整的
-[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/e30ac0638451f3924910af05f9524b202c0ec949/config/cloud.acl)
+[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/b5aae34b374eb7d64f2c0784568e6b7d92a466c2/config/cloud.acl)
 和
-[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/e30ac0638451f3924910af05f9524b202c0ec949/config/node.example.acl)
+[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/b5aae34b374eb7d64f2c0784568e6b7d92a466c2/config/node.example.acl)
 为起点。文档 gate 使用锁定的 `a3s-acl` 解析它们，Cloud 类型化配置测试也会验证它们。
 
 接入流量前验证进程与依赖健康：
