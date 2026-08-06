@@ -161,10 +161,12 @@ Use publishes durable schema-v3 package-state generations for cognitive
 packages containing any combination of Tool, Skill, MCP, UI, OKF, and A3S Flow
 surfaces. The pinned CLI host observes that Use-owned generation and performs
 reviewed enable or disable without reinstalling package bytes or rewriting the
-dependency graph. CLI and Web persist the exact User-scoped plan, collect
-confirmation, and apply only its operation ID and canonical digest; TUI
-consumes the resulting hot-plug generations but still lacks a package-level
-mutation panel. For a complete locked graph plan, the host
+dependency graph. CLI, Web, and Code TUI `/packages` use the same persisted,
+exact User-scoped plan, collect confirmation, and apply only its operation ID
+and canonical digest. The TUI exposes package mutation only while the agent is
+idle, treats `NoChange` as identity-free, and locks the panel while it validates
+the confirmed apply receipt against the expected package generation. For a
+complete locked graph plan, the host
 snapshots the exact User/Workspace Grant scope and durable revision, applies
 host policy, binds Use's canonical Grant impact, and forwards the unchanged
 authority and confirmation into Use-owned apply and replay. Permission-bearing
@@ -193,7 +195,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins schema-v3 package-state generations, replaceable TUF registries, exact SemVer dependency locks, atomic graph lifecycle, canonical host-reviewed Grant composition, reviewed permission-bearing enablement, and restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge/OKF, Runtime Service, HTTP MCP/Gateway, a TUI package-level mutation panel, distributed Flow recovery/retention, complete host graph upgrade/uninstall, and real-process cross-platform E2E remain release gates. |
+| Use | `main` pins schema-v3 package-state generations, replaceable TUF registries, exact SemVer dependency locks, atomic graph lifecycle, canonical host-reviewed Grant composition, reviewed permission-bearing enablement, and restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge/OKF, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, complete host graph upgrade/uninstall, and real-process cross-platform E2E remain release gates. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
