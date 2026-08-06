@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  packageFromLock,
   parseCloudStackLock,
   tomlDependency,
   verifyCloudStack,
@@ -51,6 +52,32 @@ test('the Box component resolves its package from the nested Rust workspace', ()
   assert.equal(box.manifest, 'src/runtime/Cargo.toml');
   assert.equal(box.package, 'a3s-box-runtime');
   assert.equal(box.version, '3.2.0');
+});
+
+test('Git lock selection ignores a same-version registry package', () => {
+  const revision = '1675376dbced0a65afce2141e799dcdceb8e475d';
+  const lock = `
+[[package]]
+name = "a3s-flow"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "a3s-flow"
+version = "0.4.3"
+source = "git+https://github.com/A3S-Lab/Flow.git?rev=${revision}#${revision}"
+`;
+
+  assert.equal(
+    packageFromLock(
+      lock,
+      'a3s-flow',
+      '0.4.3',
+      'fixture lock',
+      revision,
+    ).source,
+    `git+https://github.com/A3S-Lab/Flow.git?rev=${revision}#${revision}`,
+  );
 });
 
 test('the lock must use canonical a3s-acl attribute ordering', () => {
