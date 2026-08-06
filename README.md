@@ -161,8 +161,11 @@ Use publishes durable schema-v3 package-state generations for cognitive
 packages containing any combination of Tool, Skill, MCP, UI, OKF, and A3S Flow
 surfaces. The pinned CLI host observes that Use-owned generation and performs
 replay-safe permission-free enable or disable without reinstalling package
-bytes or rewriting the dependency graph. Packages declaring permissions fail
-closed until the Grant authorization cutover is implemented.
+bytes or rewriting the dependency graph. For a complete locked graph plan, it
+snapshots the exact User/Workspace Grant scope and durable revision, applies
+host policy, binds Use's canonical Grant impact, and forwards the unchanged
+authority and confirmation into Use-owned apply and replay. Permission-bearing
+enable or disable remains closed until its exact Grant cutover is implemented.
 
 Use the machine-readable commands before scripting an optional product:
 
@@ -187,7 +190,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, Plugin Manager, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins schema-v3 package-state generations, replaceable TUF registries, exact SemVer dependency locks, atomic graph lifecycle, and replay-safe permission-free hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge/OKF, Runtime Service, HTTP MCP/Gateway, permission-bearing Grant composition, distributed Flow recovery/retention, graph lifecycle completion, and real-process cross-platform E2E remain release gates. |
+| Use | `main` pins schema-v3 package-state generations, replaceable TUF registries, exact SemVer dependency locks, atomic graph lifecycle, canonical host-reviewed Grant composition for locked graph mutations, and replay-safe permission-free hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge/OKF, Runtime Service, HTTP MCP/Gateway, permission-bearing enablement Grant cutover, distributed Flow recovery/retention, complete host graph upgrade/uninstall, and real-process cross-platform E2E remain release gates. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
