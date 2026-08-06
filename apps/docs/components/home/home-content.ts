@@ -123,7 +123,7 @@ export interface CloudLifecycleCopy {
 
 export const lifecycleProjects = {
   foundation: ["homebrew", "docs", "cli", "acl", "common"],
-  build: ["code", "tui", "web", "desktop", "gui", "webview"],
+  build: ["code", "tui", "web", "gui", "webview"],
   capabilities: [
     "use",
     "browser",
@@ -303,7 +303,7 @@ export const homeContent = {
           title: "Build the agent",
           summary: "Developer → A3S Code",
           detail:
-            "A3S Code creates AgentSession, assembles context, calls the model, runs tools, and emits typed events. The same core can sit behind the terminal, Web browser workbench, a native desktop host, or an SDK.",
+            "A3S Code creates AgentSession, assembles context, calls the model, runs tools, and emits typed events. The same core can sit behind the terminal, Web browser workbench, or an SDK.",
           path: ["Developer", "A3S Code", "AgentSession"],
           projects: lifecycleProjects.build,
         },
@@ -372,7 +372,7 @@ export const homeContent = {
           index: "02",
           title: "Everyone uses the same boundaries",
           description:
-            "Workspace limits, tool permissions, approval points, and execution policy apply whether work starts in a terminal, Web, Desktop, or an API.",
+            "Workspace limits, tool permissions, approval points, and execution policy apply whether work starts in a terminal, Web, or an API.",
         },
         {
           index: "03",
@@ -657,7 +657,7 @@ export const homeContent = {
           index: "02",
           title: "所有入口遵守同一套边界",
           description:
-            "无论工作从终端、Web、Desktop 还是 API 开始，工作区限制、工具权限、审批点和执行策略保持一致。",
+            "无论工作从终端、Web 还是 API 开始，工作区限制、工具权限、审批点和执行策略保持一致。",
         },
         {
           index: "03",

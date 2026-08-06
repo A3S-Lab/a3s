@@ -12,12 +12,12 @@ const repositoryMap = repositoryReadme
   .split("## Repository map")[1]
   ?.split("## Development")[0];
 const repositoryProjectNames = [
-  ...(repositoryMap ?? "").matchAll(/^\| \[(?:A3S )?([^\]]+)\]\([^)]+\) \|/gm),
+  ...(repositoryMap ?? "").matchAll(/\[(?:A3S )?([^\]]+)\]\([^)]+\)/g),
 ].map((match) => (match[1] === "CLI website" ? "Documentation" : match[1]));
 
 describe("homepage architecture atlas", () => {
   test("covers the website project set with unique source repositories", () => {
-    assert.equal(architectureProjectCount, 36);
+    assert.equal(architectureProjectCount, 35);
     assert.equal(
       new Set(architectureProjects.map((project) => project.id)).size,
       architectureProjectCount,
@@ -250,6 +250,6 @@ describe("homepage architecture atlas", () => {
       {},
     );
 
-    assert.deepEqual(totals, { products: 17, runtime: 8, interfaces: 11 });
+    assert.deepEqual(totals, { products: 16, runtime: 8, interfaces: 11 });
   });
 });

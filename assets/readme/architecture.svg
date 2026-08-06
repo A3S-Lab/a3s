@@ -22,15 +22,14 @@
     <g>
       <rect x="220" y="126" width="714" height="74" rx="12" fill="#fafafa" stroke="#dcdee0"/>
       <g font-size="22" font-weight="600" fill="#171717">
-        <text x="254" y="172">CLI</text>
-        <text x="354" y="172">Code</text>
-        <text x="472" y="172">Web</text>
-        <text x="578" y="172">Desktop</text>
-        <text x="724" y="172">Cloud</text>
-        <text x="834" y="172">SDKs</text>
+        <text x="266" y="172">CLI</text>
+        <text x="393" y="172">Code</text>
+        <text x="531" y="172">Web</text>
+        <text x="660" y="172">Cloud</text>
+        <text x="809" y="172">SDKs</text>
       </g>
       <g stroke="#dcdee0">
-        <path d="M329 145V181M447 145V181M553 145V181M699 145V181M809 145V181"/>
+        <path d="M363 145V181M506 145V181M649 145V181M792 145V181"/>
       </g>
     </g>
 
