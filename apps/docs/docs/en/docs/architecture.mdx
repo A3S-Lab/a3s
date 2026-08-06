@@ -5,6 +5,11 @@ description: Parsing, invocation context, dispatch, component proxies, and outpu
 
 # CLI internals
 
+The implementation is owned by the standalone
+[`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository and pinned at
+`crates/cli` in the integration monorepo. Source paths below are relative to
+that standalone CLI root.
+
 ```text
 argv
   │
@@ -21,7 +26,7 @@ InvocationContext
   ▼
 typed command dispatch
   ├── Code / Web / Research ── in-process runtime
-  ├── Config / Auth / Model ── root-owned services
+  ├── Config / Auth / Model ── CLI-owned services
   ├── Components ───────────── catalog + transaction engine
   └── Box / Search / Use ───── verified executable proxy
   │
