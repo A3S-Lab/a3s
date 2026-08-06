@@ -390,7 +390,6 @@ assert(
 
 for (const project of [
   "Code",
-  "Desktop",
   "Office",
   "Parser",
   "Test",

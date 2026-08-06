@@ -7,8 +7,6 @@ on:
       - "crates/box/**"
       - "crates/gui"
       - "crates/gui/**"
-      - "apps/desktop"
-      - "apps/desktop/**"
       - ".github/workflows/a3s-box-ci.yml"
   push:
     branches: [main]
@@ -17,8 +15,6 @@ on:
       - "crates/box/**"
       - "crates/gui"
       - "crates/gui/**"
-      - "apps/desktop"
-      - "apps/desktop/**"
       - ".github/workflows/a3s-box-ci.yml"
   workflow_dispatch:
 
@@ -79,44 +75,3 @@ jobs:
       - name: Test runtime metrics
         if: runner.os != 'Windows'
         run: cargo test --locked -p a3s-box-runtime prom::tests
-
-  desktop:
-    name: Desktop (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    env:
-      A3S_DEPS_STUB: "1"
-    defaults:
-      run:
-        working-directory: apps/desktop
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-14
-          - windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.95.0
-
-      - name: Install GTK4 dependencies
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev pkg-config
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            apps/desktop -> target
-
-      - name: Test desktop app
-        run: cargo test --locked --all-targets
