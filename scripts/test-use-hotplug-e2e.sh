@@ -2,12 +2,10 @@
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cli_source="${repository_root}"
-cli_copy="$(mktemp -d "${TMPDIR:-/tmp}/a3s-use-hotplug-cli.XXXXXX")"
+cli_manifest="${repository_root}/crates/cli/Cargo.toml"
 use_home="$(mktemp -d "${TMPDIR:-/tmp}/a3s-use-hotplug-home.XXXXXX")"
 
 cleanup() {
-  rm -rf -- "${cli_copy}"
   rm -rf -- "${use_home}"
 }
 trap cleanup EXIT
@@ -38,17 +36,13 @@ case "$(uname -s)" in
     ;;
 esac
 
-tar \
-  -cf - \
-  -C "${cli_source}" \
-  Cargo.toml Cargo.lock build.rs src tests skills .github/scripts/use-published-a3s-crates.sh |
-  tar -xf - -C "${cli_copy}"
-
-bash "${cli_copy}/.github/scripts/use-published-a3s-crates.sh" \
-  "${cli_copy}/Cargo.toml"
+test -f "${cli_manifest}" || {
+  echo "crates/cli is not initialized" >&2
+  exit 1
+}
 
 cargo test \
-  --manifest-path "${cli_copy}/Cargo.toml" \
+  --manifest-path "${cli_manifest}" \
   --locked \
   --lib \
   use_registry::tests::real_use_process_converges_install_upgrade_rebuild_disable_and_enable \
@@ -58,7 +52,7 @@ cargo test \
 
 if test "${windows_host}" = false; then
   cargo test \
-    --manifest-path "${cli_copy}/Cargo.toml" \
+    --manifest-path "${cli_manifest}" \
     --locked \
     --test code_use_first_use \
     code_tui_first_use_installs_a_real_use_release_before_the_first_turn \

@@ -252,7 +252,7 @@ function Set-ReleaseFixture {
     }
     if ($WithReleaseCompat) {
         $releaseCompatRoot = Join-Path $payload 'release-compat'
-        Copy-Item -LiteralPath (Join-Path $repoRoot 'release-compat') `
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'crates/cli/release-compat') `
             -Destination $releaseCompatRoot -Recurse
         if ($UnsafeReleaseCompat) {
             Set-Content -LiteralPath (Join-Path $releaseCompatRoot 'unexpected.txt') `
@@ -274,7 +274,7 @@ function Set-ReleaseFixture {
         name = $assetName
         state = 'uploaded'
         digest = "sha256:$digest"
-        browser_download_url = "https://github.com/A3S-Lab/a3s/releases/download/v$Version/$assetName"
+        browser_download_url = "https://github.com/A3S-Lab/CLI/releases/download/v$Version/$assetName"
     }
     $global:A3sInstallerMockRelease = [pscustomobject]@{
         tag_name = "v$Version"

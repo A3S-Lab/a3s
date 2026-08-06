@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/A3S-Lab/a3s/actions/workflows/installers.yml"><img alt="Installer tests" src="https://img.shields.io/github/actions/workflow/status/A3S-Lab/a3s/installers.yml?branch=main&amp;style=flat-square&amp;label=installers"></a>
-  <a href="https://github.com/A3S-Lab/a3s/releases/latest"><img alt="Latest A3S CLI release" src="https://img.shields.io/github/v/release/A3S-Lab/a3s?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;color=171717"></a>
+  <a href="https://github.com/A3S-Lab/CLI/releases/latest"><img alt="Latest A3S CLI release" src="https://img.shields.io/github/v/release/A3S-Lab/CLI?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;color=171717"></a>
   <a href="https://crates.io/crates/a3s"><img alt="a3s on crates.io" src="https://img.shields.io/crates/v/a3s?style=flat-square&amp;color=0d74ce"></a>
   <a href="https://www.rust-lang.org/"><img alt="Rust native" src="https://img.shields.io/badge/Rust-native-60646c?style=flat-square"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-171717?style=flat-square"></a>
@@ -29,9 +29,12 @@ as a chat box attached to an existing system. It gives sessions, models, tools,
 state, workflows, execution, and permissions one interface while keeping every
 external dependency visible.
 
-This repository owns the Rust-native `a3s` CLI and pins an integration snapshot
-of independently versioned A3S projects. The CLI starts local; capabilities,
-isolated execution, and fleet control are added only when the job needs them.
+A3S is the integration snapshot for independently versioned products and
+libraries. The canonical [`a3s` CLI](crates/cli/) is pinned as a submodule; its
+standalone repository owns source, CI, tags, releases, and detailed product
+documentation. The monorepo root owns orchestration, integration gates,
+installers, compatibility locks, and directly tracked applications—not a
+second Rust package.
 
 ## Quick start
 
@@ -85,7 +88,7 @@ must point `sessions_dir` at an existing absolute Runtime-mounted directory.
 `persistent_data = "none"` keeps Harness session and memory state process-local.
 
 The complete TUI, permission, session, and component command reference lives in
-the [CLI reference](docs/cli-reference.md).
+the [pinned CLI reference](crates/cli/docs/cli-reference.md).
 
 ## Why A3S
 
@@ -133,14 +136,14 @@ Five invariants keep those layers honest:
    is not HCL and must not be handled by an HCL parser.
 
 The detailed command and process design lives in the
-[CLI product design](docs/cli-product-design.md) and
-[CLI technical architecture](docs/cli-technical-architecture.md).
+[CLI product design](crates/cli/docs/cli-product-design.md) and
+[CLI technical architecture](crates/cli/docs/cli-technical-architecture.md).
 
 ## Product surfaces
 
-The root CLI owns invocation context, shared configuration, output policy,
-credentials, discovery, and lifecycle. Product behavior stays in the component
-that implements it.
+The standalone CLI owns invocation context, shared configuration, output
+policy, credentials, discovery, and lifecycle. Product behavior stays in the
+component that implements it.
 
 | Surface | Start here | Delivery boundary |
 | --- | --- | --- |
@@ -153,6 +156,13 @@ that implements it.
 | **Use** | `a3s use capabilities --json` | Independently versioned AI-native package manager for signed dependency graphs and hot-pluggable Tool, MCP, OKF, A3S Flow, Skill, and UI surfaces |
 | **Bench** | `a3s bench …` | Managed evaluation product; [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) ships compatible components for Linux x86_64 and macOS arm64 |
 | **Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Self-hosted control plane governed by a revision and protocol compatibility lock |
+
+Use publishes durable schema-v3 package-state generations for cognitive
+packages containing any combination of Tool, Skill, MCP, UI, OKF, and A3S Flow
+surfaces. The pinned CLI host observes that Use-owned generation and performs
+replay-safe permission-free enable or disable without reinstalling package
+bytes or rewriting the dependency graph. Packages declaring permissions fail
+closed until the Grant authorization cutover is implemented.
 
 Use the machine-readable commands before scripting an optional product:
 
@@ -169,14 +179,15 @@ a3s doctor
 
 ## Current release boundaries
 
-The latest root release is **A3S CLI v0.11.1**. These boundaries describe the
-integration snapshot pinned by `main`:
+The CLI release channel is owned by the standalone
+[`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository. These boundaries
+describe the integration snapshot pinned by this repository's `main` branch:
 
 | Area | Current boundary |
 | --- | --- |
-| Root CLI | Code, Web, Research, configuration, auth, models, diagnostics, component lifecycle, and self-management are root-owned |
+| Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, Plugin Manager, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins the v0.3 cognitive-package line: replaceable TUF registries, exact SemVer dependency locks, atomic graph upgrade and removal, and one capability cutover across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge, Service/HTTP hosts, grant composition, distributed Flow, and complete cross-platform real-process E2E remain release gates. |
+| Use | `main` pins schema-v3 package-state generations, replaceable TUF registries, exact SemVer dependency locks, atomic graph lifecycle, and replay-safe permission-free hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge/OKF, Runtime Service, HTTP MCP/Gateway, permission-bearing Grant composition, distributed Flow recovery/retention, graph lifecycle completion, and real-process cross-platform E2E remain release gates. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
@@ -209,23 +220,30 @@ the installer.
 Full installer controls and platform notes are in the
 [CLI documentation](https://a3s-lab.github.io/a3s/).
 
+Standalone versions 0.9.9 through 0.10.10 already read `A3S-Lab/CLI` releases.
+Versions 0.11.0 and 0.11.1 briefly used the monorepo endpoint; a verified,
+asset-only compatibility relay remains here so those clients can perform one
+update back to the CLI-owned release channel.
+
 ## Repository map
 
-The repository root is the umbrella CLI package—not a Cargo workspace. Most
-components are external repositories tracked as git submodules, while the Web,
-docs, Windhole, updater, and integration assets are owned directly here.
+The repository root is a monorepo integration point, not a Rust package or
+Cargo workspace. Most components are external repositories tracked as git
+submodules, while directly tracked applications and integration assets remain
+root-owned.
 
 | Group | Projects |
 | --- | --- |
-| Product hosts | [CLI](src/), [Code](crates/code/), [Ash](crates/ash/), [Web](apps/web/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
+| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Web](apps/web/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, coordination, and data | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
 | Services and interfaces | [Boot](crates/boot/), [Gateway](crates/gateway/), [Power](crates/power/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
 | Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [CLI website](apps/docs/), [Homebrew Tap](homebrew-tap/) |
 
-The [repository migration record](docs/cli-repository-migration.md) documents
-the imported CLI history and release ownership. The interactive
+The [CLI repository migration record](docs/cli-repository-migration.md)
+documents the temporary 0.11.x root migration, restored standalone ownership,
+and legacy-client release relay. The interactive
 [architecture atlas](https://a3s-lab.github.io/a3s/#architecture) exposes each
 project's entrypoints, state, adapters, security boundaries, and control flow.
 
@@ -240,9 +258,15 @@ cd a3s
 
 For an existing checkout, run `git submodule update --init --recursive`.
 
-Validate the root-owned CLI from the repository root:
+> [!IMPORTANT]
+> The repository root is not a Rust package or Cargo workspace. Run Rust
+> commands from the submodule that owns the code; the root `justfile` only
+> orchestrates cross-project development and verification.
+
+A typical CLI validation runs from the pinned CLI submodule:
 
 ```bash
+cd crates/cli
 cargo fmt --all -- --check
 cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
@@ -278,8 +302,11 @@ read [AGENTS.md](AGENTS.md) before changing repository structure.
 
 - [A3S CLI documentation](https://a3s-lab.github.io/a3s/)
 - [CLI reference](docs/cli-reference.md)
-- [Release notes](https://github.com/A3S-Lab/a3s/releases)
+- [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)
+
+Each project README records its detailed APIs, feature flags, platform
+requirements, verification commands, and remaining limitations.
 
 ## License
 

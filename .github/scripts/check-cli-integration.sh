@@ -7,24 +7,47 @@ fail() {
   exit 1
 }
 
-test -f Cargo.toml || fail "root Cargo.toml is missing"
-test -f src/main.rs || fail "root src/main.rs is missing"
-test -f Cargo.lock || fail "root Cargo.lock is missing"
-test -f .github/workflows/a3s-cli-release.yml \
-  || fail "main-repository release workflow is missing"
+repository_root="$(git rev-parse --show-toplevel)"
+cd "${repository_root}"
 
-if git ls-files --stage -- crates/cli | grep -q '^160000 '; then
-  fail "crates/cli is still registered as a gitlink"
-fi
-if grep -Fq 'path = crates/cli' .gitmodules; then
-  fail "crates/cli is still registered as a submodule"
-fi
+for forbidden in \
+  Cargo.toml \
+  Cargo.lock \
+  build.rs \
+  src \
+  tests \
+  skills \
+  release-compat \
+  bin/a3s \
+  CHANGELOG.md; do
+  test ! -e "${forbidden}" || fail "repository root must not own ${forbidden}"
+done
 
-grep -Fqx 'repository = "https://github.com/A3S-Lab/a3s"' Cargo.toml \
-  || fail "Cargo metadata does not point at A3S-Lab/a3s"
-grep -Fqx 'REPOSITORY="A3S-Lab/a3s"' install.sh \
-  || fail "Unix installer does not resolve A3S-Lab/a3s releases"
-grep -Fq "\$repository = 'A3S-Lab/a3s'" install.ps1 \
-  || fail "Windows installer does not resolve A3S-Lab/a3s releases"
+test ! -e .github/workflows/a3s-cli-release.yml \
+  || fail "the monorepo must not publish the CLI"
+test -f .github/workflows/relay-cli-release.yml \
+  || fail "the legacy-client release relay is missing"
 
-echo "root-owned CLI integration verified"
+test "$(git config -f .gitmodules --get submodule.crates/cli.path)" = "crates/cli" \
+  || fail "crates/cli submodule path is missing"
+test "$(git config -f .gitmodules --get submodule.crates/cli.url)" = "git@github.com:A3S-Lab/CLI.git" \
+  || fail "crates/cli does not point at A3S-Lab/CLI"
+
+set -- $(git ls-files --stage -- crates/cli)
+test "$#" -eq 4 || fail "crates/cli must have exactly one index entry"
+test "$1" = "160000" || fail "crates/cli is not a gitlink"
+gitlink="$2"
+
+test -f crates/cli/Cargo.toml || fail "crates/cli is not initialized"
+checkout="$(git -C crates/cli rev-parse HEAD)"
+test "${checkout}" = "${gitlink}" \
+  || fail "crates/cli checkout ${checkout} does not match gitlink ${gitlink}"
+
+grep -Fqx 'repository = "https://github.com/A3S-Lab/CLI"' crates/cli/Cargo.toml \
+  || fail "CLI Cargo metadata does not point at A3S-Lab/CLI"
+grep -Fqx 'REPOSITORY="A3S-Lab/CLI"' install.sh \
+  || fail "Unix installer does not resolve A3S-Lab/CLI releases"
+grep -Fq "\$repository = 'A3S-Lab/CLI'" install.ps1 \
+  || fail "Windows installer does not resolve A3S-Lab/CLI releases"
+
+echo "standalone CLI integration verified at ${gitlink}"

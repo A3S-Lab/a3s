@@ -19,7 +19,7 @@ export const productApplicationArchitectures: readonly ArchitectureProject[] = [
     evidence: [
       {
         label: "CLI technical architecture",
-        href: "https://github.com/A3S-Lab/a3s/blob/main/docs/cli-technical-architecture.md",
+        href: "https://github.com/A3S-Lab/CLI/blob/main/docs/cli-technical-architecture.md",
       },
     ],
     groups: [

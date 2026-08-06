@@ -5,6 +5,10 @@ description: A3S CLI 的解析、上下文、分发、组件代理和输出边�
 
 # CLI 内部结构
 
+CLI 实现由独立的 [`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) 仓库维护，
+并在集成单仓库的 `crates/cli` 路径固定一个已审查版本。下文源码路径均相对于该
+独立 CLI 仓库根目录。
+
 ```text
 argv
   │
@@ -21,7 +25,7 @@ InvocationContext
   ▼
 typed command dispatch
   ├── Code / Web / Research ── in-process runtime
-  ├── Config / Auth / Model ── root-owned services
+  ├── Config / Auth / Model ── CLI-owned services
   ├── Components ───────────── catalog + transaction engine
   └── Box / Search / Use ───── verified executable proxy
   │

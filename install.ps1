@@ -25,7 +25,7 @@ param(
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
 
-    $repository = 'A3S-Lab/a3s'
+    $repository = 'A3S-Lab/CLI'
     $target = 'x86_64-pc-windows-msvc'
 
     if ($PSVersionTable.PSVersion -lt [Version]'5.1') {

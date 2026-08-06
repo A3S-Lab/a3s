@@ -14,15 +14,22 @@ agent_island_executable := if os() == "windows" { "a3s-webview.exe" } else { "a3
 agent_island_bin := agent_island_target / "debug" / agent_island_executable
 
 [private]
+cli-submodule:
+    sh scripts/ensure-dev-submodules.sh crates/cli:Cargo.toml
+
+[private]
 use-e2e-submodules:
     sh scripts/ensure-dev-submodules.sh \
+        crates/cli:Cargo.toml \
         crates/browser:crates/browser-driver/Cargo.toml \
         crates/ocr:Cargo.toml \
         crates/use:crates/extension/Cargo.toml
 
 [private]
 marketplace-e2e-submodules:
-    sh scripts/ensure-dev-submodules.sh crates/use:crates/science/Cargo.toml
+    sh scripts/ensure-dev-submodules.sh \
+        crates/cli:Cargo.toml \
+        crates/use:crates/science/Cargo.toml
 
 [private]
 webview-submodule:
@@ -76,13 +83,13 @@ playground:
 # Run the local umbrella CLI and forward all arguments
 
 # Example: `just a3s search status` or `just a3s --help`
-a3s *args:
-    cargo run --manifest-path Cargo.toml -- {{ args }}
+a3s *args: cli-submodule
+    cargo run --manifest-path crates/cli/Cargo.toml -- {{ args }}
 
 # Start the A3S Code TUI in the current repository
-code: webview-submodule
+code: cli-submodule webview-submodule
     CARGO_TARGET_DIR='{{ agent_island_target }}' cargo build --manifest-path crates/webview/Cargo.toml --bin a3s-webview
-    A3S_AGENT_ISLAND_BIN='{{ agent_island_bin }}' cargo run --manifest-path Cargo.toml -- code
+    A3S_AGENT_ISLAND_BIN='{{ agent_island_bin }}' cargo run --manifest-path crates/cli/Cargo.toml -- code
 
 # Test Code hot-plug against a real, independently built A3S Use process
 use-hotplug-e2e: use-e2e-submodules
@@ -99,7 +106,7 @@ marketplace-science-browser-e2e: marketplace-e2e-submodules
     A3S_USE_E2E_TARGET='{{ use_e2e_target }}' bash scripts/test-web-plugin-marketplace-browser-e2e.sh
 
 # Build and start the A3S Web application
-web:
+web: cli-submodule
     cd apps/web && A3S_HOST={{ host }} A3S_PORT={{ port }} just web
 
 # Start the Windhole visual A3S Bench laboratory

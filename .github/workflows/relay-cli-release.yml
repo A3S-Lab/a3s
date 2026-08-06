@@ -1,0 +1,268 @@
+name: Relay CLI Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published A3S-Lab/CLI stable tag to relay"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cli-release-relay-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_REPOSITORY: A3S-Lab/CLI
+
+jobs:
+  relay:
+    name: Relay verified CLI archives
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify and download the canonical CLI release
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Relay requires a stable vMAJOR.MINOR.PATCH tag"
+            exit 1
+          fi
+
+          source_json="$(gh api "repos/${SOURCE_REPOSITORY}/releases/tags/${tag}")"
+          if ! jq -e --arg tag "$tag" \
+            '.tag_name == $tag and .draft == false and .prerelease == false' \
+            <<<"$source_json" >/dev/null; then
+            echo "::error::Source release ${SOURCE_REPOSITORY} ${tag} must be public and stable"
+            exit 1
+          fi
+
+          source_release_id="$(jq -er '.id' <<<"$source_json")"
+          ref_json="$(gh api "repos/${SOURCE_REPOSITORY}/git/ref/tags/${tag}")"
+          source_type="$(jq -er '.object.type' <<<"$ref_json")"
+          source_sha="$(jq -er '.object.sha' <<<"$ref_json")"
+          for _ in 1 2 3 4; do
+            if [[ "$source_type" == "commit" ]]; then
+              break
+            fi
+            if [[ "$source_type" != "tag" ]]; then
+              echo "::error::Source tag ${tag} resolves to unsupported object type ${source_type}"
+              exit 1
+            fi
+            tag_json="$(gh api "repos/${SOURCE_REPOSITORY}/git/tags/${source_sha}")"
+            source_type="$(jq -er '.object.type' <<<"$tag_json")"
+            source_sha="$(jq -er '.object.sha' <<<"$tag_json")"
+          done
+          if [[ "$source_type" != "commit" || ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve source tag ${tag} to one commit"
+            exit 1
+          fi
+
+          for target in \
+            aarch64-apple-darwin \
+            x86_64-apple-darwin \
+            x86_64-unknown-linux-gnu \
+            aarch64-unknown-linux-gnu \
+            x86_64-pc-windows-msvc; do
+            base="a3s-${tag}-${target}"
+            printf '%s\n' "${base}.tar.gz" "${base}.sha256"
+            if [[ "$target" == "x86_64-pc-windows-msvc" ]]; then
+              printf '%s\n' "${base}.zip"
+            fi
+          done | sort > expected-assets.txt
+
+          jq -r --arg prefix "a3s-${tag}-" \
+            '.assets[].name | select(startswith($prefix))' \
+            <<<"$source_json" | sort > source-assets.txt
+          if ! diff -u expected-assets.txt source-assets.txt; then
+            echo "::error::Source release ${tag} does not contain the exact CLI asset set"
+            exit 1
+          fi
+
+          mkdir source-assets
+          gh release download "$tag" --repo "$SOURCE_REPOSITORY" \
+            --dir source-assets --pattern "a3s-${tag}-*"
+          find source-assets -mindepth 1 -maxdepth 1 -type f \
+            -exec basename {} \; | sort > downloaded-assets.txt
+          diff -u expected-assets.txt downloaded-assets.txt
+
+          while IFS= read -r asset; do
+            expected_digest="$(jq -er --arg asset "$asset" \
+              '[.assets[] | select(.name == $asset)]
+               | if length == 1 then .[0].digest else empty end' \
+              <<<"$source_json")"
+            actual_digest="sha256:$(sha256sum "source-assets/${asset}" | awk '{ print $1 }')"
+            if [[ "$expected_digest" != "$actual_digest" ]]; then
+              echo "::error::GitHub digest mismatch for ${asset}"
+              exit 1
+            fi
+          done < expected-assets.txt
+
+          for target in \
+            aarch64-apple-darwin \
+            x86_64-apple-darwin \
+            x86_64-unknown-linux-gnu \
+            aarch64-unknown-linux-gnu \
+            x86_64-pc-windows-msvc; do
+            base="a3s-${tag}-${target}"
+            archives=("${base}.tar.gz")
+            if [[ "$target" == "x86_64-pc-windows-msvc" ]]; then
+              archives+=("${base}.zip")
+            fi
+            checksum="source-assets/${base}.sha256"
+            if [[ "$(awk 'END { print NR }' "$checksum")" -ne "${#archives[@]}" ]]; then
+              echo "::error::${base}.sha256 must contain exactly one entry per archive"
+              exit 1
+            fi
+            for archive in "${archives[@]}"; do
+              expected="$(awk -v asset="$archive" \
+                '($2 == asset || $2 == "*" asset) && length($1) == 64
+                 && $1 !~ /[^0-9a-f]/ { digest = $1; count += 1 }
+                 END { if (count == 1) print digest }' "$checksum")"
+              actual="$(sha256sum "source-assets/${archive}" | awk '{ print $1 }')"
+              if [[ -z "$expected" || "$actual" != "$expected" ]]; then
+                echo "::error::SHA-256 mismatch for ${archive}"
+                exit 1
+              fi
+            done
+          done
+
+          bridge_root='release-compat/support/managed-srt/'
+          printf '%s\n' \
+            'node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js' \
+            'node_modules/@anthropic-ai/sandbox-runtime/package.json' \
+            'package-lock.json' \
+            'package.json' > expected-bridge-files.txt
+
+          verify_bridge() {
+            local archive="$1"
+            local kind="$2"
+            local entries
+            local actual
+            actual="$(mktemp)"
+            if [[ "$kind" == "tar" ]]; then
+              entries="$(tar -tzf "$archive")"
+            else
+              entries="$(unzip -Z1 "$archive")"
+            fi
+            awk -v root="$bridge_root" '
+              {
+                offset = index($0, root)
+                if (offset > 0 && substr($0, length($0), 1) != "/") {
+                  print substr($0, offset + length(root))
+                }
+              }
+            ' <<<"$entries" | sort > "$actual"
+            if ! diff -u expected-bridge-files.txt "$actual"; then
+              echo "::error::${archive} lacks the exact inert legacy update marker"
+              exit 1
+            fi
+          }
+
+          for archive in source-assets/*.tar.gz; do
+            verify_bridge "$archive" tar
+          done
+          verify_bridge \
+            "source-assets/a3s-${tag}-x86_64-pc-windows-msvc.zip" zip
+
+          echo "source_sha=${source_sha}" >> "$GITHUB_OUTPUT"
+          echo "source_release_id=${source_release_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the verified legacy-client relay
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+          SOURCE_RELEASE_ID: ${{ steps.source.outputs.source_release_id }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          marker="<!-- a3s-cli-release-relay:v1 source:${SOURCE_REPOSITORY} tag:${tag} sha:${SOURCE_SHA} release-id:${SOURCE_RELEASE_ID} -->"
+          cat > relay-notes.md <<EOF
+          # A3S CLI ${tag} compatibility relay
+
+          Canonical CLI development, tags, and releases live in
+          [A3S-Lab/CLI](https://github.com/A3S-Lab/CLI). This release mirrors
+          the byte-identical, verified assets from the canonical
+          [${tag} release](https://github.com/${SOURCE_REPOSITORY}/releases/tag/${tag})
+          only so A3S 0.11.0 and 0.11.1 clients can update to the CLI-owned channel.
+
+          ${marker}
+          EOF
+
+          verify_relay() {
+            rm -rf relayed-assets
+            mkdir relayed-assets
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+              --dir relayed-assets --pattern "a3s-${tag}-*"
+            find relayed-assets -mindepth 1 -maxdepth 1 -type f \
+              -exec basename {} \; | sort > relayed-assets.txt
+            diff -u expected-assets.txt relayed-assets.txt
+            while IFS= read -r asset; do
+              if ! cmp -s "source-assets/${asset}" "relayed-assets/${asset}"; then
+                echo "::error::Relayed asset differs from canonical source: ${asset}"
+                exit 1
+              fi
+            done < expected-assets.txt
+
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              relay_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")"
+              ready=true
+              while IFS= read -r asset; do
+                relay_digest="$(jq -r --arg asset "$asset" \
+                  '[.assets[] | select(.name == $asset)]
+                   | if length == 1 then (.[] | .digest // "") else "" end' \
+                  <<<"$relay_json")"
+                expected_digest="sha256:$(sha256sum "source-assets/${asset}" | awk '{ print $1 }')"
+                if [[ "$relay_digest" != "$expected_digest" ]]; then
+                  ready=false
+                  break
+                fi
+              done < expected-assets.txt
+              if [[ "$ready" == true ]]; then
+                return 0
+              fi
+              [[ "$attempt" -eq 10 ]] || sleep 2
+            done
+            echo "::error::Relayed assets do not expose the canonical GitHub digests"
+            exit 1
+          }
+
+          if release_json="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json body,isDraft,isPrerelease,name,tagName 2>/dev/null)"; then
+            if ! jq -e --arg tag "$tag" --arg marker "$marker" \
+              '.isPrerelease == false and .tagName == $tag and .name == $tag
+               and (.body | contains($marker))' <<<"$release_json" >/dev/null; then
+              echo "::error::Existing ${tag} release is not owned by this relay"
+              exit 1
+            fi
+            if jq -e '.isDraft == false' <<<"$release_json" >/dev/null; then
+              verify_relay
+              gh release edit "$tag" --repo "$GITHUB_REPOSITORY" \
+                --draft=false --prerelease=false --latest
+              exit 0
+            fi
+          else
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+              echo "::error::Tag ${tag} already exists without an owned relay release"
+              exit 1
+            fi
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --draft --prerelease=false --title "$tag" \
+              --notes-file relay-notes.md
+          fi
+
+          gh release upload "$tag" --repo "$GITHUB_REPOSITORY" \
+            source-assets/* --clobber
+          verify_relay
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" \
+            --draft=false --prerelease=false --latest

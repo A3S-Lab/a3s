@@ -1,80 +1,42 @@
-name: A3S CLI CI
+name: A3S CLI Integration
+
 on:
   push:
     branches: [main]
     paths:
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "build.rs"
-      - "src/**"
-      - "tests/**"
-      - "skills/**"
       - ".gitmodules"
+      - "crates/cli"
       - "install.sh"
       - "install.ps1"
       - ".github/scripts/check-cli-integration.sh"
-      - ".github/scripts/check-release-state.sh"
-      - ".github/scripts/test-check-release-state.sh"
-      - ".github/scripts/use-published-a3s-crates.sh"
       - ".github/workflows/a3s-cli-ci.yml"
+      - ".github/workflows/relay-cli-release.yml"
   pull_request:
     branches: [main]
     paths:
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "build.rs"
-      - "src/**"
-      - "tests/**"
-      - "skills/**"
       - ".gitmodules"
+      - "crates/cli"
       - "install.sh"
       - "install.ps1"
       - ".github/scripts/check-cli-integration.sh"
-      - ".github/scripts/check-release-state.sh"
-      - ".github/scripts/test-check-release-state.sh"
-      - ".github/scripts/use-published-a3s-crates.sh"
       - ".github/workflows/a3s-cli-ci.yml"
+      - ".github/workflows/relay-cli-release.yml"
 
 permissions:
   contents: read
 
 jobs:
   check:
+    name: Pinned repository contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Initialize the pinned CLI
+        run: |
+          git -c url."https://github.com/".insteadOf=git@github.com: \
+            submodule update --init crates/cli
       - uses: dtolnay/rust-toolchain@stable
-        with: { components: "rustfmt, clippy" }
-      - name: Verify root-owned CLI layout
+      - name: Verify repository ownership
         run: bash .github/scripts/check-cli-integration.sh
-      - name: Use published A3S crates
-        run: bash .github/scripts/use-published-a3s-crates.sh
-      - name: Test release-state validation
-        run: bash .github/scripts/test-check-release-state.sh
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --locked --all-targets -- -D warnings
-      - run: cargo test --locked --all-targets
-      - run: cargo build --locked --release
-
-  # Validate the TUI compiles for Windows + macOS so all three desktop
-  # platforms can run `a3s code` (Linux is covered by `check` above).
-  cross:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Use published A3S crates
-        shell: bash
-        run: bash .github/scripts/use-published-a3s-crates.sh
-      - name: Test TUI exit regression
-        if: runner.os == 'macOS'
-        run: cargo test --locked --test tui_exit -- --nocapture
-      - run: cargo build --locked --release
-        env:
-          # Cross-platform PR validation does not need LTO, and rustc 1.97 can
-          # segfault while optimizing chromiumoxide_cdp on macOS arm64.
-          CARGO_PROFILE_RELEASE_LTO: "false"
+      - name: Resolve the pinned CLI manifest
+        run: cargo metadata --manifest-path crates/cli/Cargo.toml --locked --no-deps --format-version 1

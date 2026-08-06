@@ -216,7 +216,7 @@ make_fixture() {
         archive_members+=(support)
     fi
     if [ "$include_release_compat" -eq 1 ]; then
-        cp -R "$repo_root/release-compat" "$payload/release-compat"
+        cp -R "$repo_root/crates/cli/release-compat" "$payload/release-compat"
         if [ "$unsafe_release_compat" -eq 1 ]; then
             printf 'unexpected compatibility marker content\n' \
                 >"$payload/release-compat/unexpected.txt"
@@ -230,7 +230,7 @@ make_fixture() {
     MOCK_RELEASE_JSON="$fixture_root/release.json"
     export MOCK_ARCHIVE MOCK_RELEASE_JSON
     printf '%s' \
-        "{\"tag_name\":\"v${version}\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/1\",\"name\":\"unrelated.tar.gz\",\"uploader\":{\"login\":\"bot\"},\"state\":\"uploaded\",\"digest\":\"sha256:$(printf '0%.0s' {1..64})\",\"browser_download_url\":\"https://example.invalid/unrelated\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/2\",\"name\":\"${asset_name}\",\"uploader\":{\"login\":\"bot\",\"following_url\":\"https://api.github.com/users/bot/following{/other_user}\"},\"state\":\"uploaded\",\"digest\":\"sha256:${digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/a3s/releases/download/v${version}/${asset_name}\"}]}" \
+        "{\"tag_name\":\"v${version}\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/1\",\"name\":\"unrelated.tar.gz\",\"uploader\":{\"login\":\"bot\"},\"state\":\"uploaded\",\"digest\":\"sha256:$(printf '0%.0s' {1..64})\",\"browser_download_url\":\"https://example.invalid/unrelated\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/2\",\"name\":\"${asset_name}\",\"uploader\":{\"login\":\"bot\",\"following_url\":\"https://api.github.com/users/bot/following{/other_user}\"},\"state\":\"uploaded\",\"digest\":\"sha256:${digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v${version}/${asset_name}\"}]}" \
         >"$MOCK_RELEASE_JSON"
 }
 
@@ -288,7 +288,7 @@ expect_failure 'unexpected release compatibility marker member' \
     || fail 'malformed compatibility marker installed new Web assets'
 assert_no_generated_paths "$release_compat_root"
 
-# `latest` ignores other product tags and prereleases in the monorepo.
+# `latest` ignores unrelated product tags and prereleases in the release feed.
 make_fixture 1.2.2 x86_64-unknown-linux-gnu 0 0
 latest_list="$fixture_root/releases.json"
 printf '%s' \
@@ -361,7 +361,7 @@ make_fixture 1.2.6 x86_64-unknown-linux-gnu
 asset_name='a3s-v1.2.6-x86_64-unknown-linux-gnu.tar.gz'
 actual_digest=$(sha256_file "$MOCK_ARCHIVE")
 printf '%s' \
-    "{\"tag_name\":\"v1.2.6\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/3\",\"name\":\"${asset_name}\",\"state\":\"uploaded\",\"browser_download_url\":\"https://github.com/A3S-Lab/a3s/releases/download/v1.2.6/${asset_name}\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/4\",\"name\":\"other.tar.gz\",\"state\":\"uploaded\",\"digest\":\"sha256:${actual_digest}\",\"browser_download_url\":\"https://example.invalid/other\"}]}" \
+    "{\"tag_name\":\"v1.2.6\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/3\",\"name\":\"${asset_name}\",\"state\":\"uploaded\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v1.2.6/${asset_name}\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/4\",\"name\":\"other.tar.gz\",\"state\":\"uploaded\",\"digest\":\"sha256:${actual_digest}\",\"browser_download_url\":\"https://example.invalid/other\"}]}" \
     >"$fixture_root/missing-digest.json"
 MOCK_RELEASE_JSON="$fixture_root/missing-digest.json"
 export MOCK_RELEASE_JSON
@@ -383,7 +383,7 @@ export MOCK_ARCHIVE
 unsafe_digest=$(sha256_file "$MOCK_ARCHIVE")
 unsafe_asset=$(basename "$MOCK_ARCHIVE")
 printf '%s' \
-    "{\"tag_name\":\"v1.2.7\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/5\",\"name\":\"${unsafe_asset}\",\"state\":\"uploaded\",\"digest\":\"sha256:${unsafe_digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/a3s/releases/download/v1.2.7/${unsafe_asset}\"}]}" \
+    "{\"tag_name\":\"v1.2.7\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/5\",\"name\":\"${unsafe_asset}\",\"state\":\"uploaded\",\"digest\":\"sha256:${unsafe_digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v1.2.7/${unsafe_asset}\"}]}" \
     >"$fixture_root/unsafe.json"
 MOCK_RELEASE_JSON="$fixture_root/unsafe.json"
 export MOCK_RELEASE_JSON

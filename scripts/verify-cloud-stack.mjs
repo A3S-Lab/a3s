@@ -389,14 +389,33 @@ function exactDependencyVersion(declaration, label) {
   return version.slice(1);
 }
 
-function packageFromLock(source, name, expectedVersion, label) {
+export function packageFromLock(
+  source,
+  name,
+  expectedVersion,
+  label,
+  expectedRevision,
+) {
   const entries = source.split('[[package]]').slice(1);
-  const entry = entries.find(
-    (candidate) =>
-      new RegExp(`^\\s*name = "${name}"\\s*$`, 'm').test(candidate) &&
-      quotedTomlValue(candidate, 'version', `${label} package ${name}`) === expectedVersion,
+  const entry = entries.find((candidate) => {
+    if (
+      !new RegExp(`^\\s*name = "${name}"\\s*$`, 'm').test(candidate) ||
+      quotedTomlValue(candidate, 'version', `${label} package ${name}`) !== expectedVersion
+    ) {
+      return false;
+    }
+    if (!expectedRevision) return true;
+    return /^source = "([^"]+)"$/m
+      .exec(candidate)?.[1]
+      ?.endsWith(`#${expectedRevision}`);
+  });
+  const revisionLabel = expectedRevision
+    ? ` at revision ${expectedRevision}`
+    : '';
+  invariant(
+    entry,
+    `${label} is missing package ${name} ${expectedVersion}${revisionLabel}`,
   );
-  invariant(entry, `${label} is missing package ${name} ${expectedVersion}`);
   return {
     version: quotedTomlValue(entry, 'version', `${label} package ${name}`),
     source: /^source = "([^"]+)"$/m.exec(entry)?.[1],
@@ -404,7 +423,13 @@ function packageFromLock(source, name, expectedVersion, label) {
 }
 
 function assertLockVersion(lockSource, component, label, expectedRevision) {
-  const entry = packageFromLock(lockSource, component.package, component.version, label);
+  const entry = packageFromLock(
+    lockSource,
+    component.package,
+    component.version,
+    label,
+    expectedRevision,
+  );
   invariant(
     entry.version === component.version,
     `${label} locks ${component.package} ${entry.version}, expected ${component.version}`,

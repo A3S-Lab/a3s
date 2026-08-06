@@ -21,7 +21,7 @@ promise unless a schema below says so.
 | Management MCP | none | **Planned** | C0 Streamable HTTP surface |
 | Domain-event envelope | schema version `1` | **Experimental** | PostgreSQL outbox and optional NATS relay |
 | Node command | `a3s.cloud.node-command.v1` | **Verified** | Private outbound-mTLS node control |
-| Gateway snapshot | `a3s.cloud.gateway-snapshot.v2` | **Verified** | Complete, digest-bound Gateway command |
+| Gateway snapshot | `a3s.cloud.gateway-snapshot.v3` | **Verified** | Complete, digest-bound Gateway command |
 | ACL | parser `0.3.0` | **Verified** | Closed control-plane and node configuration |
 
 ## REST and OpenAPI
@@ -33,7 +33,7 @@ tenant routes require an API token with the declared scope.
 
 Do not copy a generated schema into source documentation. Start the exact
 binary and retrieve `/api/v1/openapi.json`. Its registration is tied to the
-[pinned API contract source](https://github.com/A3S-Lab/Cloud/blob/bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340/crates/control-plane/src/presentation/api_contract/route.rs),
+[pinned API contract source](https://github.com/A3S-Lab/Cloud/blob/fa758b37815e435bba9b2057f2bd9fa5be44c844/crates/control-plane/src/presentation/api_contract/route.rs),
 and the docs gate fails if that source marker changes.
 
 ## Events and node protocols
@@ -41,19 +41,19 @@ and the docs gate fails if that source marker changes.
 Event keys are lowercase dot-separated names. The envelope carries event ID,
 key, schema version, organization, aggregate identity/version, timestamps,
 correlation/causation IDs, and JSON payload; see the
-[pinned contract](https://github.com/A3S-Lab/Cloud/blob/bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340/crates/contracts/src/event.rs).
+[pinned contract](https://github.com/A3S-Lab/Cloud/blob/fa758b37815e435bba9b2057f2bd9fa5be44c844/crates/contracts/src/event.rs).
 NATS is a relay of the PostgreSQL outbox, not a second business authority.
 
 Node request/response schemas live in the
-[pinned contracts directory](https://github.com/A3S-Lab/Cloud/tree/bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340/crates/contracts/src/node).
+[pinned contracts directory](https://github.com/A3S-Lab/Cloud/tree/fa758b37815e435bba9b2057f2bd9fa5be44c844/crates/contracts/src/node).
 They are private infrastructure contracts authenticated by node identity; they
 must not be exposed as unauthenticated public REST.
 
 ## ACL
 
 ACL means A3S Agent Configuration Language, not HCL. The complete shipped
-[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340/config/cloud.acl)
+[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/fa758b37815e435bba9b2057f2bd9fa5be44c844/config/cloud.acl)
 and
-[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/bc5acaf0bb12f84ea1ae91b23f8d8d21d4c69340/config/node.example.acl)
+[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/fa758b37815e435bba9b2057f2bd9fa5be44c844/config/node.example.acl)
 are the versioned references. Unknown blocks and fields fail closed. Secrets
 are referenced by environment-variable name; values do not belong in ACL.
