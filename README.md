@@ -177,6 +177,12 @@ and forward unchanged authority and confirmation into Use-owned apply and
 replay. Permission-bearing enablement uses the same Grant-before-publish and
 hide/drain-before-revoke saga.
 
+Install, upgrade, and uninstall accept only verified catalog-v3 evidence with
+complete Use-owned dependency locks. Reviewed apply runs through Use in the
+host process; there is no child `a3s` mutation or direct Web package-toggle
+fallback. Upgrade binds the exact prior and candidate locks, while graph-wide
+add/replace/remove/retain preserves dependencies still owned by another root.
+
 Use the machine-readable commands before scripting an optional product:
 
 ```bash
@@ -200,7 +206,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer locks, replaceable TUF Registries, reviewed Grants, one graph cutover, reverse retirement, and restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Managed Knowledge/UI carriers, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, shared CLI/TUI/Web qualification, production Registry operations, and real-process cross-platform E2E remain release gates. Use is not a released product. |
+| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer dependency locks, replaceable TUF Registries, in-process reviewed Grants and graph apply, shared dependency ownership, and restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Managed Knowledge/UI carriers, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, production Registry operations, and real-process cross-platform CLI/TUI/Web E2E remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
