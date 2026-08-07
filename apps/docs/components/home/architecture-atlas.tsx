@@ -1,151 +1,101 @@
-"use client";
+'use client';
 
+import { ArrowUpRight, MagnifyingGlass, Network } from '@phosphor-icons/react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
-  ArrowLeft,
-  ArrowLeftRight,
-  ArrowRight,
-  ArrowUpRight,
-  Search,
-} from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
-import {
-  architectureNodeCount,
   architectureProjectCount,
   architectureProjects,
-  type ArchitectureEdge,
-  type ArchitectureNodeKind,
+  systemArchitectureProject,
+  type ArchitectureCategory,
   type ArchitectureProject,
-} from "./architecture";
-import {
-  filterArchitectureProjects,
-  replacementArchitectureProject,
-  type ArchitectureAtlasCategory,
-} from "./architecture/architecture-filter";
-import type { Lang } from "./home-content";
-import { SiteLink } from "./site-link";
-import { localePath } from "../../lib/i18n";
+  type ArchitectureTone,
+} from '@/components/home/architecture';
+import type { Lang } from '@/components/home/home-content';
 
-const categoryOrder: readonly ArchitectureAtlasCategory[] = [
-  "all",
-  "products",
-  "runtime",
-  "interfaces",
-];
+type AtlasCategory = 'all' | ArchitectureCategory;
+
+const nodePositions = [
+  { x: 50, y: 12 },
+  { x: 86, y: 36 },
+  { x: 72, y: 82 },
+  { x: 28, y: 82 },
+  { x: 14, y: 36 },
+] as const;
+
+const categoryOrder: readonly AtlasCategory[] = ['all', 'products', 'runtime', 'interfaces'];
 
 const projectNumbers = new Map(
-  architectureProjects.map((project, index) => [
-    project.id,
-    String(index + 1).padStart(2, "0"),
-  ]),
+  architectureProjects.map((project, index) => [project.id, String(index + 1).padStart(2, '0')]),
 );
-
-const architectureEdgeCount = architectureProjects.reduce(
-  (count, project) => count + project.edges.length,
-  0,
-);
-const defaultArchitectureProject =
-  architectureProjects.find((project) => project.id === "code") ??
-  architectureProjects[0]!;
-
-export const ARCHITECTURE_SELECT_PROJECT_EVENT =
-  "a3s:architecture-select-project";
 
 const atlasCopy = {
   cn: {
     categories: {
-      all: "全部",
-      products: "产品与应用",
-      runtime: "运行时与数据",
-      interfaces: "服务与工具",
+      all: '全栈总览',
+      products: '产品与应用',
+      runtime: '运行与数据',
+      interfaces: '服务与接口',
     },
-    projectIndex: "项目",
-    search: "搜索项目或组件",
-    noResults: "没有找到匹配项",
-    openProject: "打开项目",
-    structure: "内部技术架构",
-    diagramCanvas: "内部技术架构",
-    source: "架构依据",
-    nodes: "节点",
-    relations: "内部流",
-    selectedNode: "当前节点",
-    connected: "直接内部流向",
-    noConnections: "没有直接内部流向",
-    footer: `${architectureProjectCount} 个项目 · ${architectureNodeCount} 个内部节点 · ${architectureEdgeCount} 条控制或数据流`,
-    kinds: {
-      entry: "入口",
-      process: "处理",
-      control: "控制",
-      service: "服务",
-      adapter: "适配",
-      runtime: "执行",
-      store: "存储",
-      security: "校验 / 安全",
-      output: "输出",
+    projectIndex: '项目索引',
+    systemLabel: '共享契约平面',
+    search: '搜索 35 个项目',
+    noResults: '没有匹配的项目',
+    openProject: '打开项目',
+    topology: '交互拓扑',
+    nodeHint: '悬停、聚焦或点击节点，查看它在架构中的职责。',
+    selectedNode: '当前节点',
+    footer: '35 个项目 · 175 个架构节点 · 一套可检查的能力图谱',
+    tones: {
+      surface: '入口',
+      core: '核心',
+      contract: '契约',
+      runtime: '执行',
+      evidence: '证据',
     },
   },
   en: {
     categories: {
-      all: "All",
-      products: "Products & apps",
-      runtime: "Runtime & data",
-      interfaces: "Services & tools",
+      all: 'System overview',
+      products: 'Products & apps',
+      runtime: 'Runtime & data',
+      interfaces: 'Services & interfaces',
     },
-    projectIndex: "Projects",
-    search: "Search projects or components",
-    noResults: "No matching project or component",
-    openProject: "Open project",
-    structure: "Internal technical architecture",
-    diagramCanvas: "internal technical architecture",
-    source: "Architecture sources",
-    nodes: "nodes",
-    relations: "internal flows",
-    selectedNode: "Selected node",
-    connected: "Direct internal flows",
-    noConnections: "No direct internal flows",
-    footer: `${architectureProjectCount} projects · ${architectureNodeCount} internal nodes · ${architectureEdgeCount} control or data flows`,
-    kinds: {
-      entry: "entry",
-      process: "process",
-      control: "control",
-      service: "service",
-      adapter: "adapter",
-      runtime: "runtime",
-      store: "store",
-      security: "validation / security",
-      output: "output",
+    projectIndex: 'Project index',
+    systemLabel: 'Shared contract plane',
+    search: 'Search 35 projects',
+    noResults: 'No matching projects',
+    openProject: 'Open project',
+    topology: 'Interactive topology',
+    nodeHint: 'Hover, focus, or select a node to inspect its architectural responsibility.',
+    selectedNode: 'Selected node',
+    footer: '35 projects · 175 architecture nodes · one inspectable capability atlas',
+    tones: {
+      surface: 'surface',
+      core: 'core',
+      contract: 'contract',
+      runtime: 'runtime',
+      evidence: 'evidence',
     },
   },
 } as const;
 
-function projectHref(project: ArchitectureProject, lang: Lang): string {
-  return project.href.startsWith("/")
-    ? localePath(project.href, lang)
-    : project.href;
+function projectLinks(project: ArchitectureProject): ReadonlyArray<readonly [string, string]> {
+  if (project.links) return project.links;
+
+  return project.nodes.slice(0, -1).map((node, index) => [node.id, project.nodes[index + 1].id] as const);
 }
 
-function otherEnd(architectureEdge: ArchitectureEdge, nodeId: string): string {
-  return architectureEdge.from === nodeId
-    ? architectureEdge.to
-    : architectureEdge.from;
+function projectHref(project: ArchitectureProject, lang: Lang): string {
+  void lang;
+  return project.href;
 }
 
 export function ArchitectureAtlas({ lang }: { lang: Lang }) {
   const copy = atlasCopy[lang];
-  const [activeCategory, setActiveCategory] =
-    useState<ArchitectureAtlasCategory>("all");
-  const [activeProjectId, setActiveProjectId] = useState(
-    defaultArchitectureProject.id,
-  );
-  const [activeNodeId, setActiveNodeId] = useState(
-    defaultArchitectureProject.nodes[0].id,
-  );
-  const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<AtlasCategory>('all');
+  const [activeProjectId, setActiveProjectId] = useState(systemArchitectureProject.id);
+  const [activeNodeId, setActiveNodeId] = useState(systemArchitectureProject.nodes[0].id);
+  const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -153,151 +103,104 @@ export function ArchitectureAtlas({ lang }: { lang: Lang }) {
       const target = event.target;
       const editing =
         target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
-      if (event.key === "/" && !editing) {
+      if (event.key === '/' && !editing) {
         event.preventDefault();
         searchRef.current?.focus();
       }
     }
 
-    window.addEventListener("keydown", focusSearch);
-    return () => window.removeEventListener("keydown", focusSearch);
-  }, []);
-
-  useEffect(() => {
-    function selectLifecycleProject(event: Event) {
-      const projectId = (event as CustomEvent<string>).detail;
-      const project = architectureProjects.find(
-        (candidate) => candidate.id === projectId,
-      );
-      if (!project) return;
-
-      setActiveCategory("all");
-      setQuery("");
-      setActiveProjectId(project.id);
-      setActiveNodeId(project.nodes[0].id);
-    }
-
-    window.addEventListener(
-      ARCHITECTURE_SELECT_PROJECT_EVENT,
-      selectLifecycleProject,
-    );
-    return () =>
-      window.removeEventListener(
-        ARCHITECTURE_SELECT_PROJECT_EVENT,
-        selectLifecycleProject,
-      );
+    window.addEventListener('keydown', focusSearch);
+    return () => window.removeEventListener('keydown', focusSearch);
   }, []);
 
   const activeProject =
-    architectureProjects.find((project) => project.id === activeProjectId) ??
-    defaultArchitectureProject;
-  const activeNode =
-    activeProject.nodes.find((node) => node.id === activeNodeId) ??
-    activeProject.nodes[0];
-  const activeNodeIndex = activeProject.nodes.findIndex(
-    (node) => node.id === activeNode.id,
-  );
-  const activeEdges = activeProject.edges.filter(
-    (architectureEdge) =>
-      architectureEdge.from === activeNode.id ||
-      architectureEdge.to === activeNode.id,
-  );
-  const neighborIds = new Set(
-    activeEdges.map((architectureEdge) =>
-      otherEnd(architectureEdge, activeNode.id),
-    ),
-  );
+    activeProjectId === systemArchitectureProject.id
+      ? systemArchitectureProject
+      : architectureProjects.find((project) => project.id === activeProjectId) ?? systemArchitectureProject;
+  const activeNode = activeProject.nodes.find((node) => node.id === activeNodeId) ?? activeProject.nodes[0];
+  const activeNodeIndex = activeProject.nodes.findIndex((node) => node.id === activeNode.id);
+  const links = projectLinks(activeProject);
 
-  const visibleProjects = useMemo(
-    () => filterArchitectureProjects(activeCategory, query),
-    [activeCategory, query],
-  );
+  const visibleProjects = useMemo(() => {
+    const projects: readonly ArchitectureProject[] =
+      activeCategory === 'all'
+        ? [systemArchitectureProject, ...architectureProjects]
+        : architectureProjects.filter((project) => project.category === activeCategory);
+    const normalizedQuery = query.trim().toLocaleLowerCase();
 
-  const visibleCountLabel = `${String(visibleProjects.length).padStart(
-    2,
-    "0",
-  )} / ${architectureProjectCount}`;
+    if (!normalizedQuery) return projects;
+
+    return projects.filter((project) => {
+      const searchable = `${project.name} ${project.id} ${project.role.cn} ${project.role.en}`.toLocaleLowerCase();
+      return searchable.includes(normalizedQuery);
+    });
+  }, [activeCategory, query]);
+  const visibleSubprojectCount = visibleProjects.filter(
+    (project) => project.id !== systemArchitectureProject.id,
+  ).length;
+  const visibleCountLabel =
+    visibleSubprojectCount === 0 && visibleProjects.some((project) => project.id === systemArchitectureProject.id)
+      ? 'SYS'
+      : `${String(visibleSubprojectCount).padStart(2, '0')} / ${architectureProjectCount}`;
 
   function selectProject(project: ArchitectureProject) {
     setActiveProjectId(project.id);
     setActiveNodeId(project.nodes[0].id);
   }
 
-  function updateQuery(nextQuery: string) {
-    const nextCategory = nextQuery.trim() ? "all" : activeCategory;
-    const nextProjects = filterArchitectureProjects(nextCategory, nextQuery);
-    const replacement = replacementArchitectureProject(
-      nextProjects,
-      activeProjectId,
-      nextQuery,
-    );
-
-    setQuery(nextQuery);
-    if (nextCategory !== activeCategory) setActiveCategory(nextCategory);
-    if (replacement) selectProject(replacement);
-  }
-
-  function selectCategory(category: ArchitectureAtlasCategory) {
+  function selectCategory(category: AtlasCategory) {
     setActiveCategory(category);
-    setQuery("");
+    setQuery('');
     const project =
-      category === "all"
-        ? defaultArchitectureProject
-        : (architectureProjects.find(
-            (candidate) => candidate.category === category,
-          ) ?? defaultArchitectureProject);
+      category === 'all'
+        ? systemArchitectureProject
+        : architectureProjects.find((candidate) => candidate.category === category) ?? systemArchitectureProject;
     selectProject(project);
   }
 
-  const externalProject = !activeProject.href.startsWith("/");
+  const externalProject = !activeProject.href.startsWith('/');
 
   return (
     <div className="a3s-atlas">
       <div className="a3s-atlas__toolbar">
-        <div
-          className="a3s-atlas__categories"
-          role="tablist"
-          aria-label={copy.projectIndex}
-        >
+        <div className="a3s-atlas__categories" role="tablist" aria-label={copy.projectIndex}>
           {categoryOrder.map((category) => {
             const count =
-              category === "all"
+              category === 'all'
                 ? architectureProjectCount
-                : architectureProjects.filter(
-                    (project) => project.category === category,
-                  ).length;
+                : architectureProjects.filter((project) => project.category === category).length;
 
             return (
               <button
                 aria-controls="a3s-atlas-projects"
                 aria-selected={activeCategory === category}
-                className={
-                  activeCategory === category ? "is-active" : undefined
-                }
+                className={activeCategory === category ? 'is-active' : undefined}
                 key={category}
                 onClick={() => selectCategory(category)}
                 role="tab"
                 type="button"
               >
                 <span>{copy.categories[category]}</span>
-                <b>{String(count).padStart(2, "0")}</b>
+                <b>{String(count).padStart(2, '0')}</b>
               </button>
             );
           })}
         </div>
 
         <label className="a3s-atlas__search">
-          <Search aria-hidden="true" />
+          <MagnifyingGlass aria-hidden="true" />
           <span className="sr-only">{copy.search}</span>
           <input
             aria-keyshortcuts="/"
-            onChange={(event) => updateQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              if (event.target.value.trim()) setActiveCategory('all');
+            }}
             onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                updateQuery("");
+              if (event.key === 'Escape') {
+                setQuery('');
                 event.currentTarget.blur();
               }
             }}
@@ -316,19 +219,15 @@ export function ArchitectureAtlas({ lang }: { lang: Lang }) {
             <span>{copy.projectIndex}</span>
             <code>{visibleCountLabel}</code>
           </div>
-          <div
-            className="a3s-atlas__project-list"
-            id="a3s-atlas-projects"
-            role="tabpanel"
-          >
+          <div className="a3s-atlas__project-list" id="a3s-atlas-projects" role="tabpanel">
             {visibleProjects.map((project) => {
               const active = activeProject.id === project.id;
-              const number = projectNumbers.get(project.id);
+              const number = project.id === systemArchitectureProject.id ? 'SYS' : projectNumbers.get(project.id);
 
               return (
                 <button
                   aria-pressed={active}
-                  className={active ? "is-active" : undefined}
+                  className={active ? 'is-active' : undefined}
                   data-category={project.category}
                   key={project.id}
                   onClick={() => selectProject(project)}
@@ -347,265 +246,114 @@ export function ArchitectureAtlas({ lang }: { lang: Lang }) {
           </div>
         </aside>
 
-        <section
-          className="a3s-atlas__diagram"
-          aria-label={`${activeProject.name} ${copy.structure}`}
-        >
+        <section className="a3s-atlas__diagram" aria-label={`${activeProject.name} ${copy.topology}`}>
           <header className="a3s-atlas__diagram-head">
             <div>
-              <span>{copy.structure}</span>
-              <h3>{activeProject.name}</h3>
+              <span><i /> {copy.topology}</span>
+              <h3>{activeProject.name}<em>.architecture</em></h3>
               <p>{activeProject.role[lang]}</p>
-              <div className="a3s-atlas__evidence" aria-label={copy.source}>
-                <small>{copy.source}</small>
-                {activeProject.evidence.map((source) => (
-                  <a
-                    href={source.href}
-                    key={source.href}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {source.label}
-                    <ArrowUpRight aria-hidden="true" />
-                  </a>
-                ))}
-              </div>
             </div>
-            <div className="a3s-atlas__diagram-meta">
-              <span>
-                <b>{activeProject.nodes.length}</b>
-                {copy.nodes}
-              </span>
-              <span>
-                <b>{activeProject.edges.length}</b>
-                {copy.relations}
-              </span>
-              <SiteLink
-                href={projectHref(activeProject, lang)}
-                rel={externalProject ? "noopener noreferrer" : undefined}
-                target={externalProject ? "_blank" : undefined}
-              >
-                {copy.openProject}
-                <ArrowUpRight aria-hidden="true" />
-              </SiteLink>
-            </div>
+            <a
+              href={projectHref(activeProject, lang)}
+              rel={externalProject ? 'noopener noreferrer' : undefined}
+              target={externalProject ? '_blank' : undefined}
+            >
+              {copy.openProject}
+              <ArrowUpRight aria-hidden="true" />
+            </a>
           </header>
 
-          <div
-            aria-label={`${activeProject.name} ${copy.diagramCanvas}`}
-            className="a3s-atlas__stage-scroll"
-            role="region"
-            tabIndex={0}
-          >
-            <div className="a3s-atlas__stage">
-              {(activeProject.groups ?? []).map((architectureGroup) => {
-                const style = {
-                  "--group-x": `${architectureGroup.x}%`,
-                  "--group-y": `${architectureGroup.y}%`,
-                  "--group-width": `${architectureGroup.width}%`,
-                  "--group-height": `${architectureGroup.height}%`,
-                } as CSSProperties;
-
+          <div className="a3s-atlas__stage">
+            <div className="a3s-atlas__orbit a3s-atlas__orbit--outer" aria-hidden="true" />
+            <div className="a3s-atlas__orbit a3s-atlas__orbit--inner" aria-hidden="true" />
+            <svg aria-hidden="true" className="a3s-atlas__wires" preserveAspectRatio="none" viewBox="0 0 100 100">
+              <defs>
+                <marker id="a3s-atlas-arrow" markerHeight="5" markerWidth="5" orient="auto" refX="4" refY="2.5">
+                  <path d="M0,0 L5,2.5 L0,5 Z" />
+                </marker>
+              </defs>
+              {activeProject.nodes.map((node, index) => {
+                const position = nodePositions[index];
                 return (
-                  <div
-                    aria-hidden="true"
-                    className="a3s-atlas__group"
-                    key={architectureGroup.id}
-                    style={style}
-                  >
-                    <span>{architectureGroup.label[lang]}</span>
-                  </div>
+                  <line
+                    className={node.id === activeNode.id ? 'a3s-atlas__hub-wire is-active' : 'a3s-atlas__hub-wire'}
+                    key={`hub-${node.id}`}
+                    vectorEffect="non-scaling-stroke"
+                    x1="50"
+                    x2={position.x}
+                    y1="50"
+                    y2={position.y}
+                  />
                 );
               })}
-
-              <svg
-                aria-hidden="true"
-                className="a3s-atlas__wires"
-                preserveAspectRatio="none"
-                viewBox="0 0 100 100"
-              >
-                <defs>
-                  <marker
-                    id="a3s-atlas-arrow"
-                    markerHeight="5"
-                    markerWidth="5"
-                    orient="auto"
-                    refX="4"
-                    refY="2.5"
-                  >
-                    <path d="M0,0 L5,2.5 L0,5 Z" />
-                  </marker>
-                  <marker
-                    id="a3s-atlas-arrow-start"
-                    markerHeight="5"
-                    markerWidth="5"
-                    orient="auto"
-                    refX="1"
-                    refY="2.5"
-                  >
-                    <path d="M5,0 L0,2.5 L5,5 Z" />
-                  </marker>
-                </defs>
-                {activeProject.edges.map((architectureEdge, index) => {
-                  const from = activeProject.nodes.find(
-                    (item) => item.id === architectureEdge.from,
-                  );
-                  const to = activeProject.nodes.find(
-                    (item) => item.id === architectureEdge.to,
-                  );
-                  if (!from || !to) return null;
-                  const active =
-                    architectureEdge.from === activeNode.id ||
-                    architectureEdge.to === activeNode.id;
-                  return (
-                    <g
-                      className={
-                        active ? "a3s-atlas__edge is-active" : "a3s-atlas__edge"
-                      }
-                      data-kind={architectureEdge.kind}
-                      key={`${architectureEdge.from}-${architectureEdge.to}-${index}`}
-                    >
-                      <line
-                        markerEnd="url(#a3s-atlas-arrow)"
-                        markerStart={
-                          architectureEdge.bidirectional
-                            ? "url(#a3s-atlas-arrow-start)"
-                            : undefined
-                        }
-                        vectorEffect="non-scaling-stroke"
-                        x1={from.position.x}
-                        x2={to.position.x}
-                        y1={from.position.y}
-                        y2={to.position.y}
-                      />
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {activeEdges.map((architectureEdge, index) => {
-                const from = activeProject.nodes.find(
-                  (item) => item.id === architectureEdge.from,
-                );
-                const to = activeProject.nodes.find(
-                  (item) => item.id === architectureEdge.to,
-                );
-                if (!from || !to) return null;
-                const style = {
-                  "--edge-x": `${(from.position.x + to.position.x) / 2}%`,
-                  "--edge-y": `${(from.position.y + to.position.y) / 2}%`,
-                } as CSSProperties;
+              {links.map(([from, to]) => {
+                const fromIndex = activeProject.nodes.findIndex((node) => node.id === from);
+                const toIndex = activeProject.nodes.findIndex((node) => node.id === to);
+                const fromPosition = nodePositions[fromIndex];
+                const toPosition = nodePositions[toIndex];
+                const active = from === activeNode.id || to === activeNode.id;
 
                 return (
-                  <span
-                    aria-hidden="true"
-                    className="a3s-atlas__edge-label"
-                    data-kind={architectureEdge.kind}
-                    key={`${architectureEdge.from}-${architectureEdge.to}-label-${index}`}
-                    style={style}
-                  >
-                    {architectureEdge.label[lang]}
-                  </span>
+                  <line
+                    className={active ? 'a3s-atlas__flow-wire is-active' : 'a3s-atlas__flow-wire'}
+                    key={`${from}-${to}`}
+                    markerEnd="url(#a3s-atlas-arrow)"
+                    vectorEffect="non-scaling-stroke"
+                    x1={fromPosition.x}
+                    x2={toPosition.x}
+                    y1={fromPosition.y}
+                    y2={toPosition.y}
+                  />
                 );
               })}
+            </svg>
 
-              {activeProject.nodes.map((architectureNode, index) => {
-                const style = {
-                  "--node-x": `${architectureNode.position.x}%`,
-                  "--node-y": `${architectureNode.position.y}%`,
-                } as CSSProperties;
-                const active = activeNode.id === architectureNode.id;
-                const neighbor = neighborIds.has(architectureNode.id);
-                const className = [
-                  "a3s-atlas__node",
-                  active ? "is-active" : "",
-                  neighbor ? "is-neighbor" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-
-                return (
-                  <button
-                    aria-label={`${architectureNode.label}: ${architectureNode.detail[lang]}`}
-                    aria-pressed={active}
-                    className={className}
-                    data-kind={architectureNode.kind}
-                    key={architectureNode.id}
-                    onClick={() => setActiveNodeId(architectureNode.id)}
-                    onFocus={() => setActiveNodeId(architectureNode.id)}
-                    onMouseEnter={() => setActiveNodeId(architectureNode.id)}
-                    style={style}
-                    type="button"
-                  >
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    <b title={architectureNode.label}>
-                      {architectureNode.label}
-                    </b>
-                    <small>
-                      {
-                        copy.kinds[
-                          architectureNode.kind as ArchitectureNodeKind
-                        ]
-                      }
-                    </small>
-                  </button>
-                );
-              })}
+            <div className="a3s-atlas__core">
+              <span><Network aria-hidden="true" /></span>
+              <b>{activeProject.name}</b>
+              <small>{copy.systemLabel}</small>
             </div>
+
+            {activeProject.nodes.map((node, index) => {
+              const position = nodePositions[index];
+              const style = { '--node-x': `${position.x}%`, '--node-y': `${position.y}%` } as CSSProperties;
+
+              return (
+                <button
+                  aria-label={`${node.label}: ${node.detail[lang]}`}
+                  aria-pressed={activeNode.id === node.id}
+                  className={activeNode.id === node.id ? 'a3s-atlas__node is-active' : 'a3s-atlas__node'}
+                  data-tone={node.tone}
+                  key={node.id}
+                  onClick={() => setActiveNodeId(node.id)}
+                  onFocus={() => setActiveNodeId(node.id)}
+                  onMouseEnter={() => setActiveNodeId(node.id)}
+                  style={style}
+                  type="button"
+                >
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <i aria-hidden="true" />
+                  <b>{node.label}</b>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="a3s-atlas__node-detail" data-kind={activeNode.kind}>
-            <div className="a3s-atlas__node-copy">
-              <span>
-                {copy.selectedNode} /{" "}
-                {String(activeNodeIndex + 1).padStart(2, "0")}
-              </span>
-              <b>{copy.kinds[activeNode.kind as ArchitectureNodeKind]}</b>
-              <h4>{activeNode.label}</h4>
-              <p>{activeNode.detail[lang]}</p>
+          <div className="a3s-atlas__node-detail" data-tone={activeNode.tone}>
+            <div>
+              <span>{copy.selectedNode} / {String(activeNodeIndex + 1).padStart(2, '0')}</span>
+              <b>{copy.tones[activeNode.tone as ArchitectureTone]}</b>
             </div>
-
-            <div className="a3s-atlas__connections">
-              <span>{copy.connected}</span>
-              {activeEdges.length > 0 ? (
-                activeEdges.map((architectureEdge, index) => {
-                  const targetId = otherEnd(architectureEdge, activeNode.id);
-                  const target = activeProject.nodes.find(
-                    (item) => item.id === targetId,
-                  );
-                  const outgoing = architectureEdge.from === activeNode.id;
-
-                  return (
-                    <button
-                      key={`${architectureEdge.from}-${architectureEdge.to}-${index}`}
-                      onClick={() => setActiveNodeId(targetId)}
-                      type="button"
-                    >
-                      {architectureEdge.bidirectional ? (
-                        <ArrowLeftRight aria-hidden="true" />
-                      ) : outgoing ? (
-                        <ArrowRight aria-hidden="true" />
-                      ) : (
-                        <ArrowLeft aria-hidden="true" />
-                      )}
-                      <span>
-                        <small>{architectureEdge.label[lang]}</small>
-                        <b>{target?.label}</b>
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <p>{copy.noConnections}</p>
-              )}
-            </div>
+            <h4>{activeNode.label}</h4>
+            <p>{activeNode.detail[lang]}</p>
+            <small>{copy.nodeHint}</small>
           </div>
         </section>
       </div>
 
       <div className="a3s-atlas__footer">
-        <span>{copy.footer}</span>
-        <code>README · SOURCE TREE · ARCHITECTURE DOCS</code>
+        <span><i /> {copy.footer}</span>
+        <code>ONE SHARED CONTRACT SURFACE</code>
       </div>
     </div>
   );

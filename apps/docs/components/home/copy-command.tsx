@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { Check, Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, Copy } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
 
 interface CopyCommandProps {
   command: string;
@@ -9,11 +9,7 @@ interface CopyCommandProps {
   copiedLabel: string;
 }
 
-export function CopyCommand({
-  command,
-  copyLabel,
-  copiedLabel,
-}: CopyCommandProps) {
+export function CopyCommand({ command, copyLabel, copiedLabel }: CopyCommandProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -32,13 +28,7 @@ export function CopyCommand({
   }
 
   return (
-    <button
-      aria-label={copied ? copiedLabel : copyLabel}
-      aria-live="polite"
-      className="a3s-copy-command"
-      onClick={copy}
-      type="button"
-    >
+    <button className="a3s-copy-command" type="button" onClick={copy} aria-live="polite">
       {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
       <span>{copied ? copiedLabel : copyLabel}</span>
     </button>

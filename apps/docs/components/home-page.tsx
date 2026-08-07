@@ -1,297 +1,115 @@
 import {
   ArrowRight,
-  CheckCircle2,
-  CircleDot,
-  Github,
-  Layers3,
-  Pause,
-  Play,
-  ShieldCheck,
-  Terminal,
-} from "lucide-react";
-import { Fragment, useEffect, useState, type CSSProperties } from "react";
-import { A3SMark } from "./home/a3s-mark";
-import { architectureProjects } from "./home/architecture";
-import {
-  ARCHITECTURE_SELECT_PROJECT_EVENT,
-  ArchitectureAtlas,
-} from "./home/architecture-atlas";
-import { CanvasSignalField } from "./home/canvas-signal-field";
-import { CliTerminalDemo } from "./home/cli-terminal-demo";
-import { CloudLifecycleTerminal } from "./home/cloud-lifecycle-terminal";
-import { CopyCommand } from "./home/copy-command";
-import { HeroTypewriter } from "./home/hero-typewriter";
-import { HomeNav } from "./home/home-nav";
-import { homeContent, type AiNativeCopy, type Lang } from "./home/home-content";
-import { SiteLink } from "./home/site-link";
-import { localePath } from "../lib/i18n";
+  CheckCircle,
+  Cube,
+  GitBranch,
+  GithubLogo,
+  Globe,
+  Stack,
+  TerminalWindow,
+} from '@phosphor-icons/react/dist/ssr';
+import { withBase } from '@rspress/core/runtime';
+import { A3SMark } from '@/components/home/a3s-mark';
+import { ArchitectureAtlas } from '@/components/home/architecture-atlas';
+import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
+import { CopyCommand } from '@/components/home/copy-command';
+import { EcosystemDirectory } from '@/components/home/ecosystem-directory';
+import { HomeNav } from '@/components/home/home-nav';
+import { homeContent, type Lang } from '@/components/home/home-content';
 
-const signalIcons = [Terminal, ShieldCheck, Layers3, CheckCircle2];
+const signalIcons = [Cube, Globe, Stack, GitBranch];
 
-function AiNativeSection({
-  content,
-  lang,
-}: {
-  content: AiNativeCopy;
-  lang: Lang;
-}) {
-  const [selectedStepId, setSelectedStepId] = useState(content.steps[0]?.id);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const selectedStep =
-    content.steps.find((step) => step.id === selectedStepId) ??
-    content.steps[0];
-  const selectedStepIndex = Math.max(
-    0,
-    content.steps.findIndex((step) => step.id === selectedStep?.id),
-  );
-  const selectedProjects = selectedStep
-    ? selectedStep.projects
-        .map((projectId) =>
-          architectureProjects.find((project) => project.id === projectId),
-        )
-        .filter((project) => project !== undefined)
-    : [];
-  const activePosition =
-    content.steps.length > 1
-      ? `${(selectedStepIndex / (content.steps.length - 1)) * 100}%`
-      : "0%";
+const ecosystemSurfaces = [
+  { name: 'Code', detail: 'AGENT RUNTIME', icon: TerminalWindow },
+  { name: 'Cloud', detail: 'CONTROL PLANE', icon: Globe },
+  { name: 'Office', detail: 'NATIVE WORK', icon: CheckCircle },
+  { name: 'Runtime', detail: 'LIFECYCLE', icon: Cube },
+  { name: 'Gateway', detail: 'DATA PLANE', icon: GitBranch },
+  { name: 'UI', detail: 'DESIGN SYSTEM', icon: Stack },
+] as const;
 
-  useEffect(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const stopForReducedMotion = () => {
-      if (reducedMotion.matches) setIsPlaying(false);
-    };
-
-    stopForReducedMotion();
-    reducedMotion.addEventListener("change", stopForReducedMotion);
-    return () =>
-      reducedMotion.removeEventListener("change", stopForReducedMotion);
-  }, []);
-
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const timer = window.setInterval(() => {
-      setSelectedStepId((currentStepId) => {
-        const currentIndex = content.steps.findIndex(
-          (step) => step.id === currentStepId,
-        );
-        return content.steps[(currentIndex + 1) % content.steps.length]?.id;
-      });
-    }, 3600);
-
-    return () => window.clearInterval(timer);
-  }, [content.steps, isPlaying]);
-
-  function openArchitectureProject(projectId: string) {
-    window.dispatchEvent(
-      new CustomEvent(ARCHITECTURE_SELECT_PROJECT_EVENT, {
-        detail: projectId,
-      }),
-    );
-    document.getElementById("architecture")?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: "start",
-    });
-  }
+function EcosystemHeroVisual({ lang }: { lang: Lang }) {
+  const tr = homeContent[lang].hero;
 
   return (
-    <section
-      className="a3s-section a3s-native"
-      id="ai-native"
-      aria-labelledby="a3s-native-title"
-    >
-      <div className="a3s-section-heading">
-        <div>
-          <span className="a3s-section-eyebrow">{content.eyebrow}</span>
-          <h2 id="a3s-native-title">{content.title}</h2>
-        </div>
-        <p>{content.description}</p>
+    <div className="a3s-ecosystem-visual" aria-label={lang === 'cn' ? 'A3S 生态总览' : 'A3S ecosystem overview'}>
+      <div className="a3s-ecosystem-visual__chrome">
+        <span><i /><i /><i /></span>
+        <code>{tr.terminalTitle}</code>
+        <b><i /> {tr.terminalReady}</b>
       </div>
-
-      <div className="a3s-native__interaction">
-        <header>
-          <div>
-            <span>{content.interactionEyebrow}</span>
-            <h3>{content.interactionTitle}</h3>
-            <p>{content.interactionDescription}</p>
-          </div>
-          <button
-            aria-label={isPlaying ? content.pause : content.play}
-            className="a3s-native__playback"
-            onClick={() => setIsPlaying((value) => !value)}
-            type="button"
-          >
-            {isPlaying ? (
-              <Pause aria-hidden="true" />
-            ) : (
-              <Play aria-hidden="true" />
-            )}
-            <span>{isPlaying ? content.pause : content.play}</span>
-          </button>
-        </header>
-        <div className="a3s-native__flow-viewport">
-          <div
-            className="a3s-native__flow"
-            role="tablist"
-            aria-label={content.interactionTitle}
-            style={
-              {
-                gridTemplateColumns: `repeat(${content.steps.length}, minmax(0, 1fr))`,
-                minWidth: `${content.steps.length * 176}px`,
-              } as CSSProperties
-            }
-          >
-            <CanvasSignalField
-              activeIndex={selectedStepIndex}
-              itemCount={content.steps.length}
-              playing={isPlaying}
-              variant="lifecycle"
-            />
-            <span className="a3s-native__rail" aria-hidden="true">
-              <i
-                className={isPlaying ? "is-playing" : undefined}
-                style={
-                  {
-                    "--active-position": activePosition,
-                  } as CSSProperties
-                }
-              >
-                AGENT
-              </i>
-            </span>
-            {content.steps.map((step) => (
-              <button
-                aria-controls="a3s-native-step-detail"
-                aria-selected={step.id === selectedStep?.id}
-                className={
-                  step.id === selectedStep?.id ? "is-selected" : undefined
-                }
-                key={step.id}
-                onClick={() => {
-                  setSelectedStepId(step.id);
-                  setIsPlaying(false);
-                }}
-                role="tab"
-                type="button"
-              >
-                <span>{step.index}</span>
-                <b>{step.title}</b>
-                <small>{step.summary}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-        {selectedStep ? (
-          <div
-            className="a3s-native__detail"
-            id="a3s-native-step-detail"
-            role="tabpanel"
-          >
-            <span>{selectedStep.index}</span>
-            <div>
-              <h4>{selectedStep.title}</h4>
-              <p>{selectedStep.detail}</p>
-            </div>
-            <div className="a3s-native__path" aria-hidden="true">
-              {selectedStep.path.map((node, index) => (
-                <Fragment key={node}>
-                  <code>{node}</code>
-                  {index < selectedStep.path.length - 1 ? <i>→</i> : null}
-                </Fragment>
-              ))}
-              {selectedStep.id === "scale" ? (
-                <span className="a3s-native__replicas">
-                  <i />
-                  <i />
-                  <i />
-                  <b>+N</b>
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        <div className="a3s-native__stack">
+      <div className="a3s-ecosystem-visual__body">
+        <aside>
+          <div className="is-active"><A3SMark /><span>INDEX</span></div>
+          <div><Cube /><span>BUILD</span></div>
+          <div><GitBranch /><span>ROUTES</span></div>
+          <div><Stack /><span>LAYERS</span></div>
+        </aside>
+        <div className="a3s-ecosystem-visual__content">
           <header>
-            <span>{content.stageProjects}</span>
-            <b>
-              {String(selectedProjects.length).padStart(2, "0")} /{" "}
-              {architectureProjects.length}
-            </b>
+            <div>
+              <span>{lang === 'cn' ? '生态控制台' : 'ECOSYSTEM CONSOLE'}</span>
+              <strong>A3S / project.directory</strong>
+            </div>
+            <span><i /> {tr.status}</span>
           </header>
-          <div>
-            {selectedProjects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => openArchitectureProject(project.id)}
-                type="button"
-              >
-                <span>{project.name}</span>
-                <p>{project.role[lang]}</p>
-                <small>{content.openArchitecture} ↘</small>
-              </button>
+          <div className="a3s-ecosystem-visual__summary">
+            <span><small>01</small><b>{tr.intent}</b><i>14</i></span>
+            <span><small>02</small><b>{tr.policy}</b><i>08</i></span>
+            <span><small>03</small><b>{tr.runtime}</b><i>13</i></span>
+          </div>
+          <div className="a3s-ecosystem-visual__grid">
+            {ecosystemSurfaces.map((surface, index) => {
+              const Icon = surface.icon;
+              return (
+                <div key={surface.name} style={{ '--surface-order': index } as React.CSSProperties}>
+                  <span><Icon aria-hidden="true" weight="duotone" /></span>
+                  <b>{surface.name}</b>
+                  <small>{surface.detail}</small>
+                  <i />
+                </div>
+              );
+            })}
+          </div>
+          <div className="a3s-ecosystem-visual__telemetry">
+            {tr.terminalRows.map(([key, value]) => (
+              <span key={key}><code>{key}</code><i /><b>{value}</b></span>
             ))}
           </div>
         </div>
       </div>
-
-      <div className="a3s-native__organization">
-        <header>
-          <h3>{content.organizationTitle}</h3>
-          <p>{content.organizationDescription}</p>
-        </header>
-        <div>
-          {content.reasons.map((reason) => (
-            <article key={reason.index}>
-              <span>{reason.index}</span>
-              <h4>{reason.title}</h4>
-              <p>{reason.description}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
+    </div>
   );
 }
 
-export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
+export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const tr = homeContent[lang];
 
   return (
-    <main
-      className="a3s-site"
-      data-lang={lang}
-      lang={lang === "cn" ? "zh-CN" : "en"}
-    >
+    <main className="a3s-site">
+      <a className="a3s-skip-link" href="#main-content">
+        {lang === 'cn' ? '跳到主要内容' : 'Skip to main content'}
+      </a>
+      <CanvasBackdrop />
       <HomeNav lang={lang} />
 
-      <section className="a3s-hero" aria-labelledby="a3s-hero-title">
-        <CanvasSignalField variant="hero" />
+      <section className="a3s-hero" id="main-content" aria-labelledby="a3s-hero-title">
+        <div className="a3s-hero__ambient" aria-hidden="true" />
         <div className="a3s-hero__grid">
           <div className="a3s-hero__copy">
-            <div className="a3s-eyebrow">
-              <span />
-              {tr.hero.eyebrow}
-            </div>
-            <HeroTypewriter
-              accent={tr.hero.accent}
-              description={tr.hero.description}
-              id="a3s-hero-title"
-              lineOne={tr.hero.lineOne}
-              lineTwo={tr.hero.lineTwo}
-            />
+            <div className="a3s-eyebrow"><span />{tr.hero.eyebrow}</div>
+            <h1 id="a3s-hero-title">
+              <span>{tr.hero.lineOne}</span>
+              <span>{tr.hero.lineTwo}</span>
+              <em>{tr.hero.accent}</em>
+            </h1>
+            <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
-              <SiteLink
-                className="a3s-button a3s-button--primary"
-                href={localePath("/docs", lang)}
-              >
+              <a className="a3s-button a3s-button--primary" href="#ecosystem">
                 {tr.hero.primaryAction}
-                <ArrowRight aria-hidden="true" />
-              </SiteLink>
-              <a className="a3s-button a3s-button--ghost" href="#architecture">
-                <CircleDot aria-hidden="true" />
+                <ArrowRight aria-hidden="true" weight="bold" />
+              </a>
+              <a className="a3s-button a3s-button--ghost" href={withBase('/blog/')}>
                 {tr.hero.secondaryAction}
               </a>
             </div>
@@ -301,40 +119,37 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
               <i aria-hidden="true" />
             </div>
           </div>
-
-          <CliTerminalDemo content={tr.hero.terminal} key={lang} />
+          <EcosystemHeroVisual lang={lang} />
         </div>
       </section>
 
-      <section className="a3s-signal-strip" aria-label="A3S characteristics">
+      <aside className="a3s-signal-strip" aria-label={lang === 'cn' ? 'A3S 生态概况' : 'A3S ecosystem overview'}>
         <div>
           {tr.signal.map((item, index) => {
             const Icon = signalIcons[index];
-            return (
-              <span key={item}>
-                <Icon aria-hidden="true" />
-                {item}
-              </span>
-            );
+            return <span key={item}><Icon aria-hidden="true" weight="duotone" />{item}</span>;
           })}
+        </div>
+      </aside>
+
+      <section className="a3s-ecosystem" id="ecosystem" aria-labelledby="a3s-ecosystem-title">
+        <div className="a3s-section a3s-ecosystem__inner">
+          <div className="a3s-section-heading">
+            <div>
+              <span className="a3s-section-eyebrow">{tr.ecosystem.eyebrow}</span>
+              <h2 id="a3s-ecosystem-title">{tr.ecosystem.title}</h2>
+            </div>
+            <p>{tr.ecosystem.description}</p>
+          </div>
+          <EcosystemDirectory lang={lang} />
         </div>
       </section>
 
-      <AiNativeSection content={tr.aiNative} lang={lang} />
-
-      <CloudLifecycleTerminal content={tr.cloudLifecycle} key={lang} />
-
-      <section
-        className="a3s-architecture"
-        id="architecture"
-        aria-labelledby="a3s-architecture-title"
-      >
+      <section className="a3s-architecture" id="architecture" aria-labelledby="a3s-architecture-title">
         <div className="a3s-section a3s-architecture__inner">
           <div className="a3s-architecture__copy">
             <div>
-              <span className="a3s-section-eyebrow">
-                {tr.architecture.eyebrow}
-              </span>
+              <span className="a3s-section-eyebrow">{tr.architecture.eyebrow}</span>
               <h2 id="a3s-architecture-title">{tr.architecture.title}</h2>
             </div>
             <p>{tr.architecture.description}</p>
@@ -343,72 +158,55 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
         </div>
       </section>
 
-      <section
-        className="a3s-section a3s-quickstart"
-        id="quickstart"
-        aria-labelledby="a3s-quickstart-title"
-      >
+      <section className="a3s-section a3s-principles" id="principles" aria-labelledby="a3s-principles-title">
+        <div className="a3s-section-heading">
+          <div>
+            <span className="a3s-section-eyebrow">{tr.principles.eyebrow}</span>
+            <h2 id="a3s-principles-title">{tr.principles.title}</h2>
+          </div>
+          <p>{tr.principles.description}</p>
+        </div>
+        <div className="a3s-principle-grid">
+          {tr.principles.items.map((item, index) => (
+            <article className={index === 0 ? 'a3s-principle-card is-featured' : 'a3s-principle-card'} key={item.index}>
+              <div><span>{item.index}</span><i /></div>
+              <h3>{item.title}</h3>
+              <p>{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="a3s-section a3s-quickstart" id="quickstart" aria-labelledby="a3s-quickstart-title">
         <div className="a3s-quickstart__copy">
           <span className="a3s-section-eyebrow">{tr.quickstart.eyebrow}</span>
           <h2 id="a3s-quickstart-title">{tr.quickstart.title}</h2>
           <p>{tr.quickstart.description}</p>
-          <SiteLink href={localePath("/docs/installation.html", lang)}>
-            {tr.quickstart.docs}
-            <ArrowRight aria-hidden="true" />
-          </SiteLink>
+          <a href="https://github.com/A3S-Lab/a3s#quick-start" target="_blank" rel="noopener noreferrer">{tr.quickstart.docs}<ArrowRight aria-hidden="true" /></a>
           <small>{tr.quickstart.note}</small>
         </div>
         <div className="a3s-terminal-card">
           <div className="a3s-terminal-card__bar">
-            <span>
-              <i />
-              <i />
-              <i />
-            </span>
+            <span><i /><i /><i /></span>
             <code>~/workspace</code>
-            <CopyCommand
-              command={tr.quickstart.command}
-              copyLabel={tr.quickstart.copy}
-              copiedLabel={tr.quickstart.copied}
-            />
+            <CopyCommand command={tr.quickstart.command} copyLabel={tr.quickstart.copy} copiedLabel={tr.quickstart.copied} />
           </div>
-          <pre>
-            <code>{tr.quickstart.command}</code>
-          </pre>
-          <div className="a3s-terminal-card__status">
-            <span>
-              <i /> ready
-            </span>
-            <span>shell / zsh</span>
-          </div>
+          <pre><code>{tr.quickstart.command}</code></pre>
+          <div className="a3s-terminal-card__status"><span><i /> ready</span><span>shell / zsh</span></div>
         </div>
       </section>
 
       <section className="a3s-cta" aria-labelledby="a3s-cta-title">
-        <div className="a3s-cta__mark" aria-hidden="true">
-          <A3SMark />
-        </div>
+        <div className="a3s-cta__mark" aria-hidden="true"><A3SMark /></div>
         <div className="a3s-cta__copy">
           <span className="a3s-section-eyebrow">{tr.cta.eyebrow}</span>
           <h2 id="a3s-cta-title">{tr.cta.title}</h2>
           <p>{tr.cta.description}</p>
           <div>
-            <SiteLink
-              className="a3s-button a3s-button--light"
-              href={localePath("/docs", lang)}
-            >
-              {tr.cta.primary}
-              <ArrowRight aria-hidden="true" />
-            </SiteLink>
-            <SiteLink
-              className="a3s-button a3s-button--outline"
-              href="https://github.com/A3S-Lab/a3s"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Github aria-hidden="true" />
-              {tr.cta.secondary}
-            </SiteLink>
+            <a className="a3s-button a3s-button--light" href={withBase('/blog/')}>{tr.cta.primary}<ArrowRight aria-hidden="true" /></a>
+            <a className="a3s-button a3s-button--outline" href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer">
+              <GithubLogo aria-hidden="true" weight="fill" />{tr.cta.secondary}
+            </a>
           </div>
         </div>
       </section>
@@ -416,37 +214,19 @@ export default function HomePage({ lang = "cn" }: { lang?: Lang }) {
       <footer className="a3s-footer">
         <div className="a3s-footer__inner">
           <div className="a3s-footer__brand">
-            <SiteLink href={localePath("/", lang)}>
-              <A3SMark />
-              <span>A3S</span>
-            </SiteLink>
+            <a href={withBase('/')}><A3SMark /><span>A3S</span></a>
             <p>{tr.footer.description}</p>
           </div>
           <div className="a3s-footer__column">
             <b>{tr.footer.resources}</b>
-            <SiteLink href={localePath("/docs", lang)}>
-              {tr.footer.docs}
-            </SiteLink>
-            <SiteLink href={localePath("/blog", lang)}>
-              {tr.footer.blog}
-            </SiteLink>
+            <a href="#ecosystem">{tr.footer.ecosystem}</a>
+            <a href="#architecture">{tr.footer.architecture}</a>
+            <a href={withBase('/blog/')}>{tr.footer.blog}</a>
           </div>
           <div className="a3s-footer__column">
             <b>{tr.footer.community}</b>
-            <SiteLink
-              href="https://github.com/A3S-Lab"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {tr.footer.github}
-            </SiteLink>
-            <SiteLink
-              href="https://discord.gg/XVg6Hu6H"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {tr.footer.discord}
-            </SiteLink>
+            <a href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer">{tr.footer.github}</a>
+            <a href="https://discord.gg/XVg6Hu6H" target="_blank" rel="noopener noreferrer">{tr.footer.discord}</a>
           </div>
         </div>
         <div className="a3s-footer__base">

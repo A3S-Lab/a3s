@@ -19,7 +19,7 @@
   <a href="#how-a3s-grows-with-the-job">Architecture</a> ·
   <a href="#product-surfaces">Products</a> ·
   <a href="#repository-map">Repository map</a> ·
-  <a href="https://a3s-lab.github.io/a3s/">Documentation</a>
+  <a href="https://a3s-lab.github.io/a3s/">Website &amp; Blog</a>
 </p>
 
 ---
@@ -230,7 +230,7 @@ installs should update through Homebrew. Windows currently upgrades by rerunning
 the installer.
 
 Full installer controls and platform notes are in the
-[CLI documentation](https://a3s-lab.github.io/a3s/).
+[CLI reference](docs/cli-reference.md) and the standalone [CLI repository](crates/cli/).
 
 Standalone versions 0.9.9 through 0.10.10 already read `A3S-Lab/CLI` releases.
 Versions 0.11.0 and 0.11.1 briefly used the monorepo endpoint; a verified,
@@ -251,7 +251,7 @@ root-owned.
 | Runtime, coordination, and data | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
 | Services and interfaces | [Boot](crates/boot/), [Gateway](crates/gateway/), [Power](crates/power/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
-| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [CLI website](apps/docs/), [Homebrew Tap](homebrew-tap/) |
+| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Website & Blog](apps/docs/), [Homebrew Tap](homebrew-tap/) |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)
 documents the temporary 0.11.x root migration, restored standalone ownership,
@@ -312,7 +312,7 @@ read [AGENTS.md](AGENTS.md) before changing repository structure.
 
 ## Documentation and community
 
-- [A3S CLI documentation](https://a3s-lab.github.io/a3s/)
+- [A3S website and engineering blog](https://a3s-lab.github.io/a3s/)
 - [CLI reference](docs/cli-reference.md)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)

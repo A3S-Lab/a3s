@@ -1,38 +1,34 @@
 {
   "compilerOptions": {
-    "lib": ["DOM", "ES2023"],
-    "jsx": "react-jsx",
-    "target": "ES2023",
-    "noEmit": true,
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
     "skipLibCheck": true,
-    "useDefineForClassFields": true,
     "strict": true,
-
-    "module": "ESNext",
-    "moduleDetection": "force",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
     "moduleResolution": "bundler",
-    "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
     "isolatedModules": true,
-
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-
+    "jsx": "react-jsx",
+    "incremental": true,
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
-    "components",
-    "docs",
-    "lib/i18n.ts",
-    "rspress.config.ts",
-    "rslint.config.ts",
-    "theme"
+    "**/*.ts",
+    "**/*.tsx"
   ],
-  "exclude": ["node_modules"],
-  "mdx": {
-    "checkMdx": true
-  }
+  "exclude": [
+    "node_modules"
+  ]
 }

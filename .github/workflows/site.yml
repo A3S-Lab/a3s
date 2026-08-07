@@ -1,0 +1,75 @@
+name: Deploy Site
+
+on:
+  pull_request:
+    paths:
+      - 'apps/docs/**'
+      - '.github/workflows/site.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: https://a3s-lab.github.io/a3s/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: apps/docs
+        run: bun install --frozen-lockfile
+
+      - name: Test site data
+        working-directory: apps/docs
+        run: bun run test
+
+      - name: Typecheck site
+        working-directory: apps/docs
+        run: bun run typecheck
+
+      - name: Refresh project previews
+        working-directory: apps/docs
+        run: bun run capture:sites
+
+      - name: Build Rspress site
+        working-directory: apps/docs
+        run: bun run build
+
+      - name: Validate exported routes
+        working-directory: apps/docs
+        run: bun run check:site
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/docs/out
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
