@@ -149,7 +149,12 @@ function ProjectCard({ project, index, lang }: { project: ArchitectureProject; i
   const tr = copy[lang];
   const Icon = categoryIcons[project.category];
   const progress = getProjectProgress(project.id, lang);
-  const projectHref = localizedHref(project.href, lang);
+  const featuredSite = featuredProjectSites.find((site) => (
+    site.id === project.id && site.destination === 'site'
+  ));
+  const projectHref = featuredSite
+    ? sharedSiteHref(featuredSite.href, lang)
+    : localizedHref(project.href, lang);
   const repositoryHref = getProjectRepositoryHref(project.id);
   const hasDistinctRepository = repositoryHref !== projectHref;
 

@@ -101,9 +101,11 @@ for (const marker of [
 
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const progressBars = homepage.match(/role="progressbar"/g) ?? [];
+  const formLinkCount = homepage.split(`href="${formHref}"`).length - 1;
   assert(progressBars.length === 36, `${locale} homepage has ${progressBars.length} progress bars instead of 36`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
-  assert(homepage.includes(`href="${formHref}"`), `${locale} homepage does not link to the published A3S Form playground`);
+  assert(formLinkCount >= 2, `${locale} homepage does not route both A3S Form entries to the published playground`);
+  assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage is missing the separate A3S Form repository link`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
   assert(!homepage.includes('ecosystem-sites/blog.png'), `${locale} homepage still features the Site & Blog preview`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
