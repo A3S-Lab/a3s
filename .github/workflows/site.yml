@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SITE_URL: https://a3s-lab.github.io/a3s/
+      FORM_REPOSITORY: https://github.com/A3S-Lab/Form.git
+      FORM_REVISION: b16990174f714af86727f49231553e8922216b52
     steps:
       - uses: actions/checkout@v4
 
@@ -51,9 +53,32 @@ jobs:
           sudo apt-get install --yes --no-install-recommends fonts-noto-cjk
           fc-cache --force
 
+      - name: Build pinned A3S Form preview
+        run: |
+          git init "$RUNNER_TEMP/a3s-form"
+          git -C "$RUNNER_TEMP/a3s-form" remote add origin "$FORM_REPOSITORY"
+          git -C "$RUNNER_TEMP/a3s-form" fetch --depth 1 origin "$FORM_REVISION"
+          git -C "$RUNNER_TEMP/a3s-form" switch --detach FETCH_HEAD
+          bun install --cwd "$RUNNER_TEMP/a3s-form" --frozen-lockfile
+          bun run --cwd "$RUNNER_TEMP/a3s-form" build
+          bun run --cwd "$RUNNER_TEMP/a3s-form" playground:build
+
       - name: Refresh project previews
         working-directory: apps/docs
-        run: bun run capture:sites
+        env:
+          A3S_FORM_PREVIEW_URL: http://127.0.0.1:4176/
+        run: |
+          bun "$RUNNER_TEMP/a3s-form/scripts/serve-playground.mjs" > "$RUNNER_TEMP/a3s-form-preview.log" 2>&1 &
+          form_preview_pid=$!
+          trap 'kill "$form_preview_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4176/.well-known/a3s-health > /dev/null; then
+              break
+            fi
+            sleep 0.2
+          done
+          curl --fail --silent http://127.0.0.1:4176/.well-known/a3s-health > /dev/null
+          bun run capture:sites
 
       - name: Build Rspress site
         working-directory: apps/docs

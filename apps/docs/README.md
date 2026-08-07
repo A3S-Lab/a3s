@@ -92,12 +92,23 @@ Capture one project while iterating with:
 bun run capture:sites --site=cloud
 ```
 
-After building locally, refresh the blog preview from the new output with:
+Each project defines its own animation settle time in
+`components/home/project-sites.ts`. The capture waits for fonts and visible
+images, lets the hero reach that frame, then freezes CSS, SVG, video, and GIF
+motion before writing the PNG.
+
+The Form playground is a build preview rather than a live project site. Point
+the capture at a local or preview deployment when refreshing it:
 
 ```bash
-A3S_SITE_PREVIEW_URL=http://127.0.0.1:4173/blog/ \
-  bun run capture:sites --site=site
+A3S_FORM_PREVIEW_URL=http://127.0.0.1:4173/playground/ \
+  bun run capture:sites --site=form
 ```
+
+The Pages workflow checks out a pinned Form revision, builds the playground,
+and serves it only for the screenshot step. Update `FORM_REVISION` in
+`.github/workflows/site.yml` when intentionally refreshing the preview against
+a newer Form commit.
 
 The capture task keeps an existing committed image when a remote site is
 temporarily unavailable. Add or change destinations in

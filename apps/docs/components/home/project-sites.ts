@@ -6,6 +6,7 @@ export interface FeaturedProjectSite {
   captureUrl: string;
   displayUrl: string;
   screenshot: string;
+  settleMs: number;
   mode: 'live' | 'build';
   destination: 'site' | 'repository';
 }
@@ -17,6 +18,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Cloud/',
     displayUrl: 'a3s-lab.github.io/Cloud',
     screenshot: '/ecosystem-sites/cloud.png',
+    settleMs: 10_600,
     mode: 'live',
     destination: 'site',
   },
@@ -26,6 +28,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Code/',
     displayUrl: 'a3s-lab.github.io/Code',
     screenshot: '/ecosystem-sites/code.png',
+    settleMs: 14_000,
     mode: 'live',
     destination: 'site',
   },
@@ -35,6 +38,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Office/',
     displayUrl: 'a3s-lab.github.io/Office',
     screenshot: '/ecosystem-sites/office.png',
+    settleMs: 1_800,
     mode: 'live',
     destination: 'site',
   },
@@ -44,6 +48,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Form/playground/',
     displayUrl: 'a3s-lab.github.io/Form/playground',
     screenshot: '/ecosystem-sites/form.png',
+    settleMs: 1_800,
     mode: 'build',
     destination: 'repository',
   },
@@ -53,6 +58,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Box/',
     displayUrl: 'a3s-lab.github.io/Box',
     screenshot: '/ecosystem-sites/box.png',
+    settleMs: 4_600,
     mode: 'live',
     destination: 'site',
   },
@@ -62,6 +68,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Use/',
     displayUrl: 'a3s-lab.github.io/Use',
     screenshot: '/ecosystem-sites/use.png',
+    settleMs: 3_200,
     mode: 'live',
     destination: 'site',
   },
@@ -71,6 +78,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/UI/',
     displayUrl: 'a3s-lab.github.io/UI',
     screenshot: '/ecosystem-sites/ui.png',
+    settleMs: 2_400,
     mode: 'live',
     destination: 'site',
   },
@@ -80,6 +88,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Gateway/',
     displayUrl: 'a3s-lab.github.io/Gateway',
     screenshot: '/ecosystem-sites/gateway.png',
+    settleMs: 3_500,
     mode: 'live',
     destination: 'site',
   },

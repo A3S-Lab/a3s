@@ -168,6 +168,33 @@ async function stopChrome(chromeProcess: ChildProcess) {
   }
 }
 
+async function waitForPageTarget(port: number, chromeProcess: ChildProcess) {
+  const deadline = Date.now() + 5_000;
+
+  while (Date.now() < deadline) {
+    if (chromeProcess.exitCode !== null) {
+      throw new Error(`Chrome exited before exposing a page target (${chromeProcess.exitCode})`);
+    }
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/json/list`, {
+        signal: AbortSignal.timeout(2_000),
+      });
+      if (response.ok) {
+        const targets = await response.json() as Array<{ type?: string; webSocketDebuggerUrl?: string }>;
+        const pageTarget = targets.find((target) => target.type === 'page' && target.webSocketDebuggerUrl);
+        if (pageTarget?.webSocketDebuggerUrl) return pageTarget.webSocketDebuggerUrl;
+      }
+    } catch {
+      // The endpoint can become reachable one tick before the initial page target.
+    }
+
+    await delay(100);
+  }
+
+  throw new Error('Chrome exposed no page debugging target within 5 seconds');
+}
+
 interface CdpMessage {
   id?: number;
   method?: string;
@@ -240,7 +267,12 @@ function createCdpClient(socket: WebSocket) {
   return { send, waitForEvent };
 }
 
-async function captureWithChrome(captureUrl: string, output: string, profile: string) {
+async function captureWithChrome(
+  captureUrl: string,
+  output: string,
+  profile: string,
+  settleMs: number,
+) {
   await mkdir(profile, { recursive: true });
   const chromeProcess = spawn(chromeExecutable, [
     '--headless=new',
@@ -262,15 +294,8 @@ async function captureWithChrome(captureUrl: string, output: string, profile: st
 
   try {
     const port = await waitForDebugPort(profile, chromeProcess);
-    const targetsResponse = await fetch(`http://127.0.0.1:${port}/json/list`, {
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!targetsResponse.ok) throw new Error(`Chrome target discovery returned HTTP ${targetsResponse.status}`);
-    const targets = await targetsResponse.json() as Array<{ type?: string; webSocketDebuggerUrl?: string }>;
-    const pageTarget = targets.find((target) => target.type === 'page' && target.webSocketDebuggerUrl);
-    if (!pageTarget?.webSocketDebuggerUrl) throw new Error('Chrome exposed no page debugging target');
-
-    socket = await openWebSocket(pageTarget.webSocketDebuggerUrl);
+    const pageTargetUrl = await waitForPageTarget(port, chromeProcess);
+    socket = await openWebSocket(pageTargetUrl);
     const client = createCdpClient(socket);
     await client.send('Page.enable');
     await client.send('Runtime.enable');
@@ -295,6 +320,43 @@ async function captureWithChrome(captureUrl: string, output: string, profile: st
           image.addEventListener('load', resolve, { once: true });
           image.addEventListener('error', resolve, { once: true });
         })));
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await new Promise((resolve) => setTimeout(resolve, ${settleMs}));
+
+        const captureStyle = document.createElement('style');
+        captureStyle.dataset.a3sCapture = 'frozen';
+        captureStyle.textContent = \`
+          *, *::before, *::after {
+            animation-play-state: paused !important;
+            caret-color: transparent !important;
+            scroll-behavior: auto !important;
+            transition: none !important;
+          }
+        \`;
+        document.head.append(captureStyle);
+
+        for (const animation of document.getAnimations()) animation.pause();
+        for (const video of document.querySelectorAll('video')) video.pause();
+        for (const svg of document.querySelectorAll('svg')) {
+          if ('pauseAnimations' in svg && typeof svg.pauseAnimations === 'function') svg.pauseAnimations();
+        }
+
+        for (const image of document.images) {
+          if (!/\\.gif(?:$|[?#])/i.test(image.currentSrc) || !image.naturalWidth || !image.naturalHeight) continue;
+          const canvas = document.createElement('canvas');
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          const context = canvas.getContext('2d');
+          if (!context) continue;
+          try {
+            context.drawImage(image, 0, 0);
+            image.src = canvas.toDataURL('image/png');
+          } catch {
+            // Cross-origin images can keep animating; the page is otherwise ready to capture.
+          }
+        }
+
+        document.documentElement.dataset.a3sCaptureReady = 'true';
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         return document.title;
       })()`,
@@ -344,7 +406,7 @@ async function capture(site: (typeof featuredProjectSites)[number]) {
 
   try {
     await assertCaptureUrlIsHealthy(captureUrl);
-    await captureWithChrome(captureUrl, temporaryOutput, profile);
+    await captureWithChrome(captureUrl, temporaryOutput, profile, site.settleMs);
 
     if (!await fileIsUsable(temporaryOutput)) {
       throw new Error('Chrome produced no usable screenshot');

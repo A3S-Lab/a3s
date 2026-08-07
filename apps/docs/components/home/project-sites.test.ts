@@ -15,6 +15,11 @@ describe('featured project site previews', () => {
       assert.equal(projectIds.has(site.id), true);
       assert.equal(site.captureUrl.startsWith('https://'), true);
       assert.equal(
+        site.settleMs >= 1_500,
+        true,
+        `${site.id} must let its entrance animation settle before capture`,
+      );
+      assert.equal(
         existsSync(new URL(`../../public/${site.screenshot.slice(1)}`, import.meta.url)),
         true,
         `Missing screenshot for ${site.id}`,
@@ -34,6 +39,14 @@ describe('featured project site previews', () => {
     assert.equal(featuredProjectSites.map((site) => String(site.id)).includes('site'), false);
   });
 
+  test('gives animated product demos enough time to reach a useful frame', () => {
+    const settleTimes = new Map(featuredProjectSites.map((site) => [site.id, site.settleMs]));
+
+    assert.equal((settleTimes.get('cloud') ?? 0) >= 10_000, true);
+    assert.equal((settleTimes.get('code') ?? 0) >= 12_000, true);
+    assert.equal((settleTimes.get('box') ?? 0) >= 4_000, true);
+  });
+
   test('install Chinese fonts before build-time screenshots are captured', () => {
     const workflow = readFileSync(
       new URL('../../../../.github/workflows/site.yml', import.meta.url),
@@ -45,6 +58,24 @@ describe('featured project site previews', () => {
     assert.notEqual(fontInstall, -1, 'Pages must install a CJK font for project screenshots');
     assert.notEqual(screenshotCapture, -1, 'Pages must refresh project screenshots');
     assert.equal(fontInstall < screenshotCapture, true, 'CJK fonts must be installed before screenshots are captured');
+  });
+
+  test('builds the pinned Form playground before refreshing its preview', () => {
+    const workflow = readFileSync(
+      new URL('../../../../.github/workflows/site.yml', import.meta.url),
+      'utf8',
+    );
+    const formRevision = workflow.indexOf('FORM_REVISION:');
+    const formBuild = workflow.indexOf('playground:build');
+    const formPreviewUrl = workflow.indexOf('A3S_FORM_PREVIEW_URL: http://127.0.0.1:4176/');
+    const screenshotCapture = workflow.indexOf('bun run capture:sites');
+
+    assert.notEqual(formRevision, -1, 'Form preview source must be pinned');
+    assert.notEqual(formBuild, -1, 'Form playground must be built');
+    assert.notEqual(formPreviewUrl, -1, 'Capture must use the local Form build');
+    assert.equal(formRevision < formBuild, true);
+    assert.equal(formBuild < screenshotCapture, true);
+    assert.equal(formPreviewUrl < screenshotCapture, true);
   });
 
   test('checks preview HTTP status before Chrome can replace a committed screenshot', () => {
@@ -60,6 +91,10 @@ describe('featured project site previews', () => {
     assert.equal(healthCheck < chromeCapture, true);
     assert.equal(captureScript.includes('response.ok'), true);
     assert.equal(captureScript.includes("client.send('Page.captureScreenshot'"), true);
+    assert.equal(captureScript.includes('site.settleMs'), true);
+    assert.equal(captureScript.includes('await waitForPageTarget(port, chromeProcess)'), true);
+    assert.equal(captureScript.includes('animation-play-state: paused'), true);
+    assert.equal(captureScript.includes("document.querySelectorAll('video')"), true);
     assert.equal(captureScript.includes('--virtual-time-budget'), false);
   });
 });
