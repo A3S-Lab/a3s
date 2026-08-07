@@ -1,4 +1,5 @@
 import { architectureNode as node, localized, type ArchitectureProject } from './architecture-types';
+import { getProjectPrimaryHref } from '../project-links';
 
 export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
   {
@@ -6,7 +7,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'Runtime',
     category: 'runtime',
     role: localized('Provider 中立的有限 Task 与长期 Service 生命周期。', 'Provider-neutral finite Task and long-running Service lifecycle.'),
-    href: 'https://github.com/A3S-Lab/Runtime',
+    href: getProjectPrimaryHref('runtime'),
     nodes: [
       node('caller', 'Caller Policy', 'surface', '宿主提交显式 Task、Service、资源与截止时间。', 'Hosts submit explicit Tasks, Services, resources, and deadlines.'),
       node('contract', 'Runtime Contract', 'core', '统一 create、start、inspect、exec、logs、cancel 与 remove 语义。', 'Unifies create, start, inspect, exec, logs, cancel, and remove semantics.'),
@@ -20,7 +21,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'OCI Runtime',
     category: 'runtime',
     role: localized('实验性的跨平台 OCI 生命周期与隔离驱动基础。', 'Experimental cross-platform OCI lifecycle and isolation driver foundation.'),
-    href: 'https://github.com/A3S-Lab/OCI-Runtime',
+    href: getProjectPrimaryHref('oci-runtime'),
     nodes: [
       node('consumers', 'Consumers & SDK', 'surface', 'CLI、RuntimeClient 与未来 shim 使用同一平台中立入口。', 'CLI, RuntimeClient, and future shims use one platform-neutral entrypoint.'),
       node('service', 'OciRuntimeService', 'core', '拥有 OCI schema、语义验证与宿主控制面。', 'Owns OCI schema, semantic validation, and the host control plane.'),
@@ -34,7 +35,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'Flow',
     category: 'runtime',
     role: localized('事件溯源的持久工作流、可重放步骤、等待、重试与 Worker。', 'Event-sourced durable workflows with replay-safe steps, waits, retries, and workers.'),
-    href: '/docs/flow',
+    href: getProjectPrimaryHref('flow'),
     nodes: [
       node('spec', 'WorkflowSpec', 'surface', '用稳定名称、版本与输入启动一个持久 run。', 'Starts a durable run from a stable name, version, and input.'),
       node('engine', 'FlowEngine', 'core', '一次应用一个 RuntimeCommand，并保持宿主控制面。', 'Applies one RuntimeCommand at a time while retaining host control.'),
@@ -48,7 +49,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'Event',
     category: 'runtime',
     role: localized('Provider 中立的发布、订阅、历史与持久化事件总线。', 'Provider-neutral publish, subscribe, history, and persistence event bus.'),
-    href: '/docs/event',
+    href: getProjectPrimaryHref('event'),
     nodes: [
       node('publisher', 'Publisher', 'surface', '发布带 dot-separated subject 与 schema 身份的事件。', 'Publishes events with dot-separated subjects and schema identity.'),
       node('bus', 'EventBus', 'core', '提供 publish、subscribe、history 与订阅管理 API。', 'Provides publish, subscribe, history, and subscription management APIs.'),
@@ -62,7 +63,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'Lane',
     category: 'runtime',
     role: localized('带有界并发、优先级、重试与持久化的异步调度。', 'Async scheduling with bounded concurrency, priority, retry, and persistence.'),
-    href: '/docs/lane',
+    href: getProjectPrimaryHref('lane'),
     nodes: [
       node('submit', 'Typed Command', 'surface', '接收可执行 Command 或由宿主保留所有权的类型化值。', 'Accepts executable Commands or host-owned typed values.'),
       node('manager', 'QueueManager', 'core', '维护 lane 注册、提交、启动、drain 与 shutdown。', 'Owns lane registration, submission, startup, drain, and shutdown.'),
@@ -76,7 +77,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'Memory',
     category: 'runtime',
     role: localized('可插拔 Agent 记忆存储、相关性排序、去重与修剪。', 'Pluggable agent memory storage, relevance ranking, deduplication, and pruning.'),
-    href: '/docs/memory',
+    href: getProjectPrimaryHref('memory'),
     nodes: [
       node('item', 'MemoryItem', 'surface', '记录内容、类型、重要度、标签、时间与关系 metadata。', 'Carries content, type, importance, tags, time, and relationship metadata.'),
       node('store', 'MemoryStore', 'core', '定义 store、retrieve、search、delete 与维护契约。', 'Defines store, retrieve, search, delete, and maintenance contracts.'),
@@ -90,7 +91,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'ORM',
     category: 'runtime',
     role: localized('不可变、参数化、类型安全的 SQL builder 与异步驱动。', 'Immutable, parameterized, type-safe SQL builder and async drivers.'),
-    href: 'https://github.com/A3S-Lab/ORM',
+    href: getProjectPrimaryHref('orm'),
     nodes: [
       node('schema', 'Schema + Expressions', 'surface', '从类型化 schema、列、值与表达式构造查询。', 'Builds queries from typed schemas, columns, values, and expressions.'),
       node('ast', 'Immutable Query AST', 'core', '用不可变结构保留查询语义与参数边界。', 'Preserves query semantics and parameter boundaries in immutable structures.'),
@@ -104,7 +105,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     name: 'Common',
     category: 'runtime',
     role: localized('跨 A3S crates 复用的 privacy、tool、path 与 transport 原语。', 'Privacy, tool, path, and transport primitives shared across A3S crates.'),
-    href: '/docs/common',
+    href: getProjectPrimaryHref('common'),
     nodes: [
       node('consumers', 'A3S Crates', 'surface', '由需要一致 wire 与安全语义的独立 crate 直接依赖。', 'Used directly by independent crates that need consistent wire and safety semantics.'),
       node('privacy', 'Privacy Types', 'core', '统一敏感值、可见性与脱敏语义。', 'Unifies sensitive values, visibility, and redaction semantics.'),

@@ -3,6 +3,26 @@ import path from 'node:path';
 
 const root = process.cwd();
 const output = path.join(root, 'out');
+const articleSlugs = [
+  'programmable-agent-workflows',
+  'domain-driven-design',
+  'libkrun-libkrunfw-whpx',
+  'http-402-generative-ui-agent-economy',
+  'why-coding-agent-is-the-core',
+  'why-ai-native-gateway',
+  'a3s-power-technical-deep-dive',
+  'a3s-box-technical-deep-dive',
+];
+const requiredImages = [
+  'brand/a3s-os-logo.png',
+  'ecosystem-sites/cloud.png',
+  'ecosystem-sites/code.png',
+  'ecosystem-sites/office.png',
+  'ecosystem-sites/use.png',
+  'ecosystem-sites/ui.png',
+  'ecosystem-sites/gateway.png',
+  'ecosystem-sites/blog.png',
+];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -18,101 +38,107 @@ async function collectFiles(directory) {
 
   for (const entry of entries) {
     const target = path.join(directory, entry);
-    if ((await stat(target)).isDirectory()) {
-      files.push(...(await collectFiles(target)));
-    } else {
-      files.push(target);
-    }
+    if ((await stat(target)).isDirectory()) files.push(...await collectFiles(target));
+    else files.push(target);
   }
 
   return files;
 }
 
-const [chinese, english, legacyChinese, chineseDocs, englishDocs, chineseVersion, englishVersion] =
-  await Promise.all([
-    read('index.html'),
-    read('en.html'),
-    read('cn.html'),
-    read('docs.html'),
-    read('en/docs.html'),
-    read('docs/cloud/v0.1.0.html'),
-    read('en/docs/cloud/v0.1.0.html'),
-  ]);
+const routeFiles = [
+  'index.html',
+  'en/index.html',
+  'blog/index.html',
+  'en/blog/index.html',
+  ...articleSlugs.flatMap((slug) => [
+    `blog/${slug}.html`,
+    `en/blog/${slug}.html`,
+  ]),
+];
 
-if (process.env.NEXT_PUBLIC_SITE_URL) {
-  const sitemap = await read('sitemap.xml');
-  assert(
-    sitemap.includes(`<loc>${process.env.NEXT_PUBLIC_SITE_URL}</loc>`),
-    `Sitemap is missing the public site URL: ${process.env.NEXT_PUBLIC_SITE_URL}`,
-  );
+const routeEntries = await Promise.all(
+  routeFiles.map(async (relativePath) => [relativePath, await read(relativePath)]),
+);
+const routeHtml = new Map(routeEntries);
+const chineseHome = routeHtml.get('index.html');
+const englishHome = routeHtml.get('en/index.html');
+const chineseBlog = routeHtml.get('blog/index.html');
+const englishBlog = routeHtml.get('en/blog/index.html');
+
+assert(chineseHome, 'Chinese homepage is missing');
+assert(englishHome, 'English homepage is missing');
+assert(chineseBlog, 'Chinese blog index is missing');
+assert(englishBlog, 'English blog index is missing');
+
+for (const marker of [
+  '为 AI Native 组织',
+  '构建的',
+  '生态系统。',
+  '每个AI Native的组织都应该有自己的AI操作系统',
+  '开发进度',
+]) {
+  assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
 }
 
 for (const marker of [
-  'One command.',
-  'id="products"',
-  'id="architecture"',
-  'id="principles"',
-  'a3s-canvas-backdrop',
-  'a3s code',
+  'An ecosystem built',
+  'for AI Native',
+  'organizations.',
+  'Every AI Native organization should have its own AI operating system.',
+  'Development progress',
 ]) {
-  assert(english.includes(marker), `English homepage is missing: ${marker}`);
+  assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
 
-for (const marker of ['一个命令。', '每一道 Agent 边界', '从零启动一个可治理 Agent。']) {
-  assert(chinese.includes(marker), `Chinese homepage is missing: ${marker}`);
-  assert(legacyChinese.includes(marker), `Legacy Chinese homepage is missing: ${marker}`);
+for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
+  const progressBars = homepage.match(/role="progressbar"/g) ?? [];
+  assert(progressBars.length === 35, `${locale} homepage has ${progressBars.length} progress bars instead of 35`);
+  assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
 }
 
-assert(chineseDocs.includes('A3S 文档'), 'The unprefixed documentation is not Chinese');
-assert(englishDocs.includes('A3S Docs'), 'The /en documentation is not English');
-assert(chineseDocs.includes('选择语言'), 'Chinese documentation has no language switch');
-assert(englishDocs.includes('Choose a language'), 'English documentation has no language switch');
-assert(chineseVersion.includes('文档版本'), 'Chinese versioned docs have no version switch');
-assert(englishVersion.includes('Documentation version'), 'English versioned docs have no version switch');
-assert(chineseVersion.includes('v0.1.0'), 'Chinese version selector is missing v0.1.0');
-assert(englishVersion.includes('v0.1.0'), 'English version selector is missing v0.1.0');
-assert(
-  chineseVersion.includes('/docs/cloud/v0.1.0/recovery'),
-  'Chinese snapshot links escape the selected version',
-);
-assert(
-  englishVersion.includes('/en/docs/cloud/v0.1.0/recovery'),
-  'English snapshot links escape the selected version',
-);
-assert(
-  !chineseVersion.includes('href="/docs/cloud/recovery"'),
-  'Chinese snapshot contains an unversioned recovery link',
-);
-
-const canonicalSite = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev').replace(/\/$/, '');
-assert(
-  chineseDocs.includes(`href="${canonicalSite}/docs"`),
-  'Chinese documentation canonical URL is not unprefixed',
-);
-assert(
-  englishDocs.includes(`href="${canonicalSite}/en/docs"`),
-  'English documentation canonical URL is missing the /en prefix',
-);
-
-assert(!english.includes('/og.png'), 'Homepage still references the removed /og.png asset');
+assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'Chinese blog index does not list 8 posts');
+assert((englishBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'English blog index does not list 8 posts');
 
 const files = await collectFiles(output);
-const cssFiles = files.filter((file) => file.endsWith('.css'));
-assert(cssFiles.length > 0, 'Static export contains no CSS assets');
+const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
 
+for (const image of requiredImages) {
+  assert(relativeFiles.includes(image), `Static build is missing image: ${image}`);
+}
+
+assert(
+  !relativeFiles.some((file) => /(^|\/)(docs|tutorials)(\/|$)/.test(file)),
+  'Static build still contains a docs or tutorials route',
+);
+
+const html = routeEntries.map(([, content]) => content).join('\n');
+const localHrefs = [...html.matchAll(/href="([^"]+)"/g)]
+  .map((match) => match[1])
+  .filter((href) => !/^https?:\/\//.test(href));
+assert(
+  !localHrefs.some((href) => /(^|\/)(docs|tutorials)(\/|$|[?#])/.test(href)),
+  'Static routes still link to docs or tutorials',
+);
+assert(!/fumadocs/i.test(html), 'Static routes still contain a Fumadocs reference');
+
+const cssFiles = files.filter((file) => file.endsWith('.css'));
+assert(cssFiles.length > 0, 'Static build contains no CSS assets');
 const css = (await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))).join('\n');
-for (const selector of ['.a3s-canvas-backdrop', '.a3s-home-nav', '.a3s-system-panel', '.a3s-product-card', '.a3s-atlas__node']) {
+for (const selector of [
+  '.a3s-home-nav',
+  '.a3s-site-preview__image',
+  '.a3s-directory-card',
+  '.a3s-project-progress',
+  '.a3s-atlas__node',
+  '.a3s-blog-grid',
+]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
 
-for (const project of ['A3S System', 'Code', 'Office', 'Cloud', 'Runtime', 'Observer', 'Homebrew Tap']) {
-  assert(chinese.includes(project), `Chinese homepage architecture atlas is missing: ${project}`);
-  assert(english.includes(project), `English homepage architecture atlas is missing: ${project}`);
+if (process.env.SITE_URL) {
+  const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');
+  assert(chineseHome.includes(`href="${canonicalSite}/"`), 'Chinese canonical URL is incorrect');
+  assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
 }
 
-assert(
-  files.some((file) => path.basename(file) === 'opengraph-image'),
-  'Static export is missing the generated Open Graph image',
-);
-
-console.log(`Validated bilingual A3S homepage across ${files.length} exported files.`);
+console.log(`Validated 2 homepages, 2 blog indexes, 16 article routes, and ${files.length} exported files.`);

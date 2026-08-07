@@ -1,7 +1,6 @@
 'use client';
 
-import { ArrowUpRight, Network, Search } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowUpRight, MagnifyingGlass, Network } from '@phosphor-icons/react';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   architectureProjectCount,
@@ -12,7 +11,6 @@ import {
   type ArchitectureTone,
 } from '@/components/home/architecture';
 import type { Lang } from '@/components/home/home-content';
-import { localePath } from '@/lib/i18n';
 
 type AtlasCategory = 'all' | ArchitectureCategory;
 
@@ -40,13 +38,13 @@ const atlasCopy = {
     },
     projectIndex: '项目索引',
     systemLabel: '共享契约平面',
-    search: '搜索 34 个项目',
+    search: '搜索 35 个项目',
     noResults: '没有匹配的项目',
     openProject: '打开项目',
     topology: '交互拓扑',
     nodeHint: '悬停、聚焦或点击节点，查看它在架构中的职责。',
     selectedNode: '当前节点',
-    footer: '34 个项目 · 170 个架构节点 · 一套可检查的能力图谱',
+    footer: '35 个项目 · 175 个架构节点 · 一套可检查的能力图谱',
     tones: {
       surface: '入口',
       core: '核心',
@@ -64,13 +62,13 @@ const atlasCopy = {
     },
     projectIndex: 'Project index',
     systemLabel: 'Shared contract plane',
-    search: 'Search 34 projects',
+    search: 'Search 35 projects',
     noResults: 'No matching projects',
     openProject: 'Open project',
     topology: 'Interactive topology',
     nodeHint: 'Hover, focus, or select a node to inspect its architectural responsibility.',
     selectedNode: 'Selected node',
-    footer: '34 projects · 170 architecture nodes · one inspectable capability atlas',
+    footer: '35 projects · 175 architecture nodes · one inspectable capability atlas',
     tones: {
       surface: 'surface',
       core: 'core',
@@ -88,7 +86,8 @@ function projectLinks(project: ArchitectureProject): ReadonlyArray<readonly [str
 }
 
 function projectHref(project: ArchitectureProject, lang: Lang): string {
-  return project.href.startsWith('/') ? localePath(project.href, lang) : project.href;
+  void lang;
+  return project.href;
 }
 
 export function ArchitectureAtlas({ lang }: { lang: Lang }) {
@@ -191,7 +190,7 @@ export function ArchitectureAtlas({ lang }: { lang: Lang }) {
         </div>
 
         <label className="a3s-atlas__search">
-          <Search aria-hidden="true" />
+          <MagnifyingGlass aria-hidden="true" />
           <span className="sr-only">{copy.search}</span>
           <input
             aria-keyshortcuts="/"
@@ -254,14 +253,14 @@ export function ArchitectureAtlas({ lang }: { lang: Lang }) {
               <h3>{activeProject.name}<em>.architecture</em></h3>
               <p>{activeProject.role[lang]}</p>
             </div>
-            <Link
+            <a
               href={projectHref(activeProject, lang)}
               rel={externalProject ? 'noopener noreferrer' : undefined}
               target={externalProject ? '_blank' : undefined}
             >
               {copy.openProject}
               <ArrowUpRight aria-hidden="true" />
-            </Link>
+            </a>
           </header>
 
           <div className="a3s-atlas__stage">

@@ -1,12 +1,10 @@
 # dependencies
 node_modules/
 
-# next.js
-.next/
+# generated site
 out/
-
-# fumadocs
-.source/
+site_build/
+.rspress/
 
 # production
 build/
@@ -20,10 +18,8 @@ dist/
 # caches
 .eslintcache
 .cache
+.a3s-test/
 *.tsbuildinfo
-
-# typescript
-next-env.d.ts
 
 # logs
 logs/

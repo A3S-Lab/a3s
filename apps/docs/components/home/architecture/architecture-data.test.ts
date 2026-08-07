@@ -1,11 +1,23 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { architectureProjectCount, architectureProjects, systemArchitectureProject } from '.';
+import { linkedProjectIds } from '../project-links';
 
 describe('homepage architecture atlas', () => {
   test('covers every project in the repository map', () => {
-    assert.equal(architectureProjectCount, 34);
-    assert.equal(new Set(architectureProjects.map((project) => project.id)).size, 34);
+    assert.equal(architectureProjectCount, 35);
+    assert.equal(new Set(architectureProjects.map((project) => project.id)).size, 35);
+    assert.deepEqual(
+      [...linkedProjectIds].sort(),
+      architectureProjects.map((project) => project.id).sort(),
+    );
+  });
+
+  test('does not link the ecosystem directory to removed docs or tutorials', () => {
+    for (const project of architectureProjects) {
+      assert.equal(project.href.includes('/docs'), false, `${project.name} still links to docs`);
+      assert.equal(project.href.includes('/tutorials'), false, `${project.name} still links to tutorials`);
+    }
   });
 
   test('keeps every project diagram complete and localized', () => {
@@ -35,6 +47,6 @@ describe('homepage architecture atlas', () => {
       return counts;
     }, {});
 
-    assert.deepEqual(totals, { products: 14, runtime: 8, interfaces: 12 });
+    assert.deepEqual(totals, { products: 14, runtime: 8, interfaces: 13 });
   });
 });

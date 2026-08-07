@@ -15,7 +15,7 @@ export const systemArchitectureProject: ArchitectureProject = {
   id: 'a3s-system',
   name: 'A3S System',
   category: 'products',
-  role: localized('34 个独立演进的项目，通过显式契约组成一套可治理 Agent 系统。', 'Thirty-four independently evolving projects composed through explicit contracts.'),
+  role: localized('35 个独立演进的项目，通过显式契约组成一套可治理 Agent 系统。', 'Thirty-five independently evolving projects composed through explicit contracts.'),
   href: 'https://github.com/A3S-Lab/a3s',
   nodes: [
     node('entrypoints', 'Entrypoints', 'surface', '终端、浏览器与 Rust、Node.js、Python、Go SDK。', 'Terminal, browser, and Rust, Node.js, Python, and Go SDKs.'),

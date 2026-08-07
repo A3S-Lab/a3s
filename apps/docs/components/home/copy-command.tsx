@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 
 interface CopyCommandProps {

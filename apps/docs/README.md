@@ -1,70 +1,104 @@
-# A3S website and documentation
+# A3S Site and Blog
 
-The public A3S site combines a product homepage, bilingual documentation,
-tutorials, and the engineering blog in one statically exported Next.js app.
+This application builds the A3S ecosystem homepage and bilingual engineering
+blog with Rspress. It does not publish product documentation or tutorials.
 
-Chinese is the default language and uses unprefixed URLs such as `/docs`.
-English uses the `/en` prefix. The previously published `/cn` routes remain
-build-time compatibility aliases, while canonical metadata and navigation
-always point to the unprefixed Chinese route.
+## Routes
 
-## Architecture
+| Route | Content |
+| --- | --- |
+| `/` | Chinese ecosystem homepage |
+| `/blog/` | Chinese engineering blog |
+| `/en/` | English ecosystem homepage |
+| `/en/blog/` | English engineering blog |
 
-- **Next.js App Router** owns routes, metadata, and static export.
-- **Fumadocs** owns documentation and tutorial content.
-- **Locale routing** in `lib/i18n.ts` is the single source of truth for default
-  language detection, canonical paths, and language switches.
-- **Documentation versions** are discovered from product-local `vX.Y.Z`
-  directories. The documentation header shows a version selector whenever a
-  product has at least one immutable snapshot, and keeps the current topic when
-  that topic exists in the selected version.
-- **Home components** under `components/home/` keep localized content, layout,
-  interaction, and design tokens separate.
-- **Architecture atlas** renders the repository map from one 34-project data
-  source. Every project exposes an interactive five-node topology with localized
-  responsibilities, keyboard-operable project and node selection, and a direct
-  documentation or repository link.
-- **Canvas UI Grid** provides the viewport-sized interactive background across
-  the homepage with a progressive CSS fallback; its notice is recorded in
-  `THIRD_PARTY_NOTICES.md`.
-- **GitHub Pages** receives the generated `out/` directory from the repository
-  documentation workflow.
+The production build runs Rspress once per language and assembles both outputs
+under `out/`. Chinese remains the unprefixed default language.
 
-The homepage structure follows the same maintainable pattern as the A3S Code
-site: one composition component, isolated client-side canvas behavior, and
-centralized visual tokens rather than route-local styling.
+## Project layout
 
-## Local development
+```text
+apps/docs/
+├── components/home/          # Homepage UI and ecosystem data
+├── public/brand/             # A3S OS brand assets
+├── public/ecosystem-sites/   # Captured project-site previews
+├── scripts/                  # Build, validation, and screenshot tasks
+├── site/cn/                  # Chinese homepage and blog MDX
+├── site/en/                  # English homepage and blog MDX
+├── theme/                    # Rspress theme extension and blog styles
+└── rspress.config.ts
+```
+
+## Development
 
 ```bash
-bun install --frozen-lockfile
+bun install
 bun run dev
 ```
 
-## Verification
+The default development server uses Chinese content. Start the English build
+with:
 
 ```bash
-bun run typecheck
+bun run dev:en
+```
+
+Run all local checks with:
+
+```bash
+bun run check
+```
+
+Individual commands are also available:
+
+```bash
 bun run test
+bun run typecheck
 bun run build
 bun run check:site
 ```
 
-`check:site` validates both localized homepage exports and confirms the
-homepage CSS was emitted into the production bundle.
+Set `SITE_URL` when validating a deployment under a non-root path, for example:
 
-## Publishing a documentation version
+```bash
+SITE_URL=https://a3s-lab.github.io/a3s/ bun run build
+```
 
-Documentation versions follow the independent release cadence of each A3S
-product; there is no monorepo-wide product version.
+## Writing blog posts
 
-1. Copy the release-owned pages into
-   `content/docs/<locale>/<product>/vX.Y.Z/` for both `cn` and `en`.
-2. Add a localized `meta.json` and keep the snapshot immutable after release.
-3. Add the version directory to the product's localized `meta.json` navigation.
-4. When a product has a release evidence manifest, record the canonical Chinese
-   and English document URLs there.
-5. Run `bun run check` and any product-specific documentation validator.
+Every post has one Chinese and one English MDX file with the same slug:
 
-The version selector reads the Fumadocs page tree, so publishing a version does
-not require a second version registry.
+```text
+site/cn/blog/<slug>.mdx
+site/en/blog/<slug>.mdx
+```
+
+Keep `title`, `description`, `date`, `author`, and `tags` in frontmatter. Add the
+post to both blog index pages and to the locale article lists in
+`rspress.config.ts`.
+
+## Project-site screenshots
+
+Homepage previews use committed 1280 x 800 screenshots from real project sites.
+Refresh all previews with:
+
+```bash
+bun run capture:sites
+```
+
+Capture one project while iterating with:
+
+```bash
+bun run capture:sites --site=cloud
+```
+
+After building locally, refresh the blog preview from the new output with:
+
+```bash
+A3S_SITE_PREVIEW_URL=http://127.0.0.1:4173/blog/ \
+  bun run capture:sites --site=site
+```
+
+The capture task keeps an existing committed image when a remote site is
+temporarily unavailable. Add or change destinations in
+`components/home/project-sites.ts`.

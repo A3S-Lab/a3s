@@ -75,7 +75,7 @@ command routing. Product behavior remains with the component that implements it.
 | **Bench** | `a3s install bench` | Optional evaluation product with explicit installation |
 | **Search** | `a3s install search` | Optional meta-search product with explicit installation |
 | **Use** | `a3s install use` | Optional capability facade; Browser and OCR routes are built in from independently versioned repositories, while Office and other domains keep independent package contracts |
-| **Cloud** | Follow the [versioned Cloud guide](apps/docs/content/docs/en/cloud/v0.1.0/) | Self-hosted control-plane project with separately documented maturity gates |
+| **Cloud** | Follow the [Cloud repository guide](apps/cloud/README.md) | Self-hosted control-plane project with separately documented maturity gates |
 
 A catalog entry describes discovery and installation policy. It is not proof
 that every platform or release channel currently contains a compatible artifact.
@@ -229,7 +229,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The local path requires Docker and produces `local_unofficial` results; official evaluation requires matching admission and Runtime evidence |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
-| Cloud | Delivered, experimental, and planned behavior is separated in the [versioned Cloud documentation](apps/docs/content/docs/en/cloud/v0.1.0/) |
+| Cloud | Delivered, experimental, and planned behavior is documented in the [Cloud repository](apps/cloud/README.md) |
 | OCI Runtime | Experimental: every current platform driver remains `probe-only`; host detection is not workload-launch support |
 | Infrastructure libraries | Optional features expose integrations; external brokers, stores, providers, and services must still be operated |
 
@@ -330,7 +330,7 @@ distribution assets.
 | [A3S Office](packages/office/) | Native OOXML engine, Office editors, CLI, MCP, Skill, and A3S Use package |
 | [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, nodes, and verified OCI deployment |
-| [Documentation](apps/docs/) | Documentation, tutorials, project references, and versioned Cloud operations guidance |
+| [Website & Blog](apps/docs/) | Rspress ecosystem homepage and bilingual engineering blog |
 
 ### Runtime, coordination, and data
 
@@ -357,6 +357,7 @@ distribution assets.
 | [A3S TUI](crates/tui/) | TEA-style terminal UI framework |
 | [A3S GUI](crates/gui/) | Browser-free native RSX and reducer runtime |
 | [A3S WebView](crates/webview/) | Authenticated RemoteUI and native Agent Island helper |
+| [A3S UI](packages/ui/) | Framework-agnostic design system for agent workspaces, document tools, and operational consoles |
 | [A3S Observer](crates/observer/) | Language-neutral observations and Linux eBPF collection |
 | [A3S Sentry](crates/sentry/) | Tiered runtime security controls over observed activity |
 | [A3S Updater](crates/updater/) | Self-update and signed, health-gated fleet lifecycle primitives |
