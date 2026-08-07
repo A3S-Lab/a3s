@@ -75,6 +75,8 @@ for (const marker of [
   '为 AI Native 组织',
   '构建的',
   '生态系统。',
+  '分布在全球的成员和 Agent 共用一个 Workspace',
+  'Shared Workspace',
   '每个AI Native的组织都应该有自己的AI操作系统',
   '开发进度',
 ]) {
@@ -85,6 +87,8 @@ for (const marker of [
   'An ecosystem built',
   'for AI Native',
   'organizations.',
+  'globally distributed humans and agents',
+  'Shared Workspace',
   'Every AI Native organization should have its own AI operating system.',
   'Development progress',
 ]) {
@@ -100,19 +104,13 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   assert(!homepage.includes('ecosystem-sites/blog.png'), `${locale} homepage still features the Site & Blog preview`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
   assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
-
-  for (const command of [
-    'a3s code exec',
-    'a3s web -d',
-    'a3s up -d',
-    'a3s bench run',
-    'a3s search doctor',
-    'a3s use capabilities --json',
-    'a3s top --view agents',
-    'a3s doctor',
-  ]) {
-    assert(homepage.includes(command), `${locale} homepage is missing the CLI capability command: ${command}`);
-  }
+  assert(homepage.includes('a3s-global-workspace'), `${locale} homepage is missing the global workspace scene`);
+  assert(
+    homepage.includes('Human') && homepage.includes('Agent'),
+    `${locale} homepage does not identify Human and Agent collaborators`,
+  );
+  assert(homepage.includes('Edge + Cloud'), `${locale} homepage does not identify the edge-cloud layer`);
+  assert(!homepage.includes('a3s-cli-terminal'), `${locale} homepage still renders the CLI hero terminal`);
 
   for (const installer of [
     'https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh',
@@ -158,7 +156,7 @@ assert(cssFiles.length > 0, 'Static build contains no CSS assets');
 const css = (await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))).join('\n');
 for (const selector of [
   '.a3s-home-nav',
-  '.a3s-cli-terminal',
+  '.a3s-global-workspace',
   '.a3s-site-preview__image',
   '.a3s-directory-card',
   '.a3s-project-progress',
@@ -166,6 +164,8 @@ for (const selector of [
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
+assert(!css.includes('.a3s-cli-terminal'), 'Production CSS still contains the replaced CLI hero terminal');
+assert(!css.includes('.a3s-canvas-backdrop'), 'Production CSS still contains the replaced canvas backdrop');
 assert(!css.includes('.a3s-atlas'), 'Production CSS still contains architecture diagram styles');
 assert(!css.includes('.a3s-ecosystem-visual'), 'Production CSS still contains the replaced ecosystem hero visual');
 

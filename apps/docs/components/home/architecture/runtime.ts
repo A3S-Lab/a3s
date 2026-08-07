@@ -6,7 +6,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'runtime',
     name: 'Runtime',
     category: 'runtime',
-    role: localized('Provider 中立的有限 Task 与长期 Service 生命周期。', 'Provider-neutral finite Task and long-running Service lifecycle.'),
+    role: localized('统一运行短任务和长期服务，底层 Provider 可以替换。', 'Runs short tasks and long-lived services through replaceable providers.'),
     href: getProjectPrimaryHref('runtime'),
     nodes: [
       node('caller', 'Caller Policy', 'surface', '宿主提交显式 Task、Service、资源与截止时间。', 'Hosts submit explicit Tasks, Services, resources, and deadlines.'),
@@ -20,7 +20,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'oci-runtime',
     name: 'OCI Runtime',
     category: 'runtime',
-    role: localized('实验性的跨平台 OCI 生命周期与隔离驱动基础。', 'Experimental cross-platform OCI lifecycle and isolation driver foundation.'),
+    role: localized('在 macOS、Linux 和 Windows 上管理 OCI 工作负载与隔离。', 'Manages OCI workloads and isolation on macOS, Linux, and Windows.'),
     href: getProjectPrimaryHref('oci-runtime'),
     nodes: [
       node('consumers', 'Consumers & SDK', 'surface', 'CLI、RuntimeClient 与未来 shim 使用同一平台中立入口。', 'CLI, RuntimeClient, and future shims use one platform-neutral entrypoint.'),
@@ -34,7 +34,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'flow',
     name: 'Flow',
     category: 'runtime',
-    role: localized('事件溯源的持久工作流、可重放步骤、等待、重试与 Worker。', 'Event-sourced durable workflows with replay-safe steps, waits, retries, and workers.'),
+    role: localized('让长时间运行的工作流可以等待、重试、恢复和重放。', 'Lets long-running workflows wait, retry, resume, and replay safely.'),
     href: getProjectPrimaryHref('flow'),
     nodes: [
       node('spec', 'WorkflowSpec', 'surface', '用稳定名称、版本与输入启动一个持久 run。', 'Starts a durable run from a stable name, version, and input.'),
@@ -48,7 +48,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'event',
     name: 'Event',
     category: 'runtime',
-    role: localized('Provider 中立的发布、订阅、历史与持久化事件总线。', 'Provider-neutral publish, subscribe, history, and persistence event bus.'),
+    role: localized('发布、订阅和保存 A3S 事件，底层存储可以替换。', 'Publishes, subscribes to, and stores A3S events with replaceable backends.'),
     href: getProjectPrimaryHref('event'),
     nodes: [
       node('publisher', 'Publisher', 'surface', '发布带 dot-separated subject 与 schema 身份的事件。', 'Publishes events with dot-separated subjects and schema identity.'),
@@ -62,7 +62,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'lane',
     name: 'Lane',
     category: 'runtime',
-    role: localized('带有界并发、优先级、重试与持久化的异步调度。', 'Async scheduling with bounded concurrency, priority, retry, and persistence.'),
+    role: localized('按并发限制和优先级调度异步任务，失败后可以重试。', 'Schedules async work by concurrency limit and priority, with retries after failure.'),
     href: getProjectPrimaryHref('lane'),
     nodes: [
       node('submit', 'Typed Command', 'surface', '接收可执行 Command 或由宿主保留所有权的类型化值。', 'Accepts executable Commands or host-owned typed values.'),
@@ -76,7 +76,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'memory',
     name: 'Memory',
     category: 'runtime',
-    role: localized('可插拔 Agent 记忆存储、相关性排序、去重与修剪。', 'Pluggable agent memory storage, relevance ranking, deduplication, and pruning.'),
+    role: localized('保存、搜索、去重并清理 Agent 记忆。', 'Stores, searches, deduplicates, and prunes agent memory.'),
     href: getProjectPrimaryHref('memory'),
     nodes: [
       node('item', 'MemoryItem', 'surface', '记录内容、类型、重要度、标签、时间与关系 metadata。', 'Carries content, type, importance, tags, time, and relationship metadata.'),
@@ -90,7 +90,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'orm',
     name: 'ORM',
     category: 'runtime',
-    role: localized('不可变、参数化、类型安全的 SQL builder 与异步驱动。', 'Immutable, parameterized, type-safe SQL builder and async drivers.'),
+    role: localized('生成参数化 SQL，并异步访问 SQLite 和 PostgreSQL。', 'Builds parameterized SQL and runs it asynchronously on SQLite and PostgreSQL.'),
     href: getProjectPrimaryHref('orm'),
     nodes: [
       node('schema', 'Schema + Expressions', 'surface', '从类型化 schema、列、值与表达式构造查询。', 'Builds queries from typed schemas, columns, values, and expressions.'),
@@ -104,7 +104,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'common',
     name: 'Common',
     category: 'runtime',
-    role: localized('跨 A3S crates 复用的 privacy、tool、path 与 transport 原语。', 'Privacy, tool, path, and transport primitives shared across A3S crates.'),
+    role: localized('A3S crates 共用的隐私、工具、路径和通信类型。', 'Shared privacy, tool, path, and transport types for A3S crates.'),
     href: getProjectPrimaryHref('common'),
     nodes: [
       node('consumers', 'A3S Crates', 'surface', '由需要一致 wire 与安全语义的独立 crate 直接依赖。', 'Used directly by independent crates that need consistent wire and safety semantics.'),

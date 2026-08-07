@@ -1,21 +1,20 @@
 import {
   ArrowRight,
-  Cube,
-  GitBranch,
+  CloudArrowUp,
+  FolderOpen,
   GithubLogo,
   Globe,
-  Stack,
+  UsersThree,
 } from '@phosphor-icons/react/dist/ssr';
 import { withBase } from '@rspress/core/runtime';
 import { A3SMark } from '@/components/home/a3s-mark';
-import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
-import { CliCapabilityTerminal } from '@/components/home/cli-capability-terminal';
 import { EcosystemDirectory } from '@/components/home/ecosystem-directory';
+import { GlobalWorkspaceScene } from '@/components/home/global-workspace-scene';
 import { HomeNav } from '@/components/home/home-nav';
 import { homeContent, type Lang } from '@/components/home/home-content';
 import { InstallCommandTerminal } from '@/components/home/install-command-terminal';
 
-const signalIcons = [Cube, Globe, Stack, GitBranch];
+const signalIcons = [Globe, UsersThree, FolderOpen, CloudArrowUp];
 
 export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const tr = homeContent[lang];
@@ -25,18 +24,19 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
       <a className="a3s-skip-link" href="#main-content">
         {lang === 'cn' ? '跳到主要内容' : 'Skip to main content'}
       </a>
-      <CanvasBackdrop />
       <HomeNav lang={lang} />
 
       <section className="a3s-hero" id="main-content" aria-labelledby="a3s-hero-title">
         <div className="a3s-hero__ambient" aria-hidden="true" />
         <div className="a3s-hero__grid">
           <div className="a3s-hero__copy">
-            <div className="a3s-eyebrow"><span />{tr.hero.eyebrow}</div>
-            <h1 id="a3s-hero-title">
+            <div className="a3s-eyebrow">{tr.hero.eyebrow}</div>
+            <h1
+              aria-label={`${tr.hero.lineOne} ${tr.hero.lineTwo} ${tr.hero.accent}`}
+              id="a3s-hero-title"
+            >
               <span>{tr.hero.lineOne}</span>
-              <span>{tr.hero.lineTwo}</span>
-              <em>{tr.hero.accent}</em>
+              <span>{tr.hero.lineTwo}{' '}<em>{tr.hero.accent}</em></span>
             </h1>
             <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
@@ -48,13 +48,8 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
                 {tr.hero.secondaryAction}
               </a>
             </div>
-            <div className="a3s-hero__command" aria-label="A3S launch command">
-              <span>$</span>
-              <code>a3s code</code>
-              <i aria-hidden="true" />
-            </div>
           </div>
-          <CliCapabilityTerminal lang={lang} />
+          <GlobalWorkspaceScene lang={lang} />
         </div>
       </section>
 

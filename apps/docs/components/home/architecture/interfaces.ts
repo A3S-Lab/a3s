@@ -6,7 +6,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'boot',
     name: 'Boot',
     category: 'interfaces',
-    role: localized('Adapter-first 的模块化异步服务框架。', 'Adapter-first modular async service framework.'),
+    role: localized('用模块和 Adapter 构建异步服务。', 'Builds async services from modules and adapters.'),
     href: getProjectPrimaryHref('boot'),
     nodes: [
       node('modules', 'Modules + Providers', 'surface', '注册显式模块、依赖与类型化基础设施 Provider。', 'Registers explicit modules, dependencies, and typed infrastructure providers.'),
@@ -20,7 +20,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'gateway',
     name: 'Gateway',
     category: 'interfaces',
-    role: localized('本地 AI 流量与多协议数据平面。', 'Local AI traffic and multi-protocol data plane.'),
+    role: localized('在本地代理 AI 请求，并支持多种网络协议。', 'Routes AI requests locally across HTTP, WebSocket, gRPC, TCP, and UDP.'),
     href: getProjectPrimaryHref('gateway'),
     nodes: [
       node('entry', 'Entrypoint + TLS', 'surface', '接收 HTTP、HTTPS、WebSocket、SSE、gRPC、TCP 与 UDP。', 'Accepts HTTP, HTTPS, WebSocket, SSE, gRPC, TCP, and UDP.'),
@@ -34,7 +34,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'power',
     name: 'Power',
     category: 'interfaces',
-    role: localized('隐私导向的本地模型推理与 OpenAI 兼容服务。', 'Privacy-oriented local model inference and OpenAI-compatible serving.'),
+    role: localized('在本地运行模型，并提供 OpenAI 兼容 API。', 'Runs models locally behind an OpenAI-compatible API.'),
     href: getProjectPrimaryHref('power'),
     nodes: [
       node('api', 'OpenAI API', 'surface', '提供 chat、completion、embedding、models、attestation 与 health。', 'Exposes chat, completion, embedding, models, attestation, and health.'),
@@ -48,7 +48,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'ahp',
     name: 'AHP',
     category: 'interfaces',
-    role: localized('传输中立的 Agent Harness Protocol 监督协议。', 'Transport-neutral Agent Harness Protocol supervision.'),
+    role: localized('让 Agent 在执行关键操作前接受宿主检查。', 'Lets the host inspect and decide on key agent actions before they run.'),
     href: getProjectPrimaryHref('ahp'),
     nodes: [
       node('agent', 'Agent Event', 'surface', 'Agent 在关键控制点发出结构化、类型化事件。', 'The agent emits structured typed events at meaningful control points.'),
@@ -62,7 +62,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'acl',
     name: 'ACL',
     category: 'interfaces',
-    role: localized('A3S Agent Configuration Language 的 parser 与 generator。', 'Parser and generator for the A3S Agent Configuration Language.'),
+    role: localized('读取和生成 A3S Agent Configuration Language 配置。', 'Reads and writes A3S Agent Configuration Language files.'),
     href: getProjectPrimaryHref('acl'),
     nodes: [
       node('source', 'ACL Source', 'surface', '接收面向 Agent 产品的可读配置文本。', 'Accepts human-readable configuration for agent products.'),
@@ -76,7 +76,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'tui',
     name: 'TUI',
     category: 'interfaces',
-    role: localized('TEA 风格的终端 UI 框架与共享组件系统。', 'TEA-style terminal UI framework and shared component system.'),
+    role: localized('用 Rust 构建终端界面和可复用组件。', 'Builds terminal interfaces and reusable components in Rust.'),
     href: getProjectPrimaryHref('tui'),
     nodes: [
       node('events', 'Terminal Events', 'surface', '统一键盘、鼠标、resize、tick 与应用消息。', 'Unifies keyboard, mouse, resize, tick, and application messages.'),
@@ -90,7 +90,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'gui',
     name: 'GUI',
     category: 'interfaces',
-    role: localized('无浏览器的原生 RSX、reducer 与平台渲染运行时。', 'Browser-free native RSX, reducer, and platform rendering runtime.'),
+    role: localized('用 Rust 组件构建 AppKit、WinUI 和 GTK 原生界面。', 'Builds native AppKit, WinUI, and GTK interfaces from Rust components.'),
     href: getProjectPrimaryHref('gui'),
     nodes: [
       node('rsx', 'RSX / Semantic UI', 'surface', '用 Rust 组件树描述界面与可访问语义。', 'Describes interfaces and accessibility semantics with Rust component trees.'),
@@ -104,7 +104,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'webview',
     name: 'WebView',
     category: 'interfaces',
-    role: localized('认证 RemoteUI 与原生 Agent Island helper。', 'Authenticated RemoteUI and native Agent Island helper.'),
+    role: localized('在原生窗口中安全打开 Agent 提供的 RemoteUI。', 'Opens agent-provided RemoteUI safely in a native window.'),
     href: getProjectPrimaryHref('webview'),
     nodes: [
       node('host', 'Code / Host UI', 'surface', '从可信 Agent surface 发起一个明确的远程 UI 请求。', 'Starts an explicit remote UI request from a trusted agent surface.'),
@@ -118,7 +118,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'ui',
     name: 'UI',
     category: 'interfaces',
-    role: localized('面向 Agent 工作区、文档工具与运维控制台的框架无关设计系统。', 'Framework-agnostic design system for agent workspaces, document tools, and operational consoles.'),
+    role: localized('A3S 工作区、文档工具和运维控制台共用的设计系统。', 'The shared design system for A3S workspaces, document tools, and operations consoles.'),
     href: getProjectPrimaryHref('ui'),
     nodes: [
       node('surfaces', 'Product Surfaces', 'surface', '为 Agent 工作区、Office 工具和运维控制台提供同一套交互语言。', 'Gives agent workspaces, Office tools, and operational consoles one interaction language.'),
@@ -132,7 +132,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'observer',
     name: 'Observer',
     category: 'interfaces',
-    role: localized('语言无关观测、Linux eBPF 收集与可选内核 guard。', 'Language-neutral observation, Linux eBPF collection, and optional kernel guards.'),
+    role: localized('用 eBPF 记录 Agent 的进程、文件、DNS 和网络活动。', 'Uses eBPF to record agent process, file, DNS, and network activity.'),
     href: getProjectPrimaryHref('observer'),
     nodes: [
       node('probes', 'eBPF Probes', 'surface', '从内核捕获 exec、file、DNS、egress 与身份信号。', 'Captures exec, file, DNS, egress, and identity signals from the kernel.'),
@@ -147,7 +147,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'sentry',
     name: 'Sentry',
     category: 'interfaces',
-    role: localized('基于 Observer 信号的分层 Agent 运行时安全决策。', 'Tiered agent runtime security decisions over Observer signals.'),
+    role: localized('根据 Observer 事件判断风险，并执行 Agent 运行时策略。', 'Evaluates Observer events and enforces agent runtime policy.'),
     href: getProjectPrimaryHref('sentry'),
     nodes: [
       node('events', 'Observer Events', 'surface', '接收 ToolExec、Egress、FileAccess 与模型信号。', 'Receives ToolExec, Egress, FileAccess, and model signals.'),
@@ -161,7 +161,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'updater',
     name: 'Updater',
     category: 'interfaces',
-    role: localized('自更新与签名、健康门控的 fleet 生命周期原语。', 'Self-update and signed, health-gated fleet lifecycle primitives.'),
+    role: localized('下载、校验和切换 A3S 版本，升级失败时可以回滚。', 'Downloads, verifies, and switches A3S versions, with rollback after a failed update.'),
     href: getProjectPrimaryHref('updater'),
     nodes: [
       node('source', 'Release Source', 'surface', '查询明确仓库、channel 与当前平台版本。', 'Queries an explicit repository, channel, and current platform version.'),
@@ -175,7 +175,7 @@ export const interfaceArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'homebrew',
     name: 'Homebrew Tap',
     category: 'interfaces',
-    role: localized('A3S 已发布命令与 helper 的 Homebrew 分发渠道。', 'Homebrew distribution channel for released A3S commands and helpers.'),
+    role: localized('通过 Homebrew 安装和更新已发布的 A3S 命令。', 'Installs and updates released A3S commands through Homebrew.'),
     href: getProjectPrimaryHref('homebrew'),
     nodes: [
       node('releases', 'Release Archives', 'surface', '消费项目发布的版本化平台资产与 checksum。', 'Consumes versioned platform assets and checksums published by projects.'),
