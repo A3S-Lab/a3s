@@ -45,7 +45,7 @@ cargo test \
   --manifest-path "${cli_manifest}" \
   --locked \
   --lib \
-  use_registry::tests::real_use_process_converges_install_upgrade_rebuild_disable_and_enable \
+  use_registry::tests::real_use_process_converges_signed_install_upgrade_rebuild_and_uninstall \
   -- \
   --ignored \
   --nocapture
