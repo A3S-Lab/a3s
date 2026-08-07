@@ -35,11 +35,13 @@ const copy = {
   cn: {
     liveEyebrow: '项目网站 / 实时入口',
     liveTitle: '先看产品页面，再看代码。',
-    liveDescription: '这里展示已经上线的独立网站、交互式 Playground 和博客入口。截图来自真实页面。',
+    liveDescription: '这里展示独立网站与交互式 Playground。截图来自公开页面或项目当前的构建产物。',
     live: 'LIVE',
+    buildPreview: '构建预览',
     openSite: '访问网站',
-    directoryEyebrow: '完整项目目录 / 35',
-    directoryTitle: '35 个项目，各自负责什么。',
+    openRepository: '打开仓库',
+    directoryEyebrow: '完整项目目录 / 36',
+    directoryTitle: '36 个项目，各自负责什么。',
     directoryDescription: '按层级筛选或直接搜索。每张卡列出项目职责、主要能力、开发阶段和代码入口。',
     search: '搜索项目、职责或能力',
     result: '个项目',
@@ -59,11 +61,13 @@ const copy = {
   en: {
     liveEyebrow: 'PROJECT SITES / LIVE DESTINATIONS',
     liveTitle: 'See the product. Open the code when needed.',
-    liveDescription: 'These are live project sites, interactive playgrounds, and the engineering blog. Every image is captured from the real page.',
+    liveDescription: 'These are independent project sites and interactive playgrounds. Images come from public pages or the project’s current build output.',
     live: 'LIVE',
+    buildPreview: 'BUILD PREVIEW',
     openSite: 'Visit site',
-    directoryEyebrow: 'COMPLETE PROJECT DIRECTORY / 35',
-    directoryTitle: 'What each of the 35 projects owns.',
+    openRepository: 'Open repository',
+    directoryEyebrow: 'COMPLETE PROJECT DIRECTORY / 36',
+    directoryTitle: 'What each of the 36 projects owns.',
     directoryDescription: 'Filter by layer or search directly. Each card lists ownership, core capabilities, delivery stage, and source code.',
     search: 'Search projects, responsibilities, or capabilities',
     result: 'projects',
@@ -113,19 +117,19 @@ function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProjec
   const href = localizedHref(site.href, lang);
 
   return (
-    <article className="a3s-site-card" data-site={project.id}>
+    <article className="a3s-site-card" data-preview-mode={site.mode} data-site={project.id}>
       <ProjectSitePreview project={project} site={site} />
       <div className="a3s-site-card__body">
         <div className="a3s-site-card__heading">
           <div>
-            <span><i /> {tr.live}</span>
+            <span><i /> {site.mode === 'live' ? tr.live : tr.buildPreview}</span>
             <h3>A3S {project.name}</h3>
           </div>
           <SquaresFour aria-hidden="true" weight="duotone" />
         </div>
         <p>{project.role[lang]}</p>
         <a href={href} {...externalLinkProps(href)}>
-          {tr.openSite}
+          {site.destination === 'site' ? tr.openSite : tr.openRepository}
           <ArrowUpRight aria-hidden="true" weight="bold" />
         </a>
       </div>
@@ -168,7 +172,7 @@ function ProjectCard({ project, index, lang }: { project: ArchitectureProject; i
           aria-valuenow={progress.value}
           role="progressbar"
         >
-          <i style={{ '--project-progress': `${progress.value}%` } as React.CSSProperties} />
+          <i style={{ '--project-progress': progress.value / 100 } as React.CSSProperties} />
         </span>
       </div>
       <div className="a3s-directory-card__actions">

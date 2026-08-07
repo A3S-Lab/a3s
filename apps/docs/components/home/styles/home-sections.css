@@ -181,6 +181,43 @@
   font-size: 9px;
 }
 
+.a3s-terminal-card__tabs {
+  display: flex;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(176, 200, 235, 0.15);
+  background: #111f39;
+  gap: 6px;
+}
+
+.a3s-terminal-card__tabs button {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #879ab7;
+  cursor: pointer;
+  font-family: var(--a3s-mono);
+  font-size: 8px;
+  font-weight: 650;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.a3s-terminal-card__tabs button:hover {
+  color: #c3d6f3;
+}
+
+.a3s-terminal-card__tabs button[aria-pressed='true'] {
+  border-color: rgba(115, 165, 255, 0.4);
+  background: rgba(18, 100, 255, 0.12);
+  color: #b9d1f7;
+}
+
+.a3s-terminal-card__tabs button:focus-visible {
+  outline: 2px solid #78a7f4;
+  outline-offset: 2px;
+}
+
 .a3s-copy-command {
   display: inline-flex;
   min-height: 32px;
@@ -209,16 +246,12 @@
   height: 13px;
 }
 
-.a3s-terminal-card pre {
+.a3s-terminal-card__panels pre {
   min-height: 320px;
   margin: 0;
   padding: 46px 42px;
   overflow-x: auto;
-  background:
-    linear-gradient(rgba(141, 173, 218, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(141, 173, 218, 0.03) 1px, transparent 1px),
-    #0e1b35;
-  background-size: 30px 30px;
+  background: #0e1b35;
   color: #d9e5f7;
   font-family: var(--a3s-mono);
   font-size: 12px;
@@ -226,7 +259,7 @@
   white-space: pre-wrap;
 }
 
-.a3s-terminal-card pre code::first-line {
+.a3s-terminal-card__panels pre code::first-line {
   color: #8db7ff;
 }
 

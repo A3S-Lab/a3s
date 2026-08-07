@@ -4,8 +4,9 @@
     grid-template-columns: minmax(390px, 0.9fr) minmax(500px, 1.1fr);
   }
 
-  .a3s-ecosystem-visual__content {
-    padding: 21px;
+  .a3s-cli-terminal__screen {
+    padding-right: 24px;
+    padding-left: 24px;
   }
 
   .a3s-directory-grid {
@@ -96,7 +97,7 @@
     max-width: 800px;
   }
 
-  .a3s-ecosystem-visual {
+  .a3s-cli-terminal {
     width: min(100%, 820px);
     justify-self: end;
   }
@@ -118,10 +119,6 @@
 
   .a3s-site-card[data-site] {
     grid-column: span 6;
-  }
-
-  .a3s-site-card[data-site='site'] {
-    grid-column: 4 / span 6;
   }
 
   .a3s-principle-grid {
@@ -221,24 +218,8 @@
     font-size: 15px;
   }
 
-  .a3s-ecosystem-visual__body {
-    grid-template-columns: 1fr;
-  }
-
-  .a3s-ecosystem-visual__body > aside {
-    display: none;
-  }
-
-  .a3s-ecosystem-visual__content {
-    padding: 20px;
-  }
-
-  .a3s-ecosystem-visual__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .a3s-ecosystem-visual__telemetry {
-    grid-template-columns: 1fr;
+  .a3s-cli-terminal__screen {
+    padding: 24px;
   }
 
   .a3s-signal-strip {
@@ -338,7 +319,7 @@
     justify-self: center;
   }
 
-  .a3s-terminal-card pre {
+  .a3s-terminal-card__panels pre {
     min-height: 290px;
     padding: 38px 26px;
     font-size: 10px;
@@ -420,35 +401,59 @@
     width: 100%;
   }
 
-  .a3s-ecosystem-visual__chrome {
+  .a3s-cli-terminal__chrome {
     grid-template-columns: 1fr auto;
   }
 
-  .a3s-ecosystem-visual__chrome code {
+  .a3s-cli-terminal__chrome code {
     display: none;
   }
 
-  .a3s-ecosystem-visual__content > header > span {
+  .a3s-cli-terminal__body {
+    min-height: 480px;
+  }
+
+  .a3s-cli-terminal__screen {
+    padding: 21px 18px 24px;
+  }
+
+  .a3s-cli-terminal__motd {
+    margin-bottom: 24px;
+  }
+
+  .a3s-cli-terminal__prompt {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .a3s-cli-terminal__prompt > span {
+    grid-column: 1 / -1;
+  }
+
+  .a3s-cli-terminal__prompt > code {
+    font-size: 10px;
+  }
+
+  .a3s-cli-terminal__output li {
+    gap: 8px;
+    grid-template-columns: 66px minmax(0, 1fr);
+  }
+
+  .a3s-cli-terminal__statusline {
+    gap: 8px;
+    grid-template-columns: auto auto minmax(38px, 1fr);
+  }
+
+  .a3s-cli-terminal__statusline > code {
     display: none;
   }
 
-  .a3s-ecosystem-visual__summary {
-    grid-template-columns: 1fr;
+  .a3s-terminal-card__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .a3s-ecosystem-visual__summary > span {
-    min-height: 52px;
-    border-right: 0;
-    border-bottom: 1px solid var(--a3s-line);
-  }
-
-  .a3s-ecosystem-visual__summary > span:last-child {
-    border-bottom: 0;
-  }
-
-  .a3s-ecosystem-visual__grid > div {
-    min-height: 108px;
-    padding: 12px;
+  .a3s-terminal-card__tabs button {
+    padding: 0 6px;
   }
 
   .a3s-signal-strip > div {
@@ -483,7 +488,7 @@
     min-height: 405px;
   }
 
-  .a3s-terminal-card pre {
+  .a3s-terminal-card__panels pre {
     padding-right: 18px;
     padding-left: 18px;
     font-size: 9px;
@@ -512,9 +517,13 @@
     transition-duration: 0.01ms !important;
   }
 
-  .a3s-ecosystem-visual__grid > div {
-    opacity: 1;
-    transform: none;
+  .a3s-cli-terminal__output li,
+  .a3s-cli-terminal__complete,
+  .a3s-cli-terminal__progress i,
+  .a3s-cli-terminal__caret {
+    animation: none !important;
+    filter: none !important;
+    transform: none !important;
   }
 
   .a3s-site-preview__image img {

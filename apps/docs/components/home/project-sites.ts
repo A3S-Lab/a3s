@@ -1,3 +1,15 @@
+import type { ProjectId } from './project-links';
+
+export interface FeaturedProjectSite {
+  id: ProjectId;
+  href: string;
+  captureUrl: string;
+  displayUrl: string;
+  screenshot: string;
+  mode: 'live' | 'build';
+  destination: 'site' | 'repository';
+}
+
 export const featuredProjectSites = [
   {
     id: 'cloud',
@@ -5,6 +17,8 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Cloud/',
     displayUrl: 'a3s-lab.github.io/Cloud',
     screenshot: '/ecosystem-sites/cloud.png',
+    mode: 'live',
+    destination: 'site',
   },
   {
     id: 'code',
@@ -12,6 +26,8 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Code/',
     displayUrl: 'a3s-lab.github.io/Code',
     screenshot: '/ecosystem-sites/code.png',
+    mode: 'live',
+    destination: 'site',
   },
   {
     id: 'office',
@@ -19,6 +35,26 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Office/',
     displayUrl: 'a3s-lab.github.io/Office',
     screenshot: '/ecosystem-sites/office.png',
+    mode: 'live',
+    destination: 'site',
+  },
+  {
+    id: 'form',
+    href: 'https://github.com/A3S-Lab/Form',
+    captureUrl: 'https://a3s-lab.github.io/Form/playground/',
+    displayUrl: 'a3s-lab.github.io/Form/playground',
+    screenshot: '/ecosystem-sites/form.png',
+    mode: 'build',
+    destination: 'repository',
+  },
+  {
+    id: 'box',
+    href: 'https://a3s-lab.github.io/Box/',
+    captureUrl: 'https://a3s-lab.github.io/Box/',
+    displayUrl: 'a3s-lab.github.io/Box',
+    screenshot: '/ecosystem-sites/box.png',
+    mode: 'live',
+    destination: 'site',
   },
   {
     id: 'use',
@@ -26,6 +62,8 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Use/',
     displayUrl: 'a3s-lab.github.io/Use',
     screenshot: '/ecosystem-sites/use.png',
+    mode: 'live',
+    destination: 'site',
   },
   {
     id: 'ui',
@@ -33,6 +71,8 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/UI/',
     displayUrl: 'a3s-lab.github.io/UI',
     screenshot: '/ecosystem-sites/ui.png',
+    mode: 'live',
+    destination: 'site',
   },
   {
     id: 'gateway',
@@ -40,14 +80,7 @@ export const featuredProjectSites = [
     captureUrl: 'https://a3s-lab.github.io/Gateway/',
     displayUrl: 'a3s-lab.github.io/Gateway',
     screenshot: '/ecosystem-sites/gateway.png',
+    mode: 'live',
+    destination: 'site',
   },
-  {
-    id: 'site',
-    href: '/blog/',
-    captureUrl: 'https://a3s-lab.github.io/a3s/blog/',
-    displayUrl: 'a3s.dev/blog',
-    screenshot: '/ecosystem-sites/blog.png',
-  },
-] as const;
-
-export type FeaturedProjectSite = (typeof featuredProjectSites)[number];
+] as const satisfies readonly FeaturedProjectSite[];

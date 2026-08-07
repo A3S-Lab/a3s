@@ -71,14 +71,12 @@
 }
 
 .a3s-site-card[data-site='office'],
+.a3s-site-card[data-site='form'],
+.a3s-site-card[data-site='box'],
 .a3s-site-card[data-site='use'],
-.a3s-site-card[data-site='ui'] {
+.a3s-site-card[data-site='ui'],
+.a3s-site-card[data-site='gateway'] {
   grid-column: span 4;
-}
-
-.a3s-site-card[data-site='gateway'],
-.a3s-site-card[data-site='site'] {
-  grid-column: span 6;
 }
 
 .a3s-site-preview {
@@ -188,6 +186,10 @@
   border-radius: 50%;
   background: currentcolor;
   box-shadow: 0 0 0 4px rgba(12, 155, 112, 0.1);
+}
+
+.a3s-site-card[data-preview-mode='build'] .a3s-site-card__heading > div > span {
+  color: var(--a3s-blue);
 }
 
 .a3s-site-card__heading h3 {
@@ -578,12 +580,14 @@
 
 .a3s-project-progress > span i {
   display: block;
-  width: var(--project-progress);
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: var(--card-accent);
   box-shadow: 0 0 12px color-mix(in srgb, var(--card-accent) 25%, transparent);
-  transition: width 400ms ease;
+  transform: scaleX(var(--project-progress));
+  transform-origin: left center;
+  transition: transform 400ms ease;
 }
 
 .a3s-project-progress[data-stage='building'] > span i {

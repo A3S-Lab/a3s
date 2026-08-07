@@ -21,6 +21,7 @@ const progressByProject = {
   office: 'preview',
   science: 'preview',
   cloud: 'experimental',
+  form: 'preview',
   site: 'released',
   runtime: 'preview',
   'oci-runtime': 'experimental',

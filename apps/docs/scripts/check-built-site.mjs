@@ -21,7 +21,8 @@ const requiredImages = [
   'ecosystem-sites/use.png',
   'ecosystem-sites/ui.png',
   'ecosystem-sites/gateway.png',
-  'ecosystem-sites/blog.png',
+  'ecosystem-sites/form.png',
+  'ecosystem-sites/box.png',
 ];
 
 function assert(condition, message) {
@@ -92,10 +93,34 @@ for (const marker of [
 
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const progressBars = homepage.match(/role="progressbar"/g) ?? [];
-  assert(progressBars.length === 35, `${locale} homepage has ${progressBars.length} progress bars instead of 35`);
+  assert(progressBars.length === 36, `${locale} homepage has ${progressBars.length} progress bars instead of 36`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
+  assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage does not list A3S Form`);
+  assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
+  assert(!homepage.includes('ecosystem-sites/blog.png'), `${locale} homepage still features the Site & Blog preview`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
   assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
+
+  for (const command of [
+    'a3s code exec',
+    'a3s web -d',
+    'a3s up -d',
+    'a3s bench run',
+    'a3s search doctor',
+    'a3s use capabilities --json',
+    'a3s top --view agents',
+    'a3s doctor',
+  ]) {
+    assert(homepage.includes(command), `${locale} homepage is missing the CLI capability command: ${command}`);
+  }
+
+  for (const installer of [
+    'https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh',
+    'https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1',
+    'brew install a3s-lab/tap/a3s',
+  ]) {
+    assert(homepage.includes(installer), `${locale} homepage is missing the installer: ${installer}`);
+  }
 }
 
 assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'Chinese blog index does not list 8 posts');
@@ -133,6 +158,7 @@ assert(cssFiles.length > 0, 'Static build contains no CSS assets');
 const css = (await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))).join('\n');
 for (const selector of [
   '.a3s-home-nav',
+  '.a3s-cli-terminal',
   '.a3s-site-preview__image',
   '.a3s-directory-card',
   '.a3s-project-progress',
@@ -141,6 +167,7 @@ for (const selector of [
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
 assert(!css.includes('.a3s-atlas'), 'Production CSS still contains architecture diagram styles');
+assert(!css.includes('.a3s-ecosystem-visual'), 'Production CSS still contains the replaced ecosystem hero visual');
 
 if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');

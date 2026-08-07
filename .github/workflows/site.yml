@@ -45,6 +45,12 @@ jobs:
         working-directory: apps/docs
         run: bun run typecheck
 
+      - name: Install project preview fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends fonts-noto-cjk
+          fc-cache --force
+
       - name: Refresh project previews
         working-directory: apps/docs
         run: bun run capture:sites

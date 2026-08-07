@@ -11,7 +11,10 @@ export const projectLinks = {
   },
   web: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/web' },
   windhole: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/windhole' },
-  box: { repository: 'https://github.com/A3S-Lab/Box' },
+  box: {
+    repository: 'https://github.com/A3S-Lab/Box',
+    website: 'https://a3s-lab.github.io/Box/',
+  },
   bench: { repository: 'https://github.com/A3S-Lab/Bench' },
   search: { repository: 'https://github.com/A3S-Lab/Search' },
   browser: { repository: 'https://github.com/A3S-Lab/Browser' },
@@ -29,6 +32,7 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Cloud',
     website: 'https://a3s-lab.github.io/Cloud/',
   },
+  form: { repository: 'https://github.com/A3S-Lab/Form' },
   site: {
     repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/docs',
     website: '/blog/',

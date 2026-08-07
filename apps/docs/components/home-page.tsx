@@ -1,85 +1,21 @@
 import {
   ArrowRight,
-  CheckCircle,
   Cube,
   GitBranch,
   GithubLogo,
   Globe,
   Stack,
-  TerminalWindow,
 } from '@phosphor-icons/react/dist/ssr';
 import { withBase } from '@rspress/core/runtime';
 import { A3SMark } from '@/components/home/a3s-mark';
 import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
-import { CopyCommand } from '@/components/home/copy-command';
+import { CliCapabilityTerminal } from '@/components/home/cli-capability-terminal';
 import { EcosystemDirectory } from '@/components/home/ecosystem-directory';
 import { HomeNav } from '@/components/home/home-nav';
 import { homeContent, type Lang } from '@/components/home/home-content';
+import { InstallCommandTerminal } from '@/components/home/install-command-terminal';
 
 const signalIcons = [Cube, Globe, Stack, GitBranch];
-
-const ecosystemSurfaces = [
-  { name: 'Code', detail: 'AGENT RUNTIME', icon: TerminalWindow },
-  { name: 'Cloud', detail: 'CONTROL PLANE', icon: Globe },
-  { name: 'Office', detail: 'NATIVE WORK', icon: CheckCircle },
-  { name: 'Runtime', detail: 'LIFECYCLE', icon: Cube },
-  { name: 'Gateway', detail: 'DATA PLANE', icon: GitBranch },
-  { name: 'UI', detail: 'DESIGN SYSTEM', icon: Stack },
-] as const;
-
-function EcosystemHeroVisual({ lang }: { lang: Lang }) {
-  const tr = homeContent[lang].hero;
-
-  return (
-    <div className="a3s-ecosystem-visual" aria-label={lang === 'cn' ? 'A3S 生态总览' : 'A3S ecosystem overview'}>
-      <div className="a3s-ecosystem-visual__chrome">
-        <span><i /><i /><i /></span>
-        <code>{tr.terminalTitle}</code>
-        <b><i /> {tr.terminalReady}</b>
-      </div>
-      <div className="a3s-ecosystem-visual__body">
-        <aside>
-          <div className="is-active"><A3SMark /><span>INDEX</span></div>
-          <div><Cube /><span>BUILD</span></div>
-          <div><GitBranch /><span>ROUTES</span></div>
-          <div><Stack /><span>LAYERS</span></div>
-        </aside>
-        <div className="a3s-ecosystem-visual__content">
-          <header>
-            <div>
-              <span>{lang === 'cn' ? '生态控制台' : 'ECOSYSTEM CONSOLE'}</span>
-              <strong>A3S / project.directory</strong>
-            </div>
-            <span><i /> {tr.status}</span>
-          </header>
-          <div className="a3s-ecosystem-visual__summary">
-            <span><small>01</small><b>{tr.intent}</b><i>14</i></span>
-            <span><small>02</small><b>{tr.policy}</b><i>08</i></span>
-            <span><small>03</small><b>{tr.runtime}</b><i>13</i></span>
-          </div>
-          <div className="a3s-ecosystem-visual__grid">
-            {ecosystemSurfaces.map((surface, index) => {
-              const Icon = surface.icon;
-              return (
-                <div key={surface.name} style={{ '--surface-order': index } as React.CSSProperties}>
-                  <span><Icon aria-hidden="true" weight="duotone" /></span>
-                  <b>{surface.name}</b>
-                  <small>{surface.detail}</small>
-                  <i />
-                </div>
-              );
-            })}
-          </div>
-          <div className="a3s-ecosystem-visual__telemetry">
-            {tr.terminalRows.map(([key, value]) => (
-              <span key={key}><code>{key}</code><i /><b>{value}</b></span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const tr = homeContent[lang];
@@ -118,7 +54,7 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
               <i aria-hidden="true" />
             </div>
           </div>
-          <EcosystemHeroVisual lang={lang} />
+          <CliCapabilityTerminal lang={lang} />
         </div>
       </section>
 
@@ -171,15 +107,7 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <a href="https://github.com/A3S-Lab/a3s#quick-start" target="_blank" rel="noopener noreferrer">{tr.quickstart.docs}<ArrowRight aria-hidden="true" /></a>
           <small>{tr.quickstart.note}</small>
         </div>
-        <div className="a3s-terminal-card">
-          <div className="a3s-terminal-card__bar">
-            <span><i /><i /><i /></span>
-            <code>~/workspace</code>
-            <CopyCommand command={tr.quickstart.command} copyLabel={tr.quickstart.copy} copiedLabel={tr.quickstart.copied} />
-          </div>
-          <pre><code>{tr.quickstart.command}</code></pre>
-          <div className="a3s-terminal-card__status"><span><i /> ready</span><span>shell / zsh</span></div>
-        </div>
+        <InstallCommandTerminal lang={lang} />
       </section>
 
       <section className="a3s-cta" aria-labelledby="a3s-cta-title">
