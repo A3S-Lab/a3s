@@ -3,6 +3,10 @@ import path from 'node:path';
 
 const root = process.cwd();
 const output = path.join(root, 'out');
+const deploymentPath = process.env.SITE_URL
+  ? new URL(process.env.SITE_URL).pathname.replace(/\/+$/, '')
+  : '';
+const formHref = `${deploymentPath}/form/`.replace(/\/+/g, '/');
 const articleSlugs = [
   'programmable-agent-workflows',
   'domain-driven-design',
@@ -99,7 +103,7 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   const progressBars = homepage.match(/role="progressbar"/g) ?? [];
   assert(progressBars.length === 36, `${locale} homepage has ${progressBars.length} progress bars instead of 36`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
-  assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage does not list A3S Form`);
+  assert(homepage.includes(`href="${formHref}"`), `${locale} homepage does not link to the published A3S Form playground`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
   assert(!homepage.includes('ecosystem-sites/blog.png'), `${locale} homepage still features the Site & Blog preview`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
@@ -131,6 +135,17 @@ for (const slug of articleSlugs) {
 
 const files = await collectFiles(output);
 const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
+
+if (process.env.REQUIRE_FORM_PREVIEW === '1') {
+  const formIndex = await read('form/index.html');
+  const formFiles = relativeFiles.filter((file) => file.startsWith('form/'));
+
+  assert(formIndex.includes('<title>A3S Form · 表单设计器</title>'), 'Published Form playground has an unexpected title');
+  assert(formIndex.includes('src="./static/js/'), 'Published Form playground must use relative JavaScript paths');
+  assert(formIndex.includes('href="./static/css/'), 'Published Form playground must use relative CSS paths');
+  assert(formFiles.some((file) => /^form\/static\/js\/[^/]+\.js$/.test(file)), 'Published Form playground contains no JavaScript bundle');
+  assert(formFiles.some((file) => /^form\/static\/css\/[^/]+\.css$/.test(file)), 'Published Form playground contains no CSS bundle');
+}
 
 for (const image of requiredImages) {
   assert(relativeFiles.includes(image), `Static build is missing image: ${image}`);

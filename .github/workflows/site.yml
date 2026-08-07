@@ -54,6 +54,8 @@ jobs:
           fc-cache --force
 
       - name: Build pinned A3S Form preview
+        env:
+          A3S_FORM_BASE: ./
         run: |
           git init "$RUNNER_TEMP/a3s-form"
           git -C "$RUNNER_TEMP/a3s-form" remote add origin "$FORM_REPOSITORY"
@@ -84,8 +86,15 @@ jobs:
         working-directory: apps/docs
         run: bun run build
 
+      - name: Publish A3S Form Playground
+        run: |
+          test -f "$RUNNER_TEMP/a3s-form/playground-dist/index.html"
+          cp -R "$RUNNER_TEMP/a3s-form/playground-dist" apps/docs/out/form
+
       - name: Validate exported routes
         working-directory: apps/docs
+        env:
+          REQUIRE_FORM_PREVIEW: '1'
         run: bun run check:site
 
       - name: Upload artifact

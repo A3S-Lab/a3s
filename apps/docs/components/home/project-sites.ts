@@ -44,13 +44,13 @@ export const featuredProjectSites = [
   },
   {
     id: 'form',
-    href: 'https://github.com/A3S-Lab/Form',
-    captureUrl: 'https://a3s-lab.github.io/Form/playground/',
-    displayUrl: 'a3s-lab.github.io/Form/playground',
+    href: '/form/',
+    captureUrl: 'https://a3s-lab.github.io/a3s/form/',
+    displayUrl: 'a3s-lab.github.io/a3s/form',
     screenshot: '/ecosystem-sites/form.png',
     settleMs: 1_800,
-    mode: 'build',
-    destination: 'repository',
+    mode: 'live',
+    destination: 'site',
   },
   {
     id: 'box',

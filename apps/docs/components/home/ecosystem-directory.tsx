@@ -91,6 +91,14 @@ function localizedHref(href: string, lang: Lang) {
   return href.startsWith('/') ? withBase(href) : href;
 }
 
+function sharedSiteHref(href: string, lang: Lang) {
+  if (!href.startsWith('/')) return href;
+
+  const localizedBase = withBase('/');
+  const deploymentBase = lang === 'en' ? localizedBase.replace(/en\/$/, '') : localizedBase;
+  return `${deploymentBase}${href.slice(1)}`;
+}
+
 function externalLinkProps(href: string) {
   return href.startsWith('http')
     ? { target: '_blank' as const, rel: 'noopener noreferrer' }
@@ -114,7 +122,7 @@ function ProjectSitePreview({ project, site }: { project: ArchitectureProject; s
 
 function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProject; site: FeaturedProjectSite; lang: Lang }) {
   const tr = copy[lang];
-  const href = localizedHref(site.href, lang);
+  const href = sharedSiteHref(site.href, lang);
 
   return (
     <article className="a3s-site-card" data-preview-mode={site.mode} data-site={project.id}>
