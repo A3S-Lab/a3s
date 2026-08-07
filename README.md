@@ -177,6 +177,13 @@ and forward unchanged authority and confirmation into Use-owned apply and
 replay. Permission-bearing enablement uses the same Grant-before-publish and
 hide/drain-before-revoke saga.
 
+Signed OKF surfaces now project into a scope-aware local SQLite/FTS5 Knowledge
+carrier. Restart, upgrade, disable, re-enable, and uninstall preserve or
+withdraw the exact package generation, while cited read-only search hot-plugs
+into current and replacement Code TUI/Web sessions. This remains a local
+preview boundary: quotas, retention, prior-generation lease/rollback/GC, and
+distributed Knowledge placement are still release gates.
+
 The standalone Use lifecycle composes real `a3s-flow` Native TypeScript
 preflight only when `A3S_FLOW_NATIVE_TS_COMPILER` identifies an explicit
 absolute compiler path. Failed preflight keeps the candidate installed-disabled
@@ -218,7 +225,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer dependency locks, replaceable TUF Registries, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, explicit standalone Flow preflight with exact replay, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Managed Knowledge/UI carriers, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
+| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer dependency locks, replaceable TUF Registries, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Knowledge quotas/retention, prior-generation rollback/GC, distributed Knowledge placement, managed UI delivery, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
