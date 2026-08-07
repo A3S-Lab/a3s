@@ -99,6 +99,11 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
 assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'Chinese blog index does not list 8 posts');
 assert((englishBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'English blog index does not list 8 posts');
 
+for (const slug of articleSlugs) {
+  assert(chineseBlog.includes(`href="./${slug}"`), `Chinese blog link is not Pages-compatible: ${slug}`);
+  assert(englishBlog.includes(`href="./${slug}"`), `English blog link is not Pages-compatible: ${slug}`);
+}
+
 const files = await collectFiles(output);
 const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
 
@@ -139,6 +144,17 @@ if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');
   assert(chineseHome.includes(`href="${canonicalSite}/"`), 'Chinese canonical URL is incorrect');
   assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
+
+  for (const slug of articleSlugs) {
+    assert(
+      routeHtml.get(`blog/${slug}.html`).includes(`href="${canonicalSite}/blog/${slug}"`),
+      `Chinese article canonical URL is not Pages-compatible: ${slug}`,
+    );
+    assert(
+      routeHtml.get(`en/blog/${slug}.html`).includes(`href="${canonicalSite}/en/blog/${slug}"`),
+      `English article canonical URL is not Pages-compatible: ${slug}`,
+    );
+  }
 }
 
 console.log(`Validated 2 homepages, 2 blog indexes, 16 article routes, and ${files.length} exported files.`);

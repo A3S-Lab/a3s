@@ -53,7 +53,7 @@ const articles = {
 } as const;
 
 function canonicalRoute(routePath: string) {
-  const normalizedRoute = routePath === '/' ? '/' : `${routePath.replace(/\/$/, '')}/`;
+  const normalizedRoute = routePath.startsWith('/') ? routePath : `/${routePath}`;
   return `${publicSite.origin}${base.replace(/\/$/, '')}${normalizedRoute}`;
 }
 
@@ -123,7 +123,7 @@ export default defineConfig({
           text: copy[locale].articles,
           items: articles[locale].map(([text, slug]) => ({
             text,
-            link: `/blog/${slug}/`,
+            link: `/blog/${slug}`,
           })),
         },
       ],
