@@ -102,15 +102,13 @@
   }
 
   .a3s-section-heading,
-  .a3s-directory-intro,
-  .a3s-architecture__copy {
+  .a3s-directory-intro {
     gap: 28px;
     grid-template-columns: 1fr;
   }
 
   .a3s-section-heading > p,
-  .a3s-directory-intro > p,
-  .a3s-architecture__copy > p {
+  .a3s-directory-intro > p {
     justify-self: start;
   }
 
@@ -265,17 +263,23 @@
   }
 
   .a3s-section-heading h2,
-  .a3s-architecture h2,
   .a3s-quickstart h2 {
     font-size: clamp(36px, 10.4vw, 54px);
   }
 
   .a3s-ecosystem__inner,
-  .a3s-architecture__inner,
   .a3s-principles,
   .a3s-quickstart {
     padding-top: 96px;
     padding-bottom: 102px;
+  }
+
+  .a3s-ecosystem__inner {
+    padding-bottom: 72px;
+  }
+
+  .a3s-principles {
+    padding-top: 72px;
   }
 
   .a3s-ecosystem-directory {

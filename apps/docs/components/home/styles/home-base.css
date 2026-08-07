@@ -895,7 +895,6 @@
 }
 
 .a3s-section-heading h2,
-.a3s-architecture h2,
 .a3s-quickstart h2,
 .a3s-cta h2 {
   max-width: 840px;
@@ -909,7 +908,6 @@
 }
 
 .a3s-section-heading > p,
-.a3s-architecture__copy > p,
 .a3s-quickstart__copy > p {
   max-width: 580px;
   margin: 0;

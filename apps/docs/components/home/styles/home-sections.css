@@ -4,57 +4,13 @@
 
 .a3s-ecosystem__inner {
   padding-top: clamp(110px, 10vw, 156px);
-  padding-bottom: clamp(116px, 10vw, 164px);
-}
-
-.a3s-architecture {
-  position: relative;
-  overflow: hidden;
-  border-top: 1px solid var(--a3s-line);
-  border-bottom: 1px solid var(--a3s-line);
-  background: #f3f5f8;
-}
-
-.a3s-architecture::before {
-  position: absolute;
-  top: -360px;
-  left: -320px;
-  width: 820px;
-  height: 820px;
-  border: 1px solid rgba(18, 100, 255, 0.1);
-  border-radius: 50%;
-  box-shadow: 0 0 0 88px rgba(18, 100, 255, 0.018), 0 0 0 176px rgba(18, 100, 255, 0.012);
-  content: '';
-  pointer-events: none;
-}
-
-.a3s-architecture__inner {
-  position: relative;
-  z-index: 2;
-  padding-top: clamp(110px, 10vw, 154px);
-  padding-bottom: clamp(116px, 10vw, 164px);
-}
-
-.a3s-architecture__copy {
-  display: grid;
-  margin-bottom: 52px;
-  align-items: end;
-  gap: clamp(52px, 8vw, 130px);
-  grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr);
-}
-
-.a3s-architecture__copy > p {
-  justify-self: end;
-}
-
-.a3s-architecture .a3s-atlas {
-  --a3s-line: rgba(111, 135, 165, 0.18);
-  box-shadow: 0 34px 84px rgba(36, 76, 137, 0.18);
+  padding-bottom: clamp(72px, 6vw, 96px);
 }
 
 .a3s-principles {
-  padding-top: clamp(110px, 10vw, 154px);
+  padding-top: clamp(72px, 6vw, 96px);
   padding-bottom: clamp(116px, 10vw, 164px);
+  border-top: 1px solid var(--a3s-line);
   background: rgba(255, 255, 255, 0.95);
 }
 

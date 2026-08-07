@@ -10,7 +10,6 @@ export const homeContent = {
   en: {
     nav: {
       ecosystem: 'Ecosystem',
-      architecture: 'Architecture',
       principles: 'Principles',
       blog: 'Blog',
       language: '中文',
@@ -39,12 +38,6 @@ export const homeContent = {
       status: '35 projects',
     },
     signal: ['35 projects', '7 project sites', '3 architecture layers', 'One index for sites and code'],
-    architecture: {
-      eyebrow: 'PROJECT RELATIONSHIPS / 35',
-      title: 'How the projects work together.',
-      description:
-        'Select a project to inspect its entrypoints, core responsibility, contracts, execution boundary, and evidence path.',
-    },
     principles: {
       eyebrow: 'ENGINEERING CONSTRAINTS / 05',
       title: 'The constraints A3S follows.',
@@ -86,7 +79,6 @@ export const homeContent = {
       resources: 'Resources',
       community: 'Community',
       ecosystem: 'Project directory',
-      architecture: 'Architecture',
       blog: 'Blog',
       github: 'GitHub',
       discord: 'Discord',
@@ -96,7 +88,6 @@ export const homeContent = {
   cn: {
     nav: {
       ecosystem: '生态',
-      architecture: '架构',
       principles: '原则',
       blog: '博客',
       language: 'EN',
@@ -125,11 +116,6 @@ export const homeContent = {
       status: '35 个项目',
     },
     signal: ['35 个项目', '7 个项目网站', '3 个架构层', '网站与代码统一索引'],
-    architecture: {
-      eyebrow: '项目关系 / 35',
-      title: '项目之间如何协作。',
-      description: '选择一个项目，查看它的入口、核心职责、契约、执行边界和证据路径。',
-    },
     principles: {
       eyebrow: '工程约束 / 05',
       title: 'A3S 遵循的工程约束。',
@@ -169,7 +155,6 @@ export const homeContent = {
       resources: '资源',
       community: '社区',
       ecosystem: '项目目录',
-      architecture: '架构',
       blog: '博客',
       github: 'GitHub',
       discord: 'Discord',

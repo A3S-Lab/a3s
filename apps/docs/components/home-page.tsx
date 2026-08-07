@@ -10,7 +10,6 @@ import {
 } from '@phosphor-icons/react/dist/ssr';
 import { withBase } from '@rspress/core/runtime';
 import { A3SMark } from '@/components/home/a3s-mark';
-import { ArchitectureAtlas } from '@/components/home/architecture-atlas';
 import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
 import { CopyCommand } from '@/components/home/copy-command';
 import { EcosystemDirectory } from '@/components/home/ecosystem-directory';
@@ -145,19 +144,6 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         </div>
       </section>
 
-      <section className="a3s-architecture" id="architecture" aria-labelledby="a3s-architecture-title">
-        <div className="a3s-section a3s-architecture__inner">
-          <div className="a3s-architecture__copy">
-            <div>
-              <span className="a3s-section-eyebrow">{tr.architecture.eyebrow}</span>
-              <h2 id="a3s-architecture-title">{tr.architecture.title}</h2>
-            </div>
-            <p>{tr.architecture.description}</p>
-          </div>
-          <ArchitectureAtlas lang={lang} />
-        </div>
-      </section>
-
       <section className="a3s-section a3s-principles" id="principles" aria-labelledby="a3s-principles-title">
         <div className="a3s-section-heading">
           <div>
@@ -220,7 +206,6 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <div className="a3s-footer__column">
             <b>{tr.footer.resources}</b>
             <a href="#ecosystem">{tr.footer.ecosystem}</a>
-            <a href="#architecture">{tr.footer.architecture}</a>
             <a href={withBase('/blog/')}>{tr.footer.blog}</a>
           </div>
           <div className="a3s-footer__column">

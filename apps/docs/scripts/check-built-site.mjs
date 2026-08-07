@@ -94,6 +94,8 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   const progressBars = homepage.match(/role="progressbar"/g) ?? [];
   assert(progressBars.length === 35, `${locale} homepage has ${progressBars.length} progress bars instead of 35`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
+  assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
+  assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
 }
 
 assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'Chinese blog index does not list 8 posts');
@@ -134,11 +136,11 @@ for (const selector of [
   '.a3s-site-preview__image',
   '.a3s-directory-card',
   '.a3s-project-progress',
-  '.a3s-atlas__node',
   '.a3s-blog-grid',
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
+assert(!css.includes('.a3s-atlas'), 'Production CSS still contains architecture diagram styles');
 
 if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');

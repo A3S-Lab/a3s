@@ -256,8 +256,8 @@ root-owned.
 The [CLI repository migration record](docs/cli-repository-migration.md)
 documents the temporary 0.11.x root migration, restored standalone ownership,
 and legacy-client release relay. The interactive
-[architecture atlas](https://a3s-lab.github.io/a3s/#architecture) exposes each
-project's entrypoints, state, adapters, security boundaries, and control flow.
+[project directory](https://a3s-lab.github.io/a3s/#ecosystem) lists each
+project's responsibility, delivery stage, website, and source-code entrypoint.
 
 ## Development
 

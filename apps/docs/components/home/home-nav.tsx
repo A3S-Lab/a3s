@@ -12,7 +12,6 @@ export function HomeNav({ lang }: { lang: Lang }) {
 
   const anchorLinks = [
     { label: tr.ecosystem, href: '#ecosystem' },
-    { label: tr.architecture, href: '#architecture' },
     { label: tr.principles, href: '#principles' },
   ];
 

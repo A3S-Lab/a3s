@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { architectureProjectCount, architectureProjects, systemArchitectureProject } from '.';
+import { architectureProjects } from '.';
 import { linkedProjectIds } from '../project-links';
 
-describe('homepage architecture atlas', () => {
+describe('homepage ecosystem project data', () => {
   test('covers every project in the repository map', () => {
-    assert.equal(architectureProjectCount, 35);
+    assert.equal(architectureProjects.length, 35);
     assert.equal(new Set(architectureProjects.map((project) => project.id)).size, 35);
     assert.deepEqual(
       [...linkedProjectIds].sort(),
@@ -20,8 +20,8 @@ describe('homepage architecture atlas', () => {
     }
   });
 
-  test('keeps every project diagram complete and localized', () => {
-    for (const project of [systemArchitectureProject, ...architectureProjects]) {
+  test('keeps every project capability summary complete and localized', () => {
+    for (const project of architectureProjects) {
       assert.equal(project.nodes.length, 5);
       assert.ok(project.role.cn.length > 0);
       assert.ok(project.role.en.length > 0);
