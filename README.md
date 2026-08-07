@@ -157,24 +157,25 @@ component that implements it.
 | **Bench** | `a3s bench …` | Managed evaluation product; [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) ships compatible components for Linux x86_64 and macOS arm64 |
 | **Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Self-hosted control plane governed by a revision and protocol compatibility lock |
 
-Use publishes durable schema-v3 package-state generations for cognitive
-packages containing any combination of Tool, Skill, MCP, UI, OKF, and A3S Flow
+Use has not shipped a supported cognitive-package product release. The pinned
+preview accepts one contract line only: manifest v3, catalog v3, receipt v3,
+plan v4, host protocol v4, manager tools v3, pending graph v2, and enablement
+state/operation v2. Superseded preview records are rejected with cleanup and
+reinstall guidance; SemVer, `requires_use`, target, and provider checks remain
+package-manager correctness rules.
+
+One package generation may contain Tool, MCP, OKF, A3S Flow, Skill, and UI
 surfaces. Lifecycle intents, Runtime/Flow/OKF bindings, Knowledge evidence, and
 capability observations retain the complete `PlanScope { kind, id }`; User and
-Workspace state remain disjoint even when their IDs match. Because Use is
-pre-release, scope-ID-only development records are rejected rather than decoded
-or migrated. The pinned CLI host observes that Use-owned generation and performs
-reviewed enable or disable without reinstalling package bytes or rewriting the
-dependency graph. CLI, Web, and Code TUI `/packages` use the same persisted,
-exact User-scoped plan, collect confirmation, and apply only its operation ID
-and canonical digest. The TUI exposes package mutation only while the agent is
-idle, treats `NoChange` as identity-free, and locks the panel while it validates
-the confirmed apply receipt against the expected package generation. For a
-complete locked graph plan, the host
-snapshots the exact User/Workspace Grant scope and durable revision, applies
-host policy, binds Use's canonical Grant impact, and forwards the unchanged
-authority and confirmation into Use-owned apply and replay. Permission-bearing
-enablement uses the same Grant-before-publish and hide/drain-before-revoke saga.
+Workspace state remain disjoint even when their IDs match. The pinned CLI host
+observes the Use-owned generation and performs reviewed enable or disable
+without reinstalling package bytes or rewriting the dependency graph. CLI,
+Web, and Code TUI `/packages` use the same persisted plan, collect confirmation,
+and apply only its operation ID and canonical digest. Complete graph plans bind
+the exact User/Workspace Grant scope and durable revision, apply host policy,
+and forward unchanged authority and confirmation into Use-owned apply and
+replay. Permission-bearing enablement uses the same Grant-before-publish and
+hide/drain-before-revoke saga.
 
 Use the machine-readable commands before scripting an optional product:
 
@@ -199,7 +200,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins schema-v3 package-state generations, complete User/Workspace plan scopes, replaceable TUF registries, exact SemVer dependency locks, atomic graph lifecycle, canonical host-reviewed Grant composition, reviewed permission-bearing enablement, and restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Production Knowledge/OKF, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, complete host graph upgrade/uninstall, and real-process cross-platform E2E remain release gates. |
+| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer locks, replaceable TUF Registries, reviewed Grants, one graph cutover, reverse retirement, and restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI. Managed Knowledge/UI carriers, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, shared CLI/TUI/Web qualification, production Registry operations, and real-process cross-platform E2E remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
