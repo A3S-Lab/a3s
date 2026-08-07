@@ -183,8 +183,13 @@ withdraw the exact package generation, while cited read-only search hot-plugs
 into current and replacement Code TUI/Web sessions. The composed backend now
 enforces receipt-accounted whole-scope byte/projection quotas, bounded
 per-surface generations and tombstones, physical SQLite/WAL cleanup, and exact
-User/Workspace usage diagnostics. This remains a local preview boundary:
-managed prior-generation lease/rollback semantics, backup/repair, distributed
+User/Workspace usage diagnostics. Scope-bound integrity audit verifies SQLite,
+foreign keys, receipts, accounting, identity, and FTS evidence; confirmed repair
+can rebuild only the derived search rows. Versioned non-overwriting backups bind
+the exact scope and can be verified offline. A backup digest detects corruption
+but is not a Registry signature or a whole-product recovery artifact. This
+remains a local preview boundary: coordinated restore, authority recovery,
+backup rotation, managed prior-generation lease/rollback semantics, distributed
 Knowledge placement, and full cross-platform qualification are still release
 gates.
 
@@ -213,6 +218,11 @@ a3s list --installed
 a3s info box
 a3s doctor
 a3s use knowledge usage --json
+a3s use knowledge audit --json
+a3s use knowledge backup ./user.a3s-okf-backup --json
+a3s use knowledge verify-backup ./user.a3s-okf-backup --json
+# Rebuild only a derived FTS index after authoritative state passes audit.
+a3s use knowledge repair-search-index --yes --json
 ```
 
 > [!NOTE]
@@ -230,7 +240,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer dependency locks, replaceable TUF Registries, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup and usage diagnostics, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Managed Knowledge leases/rollback and backup/repair, distributed Knowledge placement, managed UI delivery, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
+| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer dependency locks, replaceable TUF Registries, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup, usage diagnostics, scope-bound integrity audit, derived-index repair, versioned backup/offline verification, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Managed Knowledge leases/rollback, coordinated restore and authority recovery, backup rotation, distributed Knowledge placement, managed UI delivery, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
