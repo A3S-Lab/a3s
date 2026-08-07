@@ -177,6 +177,14 @@ and forward unchanged authority and confirmation into Use-owned apply and
 replay. Permission-bearing enablement uses the same Grant-before-publish and
 hide/drain-before-revoke saga.
 
+Code configuration and plugin authorization are separate trust boundaries. TUI
+and each Web host create one `PluginManager`; every Web plugin route clones the
+startup instance, while cross-process mutations retain the same durable file
+lock. Detached Web and the read-only management MCP reparse only the
+operator-selected ACL source under a normalized digest lock. An automatically
+discovered workspace ACL cannot authorize plugin mutation, and an existing Web
+process is reused only when its policy digest and offline mode match exactly.
+
 Signed OKF surfaces now project into a scope-aware local SQLite/FTS5 Knowledge
 carrier. Restart, upgrade, disable, re-enable, and uninstall preserve or
 withdraw the exact package generation, while cited read-only search hot-plugs
@@ -241,7 +249,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 
 | Area | Current boundary |
 | --- | --- |
-| Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
+| Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, shared TUI/Web Plugin Manager policy, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
 | Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host v4, manager tools v3, exact SemVer dependency locks, replaceable TUF Registries, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search and exact published-generation query leases, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup, usage diagnostics, scope-bound integrity audit, derived-index repair, versioned backup/offline verification, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Managed Knowledge rollback, coordinated restore and authority recovery, backup rotation, distributed Knowledge placement, managed UI delivery, Runtime Service, HTTP MCP/Gateway, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
