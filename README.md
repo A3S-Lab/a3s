@@ -233,6 +233,11 @@ same durable plan and generation. Signed Unix and Windows x86_64 real-process
 tests cover install, restart observation, exact upgrade, uninstall, failure,
 and replay. The Windows gate also kills an upgrade after graph cutover and
 proves restart cleanup does not republish or inflate the capability generation.
+It now also runs the complete current non-Science Use workspace suite. A shared
+host-metadata guard rejects Unix symbolic links and Windows reparse points
+across package, Registry/cache, Grant, lifecycle, Runtime, Flow, MCP, and
+Knowledge trust boundaries; Windows tests create a real directory junction and
+prove package copying fails before external content is read.
 
 Install, upgrade, and uninstall accept only verified catalog-v3 evidence with
 complete Use-owned dependency locks. Reviewed apply runs through Use in the
