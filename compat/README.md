@@ -35,3 +35,11 @@ HCL/Terraform product configuration in the Cloud integration surface.
 The compatibility lock does not replace component release processes. A lock
 change is integration evidence: each component still owns its implementation,
 tests, release notes, and publication.
+
+## Workflow Platform Planning
+
+The proposed Cloud, Flow, Boot, ORM, and Form composition is defined by the
+[workflow platform architecture](workflow-platform-architecture.md) and its
+ordered [development plan](workflow-platform-development-plan.md). These plans
+define target boundaries and future gates; they do not change the current lock
+or claim that Form integration and Cloud Workflow execution are available.
