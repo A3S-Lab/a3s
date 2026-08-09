@@ -19,6 +19,7 @@ const REQUIRED_COMPONENTS = [
   'cloud',
   'event',
   'flow',
+  'form',
   'gateway',
   'orm',
   'runtime',
@@ -225,8 +226,9 @@ export function parseCloudStackLock(source) {
       Number.isSafeInteger(protocol.level) && protocol.level > 0,
       `protocol "${protocol.id}" level must be a positive integer`,
     );
+    const version = /(?:^|[./])v(\d+)(?:(?:alpha|beta|rc)\d+)?$/.exec(protocol.schema);
     invariant(
-      protocol.schema.endsWith(`.v${protocol.level}`),
+      version && Number(version[1]) === protocol.level,
       `protocol "${protocol.id}" schema does not match level ${protocol.level}`,
     );
     invariant(!protocolSchemas.has(protocol.schema), `duplicate protocol schema ${protocol.schema}`);
@@ -464,7 +466,7 @@ function verifyDependencyBindings(root, componentMap) {
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
   }
 
-  for (const id of ['box', 'flow', 'orm']) {
+  for (const id of ['box', 'flow', 'form', 'orm']) {
     const component = componentMap.get(id);
     const declaration = tomlDependency(
       cloudManifest,
@@ -481,6 +483,12 @@ function verifyDependencyBindings(root, componentMap) {
       dependencyField(declaration, 'rev', `Cloud ${component.package}`) === component.revision,
       `Cloud ${component.package} revision does not match the compatibility lock`,
     );
+    if (id !== 'orm') {
+      invariant(
+        exactDependencyVersion(declaration, `Cloud ${component.package}`) === component.version,
+        `Cloud ${component.package} version does not match the compatibility lock`,
+      );
+    }
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock', component.revision);
   }
 
@@ -570,6 +578,36 @@ function verifyAclConfiguration(root, cloudPath) {
     );
   }
   return aclFiles;
+}
+
+function verifyFormFixture(
+  root,
+  cloudPath,
+  formPath,
+  ownerFileName,
+  cloudFileName,
+  label,
+) {
+  const ownerRelativePath = `${formPath}/tests/conformance/${ownerFileName}`;
+  const cloudRelativePath = `${cloudPath}/crates/control-plane/tests/fixtures/${cloudFileName}`;
+  const ownerPath = join(root, ownerRelativePath);
+  const cloudFixturePath = join(root, cloudRelativePath);
+  invariant(existsSync(ownerPath), `${label} fixture is missing: ${ownerRelativePath}`);
+  invariant(
+    existsSync(cloudFixturePath),
+    `Cloud ${label.toLowerCase()} fixture is missing: ${cloudRelativePath}`,
+  );
+  const ownerBytes = readFileSync(ownerPath);
+  const cloudBytes = readFileSync(cloudFixturePath);
+  invariant(
+    ownerBytes.equals(cloudBytes),
+    `Cloud ${label.toLowerCase()} fixture must be byte-identical to ${ownerRelativePath}`,
+  );
+  return {
+    cloud: cloudRelativePath,
+    digest: `sha256:${createHash('sha256').update(ownerBytes).digest('hex')}`,
+    owner: ownerRelativePath,
+  };
 }
 
 export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat/cloud-stack.acl') {
@@ -671,8 +709,31 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
   }
 
   verifyDependencyBindings(root, componentMap);
+  const formInteractionFixture = verifyFormFixture(
+    root,
+    componentMap.get('cloud').path,
+    componentMap.get('form').path,
+    'interaction-contract-v1.json',
+    'form-interaction-contract-v1.json',
+    'Form interaction',
+  );
+  const formValueEvaluationFixture = verifyFormFixture(
+    root,
+    componentMap.get('cloud').path,
+    componentMap.get('form').path,
+    'value-evaluation-v1.json',
+    'form-value-evaluation-v1.json',
+    'Form value evaluation',
+  );
   const aclFiles = verifyAclConfiguration(root, componentMap.get('cloud').path);
-  return { ...lock, components: resolvedComponents, aclFiles, rootRevision };
+  return {
+    ...lock,
+    components: resolvedComponents,
+    aclFiles,
+    formInteractionFixture,
+    formValueEvaluationFixture,
+    rootRevision,
+  };
 }
 
 export function formatVerification(result) {
@@ -688,6 +749,15 @@ export function formatVerification(result) {
   for (const protocol of result.protocols) {
     lines.push(`${protocol.id}: ${protocol.schema}`);
   }
+  lines.push(
+    `Form interaction fixture: ${result.formInteractionFixture.digest} ` +
+      `(${result.formInteractionFixture.owner} == ${result.formInteractionFixture.cloud})`,
+  );
+  lines.push(
+    `Form value evaluation fixture: ${result.formValueEvaluationFixture.digest} ` +
+      `(${result.formValueEvaluationFixture.owner} == ` +
+      `${result.formValueEvaluationFixture.cloud})`,
+  );
   lines.push(`ACL fixtures: ${result.aclFiles.join(', ')}`);
   return lines.join('\n');
 }

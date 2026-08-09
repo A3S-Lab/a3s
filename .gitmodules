@@ -100,3 +100,6 @@
 [submodule "packages/ui"]
 	path = packages/ui
 	url = git@github.com:A3S-Lab/UI.git
+[submodule "packages/form"]
+	path = packages/form
+	url = git@github.com:A3S-Lab/Form.git
