@@ -54,11 +54,20 @@ if test "${windows_host}" = false; then
   cargo test \
     --manifest-path "${cli_manifest}" \
     --locked \
+    --test web_plugin_marketplace \
+    generic_real_e2e::real_marketplace_hot_plugs_a_generic_signed_package_across_restart \
+    -- \
+    --ignored \
+    --nocapture
+
+  cargo test \
+    --manifest-path "${cli_manifest}" \
+    --locked \
     --test code_use_first_use \
     code_tui_first_use_installs_a_real_use_release_before_the_first_turn \
     -- \
     --ignored \
     --nocapture
 else
-  echo "First-use release installation remains covered by the dedicated Windows E2E suite."
+  echo "Generic Web and first-use release installation remain explicit Windows E2E gates."
 fi

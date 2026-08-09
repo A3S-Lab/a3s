@@ -85,7 +85,7 @@ code: cli-submodule webview-submodule
     CARGO_TARGET_DIR='{{ agent_island_target }}' cargo build --manifest-path crates/webview/Cargo.toml --bin a3s-webview
     A3S_AGENT_ISLAND_BIN='{{ agent_island_bin }}' cargo run --manifest-path crates/cli/Cargo.toml -- code
 
-# Test Code hot-plug against a real, independently built A3S Use process
+# Test Code, TUI, and Web hot-plug against a real, independently built A3S Use process
 use-hotplug-e2e: use-e2e-submodules
     CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/use/Cargo.toml -p a3s-use
     CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/browser/Cargo.toml -p a3s-use-browser-driver
