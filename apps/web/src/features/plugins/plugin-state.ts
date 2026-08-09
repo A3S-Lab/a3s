@@ -1,6 +1,5 @@
 import type {
   PluginActivityCatalog,
-  PluginActivityContent,
   PluginMarketplaceCatalog,
   PluginOperationPlan,
   PluginOperationRequest,
@@ -15,6 +14,9 @@ export interface PluginContextField {
 
 export interface PluginContextProposal {
   sourceKey: string;
+  sourceGeneration: number;
+  sourceRevision: string;
+  sourceDocumentUrl: string;
   title: string;
   summary: string;
   prompt: string;
@@ -32,9 +34,6 @@ export interface PluginsState {
   pluginCatalogStatus: PluginLoadStatus;
   pluginCatalogError: string | null;
   activePluginKey: string | null;
-  pluginContentByKey: Record<string, PluginActivityContent>;
-  pluginContentStatus: PluginLoadStatus;
-  pluginContentError: string | null;
   pluginRuntimeError: string | null;
   pluginContextProposal: PluginContextProposal | null;
   pluginMarketplace: PluginMarketplaceCatalog | null;
@@ -67,9 +66,6 @@ export function createPluginsState(): PluginsState {
     pluginCatalogStatus: 'idle',
     pluginCatalogError: null,
     activePluginKey: activePluginKeyFromHash(),
-    pluginContentByKey: {},
-    pluginContentStatus: 'idle',
-    pluginContentError: null,
     pluginRuntimeError: null,
     pluginContextProposal: null,
     pluginMarketplace: null,

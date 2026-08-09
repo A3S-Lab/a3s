@@ -31,7 +31,6 @@ import type {
   OsAccount,
   PersonalKnowledgeBaseCatalog,
   PluginActivityCatalog,
-  PluginActivityContent,
   PluginMarketplaceCatalog,
   PluginOperationPlan,
   PluginOperationRequest,
@@ -379,8 +378,6 @@ export const codeApi = {
   skills: (workspace: string) => apiRequest<SkillCatalog>(`/api/v1/plugins?workspace=${encodeURIComponent(workspace)}`),
   pluginActivities: (signal?: AbortSignal) =>
     apiRequest<PluginActivityCatalog>('/api/v1/plugins/activities', { signal }),
-  pluginActivityContent: (key: string, signal?: AbortSignal) =>
-    apiRequest<PluginActivityContent>(`/api/v1/plugins/activities/${encodeURIComponent(key)}`, { signal }),
   pluginMarketplace: (signal?: AbortSignal) =>
     apiRequest<PluginMarketplaceCatalog>('/api/v1/plugins/marketplace', { signal }),
   planPluginOperation: (request: PluginOperationRequest) =>

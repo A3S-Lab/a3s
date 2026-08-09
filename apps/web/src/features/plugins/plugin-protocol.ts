@@ -1,6 +1,7 @@
+import type { PluginActivityDocumentIdentity } from './plugin-activity-document';
 import type { PluginContextProposal } from './plugin-state';
 
-export const activityProtocol = 'a3s.activity.v1';
+export const activityProtocol = 'a3s.activity.v2';
 const MAX_MESSAGE_CHARS = 32 * 1024;
 
 export type PluginHostMessage =
@@ -8,7 +9,10 @@ export type PluginHostMessage =
   | { type: 'context'; proposal: PluginContextProposal }
   | { type: 'error'; message: string };
 
-export function parsePluginMessage(value: unknown, sourceKey: string): PluginHostMessage | null {
+export function parsePluginMessage(
+  value: unknown,
+  documentIdentity: PluginActivityDocumentIdentity
+): PluginHostMessage | null {
   if (!isRecord(value)) return null;
   try {
     if (JSON.stringify(value).length > MAX_MESSAGE_CHARS) return null;
@@ -37,15 +41,37 @@ export function parsePluginMessage(value: unknown, sourceKey: string): PluginHos
   });
   return {
     type: 'context',
-    proposal: { sourceKey, title, summary, prompt, fields, usePackageSkill },
+    proposal: {
+      sourceKey: documentIdentity.key,
+      sourceGeneration: documentIdentity.generation,
+      sourceRevision: documentIdentity.revision,
+      sourceDocumentUrl: documentIdentity.url,
+      title,
+      summary,
+      prompt,
+      fields,
+      usePackageSkill,
+    },
   };
 }
 
-export function activityHostInit(theme: 'light' | 'dark', locale: string, packageId: string, key: string) {
+export function activityHostInit(
+  theme: 'light' | 'dark',
+  locale: string,
+  packageId: string,
+  documentIdentity: PluginActivityDocumentIdentity
+) {
   return {
     protocol: activityProtocol,
     type: 'host.init',
-    payload: { theme, locale, packageId, key },
+    payload: {
+      theme,
+      locale,
+      packageId,
+      key: documentIdentity.key,
+      generation: documentIdentity.generation,
+      revision: documentIdentity.revision,
+    },
   } as const;
 }
 
