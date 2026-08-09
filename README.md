@@ -139,9 +139,10 @@ The compatibility lock pins the first cross-product contract baseline for
 Cloud, Flow, Boot, ORM, and Form. The target composition is defined in the
 [Workflow platform architecture](compat/workflow-platform-architecture.md) and
 its ordered [development plan](compat/workflow-platform-development-plan.md).
-The pinned Form interaction fixture and protocol revisions are contract
-evidence only; native submitted-value parity, persisted WorkflowRun execution,
-and human-task product surfaces remain unavailable. Component roadmaps and the
+The pinned Form interaction and submitted-value evaluation fixtures prove
+byte-identical native Form Core behavior in Cloud at the locked revisions.
+They remain integration evidence rather than a Form lifecycle, persisted
+WorkflowRun, or human-task product surface. Component roadmaps and the
 compatibility lock remain the sources of truth for delivered behavior.
 
 The detailed command and process design lives in the
@@ -308,7 +309,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
 | Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host/manager tools v4, lifecycle diagnostic v1, CLI plugin operation record v3, exact SemVer dependency locks, the sole revision-addressed `state/use/registries.acl` source document with identity-isolated TUF/cache state, install-time Registry selection and provenance-pinned upgrade/uninstall, in-process reviewed Grants and graph apply, shared dependency ownership, canonical `user/current` authority across CLI/TUI/Web plans and Use lifecycle journals, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, secret-free latest/previous lifecycle checkpoint evidence with applying/rolling-back exclusion and same-operation phase identity by intent digest, typed Runtime Service endpoint consumption with Gateway drain → Runtime stop → route removal → Runtime removal, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search and exact published-generation query leases, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup, usage diagnostics, scope-bound integrity audit, derived-index repair, versioned backup/offline verification, CI-enforced real-process Code watcher coverage on Linux/macOS/Windows plus Unix TUI first-use and generic Web lifecycle coverage through a configured replaceable Registry source, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Broader operational telemetry, managed Knowledge rollback, coordinated restore and authority recovery, backup rotation, distributed Knowledge placement, managed UI delivery, production Runtime provider selection and Gateway injection for Tool Service/HTTP MCP, distributed Flow recovery/retention, production Registry operations, Windows Web/TUI parity, and the complete six-surface cross-platform real-process matrix remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
-| Cloud | R0–E0 is the verified cumulative baseline; the compatibility manifest also pins the Form/Flow interaction-contract baseline without claiming native submitted-value parity, WorkflowRun execution, or end-to-end human-task availability |
+| Cloud | R0–E0 is the verified cumulative baseline; the compatibility manifest also pins native Form compilation/evaluation and the Form/Flow interaction-contract baseline without claiming Form lifecycle persistence, WorkflowRun execution, or end-to-end human-task availability |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
 
 Release-bearing projects publish on their own cadence. Their manifests and

@@ -15,10 +15,10 @@ The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
 revision drift, dirty component worktrees, Cargo manifest or lockfile drift,
 and mismatched Cloud, Form, Box Runtime, or Gateway dependencies. The verifier
-also requires Cloud's consumed Form interaction fixture to be byte-identical to
-the Form-owned conformance fixture. It parses and generates all tracked Cloud
-product-configuration fixtures and rejects HCL/Terraform product configuration
-in the Cloud integration surface.
+also requires Cloud's consumed Form interaction and submitted-value evaluation
+fixtures to be byte-identical to their Form-owned conformance fixtures. It
+parses and generates all tracked Cloud product-configuration fixtures and
+rejects HCL/Terraform product configuration in the Cloud integration surface.
 
 ## Proposing An Update
 
@@ -44,6 +44,8 @@ The target Cloud, Flow, Boot, ORM, and Form composition is defined by the
 [workflow platform architecture](workflow-platform-architecture.md) and its
 ordered [development plan](workflow-platform-development-plan.md). The current
 lock pins the exact Form Core, Flow, Boot, ORM, Cloud, interaction protocols,
-and shared fixture used by the Phase 0 contract baseline. This does not claim
-native submitted-value parity, Form lifecycle persistence, WorkflowRun
-execution, or end-to-end HumanTask availability.
+evaluation protocols, and shared fixtures used by the Phase 0 contract
+baseline. Native Form compilation and submitted-value evaluation now have
+byte-identical Cloud evidence. This does not claim Form lifecycle persistence,
+WorkflowRun execution, protected human-task commands, or end-to-end HumanTask
+availability.

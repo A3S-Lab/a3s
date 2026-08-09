@@ -1,6 +1,6 @@
 # A3S Workflow Platform Development Plan
 
-Status: Proposed integration delivery plan
+Status: Phase 0 verified; Phase 1 is the active delivery stage
 
 This plan implements the boundaries and consistency model in the [A3S Workflow
 Platform Architecture](workflow-platform-architecture.md). It is gate-driven;
@@ -38,6 +38,13 @@ Exit gate:
   output, digest, and diagnostics for the conformance corpus.
 - Cloud builds and tests against exact released dependencies.
 - The clean root compatibility gate passes with no revision drift.
+
+Verified on 2026-08-09 by compatibility-lock digest
+`sha256:c990b4d84667b37c32ffcf6e198ea0e8ab773e5927407308a3a94426b7f24068`.
+The gate pins Form `8d73dba5e88ded0de7ae0e1c7b1e599a5d9134de`, Cloud
+`db556223af6dfc964cac0ef45519972a50039d2f`, Flow `0.11.0`, Boot `0.1.4`,
+and ORM `0.2.0`; it verifies both Form interaction and submitted-value
+evaluation fixtures byte for byte.
 
 ### Phase 1: Cloud Form lifecycle
 

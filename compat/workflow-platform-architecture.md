@@ -1,6 +1,6 @@
 # A3S Workflow Platform Architecture
 
-Status: Proposed integration architecture
+Status: Target integration architecture; Phase 0 baseline verified
 
 This document defines the target composition of A3S Form, A3S Flow, A3S Boot,
 A3S ORM, and A3S Cloud. It is an integration plan, not an availability claim.
@@ -82,23 +82,21 @@ services or Flow. Cloud composes the released, versioned contracts.
 
 ## 4. Portable Form Semantic Core
 
-The current Form compiler is implemented in TypeScript while Cloud is a Rust
-control plane. Production integration must not solve this by implementing an
-independent Rust validator or by trusting a browser-produced plan.
-
-A3S Form should publish one portable semantic core with two build targets:
+Cloud is a Rust control plane, so it must not implement an independent Form
+compiler or validator or trust a browser-produced plan. A3S Form now publishes
+one portable semantic core with two build targets:
 
 - a native Rust library for Cloud server-side compilation and validation; and
 - a WASM build consumed by the TypeScript package for browser, Worker, CLI, and
   server-side JavaScript use.
 
-The existing TypeScript compiler remains the reference during migration, but
-the release gate closes only when all adapters use the same semantic core. The
-portable protocol must accept bounded canonical bytes and return a versioned
-result containing diagnostics, normalized document bytes, `FormPlan`, schema
-profile, compiler revision, and SHA-256 digest.
+The former TypeScript compiler remains test-only reference evidence. Browser,
+Node, Worker, CLI, native Rust, and Cloud adapters use the same Form Core. Its
+bounded versioned protocols return diagnostics, normalized document bytes,
+`FormPlan`, schema profile, compiler revision, SHA-256 digests, canonical
+submitted values, validation errors, and optional evaluation traces.
 
-Required parity fixtures include:
+The pinned parity suite covers:
 
 - canonical key ordering, Unicode, numbers, arrays, and object boundaries;
 - every accepted Schema Profile 1 keyword and every rejected keyword;
@@ -106,6 +104,11 @@ Required parity fixtures include:
 - revision and digest mismatch behavior;
 - 100, 500, and 1,000-node resource limits; and
 - malformed, oversized, cyclic, and adversarial documents.
+
+The Phase 0 compatibility gate pins the exact native core revision, evaluation
+protocol sources, and byte-identical interaction and submitted-value fixtures
+consumed by Cloud. Durable drafts, releases, and accepted submissions remain
+Cloud lifecycle responsibilities rather than Form Core storage.
 
 Cloud product configuration remains ACL-only. A Form document is an immutable
 typed asset owned by A3S Form, not a second Cloud configuration language. Cloud

@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "a4966e73cbaf663c11661c1ef30e6c077feabccb"
+  revision = "db556223af6dfc964cac0ef45519972a50039d2f"
   source = "git"
   version = "0.1.0"
 }
@@ -64,7 +64,7 @@ component "form" {
   package = "a3s-form-core"
   path = "packages/form"
   repository = "git@github.com:A3S-Lab/Form.git"
-  revision = "a71bcc525c9cfa075e34cec4c8ac0fa9185a39af"
+  revision = "8d73dba5e88ded0de7ae0e1c7b1e599a5d9134de"
   source = "git"
   version = "0.1.0"
 }
@@ -140,6 +140,18 @@ protocol "flow-resume-receipt" {
   owner = "A3S-Lab/Cloud"
   schema = "a3s.dev/flow-resume-receipt/v1"
   source = "apps/cloud/crates/control-plane/src/modules/workflow/domain/flow_resume.rs"
+}
+protocol "form-core-evaluate-request" {
+  level = 1
+  owner = "A3S-Lab/Form"
+  schema = "a3s.dev/form-core/evaluate-request/v1alpha1"
+  source = "packages/form/crates/a3s-form-core/src/evaluation/protocol.rs"
+}
+protocol "form-core-evaluate-response" {
+  level = 1
+  owner = "A3S-Lab/Form"
+  schema = "a3s.dev/form-core/evaluate-response/v1alpha1"
+  source = "packages/form/crates/a3s-form-core/src/evaluation/protocol.rs"
 }
 protocol "form-interaction-request" {
   level = 1

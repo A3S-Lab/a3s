@@ -29,6 +29,15 @@ test('the checked-in Cloud stack is reproducible and clean', () => {
     result.formInteractionFixture.cloud,
     'apps/cloud/crates/control-plane/tests/fixtures/form-interaction-contract-v1.json',
   );
+  assert.match(result.formValueEvaluationFixture.digest, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(
+    result.formValueEvaluationFixture.owner,
+    'packages/form/tests/conformance/value-evaluation-v1.json',
+  );
+  assert.equal(
+    result.formValueEvaluationFixture.cloud,
+    'apps/cloud/crates/control-plane/tests/fixtures/form-value-evaluation-v1.json',
+  );
 });
 
 test('the lock rejects unknown fields before accepting canonical text', () => {
@@ -107,18 +116,38 @@ test('the lock must use canonical a3s-acl attribute ordering', () => {
   assert.throws(() => parseCloudStackLock(noncanonical), /not in canonical a3s-acl form/);
 });
 
-test('protocol levels accept owner schemas ending in /v1 and reject version drift', () => {
+test('protocol levels accept stable and prerelease owner schemas and reject version drift', () => {
   const slashVersion = LOCK_SOURCE.replace(
     'schema = "a3s.flow.native_ts.v1"',
     'schema = "a3s.dev/flow-native-typescript/v1"',
   );
   assert.doesNotThrow(() => parseCloudStackLock(slashVersion));
 
-  const driftedVersion = slashVersion.replace(
+  const alphaVersion = slashVersion.replace(
     'schema = "a3s.dev/flow-native-typescript/v1"',
-    'schema = "a3s.dev/flow-native-typescript/v2"',
+    'schema = "a3s.dev/flow-native-typescript/v1alpha1"',
+  );
+  assert.doesNotThrow(() => parseCloudStackLock(alphaVersion));
+
+  const driftedVersion = alphaVersion.replace(
+    'schema = "a3s.dev/flow-native-typescript/v1alpha1"',
+    'schema = "a3s.dev/flow-native-typescript/v2alpha1"',
   );
   assert.throws(() => parseCloudStackLock(driftedVersion), /does not match level 1/);
+});
+
+test('the lock registers both owner-defined Form evaluation protocols', () => {
+  const protocols = new Map(
+    parseCloudStackLock(LOCK_SOURCE).protocols.map((protocol) => [protocol.id, protocol]),
+  );
+  assert.equal(
+    protocols.get('form-core-evaluate-request')?.schema,
+    'a3s.dev/form-core/evaluate-request/v1alpha1',
+  );
+  assert.equal(
+    protocols.get('form-core-evaluate-response')?.schema,
+    'a3s.dev/form-core/evaluate-response/v1alpha1',
+  );
 });
 
 test('multiline Cargo dependency declarations are read as one binding', () => {
@@ -190,6 +219,16 @@ test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
   );
   const cloud = readFileSync(
     resolve(ROOT, 'apps/cloud/crates/control-plane/tests/fixtures/form-interaction-contract-v1.json'),
+  );
+  assert.ok(owner.equals(cloud));
+});
+
+test('Cloud consumes the Form-owned submitted-value evaluation fixture byte for byte', () => {
+  const owner = readFileSync(
+    resolve(ROOT, 'packages/form/tests/conformance/value-evaluation-v1.json'),
+  );
+  const cloud = readFileSync(
+    resolve(ROOT, 'apps/cloud/crates/control-plane/tests/fixtures/form-value-evaluation-v1.json'),
   );
   assert.ok(owner.equals(cloud));
 });
