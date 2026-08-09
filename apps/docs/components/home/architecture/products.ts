@@ -132,7 +132,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'use',
     name: 'Use',
     category: 'products',
-    role: localized('安装、检查和切换 Agent 能力包，也提供 Browser 和 OCR 命令。', 'Installs, checks, and switches agent capability packages, with Browser and OCR commands built in.'),
+    role: localized('安装、校验和管理 Agent 能力包，并提供 Browser 与 OCR 内置路由。', 'Installs, verifies, and manages agent capability packages, with built-in Browser and OCR routes.'),
     href: getProjectPrimaryHref('use'),
     nodes: [
       node('cli', 'Umbrella CLI', 'surface', '通过 a3s use 暴露一致的领域入口。', 'Exposes a consistent domain entrypoint through a3s use.'),
@@ -203,7 +203,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'site',
     name: 'Site & Blog',
     category: 'products',
-    role: localized('A3S 主站和中英文工程博客。', 'The A3S homepage and its Chinese and English engineering blog.'),
+    role: localized('A3S 项目索引与中英文工程博客。', 'The A3S project index and its Chinese and English engineering blog.'),
     href: getProjectPrimaryHref('site'),
     nodes: [
       node('routes', 'Rspress Routes', 'surface', '提供中文首页、英文首页与双语博客路由。', 'Serves Chinese and English homepages plus bilingual blog routes.'),

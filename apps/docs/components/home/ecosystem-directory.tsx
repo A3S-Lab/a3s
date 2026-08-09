@@ -18,7 +18,7 @@ import {
   type ArchitectureCategory,
   type ArchitectureProject,
 } from '@/components/home/architecture';
-import { getProjectProgress } from '@/components/home/ecosystem-progress';
+import { getProjectProgress, progressVerifiedAt } from '@/components/home/ecosystem-progress';
 import type { Lang } from '@/components/home/home-content';
 import { getProjectRepositoryHref } from '@/components/home/project-links';
 import { featuredProjectSites, type FeaturedProjectSite } from '@/components/home/project-sites';
@@ -33,24 +33,24 @@ const categoryIcons: Record<ArchitectureCategory, Icon> = {
 
 const copy = {
   cn: {
-    liveEyebrow: '项目网站 / 8 个',
-    liveTitle: '先看看产品。',
-    liveDescription: '产品页面和 Playground 可以直接打开；截图来自线上网站或当前构建。',
-    live: 'LIVE',
+    liveEyebrow: '公开项目页面 / 8',
+    liveTitle: '看看已经可以访问的项目页面。',
+    liveDescription: '这些入口包括产品页面和交互式 Playground。预览截图取自线上页面或当前构建。',
+    live: '在线',
     buildPreview: '构建预览',
-    openSite: '访问网站',
-    openRepository: '打开仓库',
-    directoryEyebrow: '全部项目 / 36 个',
-    directoryTitle: '36 个项目，都在这里。',
-    directoryDescription: '按分类筛选，或者搜索项目名和功能。卡片里有项目说明、开发进度和仓库入口。',
-    search: '搜索项目、职责或能力',
+    openSite: '打开页面',
+    openRepository: '查看代码',
+    directoryEyebrow: '完整项目目录 / 36',
+    directoryTitle: '36 个项目，一处查清。',
+    directoryDescription: '按名称或职责搜索，也可以按层级筛选。每个条目都列出职责、主要能力、交付阶段、当前版本或通道，以及代码入口。',
+    search: '搜索项目名称、职责或能力',
     result: '个项目',
-    noResults: '没有匹配的项目。',
-    reset: '查看全部项目',
-    openGuide: '打开项目',
-    repository: 'GitHub',
-    progress: '开发进度',
-    progressMethod: '进度条按项目阶段换算：开发中 40% · 实验 60% · 预览 80% · 已发布 100%。',
+    noResults: '没有项目符合当前筛选条件。',
+    reset: '清除筛选',
+    openGuide: '查看项目',
+    repository: '代码',
+    progress: '交付阶段',
+    progressMethod: `阶段与版本已于 ${progressVerifiedAt} 根据当前项目版本、公开 Release、README 和 Roadmap 复核。色条只表示阶段顺序，不是功能完成百分比。`,
     categories: {
       all: '全部',
       products: '产品与应用',
@@ -60,23 +60,23 @@ const copy = {
   },
   en: {
     liveEyebrow: '8 PROJECT SITES',
-    liveTitle: 'See the products first.',
-    liveDescription: 'Open each product site or Playground directly. Images come from the live site or its current build.',
-    live: 'LIVE',
+    liveTitle: 'Open the projects that already have a public page.',
+    liveDescription: 'These links go to product pages and interactive playgrounds. Previews come from the live page or its current build.',
+    live: 'ONLINE',
     buildPreview: 'BUILD PREVIEW',
-    openSite: 'Visit site',
-    openRepository: 'Open repository',
-    directoryEyebrow: 'ALL 36 PROJECTS',
-    directoryTitle: 'Every A3S project, in one place.',
-    directoryDescription: 'Filter by area, or search by project and capability. Each card links to the project and its source code.',
+    openSite: 'Open site',
+    openRepository: 'View source',
+    directoryEyebrow: 'COMPLETE PROJECT DIRECTORY / 36',
+    directoryTitle: 'One directory for all 36 projects.',
+    directoryDescription: 'Search by name or responsibility, or filter by layer. Each entry shows its role, core capabilities, delivery stage, current version or channel, and source.',
     search: 'Search projects, responsibilities, or capabilities',
     result: 'projects',
-    noResults: 'No projects match this search.',
-    reset: 'View every project',
-    openGuide: 'Open project',
-    repository: 'GitHub',
-    progress: 'Development progress',
-    progressMethod: 'Bars follow project stages: Building 40% · Experimental 60% · Preview 80% · Released 100%.',
+    noResults: 'No projects match the current filters.',
+    reset: 'Clear filters',
+    openGuide: 'View project',
+    repository: 'Source',
+    progress: 'Delivery stage',
+    progressMethod: `Stages and versions were checked against current project versions, public releases, READMEs, and roadmaps on ${progressVerifiedAt}. The rail shows stage order, not percent complete.`,
     categories: {
       all: 'All projects',
       products: 'Products & apps',
@@ -176,16 +176,10 @@ function ProjectCard({ project, index, lang }: { project: ArchitectureProject; i
       <div className="a3s-project-progress" data-stage={progress.stage}>
         <div>
           <span>{tr.progress} · {progress.label}</span>
-          <b>{progress.value}%</b>
+          <b>{progress.release}</b>
         </div>
-        <span
-          aria-label={`${tr.progress}: ${progress.label}, ${progress.value}%`}
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={progress.value}
-          role="progressbar"
-        >
-          <i style={{ '--project-progress': progress.value / 100 } as React.CSSProperties} />
+        <span aria-hidden="true">
+          <i style={{ '--project-progress': progress.position / 100 } as React.CSSProperties} />
         </span>
       </div>
       <div className="a3s-directory-card__actions">
