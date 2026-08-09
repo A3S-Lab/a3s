@@ -160,10 +160,10 @@ component that implements it.
 Use has not shipped a supported cognitive-package product release. The pinned
 preview accepts one contract line only: manifest v3, catalog v3, receipt v3,
 plan v4, host protocol v4, manager tools v4, pending graph v2, enablement
-state/operation v2, and CLI plugin operation record v3. Superseded preview
-records are rejected with cleanup and reinstall guidance; SemVer,
-`requires_use`, target, and provider checks remain package-manager correctness
-rules.
+state/operation v2, lifecycle diagnostic v1, and CLI plugin operation record
+v3. Superseded preview records are rejected with cleanup and reinstall
+guidance; SemVer, `requires_use`, target, and provider checks remain
+package-manager correctness rules.
 
 One package generation may contain Tool, MCP, OKF, A3S Flow, Skill, and UI
 surfaces. Lifecycle intents, Runtime/Flow/OKF bindings, Knowledge evidence, and
@@ -177,6 +177,18 @@ the exact User/Workspace Grant scope and durable revision, apply host policy,
 and forward unchanged authority and confirmation into Use-owned apply and
 replay. Permission-bearing enablement uses the same Grant-before-publish and
 hide/drain-before-revoke saga.
+
+`a3s use extension inspect <publisher/name> --json` now projects the latest and
+previous package lifecycle records for the default User scope under the same
+package-scoped journal lock. Its versioned output includes bounded checkpoint
+status, digests, timings, failure codes, and rollback evidence, while excluding
+idempotency keys, credentials, tokens, secret values, and package-authored
+error text. Both applying and rolling-back records reject a conflicting new
+intent until terminal completion. This diagnostic is read-only evidence, not
+restore authority or the still-open product telemetry layer.
+Candidate and retirement phases created by one reviewed graph operation may
+share an `operationId`; `intentDigest` is the exact phase identity, and a
+duplicate latest/previous intent digest fails closed.
 
 Code configuration and plugin authorization are separate trust boundaries. TUI
 and each Web host create one `PluginManager`; every Web plugin route clones the
@@ -254,6 +266,7 @@ Use the machine-readable commands before scripting an optional product:
 a3s list --installed
 a3s info box
 a3s doctor
+a3s use extension inspect <publisher/name> --json
 a3s use knowledge usage --json
 a3s use knowledge audit --json
 a3s use knowledge backup ./user.a3s-okf-backup --json
@@ -277,7 +290,7 @@ describe the integration snapshot pinned by this repository's `main` branch:
 | --- | --- |
 | Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, shared TUI/Web Plugin Manager policy, shared Use managed lifecycle composition, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
 | Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host/manager tools v4, CLI plugin operation record v3, exact SemVer dependency locks, the sole revision-addressed `state/use/registries.acl` source document with identity-isolated TUF/cache state, install-time Registry selection and provenance-pinned upgrade/uninstall, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, typed Runtime Service endpoint consumption with Gateway drain → Runtime stop → route removal → Runtime removal, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search and exact published-generation query leases, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup, usage diagnostics, scope-bound integrity audit, derived-index repair, versioned backup/offline verification, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Managed Knowledge rollback, coordinated restore and authority recovery, backup rotation, distributed Knowledge placement, managed UI delivery, production Runtime provider selection and Gateway injection for Tool Service/HTTP MCP, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
+| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, plan/host/manager tools v4, lifecycle diagnostic v1, CLI plugin operation record v3, exact SemVer dependency locks, the sole revision-addressed `state/use/registries.acl` source document with identity-isolated TUF/cache state, install-time Registry selection and provenance-pinned upgrade/uninstall, in-process reviewed Grants and graph apply, shared dependency ownership, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, secret-free latest/previous lifecycle checkpoint evidence with applying/rolling-back exclusion and same-operation phase identity by intent digest, typed Runtime Service endpoint consumption with Gateway drain → Runtime stop → route removal → Runtime removal, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search and exact published-generation query leases, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup, usage diagnostics, scope-bound integrity audit, derived-index repair, versioned backup/offline verification, CLI real-process Code/TUI fixture coverage through a configured replaceable Registry source, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Broader operational telemetry, managed Knowledge rollback, coordinated restore and authority recovery, backup rotation, distributed Knowledge placement, managed UI delivery, production Runtime provider selection and Gateway injection for Tool Service/HTTP MCP, distributed Flow recovery/retention, production Registry operations, and the complete cross-platform CLI/TUI/Web real-process matrix remain release gates. Use is not a released product. |
 | Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
 | Cloud | R0–E0 is the verified cumulative baseline; later milestones remain tracked by the canonical [Cloud compatibility manifest](compat/cloud-stack.acl) |
 | Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
