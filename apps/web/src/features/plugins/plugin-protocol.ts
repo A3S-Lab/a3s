@@ -1,13 +1,23 @@
 import type { PluginActivityDocumentIdentity } from './plugin-activity-document';
 import type { PluginContextProposal } from './plugin-state';
 
-export const activityProtocol = 'a3s.activity.v2';
-const MAX_MESSAGE_CHARS = 32 * 1024;
+export const activityProtocol = 'a3s.activity.v3';
+const MAX_MESSAGE_BYTES = 32 * 1024;
+const MAX_REQUEST_ID_BYTES = 64;
+const MAX_STATE_KEY_BYTES = 128;
+const MAX_STATE_VALUE_BYTES = 16 * 1024;
+
+export type PluginStateRequest =
+  | { operation: 'get'; key: string }
+  | { operation: 'set'; key: string; value: unknown }
+  | { operation: 'delete'; key: string }
+  | { operation: 'clear' };
 
 export type PluginHostMessage =
   | { type: 'ready' }
   | { type: 'context'; proposal: PluginContextProposal }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | { type: 'state'; requestId: string; request: PluginStateRequest };
 
 export function parsePluginMessage(
   value: unknown,
@@ -15,7 +25,7 @@ export function parsePluginMessage(
 ): PluginHostMessage | null {
   if (!isRecord(value)) return null;
   try {
-    if (JSON.stringify(value).length > MAX_MESSAGE_CHARS) return null;
+    if (utf8Size(JSON.stringify(value)) > MAX_MESSAGE_BYTES) return null;
   } catch {
     return null;
   }
@@ -25,6 +35,7 @@ export function parsePluginMessage(
     const message = boundedText(value.message, 500);
     return message ? { type: 'error', message } : null;
   }
+  if (value.type.startsWith('state.')) return parseStateMessage(value);
   if (value.type !== 'context.propose' || !isRecord(value.payload)) return null;
   const title = boundedText(value.payload.title, 80);
   const summary = boundedText(value.payload.summary, 1_000);
@@ -55,6 +66,25 @@ export function parsePluginMessage(
   };
 }
 
+export function activityStateResult(requestId: string, payload: unknown) {
+  return {
+    protocol: activityProtocol,
+    type: 'state.result',
+    requestId,
+    payload,
+  } as const;
+}
+
+export function activityStateError(requestId: string, code: string, message: string) {
+  return {
+    protocol: activityProtocol,
+    type: 'state.error',
+    requestId,
+    code,
+    message,
+  } as const;
+}
+
 export function activityHostInit(
   theme: 'light' | 'dark',
   locale: string,
@@ -80,6 +110,57 @@ function boundedText(value: unknown, maxCharacters: number): string | null {
   const normalized = value.trim();
   if (!normalized || normalized.length > maxCharacters) return null;
   return normalized;
+}
+
+function parseStateMessage(value: Record<string, unknown>): PluginHostMessage | null {
+  const requestId = boundedMachineToken(value.requestId, MAX_REQUEST_ID_BYTES);
+  if (!requestId) return null;
+  if (value.type === 'state.clear') {
+    return hasOnlyKeys(value, ['protocol', 'type', 'requestId'])
+      ? { type: 'state', requestId, request: { operation: 'clear' } }
+      : null;
+  }
+  const key = boundedStateKey(value.key);
+  if (!key) return null;
+  if (value.type === 'state.get' || value.type === 'state.delete') {
+    if (!hasOnlyKeys(value, ['protocol', 'type', 'requestId', 'key'])) return null;
+    return {
+      type: 'state',
+      requestId,
+      request: { operation: value.type === 'state.get' ? 'get' : 'delete', key },
+    };
+  }
+  if (value.type !== 'state.set' || !hasOnlyKeys(value, ['protocol', 'type', 'requestId', 'key', 'value'])) {
+    return null;
+  }
+  if (!Object.hasOwn(value, 'value')) return null;
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(value.value);
+  } catch {
+    return null;
+  }
+  if (serialized === undefined || utf8Size(serialized) > MAX_STATE_VALUE_BYTES) return null;
+  return { type: 'state', requestId, request: { operation: 'set', key, value: value.value } };
+}
+
+function boundedMachineToken(value: unknown, maxBytes: number): string | null {
+  if (typeof value !== 'string' || !value || utf8Size(value) > maxBytes) return null;
+  return /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value) ? value : null;
+}
+
+function boundedStateKey(value: unknown): string | null {
+  if (typeof value !== 'string' || !value || utf8Size(value) > MAX_STATE_KEY_BYTES) return null;
+  return /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(value) ? value : null;
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  const allowedKeys = new Set(allowed);
+  return Object.keys(value).every((key) => allowedKeys.has(key));
+}
+
+function utf8Size(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

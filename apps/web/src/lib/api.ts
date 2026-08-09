@@ -153,6 +153,22 @@ export interface CodeIntelligenceRequestOptions {
   signal?: AbortSignal;
 }
 
+export type PluginActivityStateRequest =
+  | { operation: 'get'; key: string }
+  | { operation: 'set'; key: string; value: unknown }
+  | { operation: 'delete'; key: string }
+  | { operation: 'clear' };
+
+export interface PluginActivityStateResponse {
+  schemaVersion: 1;
+  operation: PluginActivityStateRequest['operation'];
+  found?: boolean;
+  value?: unknown;
+  stored?: boolean;
+  deleted?: boolean;
+  cleared?: boolean;
+}
+
 const MEMORY_PAGE_LIMIT = 500;
 type MemoryOverviewPage = Omit<MemoryOverview, 'graph'> & { graph?: MemoryOverview['graph'] };
 
@@ -378,6 +394,21 @@ export const codeApi = {
   skills: (workspace: string) => apiRequest<SkillCatalog>(`/api/v1/plugins?workspace=${encodeURIComponent(workspace)}`),
   pluginActivities: (signal?: AbortSignal) =>
     apiRequest<PluginActivityCatalog>('/api/v1/plugins/activities', { signal }),
+  pluginActivityState: (
+    key: string,
+    generation: number,
+    revision: string,
+    request: PluginActivityStateRequest,
+    signal?: AbortSignal
+  ) =>
+    apiRequest<PluginActivityStateResponse>(
+      `/api/v1/plugins/activities/${encodeURIComponent(key)}/state${apiQuery({ generation, revision })}`,
+      {
+        method: 'POST',
+        signal,
+        ...jsonBody(request),
+      }
+    ),
   pluginMarketplace: (signal?: AbortSignal) =>
     apiRequest<PluginMarketplaceCatalog>('/api/v1/plugins/marketplace', { signal }),
   planPluginOperation: (request: PluginOperationRequest) =>

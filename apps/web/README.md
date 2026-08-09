@@ -48,9 +48,12 @@ by the
   plugin Market (A3S Use release bundles plus signed TUF sources), and Settings
   share the pinned bottom section. Each package Activity adopts only its exact
   Registry generation/revision document URL in an opaque-origin iframe. The
-  host transfers a dedicated `a3s.activity.v2` `MessagePort`, ignores ambient
+  host transfers a dedicated `a3s.activity.v3` `MessagePort`, ignores ambient
   messages, terminates self-navigation, drains old ports on Registry changes,
-  and binds reviewed context to the current document identity.
+  and binds reviewed context plus bounded durable state operations to the
+  current document identity. State is Code-owned rather than browser-origin
+  storage, isolated by scope/lifecycle package/surface, and guarded by exact
+  published-generation leases.
   Remote messaging channels live behind one Settings → Channels entry rather
   than occupying top-level product slots. The Channels page uses one compact
   channel list and one detail surface; Feishu currently displays only “Coming
