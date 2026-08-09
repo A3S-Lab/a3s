@@ -76,33 +76,39 @@ assert(chineseBlog, 'Chinese blog index is missing');
 assert(englishBlog, 'English blog index is missing');
 
 for (const marker of [
-  '为 AI Native 组织',
-  '构建的',
-  '生态系统。',
+  '用可检查的组件',
+  '构建并运行',
+  'Agent。',
   '分布在全球的成员和 Agent 共用一个 Workspace',
   'Shared Workspace',
-  '每个AI Native的组织都应该有自己的AI操作系统',
-  '开发进度',
+  '先用 CLI 跑起来',
+  '交付阶段',
+  '不统计功能完成率',
+  'v0.10.14',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
 }
 
 for (const marker of [
-  'An ecosystem built',
-  'for AI Native',
-  'organizations.',
+  'Build and run agents',
+  'with parts you can',
+  'inspect.',
   'globally distributed humans and agents',
   'Shared Workspace',
-  'Every AI Native organization should have its own AI operating system.',
-  'Development progress',
+  'Start with the CLI.',
+  'Delivery stage',
+  'not a feature-completion score',
+  'v0.10.14',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
 
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
-  const progressBars = homepage.match(/role="progressbar"/g) ?? [];
+  const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
   const formLinkCount = homepage.split(`href="${formHref}"`).length - 1;
-  assert(progressBars.length === 36, `${locale} homepage has ${progressBars.length} progress bars instead of 36`);
+  assert(projectStages.length === 36, `${locale} homepage has ${projectStages.length} project stages instead of 36`);
+  assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
+  assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
   assert(formLinkCount >= 2, `${locale} homepage does not route both A3S Form entries to the published playground`);
   assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage is missing the separate A3S Form repository link`);
@@ -176,7 +182,8 @@ for (const selector of [
   '.a3s-global-workspace',
   '.a3s-site-preview__image',
   '.a3s-directory-card',
-  '.a3s-project-progress',
+  '.a3s-delivery-guide',
+  '.a3s-project-delivery',
   '.a3s-blog-grid',
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
@@ -185,6 +192,8 @@ assert(!css.includes('.a3s-cli-terminal'), 'Production CSS still contains the re
 assert(!css.includes('.a3s-canvas-backdrop'), 'Production CSS still contains the replaced canvas backdrop');
 assert(!css.includes('.a3s-atlas'), 'Production CSS still contains architecture diagram styles');
 assert(!css.includes('.a3s-ecosystem-visual'), 'Production CSS still contains the replaced ecosystem hero visual');
+assert(!css.includes('.a3s-project-progress'), 'Production CSS still contains the misleading project progress component');
+assert(!css.includes('--project-progress'), 'Production CSS still contains numeric project progress scaling');
 
 if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');
