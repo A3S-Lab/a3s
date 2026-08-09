@@ -155,6 +155,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .a3s-delivery-guide > ul {
+    gap: 12px 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .a3s-delivery-guide li,
+  .a3s-delivery-guide li:first-child,
+  .a3s-delivery-guide li:last-child {
+    padding: 0;
+    border-right: 0;
+  }
+
   .a3s-footer__inner {
     gap: 42px;
     grid-template-columns: 1fr 160px 160px;
@@ -416,6 +428,10 @@
   }
 
   .a3s-directory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-delivery-guide > ul {
     grid-template-columns: 1fr;
   }
 

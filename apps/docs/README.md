@@ -118,7 +118,9 @@ temporarily unavailable. Add or change destinations in
 ## Ecosystem status data
 
 The project directory keeps its delivery stages and current versions or
-channels in `components/home/ecosystem-progress.ts`. Treat those stages as
-ordered maturity bands, not feature-completion percentages. Before changing an
-entry, check the current project version and public release together with its
-README and roadmap, then update the shared verification date.
+channels in `components/home/ecosystem-status.ts`. Stages describe the current
+usage boundary; they are categories, not feature-completion percentages. The
+homepage renders the definitions directly instead of converting stages into a
+numeric rail. Before changing an entry, check the current project version and
+public release together with its README and roadmap, then update the shared
+verification date.
