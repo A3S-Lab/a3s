@@ -46,7 +46,11 @@ by the
   below Work, followed by enabled package
   contributions ordered from the live A3S Use registry. Memory, the verified
   plugin Market (A3S Use release bundles plus signed TUF sources), and Settings
-  share the pinned bottom section.
+  share the pinned bottom section. Each package Activity adopts only its exact
+  Registry generation/revision document URL in an opaque-origin iframe. The
+  host transfers a dedicated `a3s.activity.v2` `MessagePort`, ignores ambient
+  messages, terminates self-navigation, drains old ports on Registry changes,
+  and binds reviewed context to the current document identity.
   Remote messaging channels live behind one Settings → Channels entry rather
   than occupying top-level product slots. The Channels page uses one compact
   channel list and one detail surface; Feishu currently displays only “Coming
@@ -641,8 +645,10 @@ and forgetting remain excluded until those actions have explicit review and
 recovery journeys. Task branching, automation authoring, and global processes
 are also deferred. Local knowledge management is handled by the separate
 Knowledge product and does not mutate Memory entries.
-Plugin workbench views and signed lifecycle management are supported, while
-callable plugin actions remain CLI/MCP/Skill surfaces.
+Plugin workbench views and signed lifecycle management are supported. Web
+Activities use exact server documents and a dedicated capability port for
+bounded, document-bound context review; they receive no generic execute
+message. Callable plugin actions remain CLI/MCP/Skill surfaces.
 
 The logo at `public/logo.png` preserves the authoritative A3S OS asset. Its
 SHA-256 is `72b94cf69a95dc6153f865c4f8742c0f67079caa876f35f8b2b5f970ea795a2d`.
@@ -706,8 +712,9 @@ bun run build
 
 The Web API is implemented in `crates/cli/src/api/code_web`. Browser code does
 not access A3S OS tokens directly; the CLI owns token storage and refresh. The
-plugin endpoints expose only verified catalogs and content plus digest-reviewed
-lifecycle operations; see [A3S Web Plugin System](docs/PLUGINS.md).
+plugin endpoints expose only verified catalogs, generation-bound Activity
+documents, non-executable management data, and digest-reviewed lifecycle
+operations; see [A3S Web Plugin System](docs/PLUGINS.md).
 
 ## Deployment boundary
 

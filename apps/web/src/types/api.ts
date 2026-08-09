@@ -496,6 +496,7 @@ export interface PluginActivityItem {
   order: number;
   sha256: string;
   mediaType: 'text/html';
+  documentUrl?: string;
 }
 
 export interface PluginActivityCatalog {
@@ -504,18 +505,6 @@ export interface PluginActivityCatalog {
   generation: number;
   revision: string;
   items: PluginActivityItem[];
-}
-
-export interface PluginActivityContent {
-  key: string;
-  packageId: string;
-  skill: string;
-  registryRevision: string;
-  sha256: string;
-  mediaType: 'text/html';
-  html: string;
-  styles: string[];
-  scripts: string[];
 }
 
 export interface PluginMarketplaceRegistry {

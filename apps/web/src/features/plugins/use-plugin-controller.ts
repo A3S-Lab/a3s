@@ -2,20 +2,19 @@ import { useMemoizedFn } from 'ahooks';
 import { useEffect, useRef } from 'react';
 import { codeApi } from '../../lib/api';
 import { appendTaskInstruction, appState, formatApiError, navigateTask, showToast } from '../../state/app-state';
-import type { PluginActivityCatalog, PluginOperationRequest } from '../../types/api';
+import type { PluginActivityCatalog, PluginActivityItem, PluginOperationRequest } from '../../types/api';
+import { validateActivityCatalogDocuments } from './plugin-activity-document';
 import type { PluginContextProposal } from './plugin-state';
 
 const ACTIVITY_POLL_MS = 2_500;
 
 export function usePluginController() {
   const activitySequence = useRef(0);
-  const contentSequence = useRef(0);
-  const contentAbort = useRef<AbortController | null>(null);
   const marketplaceSequence = useRef(0);
   const marketplaceAbort = useRef<AbortController | null>(null);
 
   const applyCatalog = useMemoizedFn((catalog: PluginActivityCatalog) => {
-    const previous = new Map(appState.pluginCatalog.items.map((item) => [item.key, item.sha256]));
+    validateActivityCatalogDocuments(catalog);
     const items = [...catalog.items].sort(
       (left, right) =>
         left.order - right.order || left.title.localeCompare(right.title) || left.key.localeCompare(right.key)
@@ -23,14 +22,7 @@ export function usePluginController() {
     appState.pluginCatalog = { ...catalog, items };
     appState.pluginCatalogStatus = 'ready';
     appState.pluginCatalogError = null;
-    for (const [key, digest] of previous) {
-      const next = items.find((item) => item.key === key);
-      if (!next || next.sha256 !== digest || !next.enabled) delete appState.pluginContentByKey[key];
-    }
-    if (
-      appState.pluginContextProposal &&
-      !items.some((item) => item.key === appState.pluginContextProposal?.sourceKey && item.enabled)
-    ) {
+    if (appState.pluginContextProposal && !contributionForProposal(appState.pluginContextProposal)) {
       appState.pluginContextProposal = null;
     }
     if (
@@ -53,53 +45,6 @@ export function usePluginController() {
       if (sequence !== activitySequence.current) return;
       appState.pluginCatalogStatus = 'error';
       appState.pluginCatalogError = formatApiError(error);
-    }
-  });
-
-  const loadActivityContent = useMemoizedFn(async (key: string, force = false) => {
-    const item = appState.pluginCatalog.items.find((candidate) => candidate.key === key && candidate.enabled);
-    if (!item) {
-      navigateTask('conversation');
-      return;
-    }
-    const cached = appState.pluginContentByKey[key];
-    if (
-      !force &&
-      cached &&
-      cached.sha256 === item.sha256 &&
-      cached.registryRevision === appState.pluginCatalog.revision
-    ) {
-      appState.pluginContentStatus = 'ready';
-      appState.pluginContentError = null;
-      return;
-    }
-
-    contentAbort.current?.abort();
-    const controller = new AbortController();
-    contentAbort.current = controller;
-    const sequence = ++contentSequence.current;
-    appState.pluginContentStatus = 'loading';
-    appState.pluginContentError = null;
-    appState.pluginRuntimeError = null;
-    try {
-      const content = await codeApi.pluginActivityContent(key, controller.signal);
-      if (sequence !== contentSequence.current) return;
-      const current = appState.pluginCatalog.items.find((candidate) => candidate.key === key && candidate.enabled);
-      if (
-        !current ||
-        content.sha256 !== current.sha256 ||
-        content.registryRevision !== appState.pluginCatalog.revision ||
-        content.packageId !== current.packageId ||
-        content.skill !== current.skill
-      ) {
-        throw new Error('插件内容与当前注册表 revision 不一致，请刷新后重试。');
-      }
-      appState.pluginContentByKey[key] = content;
-      appState.pluginContentStatus = 'ready';
-    } catch (error) {
-      if (controller.signal.aborted || sequence !== contentSequence.current) return;
-      appState.pluginContentStatus = 'error';
-      appState.pluginContentError = formatApiError(error);
     }
   });
 
@@ -182,8 +127,7 @@ export function usePluginController() {
   });
 
   const proposeContext = useMemoizedFn((proposal: PluginContextProposal) => {
-    const contribution = appState.pluginCatalog.items.find((item) => item.key === proposal.sourceKey && item.enabled);
-    if (!contribution) return;
+    if (!contributionForProposal(proposal)) return;
     appState.pluginContextProposal = proposal;
   });
 
@@ -194,7 +138,7 @@ export function usePluginController() {
   const acceptContextProposal = useMemoizedFn(() => {
     const proposal = appState.pluginContextProposal;
     if (!proposal) return;
-    const contribution = appState.pluginCatalog.items.find((item) => item.key === proposal.sourceKey && item.enabled);
+    const contribution = contributionForProposal(proposal);
     if (!contribution) {
       appState.pluginContextProposal = null;
       return;
@@ -234,14 +178,12 @@ export function usePluginController() {
     }, ACTIVITY_POLL_MS);
     return () => {
       window.clearInterval(interval);
-      contentAbort.current?.abort();
       marketplaceAbort.current?.abort();
     };
   }, [refreshActivities]);
 
   return {
     refreshActivities,
-    loadActivityContent,
     refreshMarketplace,
     planOperation,
     applyReviewedOperation,
@@ -251,6 +193,16 @@ export function usePluginController() {
     dismissContextProposal,
     acceptContextProposal,
   };
+}
+
+function contributionForProposal(proposal: PluginContextProposal): PluginActivityItem | undefined {
+  const catalog = appState.pluginCatalog;
+  if (catalog.generation !== proposal.sourceGeneration || catalog.revision !== proposal.sourceRevision) {
+    return undefined;
+  }
+  return catalog.items.find(
+    (item) => item.key === proposal.sourceKey && item.enabled && item.documentUrl === proposal.sourceDocumentUrl
+  );
 }
 
 async function refreshUntilRevisionChanges(

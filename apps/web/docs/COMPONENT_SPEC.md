@@ -305,8 +305,15 @@ failure.
 **Role:** render verified plugin content in its isolated host and mediate
 reviewed context handoff.
 
-**Contract:** accepted context appends to the current unified Work draft and
-returns to `#home`. Removed or unavailable plugin keys cannot leave a blank
+**Contract:** the page accepts only the exact generation/revision-bound
+`documentUrl` emitted by the current catalog and renders it with
+`sandbox="allow-scripts"` without same-origin authority. The first document load
+receives a dedicated `MessagePort`; ambient messages are ignored, a second load
+terminates the frame, and Registry identity changes close the prior port and
+replace the iframe. Context proposals carry the exact document identity and are
+reviewable only while that identity remains current. Accepted context appends
+to the current unified Work draft and returns to `#home`. Removed, disabled,
+invalid, or unavailable plugin keys cannot leave an executable or blank
 surface.
 
 ### `SettingsDialog`
