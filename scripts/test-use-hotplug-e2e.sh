@@ -53,6 +53,16 @@ cargo test \
 cargo test \
   --manifest-path "${cli_manifest}" \
   --locked \
+  --lib \
+  plugin_manager::operation::tests::grant_forwarding::reviewed_managed_runtime_graph_rejects_drift_and_persists_exact_grant \
+  -- \
+  --exact \
+  --include-ignored \
+  --nocapture
+
+cargo test \
+  --manifest-path "${cli_manifest}" \
+  --locked \
   --test "${marketplace_test}" \
   generic_real_e2e::real_marketplace_hot_plugs_a_generic_signed_package_across_restart \
   -- \
