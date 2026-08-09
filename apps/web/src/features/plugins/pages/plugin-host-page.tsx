@@ -2,18 +2,27 @@ import { AlertTriangle, Box, LoaderCircle, RefreshCw, ShieldCheck, Store } from 
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button, Dialog, PageHeader, StateView, StatusBadge } from '../../../design-system/primitives';
+import { ApiError, codeApi } from '../../../lib/api';
 import { appState, navigatePlugins } from '../../../state/app-state';
 import { resolveActivityDocument, type PluginActivityDocumentIdentity } from '../plugin-activity-document';
-import { activityHostInit, parsePluginMessage } from '../plugin-protocol';
+import {
+  activityHostInit,
+  activityStateError,
+  activityStateResult,
+  parsePluginMessage,
+  type PluginHostMessage,
+} from '../plugin-protocol';
 import type { PluginActions } from '../use-plugin-controller';
 
 type FrameStatus = 'loading' | 'ready' | 'error';
 const ACTIVITY_READY_TIMEOUT_MS = 10_000;
+const MAX_PENDING_STATE_REQUESTS = 32;
 
 export function PluginHostPage({ actions }: { actions: PluginActions }) {
   const state = useSnapshot(appState);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const portRef = useRef<MessagePort | null>(null);
+  const stateRequestRef = useRef<{ port: MessagePort; controller: AbortController } | null>(null);
   const frameLoadCountRef = useRef(0);
   const loadedFrameTokenRef = useRef<string | null>(null);
   const readyTimeoutRef = useRef<number | null>(null);
@@ -35,6 +44,10 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
 
   const releasePort = useCallback(
     (port: MessagePort) => {
+      if (stateRequestRef.current?.port === port) {
+        stateRequestRef.current.controller.abort();
+        stateRequestRef.current = null;
+      }
       port.onmessage = null;
       port.onmessageerror = null;
       port.close();
@@ -112,7 +125,11 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
     closeActivePort();
     const channel = new MessageChannel();
     const port = channel.port1;
+    const stateController = new AbortController();
+    let stateQueue = Promise.resolve();
+    let pendingStateRequests = 0;
     portRef.current = port;
+    stateRequestRef.current = { port, controller: stateController };
     port.onmessage = (event: MessageEvent<unknown>) => {
       if (portRef.current !== port) return;
       if (!isCurrentActivityDocument(documentIdentity)) {
@@ -121,7 +138,33 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
       }
       const message = parsePluginMessage(event.data, documentIdentity);
       if (!message) return;
-      if (message.type === 'ready') {
+      if (message.type === 'state') {
+        if (pendingStateRequests >= MAX_PENDING_STATE_REQUESTS) {
+          try {
+            port.postMessage(activityStateError(message.requestId, 'busy', '插件状态请求队列已满。'));
+          } catch {
+            releasePort(port);
+          }
+          return;
+        }
+        pendingStateRequests += 1;
+        stateQueue = stateQueue
+          .then(() =>
+            handleStateRequest({
+              message,
+              port,
+              controller: stateController,
+              documentIdentity,
+              isActive: () => portRef.current === port,
+              release: () => releasePort(port),
+              refreshActivities: actions.refreshActivities,
+            })
+          )
+          .catch(() => releasePort(port))
+          .finally(() => {
+            pendingStateRequests -= 1;
+          });
+      } else if (message.type === 'ready') {
         clearReadyTimeout();
         setFrameStatus('ready');
         appState.pluginRuntimeError = null;
@@ -264,6 +307,68 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
       )}
     </section>
   );
+}
+
+async function handleStateRequest({
+  message,
+  port,
+  controller,
+  documentIdentity,
+  isActive,
+  release,
+  refreshActivities,
+}: {
+  message: Extract<PluginHostMessage, { type: 'state' }>;
+  port: MessagePort;
+  controller: AbortController;
+  documentIdentity: PluginActivityDocumentIdentity;
+  isActive: () => boolean;
+  release: () => void;
+  refreshActivities: () => Promise<void>;
+}): Promise<void> {
+  if (!isActive() || controller.signal.aborted || !isCurrentActivityDocument(documentIdentity)) {
+    release();
+    return;
+  }
+  try {
+    const result = await codeApi.pluginActivityState(
+      documentIdentity.key,
+      documentIdentity.generation,
+      documentIdentity.revision,
+      message.request,
+      controller.signal
+    );
+    if (!isActive() || controller.signal.aborted || !isCurrentActivityDocument(documentIdentity)) return;
+    port.postMessage(activityStateResult(message.requestId, result));
+  } catch (error) {
+    if (controller.signal.aborted || !isActive()) return;
+    if (error instanceof ApiError && error.status === 410) {
+      release();
+      void refreshActivities();
+      return;
+    }
+    if (!isCurrentActivityDocument(documentIdentity)) {
+      release();
+      return;
+    }
+    const details = stateRequestError(error);
+    try {
+      port.postMessage(activityStateError(message.requestId, details.code, details.message));
+    } catch {
+      release();
+    }
+  }
+}
+
+function stateRequestError(error: unknown): { code: string; message: string } {
+  if (!(error instanceof ApiError)) {
+    return { code: 'state-unavailable', message: '插件状态服务暂时不可用。' };
+  }
+  if (error.status === 400) return { code: 'invalid-request', message: error.message };
+  if (error.status === 404) return { code: 'not-found', message: error.message };
+  if (error.status === 413) return { code: 'capacity-exceeded', message: error.message };
+  if (error.status === 503) return { code: 'unavailable', message: error.message };
+  return { code: 'state-unavailable', message: '插件状态服务拒绝了本次操作。' };
 }
 
 function ContextReviewDialog({

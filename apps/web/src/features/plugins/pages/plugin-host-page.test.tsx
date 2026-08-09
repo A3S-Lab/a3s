@@ -69,7 +69,7 @@ describe('plugin host page', () => {
     expect(channels[0].port1.started).toBe(true);
     expect(postMessage).toHaveBeenCalledWith(
       {
-        protocol: 'a3s.activity.v2',
+        protocol: 'a3s.activity.v3',
         type: 'host.init',
         payload: {
           theme: 'light',
@@ -202,6 +202,157 @@ describe('plugin host page', () => {
     act(() => oldPort.emit({ protocol: activityProtocol, type: 'activity.error', message: 'stale error' }));
     expect(appState.pluginRuntimeError).toBeNull();
   });
+
+  it('serializes state mutations and returns correlated v3 results on the active port', async () => {
+    const firstResponse = deferred<Response>();
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(() => firstResponse.promise)
+      .mockResolvedValueOnce(
+        jsonResponse({ schemaVersion: 1, operation: 'get', found: true, value: { query: 'CRISPR' } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PluginHostPage actions={createPluginActions()} />);
+    const iframe = screen.getByTitle('科研 插件内容') as HTMLIFrameElement;
+    vi.spyOn(iframe.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fireEvent.load(iframe);
+    const port = channels[0].port1;
+
+    act(() => {
+      port.emit({
+        protocol: activityProtocol,
+        type: 'state.set',
+        requestId: 'set-1',
+        key: 'draft/current',
+        value: { query: 'CRISPR' },
+      });
+      port.emit({
+        protocol: activityProtocol,
+        type: 'state.get',
+        requestId: 'get-1',
+        key: 'draft/current',
+      });
+    });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `/api/v1/plugins/activities/science%3Aresearch/state?generation=2&revision=${initialRevision}`
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      operation: 'set',
+      key: 'draft/current',
+      value: { query: 'CRISPR' },
+    });
+    firstResponse.resolve(jsonResponse({ schemaVersion: 1, operation: 'set', stored: true }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(port.posted).toHaveLength(2));
+    expect(port.posted).toEqual([
+      {
+        protocol: activityProtocol,
+        type: 'state.result',
+        requestId: 'set-1',
+        payload: { schemaVersion: 1, operation: 'set', stored: true },
+      },
+      {
+        protocol: activityProtocol,
+        type: 'state.result',
+        requestId: 'get-1',
+        payload: { schemaVersion: 1, operation: 'get', found: true, value: { query: 'CRISPR' } },
+      },
+    ]);
+  });
+
+  it('bounds the state queue and aborts the active request when its generation is retired', async () => {
+    let activeSignal: AbortSignal | null | undefined;
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          activeSignal = init?.signal;
+          activeSignal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), {
+            once: true,
+          });
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PluginHostPage actions={createPluginActions()} />);
+    const iframe = screen.getByTitle('科研 插件内容') as HTMLIFrameElement;
+    vi.spyOn(iframe.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fireEvent.load(iframe);
+    const port = channels[0].port1;
+
+    act(() => {
+      for (let index = 0; index < 33; index += 1) {
+        port.emit({
+          protocol: activityProtocol,
+          type: 'state.get',
+          requestId: `get-${index}`,
+          key: 'draft/current',
+        });
+      }
+    });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(port.posted).toEqual([
+      {
+        protocol: activityProtocol,
+        type: 'state.error',
+        requestId: 'get-32',
+        code: 'busy',
+        message: '插件状态请求队列已满。',
+      },
+    ]);
+
+    const nextRevision = 'c'.repeat(64);
+    act(() => {
+      appState.pluginCatalog = {
+        ...appState.pluginCatalog,
+        generation: 3,
+        revision: nextRevision,
+        items: [
+          {
+            ...contribution,
+            version: '2.0.0',
+            sha256: 'd'.repeat(64),
+            documentUrl: activityDocumentUrl(3, nextRevision),
+          },
+        ],
+      };
+    });
+
+    await waitFor(() => expect(port.closed).toBe(true));
+    expect(activeSignal?.aborted).toBe(true);
+    expect(port.posted).toHaveLength(1);
+  });
+
+  it('reports bounded state failures but silently drains a server-rejected stale port', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(errorResponse(503, 'Registry is converging.'))
+      .mockResolvedValueOnce(errorResponse(410, 'Generation is stale.'));
+    vi.stubGlobal('fetch', fetchMock);
+    const actions = createPluginActions();
+    render(<PluginHostPage actions={actions} />);
+    const iframe = screen.getByTitle('科研 插件内容') as HTMLIFrameElement;
+    vi.spyOn(iframe.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+    fireEvent.load(iframe);
+    const port = channels[0].port1;
+
+    act(() => port.emit({ protocol: activityProtocol, type: 'state.get', requestId: 'get-1', key: 'draft/current' }));
+    await waitFor(() => expect(port.posted).toHaveLength(1));
+    expect(port.posted[0]).toEqual({
+      protocol: activityProtocol,
+      type: 'state.error',
+      requestId: 'get-1',
+      code: 'unavailable',
+      message: 'Registry is converging.',
+    });
+
+    act(() => port.emit({ protocol: activityProtocol, type: 'state.get', requestId: 'get-2', key: 'draft/current' }));
+    await waitFor(() => expect(port.closed).toBe(true));
+    expect(port.posted).toHaveLength(1);
+    expect(actions.refreshActivities).toHaveBeenCalledOnce();
+  });
 });
 
 function activityDocumentUrl(generation: number, revision: string): string {
@@ -227,6 +378,7 @@ class FakeMessagePort {
   onmessageerror: (() => void) | null = null;
   started = false;
   closed = false;
+  posted: unknown[] = [];
 
   start() {
     this.started = true;
@@ -241,6 +393,11 @@ class FakeMessagePort {
   emit(data: unknown) {
     if (!this.closed) this.onmessage?.({ data } as MessageEvent<unknown>);
   }
+
+  postMessage(data: unknown) {
+    if (this.closed) throw new Error('port is closed');
+    this.posted.push(data);
+  }
 }
 
 class FakeMessageChannel {
@@ -250,4 +407,26 @@ class FakeMessageChannel {
   constructor() {
     channels.push(this);
   }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
+function jsonResponse(data: unknown): Response {
+  return new Response(JSON.stringify({ code: 200, data }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function errorResponse(status: number, message: string): Response {
+  return new Response(JSON.stringify({ code: status, message }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }

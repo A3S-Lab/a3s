@@ -29,7 +29,7 @@ The model combines two useful references without copying either runtime:
   stale asynchronous loads.
 
 The equivalent of `remote-component` dependency injection is the versioned,
-bounded `a3s.activity.v2` capability protocol. After the verified document's
+bounded `a3s.activity.v3` capability protocol. After the verified document's
 first load, the host creates a `MessageChannel` and transfers one endpoint in
 `host.init`. A plugin receives only that dedicated port and declared host facts,
 never the host React runtime, ambient window messages, or a `require` function.
@@ -117,15 +117,37 @@ The protocol supports:
 - `activity.ready`: view startup completion;
 - `activity.error`: a bounded user-visible runtime error;
 - `context.propose`: a bounded title, summary, prompt, and up to 12 display
-  fields, plus the optional `usePackageSkill` routing decision.
+  fields, plus the optional `usePackageSkill` routing decision;
+- `state.get`, `state.set`, `state.delete`, and `state.clear`: correlated,
+  serialized access to host-owned durable state; and
+- `state.result` or `state.error`: the host response carrying the same bounded
+  `requestId`.
 
 There is no generic execute message.
+
+State requests use a machine-safe `requestId` of at most 64 UTF-8 bytes. Keys
+are at most 128 bytes; a value is at most 16 KiB; each surface stores at most 64
+entries and 256 KiB. The host submits requests in MessagePort order, so a
+completed `set` is visible to the following `get`. It checks the document
+identity before and after every operation. A stale generation receives no port
+reply and is drained; missing, converging, capacity, and storage failures return
+bounded errors.
+
+The iframe never receives filesystem access and does not use `localStorage` or
+same-origin storage. Code persists state under the canonical User scope,
+lifecycle package ID, and UI surface ID. The server acquires an exact published
+package-generation lease before touching the generation-neutral namespace, so
+a stale iframe cannot start a write after retirement begins. Restart, disable,
+rollback, replacement retirement, and an upgrade retaining the same surface
+preserve state. True uninstall or removal of that surface clears it, including
+a corrupt snapshot. These rules do not implement failed-N+1 UI fallback;
+candidate readiness, cutover, and rollback remain separate release work.
 
 ## Context handoff
 
 `context.propose` always opens a host-owned review dialog. The user sees the
 summary, fields, exact prompt, and host-verified Skill decision before anything
-enters the current Work draft. In the current v2 schema, an omitted
+enters the current Work draft. In the current v3 schema, an omitted
 `usePackageSkill` value defaults to `true`; when it is `false`, accepting the
 review appends only the prompt and does not select a Skill. A plugin cannot name
 an arbitrary Skill: the host can attach
@@ -218,6 +240,7 @@ The loopback Web service exposes:
 - `GET /api/v1/plugins/activities`
 - `GET /api/v1/plugins/activities/{key}`
 - `GET /api/v1/plugins/activities/{key}/document?generation={generation}&revision={revision}`
+- `POST /api/v1/plugins/activities/{key}/state?generation={generation}&revision={revision}`
 - `GET /api/v1/plugins/marketplace`
 - `POST /api/v1/plugins/operations/plan`
 - `POST /api/v1/plugins/operations/apply`
