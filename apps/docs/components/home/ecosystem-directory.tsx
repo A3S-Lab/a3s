@@ -18,7 +18,12 @@ import {
   type ArchitectureCategory,
   type ArchitectureProject,
 } from '@/components/home/architecture';
-import { getProjectProgress, progressVerifiedAt } from '@/components/home/ecosystem-progress';
+import {
+  deliveryStages,
+  getDeliveryStageCopy,
+  getProjectDeliveryStatus,
+  statusVerifiedAt,
+} from '@/components/home/ecosystem-status';
 import type { Lang } from '@/components/home/home-content';
 import { getProjectRepositoryHref } from '@/components/home/project-links';
 import { featuredProjectSites, type FeaturedProjectSite } from '@/components/home/project-sites';
@@ -49,8 +54,9 @@ const copy = {
     reset: '清除筛选',
     openGuide: '查看项目',
     repository: '代码',
-    progress: '交付阶段',
-    progressMethod: `阶段与版本已于 ${progressVerifiedAt} 根据当前项目版本、公开 Release、README 和 Roadmap 复核。色条只表示阶段顺序，不是功能完成百分比。`,
+    deliveryStatus: '交付阶段',
+    stageGuide: '交付阶段说明',
+    statusMethod: `这些阶段描述项目现在怎么用，不统计功能完成率。版本和阶段已于 ${statusVerifiedAt} 根据公开 Release、README 和 Roadmap 复核。`,
     categories: {
       all: '全部',
       products: '产品与应用',
@@ -75,8 +81,9 @@ const copy = {
     reset: 'Clear filters',
     openGuide: 'View project',
     repository: 'Source',
-    progress: 'Delivery stage',
-    progressMethod: `Stages and versions were checked against current project versions, public releases, READMEs, and roadmaps on ${progressVerifiedAt}. The rail shows stage order, not percent complete.`,
+    deliveryStatus: 'Delivery stage',
+    stageGuide: 'Delivery stage guide',
+    statusMethod: `These stages describe how a project can be used today; they are not a feature-completion score. Versions and stages were checked against public releases, READMEs, and roadmaps on ${statusVerifiedAt}.`,
     categories: {
       all: 'All projects',
       products: 'Products & apps',
@@ -103,6 +110,28 @@ function externalLinkProps(href: string) {
   return href.startsWith('http')
     ? { target: '_blank' as const, rel: 'noopener noreferrer' }
     : {};
+}
+
+function DeliveryStageGuide({ lang }: { lang: Lang }) {
+  const tr = copy[lang];
+
+  return (
+    <div className="a3s-delivery-guide">
+      <p>{tr.statusMethod}</p>
+      <ul aria-label={tr.stageGuide}>
+        {deliveryStages.map((stage) => {
+          const stageDetails = getDeliveryStageCopy(stage, lang);
+
+          return (
+            <li data-stage={stage} key={stage}>
+              <strong><i aria-hidden="true" />{stageDetails.label}</strong>
+              <span>{stageDetails.description}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 function ProjectSitePreview({ project, site }: { project: ArchitectureProject; site: FeaturedProjectSite }) {
@@ -148,7 +177,7 @@ function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProjec
 function ProjectCard({ project, index, lang }: { project: ArchitectureProject; index: number; lang: Lang }) {
   const tr = copy[lang];
   const Icon = categoryIcons[project.category];
-  const progress = getProjectProgress(project.id, lang);
+  const delivery = getProjectDeliveryStatus(project.id, lang);
   const featuredSite = featuredProjectSites.find((site) => (
     site.id === project.id && site.destination === 'site'
   ));
@@ -173,14 +202,12 @@ function ProjectCard({ project, index, lang }: { project: ArchitectureProject; i
       <ul aria-label={`${project.name} capabilities`}>
         {project.nodes.slice(0, 3).map((node) => <li key={node.id}>{node.label}</li>)}
       </ul>
-      <div className="a3s-project-progress" data-stage={progress.stage}>
+      <div className="a3s-project-delivery" data-stage={delivery.stage}>
+        <span>{tr.deliveryStatus}</span>
         <div>
-          <span>{tr.progress} · {progress.label}</span>
-          <b>{progress.release}</b>
+          <strong><i aria-hidden="true" />{delivery.label}</strong>
+          <code>{delivery.release}</code>
         </div>
-        <span aria-hidden="true">
-          <i style={{ '--project-progress': progress.position / 100 } as React.CSSProperties} />
-        </span>
       </div>
       <div className="a3s-directory-card__actions">
         <a href={projectHref} {...externalLinkProps(projectHref)}>
@@ -272,8 +299,7 @@ export function EcosystemDirectory({ lang }: { lang: Lang }) {
           </div>
           <label className="a3s-directory-search">
             <MagnifyingGlass aria-hidden="true" />
-            <span className="sr-only">{tr.search}</span>
-            <input onChange={(event) => setQuery(event.target.value)} placeholder={tr.search} type="search" value={query} />
+            <input aria-label={tr.search} onChange={(event) => setQuery(event.target.value)} placeholder={tr.search} type="search" value={query} />
             {query ? <button aria-label={tr.reset} onClick={() => setQuery('')} type="button">×</button> : null}
           </label>
         </div>
@@ -282,7 +308,7 @@ export function EcosystemDirectory({ lang }: { lang: Lang }) {
           <span><i /> {String(filteredProjects.length).padStart(2, '0')} {tr.result}</span>
           <code>A3S / ECOSYSTEM.INDEX</code>
         </div>
-        <p className="a3s-progress-method">{tr.progressMethod}</p>
+        <DeliveryStageGuide lang={lang} />
 
         {filteredProjects.length > 0 ? (
           <div className="a3s-directory-grid">

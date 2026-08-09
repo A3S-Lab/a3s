@@ -357,8 +357,9 @@ and legacy-client release relay. The interactive
 [project directory](https://a3s-lab.github.io/a3s/#ecosystem) records each
 project's responsibility, repository-level delivery stage, current version or
 channel, website, and source-code entrypoint. The snapshot is checked against
-current project versions, public releases, READMEs, and roadmaps; stage rails
-show maturity order, not feature-completion percentages.
+current project versions, public releases, READMEs, and roadmaps. Stage labels
+describe how each project can be used today; they are categories, not
+feature-completion percentages.
 
 ## Development
 

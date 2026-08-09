@@ -1,18 +1,24 @@
 import type { Lang } from '@/components/home/home-content';
 
-export type DevelopmentStage = 'building' | 'experimental' | 'preview' | 'released';
+export const deliveryStages = ['building', 'experimental', 'preview', 'released'] as const;
 
-export interface ProjectProgress {
-  stage: DevelopmentStage;
-  position: 25 | 50 | 75 | 100;
+export type DeliveryStage = (typeof deliveryStages)[number];
+
+export interface ProjectDeliveryStatus {
+  stage: DeliveryStage;
   release: string;
+}
+
+interface DeliveryStageCopy {
+  label: string;
+  description: string;
 }
 
 // Verified against current project versions, public releases, READMEs, and roadmaps.
 // A released project can still contain explicitly preview or experimental subfeatures.
-export const progressVerifiedAt = '2026-08-09';
+export const statusVerifiedAt = '2026-08-09';
 
-const progressByProject = {
+const statusByProject = {
   cli: { stage: 'preview', release: 'v0.10.14' },
   code: { stage: 'released', release: 'v6.8.0' },
   web: { stage: 'preview', release: 'A3S v0.11.1' },
@@ -49,40 +55,63 @@ const progressByProject = {
   sentry: { stage: 'preview', release: 'v0.8.0' },
   updater: { stage: 'released', release: 'v0.3.0' },
   homebrew: { stage: 'released', release: 'live' },
-} as const satisfies Record<string, { stage: DevelopmentStage; release: string }>;
+} as const satisfies Record<string, ProjectDeliveryStatus>;
 
-const stagePositions: Record<DevelopmentStage, ProjectProgress['position']> = {
-  building: 25,
-  experimental: 50,
-  preview: 75,
-  released: 100,
-};
-
-const stageLabels: Record<Lang, Record<DevelopmentStage, string>> = {
+const stageCopy: Record<Lang, Record<DeliveryStage, DeliveryStageCopy>> = {
   cn: {
-    building: '开发中',
-    experimental: '实验阶段',
-    preview: '预览阶段',
-    released: '已发布',
+    building: {
+      label: '开发中',
+      description: '主要使用路径还在建设，暂不作为公开入口。',
+    },
+    experimental: {
+      label: '实验阶段',
+      description: '需要明确启用或限定环境，关键发布门槛仍未完成。',
+    },
+    preview: {
+      label: '预览阶段',
+      description: '已有公开可用路径，但接口或兼容性仍可能调整。',
+    },
+    released: {
+      label: '已发布',
+      description: '已有维护中的公开版本或服务；部分功能仍可能处于预览或实验阶段。',
+    },
   },
   en: {
-    building: 'Building',
-    experimental: 'Experimental',
-    preview: 'Preview',
-    released: 'Released',
+    building: {
+      label: 'Building',
+      description: 'The main usage path is still under construction and is not yet a public entry point.',
+    },
+    experimental: {
+      label: 'Experimental',
+      description: 'Requires explicit opt-in or a qualified environment; key release gates remain open.',
+    },
+    preview: {
+      label: 'Preview',
+      description: 'A public usage path exists, but interfaces or compatibility may still change.',
+    },
+    released: {
+      label: 'Released',
+      description: 'A maintained public release or service exists; individual features may still be preview or experimental.',
+    },
   },
 };
 
-export function getProjectProgress(projectId: string, lang: Lang): ProjectProgress & { label: string } {
-  const project = progressByProject[projectId as keyof typeof progressByProject];
+export function getDeliveryStageCopy(stage: DeliveryStage, lang: Lang): DeliveryStageCopy {
+  return stageCopy[lang][stage];
+}
+
+export function getProjectDeliveryStatus(
+  projectId: string,
+  lang: Lang,
+): ProjectDeliveryStatus & DeliveryStageCopy {
+  const project = statusByProject[projectId as keyof typeof statusByProject];
   if (!project) throw new Error(`Delivery status is missing for ecosystem project: ${projectId}`);
 
   return {
     stage: project.stage,
-    position: stagePositions[project.stage],
     release: project.release,
-    label: stageLabels[lang][project.stage],
+    ...getDeliveryStageCopy(project.stage, lang),
   };
 }
 
-export const progressProjectIds = Object.keys(progressByProject);
+export const statusProjectIds = Object.keys(statusByProject);
