@@ -71,20 +71,19 @@ assert(chineseBlog, 'Chinese blog index is missing');
 assert(englishBlog, 'English blog index is missing');
 
 for (const marker of [
-  '为 AI Native 组织',
-  '构建的',
-  '生态系统。',
-  '每个AI Native的组织都应该有自己的AI操作系统',
+  '为AI Native组织',
+  '构建的AI操作系统',
+  '每个AI Native组织都需要构建专属的AI操作系统',
   '开发进度',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
 }
 
 for (const marker of [
-  'An ecosystem built',
-  'for AI Native',
+  'An AI operating system',
+  'ecosystem for AI Native',
   'organizations.',
-  'Every AI Native organization should have its own AI operating system.',
+  'Every AI Native organization needs to build its own AI operating system.',
   'Development progress',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);

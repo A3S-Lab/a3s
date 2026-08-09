@@ -28,6 +28,20 @@ const ecosystemSurfaces = [
   { name: 'UI', detail: 'DESIGN SYSTEM', icon: Stack },
 ] as const;
 
+function CtaTitle({ lang, title }: { lang: Lang; title: string }) {
+  if (lang !== 'cn') return title;
+
+  const lineBreak = title.indexOf('构建');
+  if (lineBreak <= 0) return title;
+
+  return (
+    <>
+      <span>{title.slice(0, lineBreak)}</span>
+      <span>{title.slice(lineBreak)}</span>
+    </>
+  );
+}
+
 function EcosystemHeroVisual({ lang }: { lang: Lang }) {
   const tr = homeContent[lang].hero;
 
@@ -200,7 +214,13 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         <div className="a3s-cta__mark" aria-hidden="true"><A3SMark /></div>
         <div className="a3s-cta__copy">
           <span className="a3s-section-eyebrow">{tr.cta.eyebrow}</span>
-          <h2 id="a3s-cta-title">{tr.cta.title}</h2>
+          <h2
+            className={lang === 'cn' ? 'a3s-cta__title--cn' : undefined}
+            id="a3s-cta-title"
+            aria-label={tr.cta.title}
+          >
+            <CtaTitle lang={lang} title={tr.cta.title} />
+          </h2>
           <p>{tr.cta.description}</p>
           <div>
             <a className="a3s-button a3s-button--light" href={withBase('/blog/')}>{tr.cta.primary}<ArrowRight aria-hidden="true" /></a>
