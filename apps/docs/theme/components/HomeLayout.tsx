@@ -4,7 +4,11 @@ import type { Lang } from '@/components/home/home-content';
 function MarkdownHome({ lang }: { lang: Lang }) {
   return (
     <main>
-      <h1>{lang === 'cn' ? '用可检查的组件构建并运行 Agent' : 'Build and run agents with inspectable parts'}</h1>
+      <h1>
+        {lang === 'cn'
+          ? '为AI Native组织构建的AI操作系统生态'
+          : 'The AI operating system ecosystem built for AI Native organizations'}
+      </h1>
       <p>
         {lang === 'cn'
           ? 'A3S 包含 36 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。'

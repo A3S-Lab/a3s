@@ -17,9 +17,9 @@ export const homeContent = {
     },
     hero: {
       eyebrow: 'OPEN AGENT TOOLING',
-      lineOne: 'Build and run agents',
-      lineTwo: 'with parts you can',
-      accent: 'inspect.',
+      lineOne: 'An AI operating system',
+      lineTwo: 'ecosystem for AI Native',
+      accent: 'organizations.',
       description:
         'A3S brings together 36 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure. Start locally, then add only the components the job needs.',
       primaryAction: 'Browse 36 projects',
@@ -74,7 +74,7 @@ export const homeContent = {
     },
     cta: {
       eyebrow: 'USE ONLY WHAT YOU NEED',
-      title: 'Start with the CLI. Keep only the parts your workflow needs.',
+      title: 'Every AI Native organization needs to build its own AI operating system.',
       description: 'Each project has its own repository, release cadence, and operating limits. The directory shows where to begin.',
       primary: 'Engineering blog',
       secondary: 'View source',
@@ -100,9 +100,9 @@ export const homeContent = {
     },
     hero: {
       eyebrow: '开放的 Agent 工具链',
-      lineOne: '用可检查的组件',
-      lineTwo: '构建并运行',
-      accent: 'Agent。',
+      lineOne: '为AI Native组织',
+      lineTwo: '构建的AI操作系统',
+      accent: '生态',
       description:
         'A3S 包含 36 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。先在本地开始，再按任务需要添加组件。',
       primaryAction: '浏览 36 个项目',
@@ -157,7 +157,7 @@ export const homeContent = {
     },
     cta: {
       eyebrow: '只用需要的部分',
-      title: '先用 CLI 跑起来，再按需要选择组件。',
+      title: '每个AI Native组织都需要构建专属的AI操作系统',
       description: '每个项目都有独立仓库、发布节奏和使用边界。项目目录会告诉你该从哪里开始。',
       primary: '工程博客',
       secondary: '查看代码',

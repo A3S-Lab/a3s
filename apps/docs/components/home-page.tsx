@@ -15,6 +15,20 @@ import { InstallCommandTerminal } from '@/components/home/install-command-termin
 
 const signalIcons = [SquaresFour, Browsers, Stack, GithubLogo];
 
+function CtaTitle({ lang, title }: { lang: Lang; title: string }) {
+  if (lang !== 'cn') return title;
+
+  const lineBreak = title.indexOf('构建');
+  if (lineBreak <= 0) return title;
+
+  return (
+    <>
+      <span>{title.slice(0, lineBreak)}</span>
+      <span>{title.slice(lineBreak)}</span>
+    </>
+  );
+}
+
 export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const tr = homeContent[lang];
 
@@ -31,11 +45,13 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <div className="a3s-hero__copy">
             <div className="a3s-eyebrow">{tr.hero.eyebrow}</div>
             <h1
-              aria-label={`${tr.hero.lineOne} ${tr.hero.lineTwo} ${tr.hero.accent}`}
+              aria-label={lang === 'cn'
+                ? `${tr.hero.lineOne}${tr.hero.lineTwo}${tr.hero.accent}`
+                : `${tr.hero.lineOne} ${tr.hero.lineTwo} ${tr.hero.accent}`}
               id="a3s-hero-title"
             >
               <span>{tr.hero.lineOne}</span>
-              <span>{tr.hero.lineTwo}{' '}<em>{tr.hero.accent}</em></span>
+              <span>{tr.hero.lineTwo}{lang === 'cn' ? null : ' '}<em>{tr.hero.accent}</em></span>
             </h1>
             <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
@@ -108,7 +124,13 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         <div className="a3s-cta__mark" aria-hidden="true"><A3SMark /></div>
         <div className="a3s-cta__copy">
           <span className="a3s-section-eyebrow">{tr.cta.eyebrow}</span>
-          <h2 id="a3s-cta-title">{tr.cta.title}</h2>
+          <h2
+            className={lang === 'cn' ? 'a3s-cta__title--cn' : undefined}
+            id="a3s-cta-title"
+            aria-label={tr.cta.title}
+          >
+            <CtaTitle lang={lang} title={tr.cta.title} />
+          </h2>
           <p>{tr.cta.description}</p>
           <div>
             <a className="a3s-button a3s-button--light" href={withBase('/blog/')}>{tr.cta.primary}<ArrowRight aria-hidden="true" /></a>

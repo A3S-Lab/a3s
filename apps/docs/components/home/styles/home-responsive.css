@@ -336,6 +336,11 @@
     font-size: clamp(42px, 12vw, 64px);
   }
 
+  .a3s-cta h2.a3s-cta__title--cn {
+    font-size: clamp(26px, 8vw, 40px);
+    line-height: 1.08;
+  }
+
   .a3s-cta__mark {
     right: -210px;
     width: 500px;
