@@ -265,6 +265,9 @@ add/replace/remove/retain preserves dependencies still owned by another root.
 Registry mutations wait for a transient watcher reconciliation lock within a
 bounded budget, while steady-state watcher reads remain non-blocking and a
 genuinely concurrent writer still fails closed with `use.extension.busy`.
+Watcher snapshots cannot publish installed-disabled lifecycle candidates, so
+the reviewed atomic cutover remains the sole owner of each Registry generation
+transition.
 
 Use the machine-readable commands before scripting an optional product:
 
