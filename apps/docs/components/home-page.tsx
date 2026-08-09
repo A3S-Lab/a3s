@@ -1,10 +1,9 @@
 import {
   ArrowRight,
-  CloudArrowUp,
-  FolderOpen,
+  Browsers,
   GithubLogo,
-  Globe,
-  UsersThree,
+  SquaresFour,
+  Stack,
 } from '@phosphor-icons/react/dist/ssr';
 import { withBase } from '@rspress/core/runtime';
 import { A3SMark } from '@/components/home/a3s-mark';
@@ -14,7 +13,7 @@ import { HomeNav } from '@/components/home/home-nav';
 import { homeContent, type Lang } from '@/components/home/home-content';
 import { InstallCommandTerminal } from '@/components/home/install-command-terminal';
 
-const signalIcons = [Globe, UsersThree, FolderOpen, CloudArrowUp];
+const signalIcons = [SquaresFour, Browsers, Stack, GithubLogo];
 
 export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const tr = homeContent[lang];

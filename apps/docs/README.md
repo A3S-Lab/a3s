@@ -114,3 +114,11 @@ intentionally refreshing or publishing a newer Form commit.
 The capture task keeps an existing committed image when a remote site is
 temporarily unavailable. Add or change destinations in
 `components/home/project-sites.ts`.
+
+## Ecosystem status data
+
+The project directory keeps its delivery stages and current versions or
+channels in `components/home/ecosystem-progress.ts`. Treat those stages as
+ordered maturity bands, not feature-completion percentages. Before changing an
+entry, check the current project version and public release together with its
+README and roadmap, then update the shared verification date.

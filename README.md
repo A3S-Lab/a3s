@@ -354,8 +354,11 @@ root-owned.
 The [CLI repository migration record](docs/cli-repository-migration.md)
 documents the temporary 0.11.x root migration, restored standalone ownership,
 and legacy-client release relay. The interactive
-[project directory](https://a3s-lab.github.io/a3s/#ecosystem) lists each
-project's responsibility, delivery stage, website, and source-code entrypoint.
+[project directory](https://a3s-lab.github.io/a3s/#ecosystem) records each
+project's responsibility, repository-level delivery stage, current version or
+channel, website, and source-code entrypoint. The snapshot is checked against
+current project versions, public releases, READMEs, and roadmaps; stage rails
+show maturity order, not feature-completion percentages.
 
 ## Development
 

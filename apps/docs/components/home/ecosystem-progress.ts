@@ -4,52 +4,57 @@ export type DevelopmentStage = 'building' | 'experimental' | 'preview' | 'releas
 
 export interface ProjectProgress {
   stage: DevelopmentStage;
-  value: 40 | 60 | 80 | 100;
+  position: 25 | 50 | 75 | 100;
+  release: string;
 }
 
-const progressByProject = {
-  cli: 'preview',
-  code: 'released',
-  web: 'preview',
-  windhole: 'building',
-  box: 'released',
-  bench: 'preview',
-  search: 'released',
-  browser: 'preview',
-  ocr: 'preview',
-  use: 'preview',
-  office: 'preview',
-  science: 'preview',
-  cloud: 'experimental',
-  form: 'preview',
-  site: 'released',
-  runtime: 'preview',
-  'oci-runtime': 'experimental',
-  flow: 'preview',
-  event: 'preview',
-  lane: 'preview',
-  memory: 'preview',
-  orm: 'preview',
-  common: 'preview',
-  boot: 'preview',
-  gateway: 'released',
-  power: 'preview',
-  ahp: 'released',
-  acl: 'preview',
-  tui: 'preview',
-  gui: 'building',
-  webview: 'preview',
-  ui: 'preview',
-  observer: 'preview',
-  sentry: 'preview',
-  updater: 'experimental',
-  homebrew: 'released',
-} as const satisfies Record<string, DevelopmentStage>;
+// Verified against current project versions, public releases, READMEs, and roadmaps.
+// A released project can still contain explicitly preview or experimental subfeatures.
+export const progressVerifiedAt = '2026-08-09';
 
-const stageValues: Record<DevelopmentStage, ProjectProgress['value']> = {
-  building: 40,
-  experimental: 60,
-  preview: 80,
+const progressByProject = {
+  cli: { stage: 'preview', release: 'v0.10.14' },
+  code: { stage: 'released', release: 'v6.8.0' },
+  web: { stage: 'preview', release: 'A3S v0.11.1' },
+  windhole: { stage: 'preview', release: 'main' },
+  box: { stage: 'released', release: 'v3.1.0' },
+  bench: { stage: 'preview', release: 'v0.1.2' },
+  search: { stage: 'released', release: 'v3.0.9' },
+  browser: { stage: 'preview', release: 'v0.3.2' },
+  ocr: { stage: 'preview', release: 'v0.5.0' },
+  use: { stage: 'preview', release: 'v0.3.0' },
+  office: { stage: 'preview', release: 'v0.3.0' },
+  science: { stage: 'preview', release: 'main' },
+  cloud: { stage: 'experimental', release: 'main' },
+  form: { stage: 'preview', release: 'main' },
+  site: { stage: 'released', release: 'live' },
+  runtime: { stage: 'preview', release: 'v0.2.0' },
+  'oci-runtime': { stage: 'experimental', release: 'v0.2.0' },
+  flow: { stage: 'preview', release: 'v0.11.0' },
+  event: { stage: 'preview', release: 'v0.3.0' },
+  lane: { stage: 'preview', release: 'v0.5.1' },
+  memory: { stage: 'preview', release: 'v0.1.2' },
+  orm: { stage: 'preview', release: 'v0.2.0' },
+  common: { stage: 'preview', release: 'v0.1.1' },
+  boot: { stage: 'preview', release: 'v0.1.3' },
+  gateway: { stage: 'released', release: 'v1.0.13' },
+  power: { stage: 'preview', release: 'v0.8.0' },
+  ahp: { stage: 'released', release: 'v2.4.0' },
+  acl: { stage: 'preview', release: 'v0.3.0' },
+  tui: { stage: 'preview', release: 'v0.1.14' },
+  gui: { stage: 'preview', release: 'main' },
+  webview: { stage: 'preview', release: 'v0.1.5' },
+  ui: { stage: 'preview', release: 'v0.2.1' },
+  observer: { stage: 'preview', release: 'v0.11.0' },
+  sentry: { stage: 'preview', release: 'v0.8.0' },
+  updater: { stage: 'released', release: 'v0.3.0' },
+  homebrew: { stage: 'released', release: 'live' },
+} as const satisfies Record<string, { stage: DevelopmentStage; release: string }>;
+
+const stagePositions: Record<DevelopmentStage, ProjectProgress['position']> = {
+  building: 25,
+  experimental: 50,
+  preview: 75,
   released: 100,
 };
 
@@ -69,13 +74,14 @@ const stageLabels: Record<Lang, Record<DevelopmentStage, string>> = {
 };
 
 export function getProjectProgress(projectId: string, lang: Lang): ProjectProgress & { label: string } {
-  const stage = progressByProject[projectId as keyof typeof progressByProject];
-  if (!stage) throw new Error(`Development progress is missing for ecosystem project: ${projectId}`);
+  const project = progressByProject[projectId as keyof typeof progressByProject];
+  if (!project) throw new Error(`Delivery status is missing for ecosystem project: ${projectId}`);
 
   return {
-    stage,
-    value: stageValues[stage],
-    label: stageLabels[lang][stage],
+    stage: project.stage,
+    position: stagePositions[project.stage],
+    release: project.release,
+    label: stageLabels[lang][project.stage],
   };
 }
 
