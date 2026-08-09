@@ -87,6 +87,19 @@ Exit gate:
 - Cancellation, timeout, duplicate start, replay drift, and invalid plan
   references fail explicitly.
 
+The current implementation baseline was published on 2026-08-10 by
+compatibility-lock digest
+`sha256:9667805dd2d5327db19b7f5f56cecbe5fd86972ed493d06eb7f0598b0f05c57a`.
+The gate pins Cloud `ae9f145e322315e45d0bf1d1239caf7a347e9e9d`, Flow
+`0.11.0`, Boot `0.1.4`, and ORM `0.2.0`. Migration `080` atomically persists
+the Goal/Plan-bound WorkflowRun, Operation, semantic step projections,
+idempotency, audit, and Outbox records through A3S ORM/PostgreSQL. One A3S Flow
+run executes Workflow-local `input`, `transform`, `branch`, and `output` steps;
+REST `1.14.0`, the maintained TypeScript client, CLI, and Management MCP share
+the same lifecycle. Phase 2 remains active until the named API/worker
+process-death and expanded cross-surface evidence is complete. This baseline
+does not claim protected Form submission or HumanTask availability.
+
 ### Phase 3: Human-task vertical slice
 
 Deliverables:

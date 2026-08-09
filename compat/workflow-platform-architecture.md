@@ -1,6 +1,6 @@
 # A3S Workflow Platform Architecture
 
-Status: Target integration architecture; Phase 0 baseline verified
+Status: Target integration architecture; Phases 0 and 1 verified, Phase 2 active
 
 This document defines the target composition of A3S Form, A3S Flow, A3S Boot,
 A3S ORM, and A3S Cloud. It is an integration plan, not an availability claim.
