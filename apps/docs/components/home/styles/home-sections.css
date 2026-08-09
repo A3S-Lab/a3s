@@ -362,10 +362,15 @@
 }
 
 .a3s-cta h2 {
+  max-width: 1120px;
   margin-right: auto;
   margin-left: auto;
   color: #ffffff;
-  font-size: clamp(48px, 6vw, 80px);
+  font-size: clamp(44px, 5vw, 72px);
+}
+
+.a3s-cta__title--cn > span {
+  display: block;
 }
 
 .a3s-cta__copy > p {

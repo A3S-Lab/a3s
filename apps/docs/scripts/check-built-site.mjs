@@ -76,12 +76,10 @@ assert(chineseBlog, 'Chinese blog index is missing');
 assert(englishBlog, 'English blog index is missing');
 
 for (const marker of [
-  '用可检查的组件',
-  '构建并运行',
-  'Agent。',
+  '为AI Native组织构建的AI操作系统生态',
   '分布在全球的成员和 Agent 共用一个 Workspace',
   'Shared Workspace',
-  '先用 CLI 跑起来',
+  '每个AI Native组织都需要构建专属的AI操作系统',
   '交付阶段',
   '不统计功能完成率',
   'v0.10.14',
@@ -90,12 +88,10 @@ for (const marker of [
 }
 
 for (const marker of [
-  'Build and run agents',
-  'with parts you can',
-  'inspect.',
+  'An AI operating system ecosystem for AI Native organizations.',
   'globally distributed humans and agents',
   'Shared Workspace',
-  'Start with the CLI.',
+  'Every AI Native organization needs to build its own AI operating system.',
   'Delivery stage',
   'not a feature-completion score',
   'v0.10.14',
