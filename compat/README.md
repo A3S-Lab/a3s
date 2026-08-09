@@ -14,9 +14,11 @@ The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
 revision drift, dirty component worktrees, Cargo manifest or lockfile drift,
-and mismatched Cloud, Box Runtime, or Gateway dependencies. It also parses and
-generates all tracked Cloud product-configuration fixtures and rejects
-HCL/Terraform product configuration in the Cloud integration surface.
+and mismatched Cloud, Form, Box Runtime, or Gateway dependencies. The verifier
+also requires Cloud's consumed Form interaction fixture to be byte-identical to
+the Form-owned conformance fixture. It parses and generates all tracked Cloud
+product-configuration fixtures and rejects HCL/Terraform product configuration
+in the Cloud integration surface.
 
 ## Proposing An Update
 
@@ -38,8 +40,10 @@ tests, release notes, and publication.
 
 ## Workflow Platform Planning
 
-The proposed Cloud, Flow, Boot, ORM, and Form composition is defined by the
+The target Cloud, Flow, Boot, ORM, and Form composition is defined by the
 [workflow platform architecture](workflow-platform-architecture.md) and its
-ordered [development plan](workflow-platform-development-plan.md). These plans
-define target boundaries and future gates; they do not change the current lock
-or claim that Form integration and Cloud Workflow execution are available.
+ordered [development plan](workflow-platform-development-plan.md). The current
+lock pins the exact Form Core, Flow, Boot, ORM, Cloud, interaction protocols,
+and shared fixture used by the Phase 0 contract baseline. This does not claim
+native submitted-value parity, Form lifecycle persistence, WorkflowRun
+execution, or end-to-end HumanTask availability.

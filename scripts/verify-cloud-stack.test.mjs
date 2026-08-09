@@ -18,8 +18,17 @@ const LOCK_SOURCE = readFileSync(LOCK_PATH, 'utf8');
 test('the checked-in Cloud stack is reproducible and clean', () => {
   const result = verifyCloudStack(ROOT);
   assert.match(result.digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(result.components.length, 11);
+  assert.equal(result.components.length, 12);
   assert.deepEqual(result.aclFiles, ['config/cloud.acl', 'config/node.example.acl']);
+  assert.match(result.formInteractionFixture.digest, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(
+    result.formInteractionFixture.owner,
+    'packages/form/tests/conformance/interaction-contract-v1.json',
+  );
+  assert.equal(
+    result.formInteractionFixture.cloud,
+    'apps/cloud/crates/control-plane/tests/fixtures/form-interaction-contract-v1.json',
+  );
 });
 
 test('the lock rejects unknown fields before accepting canonical text', () => {
@@ -54,6 +63,16 @@ test('the Box component resolves its package from the nested Rust workspace', ()
   assert.equal(box.version, '3.2.0');
 });
 
+test('the Form component resolves the native core package from its nested manifest', () => {
+  const form = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'form',
+  );
+  assert.ok(form);
+  assert.equal(form.manifest, 'crates/a3s-form-core/Cargo.toml');
+  assert.equal(form.package, 'a3s-form-core');
+  assert.equal(form.version, '0.1.0');
+});
+
 test('Git lock selection ignores a same-version registry package', () => {
   const revision = '1675376dbced0a65afce2141e799dcdceb8e475d';
   const lock = `
@@ -86,6 +105,20 @@ test('the lock must use canonical a3s-acl attribute ordering', () => {
     '  package = "a3s-acl"\n  owner = "A3S-Lab/ACL"\n',
   );
   assert.throws(() => parseCloudStackLock(noncanonical), /not in canonical a3s-acl form/);
+});
+
+test('protocol levels accept owner schemas ending in /v1 and reject version drift', () => {
+  const slashVersion = LOCK_SOURCE.replace(
+    'schema = "a3s.flow.native_ts.v1"',
+    'schema = "a3s.dev/flow-native-typescript/v1"',
+  );
+  assert.doesNotThrow(() => parseCloudStackLock(slashVersion));
+
+  const driftedVersion = slashVersion.replace(
+    'schema = "a3s.dev/flow-native-typescript/v1"',
+    'schema = "a3s.dev/flow-native-typescript/v2"',
+  );
+  assert.throws(() => parseCloudStackLock(driftedVersion), /does not match level 1/);
 });
 
 test('multiline Cargo dependency declarations are read as one binding', () => {
@@ -132,4 +165,31 @@ test('the Cloud Box Runtime dependency is bound to the locked Git revision', () 
   assert.ok(declaration.includes(`version = "=${box.version}"`));
   assert.ok(declaration.includes(`rev = "${box.revision}"`));
   assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Box\.git"/);
+});
+
+test('the Cloud Form Core dependency is exact and bound to the locked Git revision', () => {
+  const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
+  const form = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'form',
+  );
+  assert.ok(form);
+  const declaration = tomlDependency(
+    cloudManifest,
+    'workspace.dependencies',
+    form.package,
+    'apps/cloud/Cargo.toml',
+  );
+  assert.ok(declaration.includes(`version = "=${form.version}"`));
+  assert.ok(declaration.includes(`rev = "${form.revision}"`));
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Form\.git"/);
+});
+
+test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
+  const owner = readFileSync(
+    resolve(ROOT, 'packages/form/tests/conformance/interaction-contract-v1.json'),
+  );
+  const cloud = readFileSync(
+    resolve(ROOT, 'apps/cloud/crates/control-plane/tests/fixtures/form-interaction-contract-v1.json'),
+  );
+  assert.ok(owner.equals(cloud));
 });
