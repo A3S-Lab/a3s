@@ -229,6 +229,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The local path requires Docker and produces `local_unofficial` results; official evaluation requires matching admission and Runtime evidence |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
+| Avatar | Initial AI Native Avatar Engine contracts and sidecar protocol are present; LiveKit and model adapters remain roadmap work |
 | Cloud | Delivered, experimental, and planned behavior is documented in the [Cloud repository](apps/cloud/README.md) |
 | OCI Runtime | Experimental: every current platform driver remains `probe-only`; host detection is not workload-launch support |
 | Infrastructure libraries | Optional features expose integrations; external brokers, stores, providers, and services must still be operated |
@@ -319,6 +320,7 @@ distribution assets.
 | --- | --- |
 | [A3S CLI](crates/cli/) | Umbrella `a3s` command, Code TUI host, local Web API, configuration, authentication, and component lifecycle |
 | [A3S Code](crates/code/) | Governed async agent runtime with Rust Core plus Node.js and Python SDKs |
+| [A3S Avatar](crates/avatar/) | AI Native Avatar Engine for fully self-hosted real-time digital humans |
 | [A3S Web](apps/web/) | Local Code, Work, file, knowledge, Office, and research browser surfaces |
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
 | [A3S Box](crates/box/) | Docker-like MicroVM product for Linux OCI workloads |
