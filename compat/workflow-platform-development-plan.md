@@ -1,6 +1,6 @@
 # A3S Workflow Platform Development Plan
 
-Status: Phase 0 verified; Phase 1 is the active delivery stage
+Status: Phases 0 and 1 verified; Phase 2 is the active delivery stage
 
 This plan implements the boundaries and consistency model in the [A3S Workflow
 Platform Architecture](workflow-platform-architecture.md). It is gate-driven;
@@ -61,6 +61,14 @@ Exit gate:
 - Optimistic conflicts, replayed idempotency, unauthorized access, malformed
   documents, compiler failure, process death, release immutability, and
   cross-tenant isolation pass against PostgreSQL 17.
+
+Verified on 2026-08-09 by compatibility-lock digest
+`sha256:a3219a0c6fc43b8d9559a613945eeee48edb19fb6ff8f46d2e960a2f01e4bb9e`.
+The gate pins Cloud `c99ac0dc573fee12a7757e11c6800728f15244f0` and verifies
+project-scoped canonical drafts, immutable native owner-compiled releases,
+optimistic aggregate versions, idempotent replay, tenant isolation, audit and
+Outbox writes, and one CQRS authority across REST `1.13.0`, the maintained
+TypeScript client, CLI, and seven Management MCP tools against PostgreSQL 17.
 
 ### Phase 2: Minimal WorkflowRun execution
 

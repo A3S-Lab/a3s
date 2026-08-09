@@ -44,8 +44,10 @@ The target Cloud, Flow, Boot, ORM, and Form composition is defined by the
 [workflow platform architecture](workflow-platform-architecture.md) and its
 ordered [development plan](workflow-platform-development-plan.md). The current
 lock pins the exact Form Core, Flow, Boot, ORM, Cloud, interaction protocols,
-evaluation protocols, and shared fixtures used by the Phase 0 contract
-baseline. Native Form compilation and submitted-value evaluation now have
-byte-identical Cloud evidence. This does not claim Form lifecycle persistence,
-WorkflowRun execution, protected human-task commands, or end-to-end HumanTask
-availability.
+evaluation protocols, and shared fixtures used by the verified Phase 1
+baseline. Native Form compilation and submitted-value evaluation have
+byte-identical Cloud evidence, while Cloud's project-scoped canonical drafts
+and immutable releases persist through A3S ORM/PostgreSQL and share one CQRS
+authority across REST, TypeScript client, CLI, and Management MCP. This does
+not claim WorkflowRun execution, protected submissions, human-task commands,
+or end-to-end HumanTask availability.
