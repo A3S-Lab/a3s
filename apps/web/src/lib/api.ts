@@ -31,6 +31,8 @@ import type {
   OsAccount,
   PersonalKnowledgeBaseCatalog,
   PluginActivityCatalog,
+  PluginUiCandidateCatalog,
+  PluginUiCandidateDecision,
   PluginMarketplaceCatalog,
   PluginOperationPlan,
   PluginOperationRequest,
@@ -394,6 +396,17 @@ export const codeApi = {
   skills: (workspace: string) => apiRequest<SkillCatalog>(`/api/v1/plugins?workspace=${encodeURIComponent(workspace)}`),
   pluginActivities: (signal?: AbortSignal) =>
     apiRequest<PluginActivityCatalog>('/api/v1/plugins/activities', { signal }),
+  pluginActivityCandidates: (signal?: AbortSignal) =>
+    apiRequest<PluginUiCandidateCatalog>('/api/v1/plugins/activities/candidates', { signal }),
+  decidePluginActivityCandidate: (token: string, decision: PluginUiCandidateDecision, signal?: AbortSignal) =>
+    apiRequest<{ schemaVersion: number; accepted: boolean; decision: PluginUiCandidateDecision }>(
+      `/api/v1/plugins/activities/candidates/${encodeURIComponent(token)}/decision`,
+      {
+        method: 'POST',
+        signal,
+        ...jsonBody({ decision }),
+      }
+    ),
   pluginActivityState: (
     key: string,
     generation: number,
