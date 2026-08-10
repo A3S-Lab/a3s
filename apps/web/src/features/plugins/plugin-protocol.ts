@@ -1,5 +1,6 @@
 import type { PluginActivityDocumentIdentity } from './plugin-activity-document';
 import type { PluginContextProposal } from './plugin-state';
+import type { PluginUiCandidate } from '../../types/api';
 
 export const activityProtocol = 'a3s.activity.v3';
 const MAX_MESSAGE_BYTES = 32 * 1024;
@@ -18,6 +19,21 @@ export type PluginHostMessage =
   | { type: 'context'; proposal: PluginContextProposal }
   | { type: 'error'; message: string }
   | { type: 'state'; requestId: string; request: PluginStateRequest };
+
+export type PluginCandidateMessage = { type: 'ready' } | { type: 'error' };
+
+export function parsePluginCandidateMessage(value: unknown): PluginCandidateMessage | null {
+  if (!isRecord(value)) return null;
+  try {
+    if (utf8Size(JSON.stringify(value)) > MAX_MESSAGE_BYTES) return null;
+  } catch {
+    return null;
+  }
+  if (value.protocol !== activityProtocol) return null;
+  if (value.type === 'activity.ready') return { type: 'ready' };
+  if (value.type === 'activity.error' && boundedText(value.message, 500)) return { type: 'error' };
+  return null;
+}
 
 export function parsePluginMessage(
   value: unknown,
@@ -101,6 +117,22 @@ export function activityHostInit(
       key: documentIdentity.key,
       generation: documentIdentity.generation,
       revision: documentIdentity.revision,
+    },
+  } as const;
+}
+
+export function activityCandidateHostInit(theme: 'light' | 'dark', locale: string, candidate: PluginUiCandidate) {
+  return {
+    protocol: activityProtocol,
+    type: 'host.init',
+    payload: {
+      mode: 'readiness',
+      theme,
+      locale,
+      packageId: candidate.packageId,
+      surfaceId: candidate.surfaceId,
+      generation: candidate.generation,
+      assetDigest: candidate.assetDigest,
     },
   } as const;
 }

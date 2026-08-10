@@ -28,6 +28,16 @@
   background: var(--a3s-panel);
 }
 
+.plugin-candidate-readiness-host {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  inset: auto auto 0 -10000px;
+}
+
 .plugin-frame-overlay {
   position: absolute;
   z-index: 2;

@@ -140,8 +140,29 @@ package-generation lease before touching the generation-neutral namespace, so
 a stale iframe cannot start a write after retirement begins. Restart, disable,
 rollback, replacement retirement, and an upgrade retaining the same surface
 preserve state. True uninstall or removal of that surface clears it, including
-a corrupt snapshot. These rules do not implement failed-N+1 UI fallback;
-candidate readiness, cutover, and rollback remain separate release work.
+a corrupt snapshot. State retention and failed-N+1 selection are separate
+contracts; Code Web now composes both.
+
+## Candidate readiness before cutover
+
+An install or upgrade that contributes UI does not publish N+1 immediately.
+The server first exposes a process-local, path-free candidate catalog and an
+exact candidate document URL. Code Web loads that document in a hidden
+`sandbox="allow-scripts"` iframe without same-origin authority and transfers a
+new dedicated `MessagePort` with only readiness-mode `host.init` identity.
+The candidate receives no state, context, Tool, MCP, Flow, or other backend
+bindings. The host accepts only bounded `activity.ready` or `activity.error`
+messages on that port.
+
+Load failure, a second navigation, a malformed/error message, or the readiness
+deadline fails closed. A3S Use rolls the candidate lifecycle back while the
+selected N document remains callable; package receipts, Registry generation,
+and lifecycle roots do not retain N+1 residue. That reviewed plan becomes
+terminal and cannot republish its candidate. A fresh reviewed plan may retry
+the same N+1 lifecycle generation, and a successful ready proof produces one
+Registry cutover. CLI, TUI, and native hosts still use static integrity checks
+only until they inject an equivalent renderer. Reviewed UI backend bindings
+and general-purpose native UI hosting remain release work.
 
 ## Context handoff
 
@@ -232,6 +253,17 @@ It waits for the host-owned ready state, sends a proposal through the
 transferred port, verifies the host review dialog, and captures sandbox,
 accessibility, console, page-error, and screenshot evidence. The adjacent
 `activity-document.acl` suite verifies the server document boundary directly.
+
+Pre-cutover candidate behavior has separate coverage. The Web host tests prove
+exact identity, the script-only sandbox, readiness-only messages, authority
+isolation, navigation failure, and protocol failure. The generic real A3S Use
+Marketplace E2E then proves N remains callable after a failed N+1 proof, no
+receipt or lifecycle root leaks, the rolled-back plan cannot republish, a fresh
+plan succeeds at the same lifecycle generation, and the final Registry
+generation advances once. Browser QA uses a candidate that emits
+`activity.error` if either its state or context probe receives any host reply;
+the captured ready decision therefore proves the candidate port stayed
+authority-free.
 
 ## Local Web API
 

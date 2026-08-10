@@ -507,6 +507,24 @@ export interface PluginActivityCatalog {
   items: PluginActivityItem[];
 }
 
+export type PluginUiCandidateDecision = 'ready' | 'load-failed' | 'protocol-error' | 'navigation-blocked' | 'timed-out';
+
+export interface PluginUiCandidate {
+  token: string;
+  scope: { kind: 'user' | 'workspace'; id: string };
+  packageId: string;
+  surfaceId: string;
+  generation: number;
+  title: string;
+  assetDigest: string;
+  documentUrl: string;
+}
+
+export interface PluginUiCandidateCatalog {
+  schemaVersion: number;
+  items: PluginUiCandidate[];
+}
+
 export interface PluginMarketplaceRegistry {
   name: string;
   url: string;
