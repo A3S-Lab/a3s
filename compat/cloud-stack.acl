@@ -18,9 +18,9 @@ component "boot" {
   package = "a3s-boot"
   path = "crates/boot"
   repository = "git@github.com:A3S-Lab/Boot.git"
-  revision = "81b610397e170be749343ab8f7f7622774473a1a"
+  revision = "26355f6209e27c647a6d58cf87f6220b72226aa4"
   source = "git"
-  version = "0.1.4"
+  version = "0.2.0"
 }
 component "box" {
   manifest = "src/runtime/Cargo.toml"
@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "3e7df685a0616083ada0f8217c4c35548a19d26a"
+  revision = "f0010d3c4644bfb311d8af846b0c2e700269d195"
   source = "git"
   version = "0.1.0"
 }
@@ -54,9 +54,9 @@ component "flow" {
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "280e470563996203b176a4fb5a2fdf7e96a7b1f2"
+  revision = "0650f598a1d31e0036ea94b218d5db41031ec042"
   source = "git"
-  version = "0.11.0"
+  version = "0.12.0"
 }
 component "form" {
   manifest = "crates/a3s-form-core/Cargo.toml"
@@ -82,9 +82,9 @@ component "orm" {
   package = "a3s-orm"
   path = "crates/orm"
   repository = "git@github.com:A3S-Lab/ORM.git"
-  revision = "9cb0d77210539b2c4f3f38b7cb127bf9f176815b"
+  revision = "b04ab197deeebe23acbd5dd922f734032622368f"
   source = "git"
-  version = "0.2.1"
+  version = "0.3.0"
 }
 component "runtime" {
   owner = "A3S-Lab/Runtime"

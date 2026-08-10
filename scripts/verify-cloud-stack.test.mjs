@@ -158,7 +158,7 @@ test('multiline Cargo dependency declarations are read as one binding', () => {
     'a3s-boot',
     'apps/cloud/Cargo.toml',
   );
-  assert.match(boot, /version = "=0\.1\.4"/);
+  assert.match(boot, /version = "=0\.2\.0"/);
   assert.match(boot, /"openapi-schemas"/);
 });
 
