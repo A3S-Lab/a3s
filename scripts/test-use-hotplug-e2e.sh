@@ -50,7 +50,9 @@ cargo test \
   --ignored \
   --nocapture
 
-cargo test \
+# This fixture builds one large async state machine. Windows libtest workers
+# otherwise use a stack that is too small for the exact host-Grant boundary.
+RUST_MIN_STACK=8388608 cargo test \
   --manifest-path "${cli_manifest}" \
   --locked \
   --lib \
