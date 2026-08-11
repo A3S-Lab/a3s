@@ -28,7 +28,7 @@ component "box" {
   package = "a3s-box-runtime"
   path = "crates/box"
   repository = "git@github.com:A3S-Lab/Box.git"
-  revision = "dc6b857f650a9b57a8284c54d8657c7bbc61f7f5"
+  revision = "5a823c7a980dee15fcaf34c092ac417d65853589"
   source = "git"
   version = "3.2.0"
 }
@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "6d171085bcb049cb6837395f1f3603c40bbe784e"
+  revision = "ff2190c740a959f9d5cbb2f7aa561fa1c3102fd0"
   source = "git"
   version = "0.1.0"
 }
@@ -73,7 +73,7 @@ component "gateway" {
   package = "a3s-gateway"
   path = "crates/gateway"
   repository = "git@github.com:A3S-Lab/Gateway.git"
-  revision = "cb132c0277f0a8d099ebdc570caf16fd2c2c9a95"
+  revision = "06bfe60dbaa793ee2b7f72b79fb7a8abc984d71f"
   source = "git"
   version = "1.0.13"
 }
