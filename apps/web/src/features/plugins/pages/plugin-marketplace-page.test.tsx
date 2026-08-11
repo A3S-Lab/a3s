@@ -36,6 +36,7 @@ const researchActivity: PluginActivityItem = {
   order: 120,
   sha256: 'c'.repeat(64),
   mediaType: 'text/html',
+  documentUrl: `/api/v1/plugins/activities/science%3Aresearch/document?generation=1&revision=${'d'.repeat(64)}`,
 };
 
 describe('plugin marketplace page', () => {
@@ -295,7 +296,6 @@ describe('plugin marketplace page', () => {
 function createPluginActions() {
   return {
     refreshActivities: vi.fn(async () => undefined),
-    loadActivityContent: vi.fn(async () => undefined),
     refreshMarketplace: vi.fn(async () => undefined),
     planOperation: vi.fn(async () => undefined),
     applyReviewedOperation: vi.fn(async () => undefined),

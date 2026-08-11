@@ -18,7 +18,12 @@ import {
   type ArchitectureCategory,
   type ArchitectureProject,
 } from '@/components/home/architecture';
-import { getProjectProgress } from '@/components/home/ecosystem-progress';
+import {
+  deliveryStages,
+  getDeliveryStageCopy,
+  getProjectDeliveryStatus,
+  statusVerifiedAt,
+} from '@/components/home/ecosystem-status';
 import type { Lang } from '@/components/home/home-content';
 import { getProjectRepositoryHref } from '@/components/home/project-links';
 import { featuredProjectSites, type FeaturedProjectSite } from '@/components/home/project-sites';
@@ -33,24 +38,25 @@ const categoryIcons: Record<ArchitectureCategory, Icon> = {
 
 const copy = {
   cn: {
-    liveEyebrow: '项目网站 / 实时入口',
-    liveTitle: '先看产品页面，再看代码。',
-    liveDescription: '这里展示独立网站与交互式 Playground。截图来自公开页面或项目当前的构建产物。',
-    live: 'LIVE',
+    liveEyebrow: '公开项目页面 / 8',
+    liveTitle: '看看已经可以访问的项目页面。',
+    liveDescription: '这些入口包括产品页面和交互式 Playground。预览截图取自线上页面或当前构建。',
+    live: '在线',
     buildPreview: '构建预览',
-    openSite: '访问网站',
-    openRepository: '打开仓库',
+    openSite: '打开页面',
+    openRepository: '查看代码',
     directoryEyebrow: '完整项目目录 / 36',
-    directoryTitle: '36 个项目，各自负责什么。',
-    directoryDescription: '按层级筛选或直接搜索。每张卡列出项目职责、主要能力、开发阶段和代码入口。',
-    search: '搜索项目、职责或能力',
+    directoryTitle: '36 个项目，一处查清。',
+    directoryDescription: '按名称或职责搜索，也可以按层级筛选。每个条目都列出职责、主要能力、交付阶段、当前版本或通道，以及代码入口。',
+    search: '搜索项目名称、职责或能力',
     result: '个项目',
-    noResults: '没有匹配的项目。',
-    reset: '查看全部项目',
-    openGuide: '打开项目',
-    repository: 'GitHub',
-    progress: '开发进度',
-    progressMethod: '进度按公开交付阶段映射：开发中 40% · 实验 60% · 预览 80% · 已发布 100%，不代表功能数量完成率。',
+    noResults: '没有项目符合当前筛选条件。',
+    reset: '清除筛选',
+    openGuide: '查看项目',
+    repository: '代码',
+    deliveryStatus: '交付阶段',
+    stageGuide: '交付阶段说明',
+    statusMethod: `这些阶段描述项目现在怎么用，不统计功能完成率。版本和阶段已于 ${statusVerifiedAt} 根据公开 Release、README 和 Roadmap 复核。`,
     categories: {
       all: '全部',
       products: '产品与应用',
@@ -59,24 +65,25 @@ const copy = {
     },
   },
   en: {
-    liveEyebrow: 'PROJECT SITES / LIVE DESTINATIONS',
-    liveTitle: 'See the product. Open the code when needed.',
-    liveDescription: 'These are independent project sites and interactive playgrounds. Images come from public pages or the project’s current build output.',
-    live: 'LIVE',
+    liveEyebrow: '8 PROJECT SITES',
+    liveTitle: 'Open the projects that already have a public page.',
+    liveDescription: 'These links go to product pages and interactive playgrounds. Previews come from the live page or its current build.',
+    live: 'ONLINE',
     buildPreview: 'BUILD PREVIEW',
-    openSite: 'Visit site',
-    openRepository: 'Open repository',
+    openSite: 'Open site',
+    openRepository: 'View source',
     directoryEyebrow: 'COMPLETE PROJECT DIRECTORY / 36',
-    directoryTitle: 'What each of the 36 projects owns.',
-    directoryDescription: 'Filter by layer or search directly. Each card lists ownership, core capabilities, delivery stage, and source code.',
+    directoryTitle: 'One directory for all 36 projects.',
+    directoryDescription: 'Search by name or responsibility, or filter by layer. Each entry shows its role, core capabilities, delivery stage, current version or channel, and source.',
     search: 'Search projects, responsibilities, or capabilities',
     result: 'projects',
-    noResults: 'No projects match this search.',
-    reset: 'View every project',
-    openGuide: 'Open project',
-    repository: 'GitHub',
-    progress: 'Development progress',
-    progressMethod: 'Bars map public delivery stages: Building 40% · Experimental 60% · Preview 80% · Released 100%. They do not claim feature-count completion.',
+    noResults: 'No projects match the current filters.',
+    reset: 'Clear filters',
+    openGuide: 'View project',
+    repository: 'Source',
+    deliveryStatus: 'Delivery stage',
+    stageGuide: 'Delivery stage guide',
+    statusMethod: `These stages describe how a project can be used today; they are not a feature-completion score. Versions and stages were checked against public releases, READMEs, and roadmaps on ${statusVerifiedAt}.`,
     categories: {
       all: 'All projects',
       products: 'Products & apps',
@@ -91,10 +98,40 @@ function localizedHref(href: string, lang: Lang) {
   return href.startsWith('/') ? withBase(href) : href;
 }
 
+function sharedSiteHref(href: string, lang: Lang) {
+  if (!href.startsWith('/')) return href;
+
+  const localizedBase = withBase('/');
+  const deploymentBase = lang === 'en' ? localizedBase.replace(/en\/$/, '') : localizedBase;
+  return `${deploymentBase}${href.slice(1)}`;
+}
+
 function externalLinkProps(href: string) {
   return href.startsWith('http')
     ? { target: '_blank' as const, rel: 'noopener noreferrer' }
     : {};
+}
+
+function DeliveryStageGuide({ lang }: { lang: Lang }) {
+  const tr = copy[lang];
+
+  return (
+    <div className="a3s-delivery-guide">
+      <p>{tr.statusMethod}</p>
+      <ul aria-label={tr.stageGuide}>
+        {deliveryStages.map((stage) => {
+          const stageDetails = getDeliveryStageCopy(stage, lang);
+
+          return (
+            <li data-stage={stage} key={stage}>
+              <strong><i aria-hidden="true" />{stageDetails.label}</strong>
+              <span>{stageDetails.description}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 function ProjectSitePreview({ project, site }: { project: ArchitectureProject; site: FeaturedProjectSite }) {
@@ -114,7 +151,7 @@ function ProjectSitePreview({ project, site }: { project: ArchitectureProject; s
 
 function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProject; site: FeaturedProjectSite; lang: Lang }) {
   const tr = copy[lang];
-  const href = localizedHref(site.href, lang);
+  const href = sharedSiteHref(site.href, lang);
 
   return (
     <article className="a3s-site-card" data-preview-mode={site.mode} data-site={project.id}>
@@ -140,8 +177,13 @@ function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProjec
 function ProjectCard({ project, index, lang }: { project: ArchitectureProject; index: number; lang: Lang }) {
   const tr = copy[lang];
   const Icon = categoryIcons[project.category];
-  const progress = getProjectProgress(project.id, lang);
-  const projectHref = localizedHref(project.href, lang);
+  const delivery = getProjectDeliveryStatus(project.id, lang);
+  const featuredSite = featuredProjectSites.find((site) => (
+    site.id === project.id && site.destination === 'site'
+  ));
+  const projectHref = featuredSite
+    ? sharedSiteHref(featuredSite.href, lang)
+    : localizedHref(project.href, lang);
   const repositoryHref = getProjectRepositoryHref(project.id);
   const hasDistinctRepository = repositoryHref !== projectHref;
 
@@ -160,20 +202,12 @@ function ProjectCard({ project, index, lang }: { project: ArchitectureProject; i
       <ul aria-label={`${project.name} capabilities`}>
         {project.nodes.slice(0, 3).map((node) => <li key={node.id}>{node.label}</li>)}
       </ul>
-      <div className="a3s-project-progress" data-stage={progress.stage}>
+      <div className="a3s-project-delivery" data-stage={delivery.stage}>
+        <span>{tr.deliveryStatus}</span>
         <div>
-          <span>{tr.progress} · {progress.label}</span>
-          <b>{progress.value}%</b>
+          <strong><i aria-hidden="true" />{delivery.label}</strong>
+          <code>{delivery.release}</code>
         </div>
-        <span
-          aria-label={`${tr.progress}: ${progress.label}, ${progress.value}%`}
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={progress.value}
-          role="progressbar"
-        >
-          <i style={{ '--project-progress': progress.value / 100 } as React.CSSProperties} />
-        </span>
       </div>
       <div className="a3s-directory-card__actions">
         <a href={projectHref} {...externalLinkProps(projectHref)}>
@@ -265,8 +299,7 @@ export function EcosystemDirectory({ lang }: { lang: Lang }) {
           </div>
           <label className="a3s-directory-search">
             <MagnifyingGlass aria-hidden="true" />
-            <span className="sr-only">{tr.search}</span>
-            <input onChange={(event) => setQuery(event.target.value)} placeholder={tr.search} type="search" value={query} />
+            <input aria-label={tr.search} onChange={(event) => setQuery(event.target.value)} placeholder={tr.search} type="search" value={query} />
             {query ? <button aria-label={tr.reset} onClick={() => setQuery('')} type="button">×</button> : null}
           </label>
         </div>
@@ -275,7 +308,7 @@ export function EcosystemDirectory({ lang }: { lang: Lang }) {
           <span><i /> {String(filteredProjects.length).padStart(2, '0')} {tr.result}</span>
           <code>A3S / ECOSYSTEM.INDEX</code>
         </div>
-        <p className="a3s-progress-method">{tr.progressMethod}</p>
+        <DeliveryStageGuide lang={lang} />
 
         {filteredProjects.length > 0 ? (
           <div className="a3s-directory-grid">

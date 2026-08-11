@@ -28,11 +28,11 @@ done
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     export A3S_USE_HOME="$(cygpath -w "${use_home}")"
-    windows_host=true
+    marketplace_test="web_plugin_marketplace_windows"
     ;;
   *)
     export A3S_USE_HOME="${use_home}"
-    windows_host=false
+    marketplace_test="web_plugin_marketplace"
     ;;
 esac
 
@@ -45,20 +45,37 @@ cargo test \
   --manifest-path "${cli_manifest}" \
   --locked \
   --lib \
-  use_registry::tests::real_use_process_converges_install_upgrade_rebuild_disable_and_enable \
+  use_registry::tests::real_use_process_converges_signed_install_upgrade_rebuild_and_uninstall \
   -- \
   --ignored \
   --nocapture
 
-if test "${windows_host}" = false; then
-  cargo test \
-    --manifest-path "${cli_manifest}" \
-    --locked \
-    --test code_use_first_use \
-    code_tui_first_use_installs_a_real_use_release_before_the_first_turn \
-    -- \
-    --ignored \
-    --nocapture
-else
-  echo "First-use release installation remains covered by the dedicated Windows E2E suite."
-fi
+# This fixture builds one large async state machine. Windows libtest workers
+# otherwise use a stack that is too small for the exact host-Grant boundary.
+RUST_MIN_STACK=8388608 cargo test \
+  --manifest-path "${cli_manifest}" \
+  --locked \
+  --lib \
+  plugin_manager::operation::tests::grant_forwarding::reviewed_managed_runtime_graph_rejects_drift_and_persists_exact_grant \
+  -- \
+  --exact \
+  --include-ignored \
+  --nocapture
+
+cargo test \
+  --manifest-path "${cli_manifest}" \
+  --locked \
+  --test "${marketplace_test}" \
+  generic_real_e2e::real_marketplace_hot_plugs_a_generic_signed_package_across_restart \
+  -- \
+  --ignored \
+  --nocapture
+
+cargo test \
+  --manifest-path "${cli_manifest}" \
+  --locked \
+  --test code_use_first_use \
+  code_tui_first_use_installs_a_real_use_release_before_the_first_turn \
+  -- \
+  --ignored \
+  --nocapture

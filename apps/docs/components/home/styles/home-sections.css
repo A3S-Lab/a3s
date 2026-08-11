@@ -175,6 +175,25 @@
   gap: 6px;
 }
 
+.a3s-terminal-card__bar > span i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c8d1de;
+}
+
+.a3s-terminal-card__bar > span i:first-child {
+  background: #e9787d;
+}
+
+.a3s-terminal-card__bar > span i:nth-child(2) {
+  background: #e2b357;
+}
+
+.a3s-terminal-card__bar > span i:last-child {
+  background: #54ba84;
+}
+
 .a3s-terminal-card__bar > code {
   color: #8495b0;
   font-family: var(--a3s-mono);
@@ -343,10 +362,15 @@
 }
 
 .a3s-cta h2 {
+  max-width: 1120px;
   margin-right: auto;
   margin-left: auto;
   color: #ffffff;
-  font-size: clamp(48px, 6vw, 80px);
+  font-size: clamp(44px, 5vw, 72px);
+}
+
+.a3s-cta__title--cn > span {
+  display: block;
 }
 
 .a3s-cta__copy > p {

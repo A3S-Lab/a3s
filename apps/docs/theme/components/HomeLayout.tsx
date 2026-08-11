@@ -4,16 +4,20 @@ import type { Lang } from '@/components/home/home-content';
 function MarkdownHome({ lang }: { lang: Lang }) {
   return (
     <main>
-      <h1>{lang === 'cn' ? '为 AI Native 组织构建的生态系统' : 'The ecosystem for AI Native organizations'}</h1>
+      <h1>
+        {lang === 'cn'
+          ? '为AI Native组织构建的AI操作系统生态'
+          : 'The AI operating system ecosystem built for AI Native organizations'}
+      </h1>
       <p>
         {lang === 'cn'
-          ? 'A3S 由 36 个项目组成，覆盖 Agent 产品、运行时、数据、协议与基础设施。'
-          : 'A3S consists of 36 projects across agent products, runtimes, data, protocols, and infrastructure.'}
+          ? 'A3S 包含 36 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。'
+          : 'A3S includes 36 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure.'}
       </p>
       <h2>{lang === 'cn' ? '项目目录' : 'Project directory'}</h2>
-      <p>{lang === 'cn' ? '每个项目都提供职责、开发阶段、网站与仓库入口。' : 'Every project lists its responsibility, delivery stage, site, and repository.'}</p>
+      <p>{lang === 'cn' ? '每个项目都列出职责、交付阶段、当前版本或通道和代码入口。' : 'Every project lists its responsibility, delivery stage, current version or channel, and source.'}</p>
       <h2>{lang === 'cn' ? '工程博客' : 'Engineering blog'}</h2>
-      <p>{lang === 'cn' ? '博客记录 A3S 的架构、运行时与工程实践。' : 'The blog covers A3S architecture, runtimes, and engineering practice.'}</p>
+      <p>{lang === 'cn' ? '工程文章记录架构选择、运行时边界和实际实现。' : 'Engineering notes cover architecture choices, runtime boundaries, and implementation work.'}</p>
     </main>
   );
 }

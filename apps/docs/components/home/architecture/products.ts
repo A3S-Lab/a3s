@@ -6,7 +6,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'cli',
     name: 'CLI',
     category: 'products',
-    role: localized('统一 a3s 命令、Code TUI、本地 Web API 与组件生命周期。', 'Umbrella a3s command, Code TUI host, local Web API, and component lifecycle.'),
+    role: localized('安装和管理 A3S 组件，并提供 Code 终端和本地 Web API。', 'Installs and manages A3S components, with the Code terminal and a local Web API.'),
     href: getProjectPrimaryHref('cli'),
     nodes: [
       node('entry', 'a3s CLI', 'surface', '解析统一命令，并把产品选择留在用户可见的入口。', 'Parses the umbrella command while keeping product selection visible at the entrypoint.'),
@@ -20,7 +20,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'code',
     name: 'Code',
     category: 'products',
-    role: localized('带治理边界的异步 Agent 核心与多语言 SDK。', 'Governed async agent core with Rust, Node.js, Python, and Go SDKs.'),
+    role: localized('用于构建 Agent 的异步运行时，提供 Rust、Node.js、Python 和 Go SDK。', 'An async agent runtime with Rust, Node.js, Python, and Go SDKs.'),
     href: getProjectPrimaryHref('code'),
     nodes: [
       node('hosts', 'Hosts & SDKs', 'surface', '终端、Rust、Node.js、Python 与 Go 共享同一核心。', 'Terminal, Rust, Node.js, Python, and Go share the same core.'),
@@ -34,7 +34,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'web',
     name: 'Web',
     category: 'products',
-    role: localized('本地优先的 Work、文件、知识、Office 与研究工作台。', 'Local-first Work, file, knowledge, Office, and research workspace.'),
+    role: localized('把任务、文件、知识库和 Office 工具放在一个本地工作台里。', 'A local workspace for tasks, files, knowledge, Office tools, and research.'),
     href: getProjectPrimaryHref('web'),
     nodes: [
       node('work', 'Work Surface', 'surface', '用一个任务入口承载代码、文件、Office 与扩展场景。', 'Uses one task entrypoint for code, files, Office, and extension scenes.'),
@@ -48,7 +48,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'windhole',
     name: 'Windhole',
     category: 'products',
-    role: localized('面向 A3S Bench 的本地可视化评测实验室。', 'Local visual laboratory for A3S Bench evaluation workflows.'),
+    role: localized('在本地运行 A3S Bench 评测，并查看过程和结果。', 'Runs A3S Bench evaluations locally and shows each run and result.'),
     href: getProjectPrimaryHref('windhole'),
     nodes: [
       node('catalog', 'Bench Catalog', 'surface', '读取真实 Task、Candidate 与运行时诊断。', 'Reads real Tasks, Candidates, and runtime diagnostics.'),
@@ -62,7 +62,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'box',
     name: 'Box',
     category: 'products',
-    role: localized('面向 OCI 工作负载的类 Docker MicroVM 产品。', 'Docker-like MicroVM product for OCI workloads.'),
+    role: localized('用 MicroVM 运行 OCI 容器，命令体验接近 Docker。', 'Runs OCI containers in MicroVMs with a Docker-like command line.'),
     href: getProjectPrimaryHref('box'),
     nodes: [
       node('entry', 'Entry Points', 'surface', 'CLI、SDK、CRI 与 containerd shim 提交同一种本地请求。', 'CLI, SDKs, CRI, and the containerd shim submit one local request shape.'),
@@ -76,7 +76,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'bench',
     name: 'Bench',
     category: 'products',
-    role: localized('身份绑定且可复现的 Task、Candidate 与 Judge 评测。', 'Identity-bound and reproducible Task, Candidate, and Judge evaluation.'),
+    role: localized('用固定输入和评审规则重复运行 Agent 评测。', 'Runs repeatable agent evaluations from fixed inputs and judge rules.'),
     href: getProjectPrimaryHref('bench'),
     nodes: [
       node('sources', 'Task + Candidate', 'surface', '接纳明确来源、资产和 Judge 契约。', 'Admits explicit sources, assets, and Judge contracts.'),
@@ -90,7 +90,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'search',
     name: 'Search',
     category: 'products',
-    role: localized('多引擎检索、排序、去重与可选浏览器渲染。', 'Multi-engine retrieval, ranking, deduplication, and optional browser rendering.'),
+    role: localized('同时搜索多个来源，完成排序、去重和网页渲染。', 'Searches multiple sources, ranks and deduplicates results, and can render pages.'),
     href: getProjectPrimaryHref('search'),
     nodes: [
       node('providers', 'Providers & Engines', 'surface', '接入类型化 API Provider 与传统 HTTP/RSS 引擎。', 'Accepts typed API providers and conventional HTTP/RSS engines.'),
@@ -104,7 +104,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'browser',
     name: 'Browser',
     category: 'products',
-    role: localized('类型化页面渲染契约与进程隔离的自动化驱动。', 'Typed page-rendering contract plus a process-isolated automation driver.'),
+    role: localized('为 Agent 提供隔离运行的浏览器自动化。', 'Runs browser automation for agents in an isolated process.'),
     href: getProjectPrimaryHref('browser'),
     nodes: [
       node('caller', 'SDK Caller', 'surface', 'Search 与嵌入式宿主只依赖对象安全接口。', 'Search and embedded hosts depend only on the object-safe interface.'),
@@ -118,7 +118,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'ocr',
     name: 'OCR',
     category: 'products',
-    role: localized('带有界来源证据的 Provider 导向 OCR。', 'Provider-oriented OCR with bounded source evidence.'),
+    role: localized('从图片中提取文字，并保留来源与模型信息。', 'Extracts text from images while recording the source and model used.'),
     href: getProjectPrimaryHref('ocr'),
     nodes: [
       node('image', 'Bounded Image', 'surface', '规范化本地路径、媒体类型、大小和 SHA-256。', 'Canonicalizes local path, media type, size, and SHA-256.'),
@@ -132,7 +132,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'use',
     name: 'Use',
     category: 'products',
-    role: localized('内置 Browser/OCR 路由与外部能力包生命周期门面。', 'Built-in Browser/OCR routes and lifecycle facade for external capability packages.'),
+    role: localized('安装、校验和管理 Agent 能力包，并提供 Browser 与 OCR 内置路由。', 'Installs, verifies, and manages agent capability packages, with built-in Browser and OCR routes.'),
     href: getProjectPrimaryHref('use'),
     nodes: [
       node('cli', 'Umbrella CLI', 'surface', '通过 a3s use 暴露一致的领域入口。', 'Exposes a consistent domain entrypoint through a3s use.'),
@@ -146,7 +146,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'office',
     name: 'Office',
     category: 'products',
-    role: localized('原生 OOXML 引擎、Office 编辑器、CLI、MCP 与 Skill。', 'Native OOXML engine, Office editors, CLI, MCP, and Skill.'),
+    role: localized('读取、编辑和生成 Office 文件，支持 CLI、MCP 和 Skill。', 'Reads, edits, and creates Office files through the CLI, MCP, and Skill.'),
     href: getProjectPrimaryHref('office'),
     nodes: [
       node('host', 'Host Product', 'surface', '由 Web、独立 Playground 或自动化宿主提供产品策略。', 'Receives product policy from Web, the standalone Playground, or automation hosts.'),
@@ -161,7 +161,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'science',
     name: 'Science',
     category: 'products',
-    role: localized('独立版本的科学 Skills、MCP 数据服务与研究计算工具。', 'Independently versioned scientific Skills, MCP data services, and research compute tooling.'),
+    role: localized('提供科学研究用的 Skills、数据接口和计算工具。', 'Provides Skills, data services, and compute tools for scientific research.'),
     href: getProjectPrimaryHref('science'),
     nodes: [
       node('hosts', 'Code / Use', 'surface', '从 Agent 或能力门面接收明确的科学任务。', 'Receives explicit scientific tasks from agents or the capability facade.'),
@@ -175,7 +175,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'cloud',
     name: 'Cloud',
     category: 'products',
-    role: localized('自托管控制平面、持久操作、节点与验证过的 OCI 部署。', 'Self-hosted control plane for durable operations, nodes, and verified OCI deployment.'),
+    role: localized('自托管 A3S 控制平面，管理节点、任务和 OCI 部署。', 'A self-hosted control plane for A3S nodes, operations, and OCI deployments.'),
     href: getProjectPrimaryHref('cloud'),
     nodes: [
       node('clients', 'Web / API / CLI', 'surface', '共享经过验证的客户端与租户范围。', 'Shares one validated client and tenant scope across surfaces.'),
@@ -189,7 +189,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'form',
     name: 'Form',
     category: 'products',
-    role: localized('可嵌入的 AI Native 表单设计器、受控渲染器与确定性编译器。', 'Embeddable AI-native form designer, controlled renderer, and deterministic compiler.'),
+    role: localized('用可视化编辑器设计 AI Native 表单，并编译成可嵌入产物。', 'Designs AI Native forms visually and compiles them into embeddable output.'),
     href: getProjectPrimaryHref('form'),
     nodes: [
       node('designer', 'Form Designer', 'surface', '提供字段目录、结构树、布局拖放、实时预览与撤销重做。', 'Provides a field catalog, structure tree, layout drag and drop, live preview, and undo/redo.'),
@@ -203,7 +203,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'site',
     name: 'Site & Blog',
     category: 'products',
-    role: localized('A3S 生态主站与双语工程博客。', 'A3S ecosystem homepage and bilingual engineering blog.'),
+    role: localized('A3S 项目索引与中英文工程博客。', 'The A3S project index and its Chinese and English engineering blog.'),
     href: getProjectPrimaryHref('site'),
     nodes: [
       node('routes', 'Rspress Routes', 'surface', '提供中文首页、英文首页与双语博客路由。', 'Serves Chinese and English homepages plus bilingual blog routes.'),

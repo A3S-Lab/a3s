@@ -1,21 +1,33 @@
 import {
   ArrowRight,
-  Cube,
-  GitBranch,
+  Browsers,
   GithubLogo,
-  Globe,
+  SquaresFour,
   Stack,
 } from '@phosphor-icons/react/dist/ssr';
 import { withBase } from '@rspress/core/runtime';
 import { A3SMark } from '@/components/home/a3s-mark';
-import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
-import { CliCapabilityTerminal } from '@/components/home/cli-capability-terminal';
 import { EcosystemDirectory } from '@/components/home/ecosystem-directory';
+import { GlobalWorkspaceScene } from '@/components/home/global-workspace-scene';
 import { HomeNav } from '@/components/home/home-nav';
 import { homeContent, type Lang } from '@/components/home/home-content';
 import { InstallCommandTerminal } from '@/components/home/install-command-terminal';
 
-const signalIcons = [Cube, Globe, Stack, GitBranch];
+const signalIcons = [SquaresFour, Browsers, Stack, GithubLogo];
+
+function CtaTitle({ lang, title }: { lang: Lang; title: string }) {
+  if (lang !== 'cn') return title;
+
+  const lineBreak = title.indexOf('构建');
+  if (lineBreak <= 0) return title;
+
+  return (
+    <>
+      <span>{title.slice(0, lineBreak)}</span>
+      <span>{title.slice(lineBreak)}</span>
+    </>
+  );
+}
 
 export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
   const tr = homeContent[lang];
@@ -25,18 +37,21 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
       <a className="a3s-skip-link" href="#main-content">
         {lang === 'cn' ? '跳到主要内容' : 'Skip to main content'}
       </a>
-      <CanvasBackdrop />
       <HomeNav lang={lang} />
 
       <section className="a3s-hero" id="main-content" aria-labelledby="a3s-hero-title">
         <div className="a3s-hero__ambient" aria-hidden="true" />
         <div className="a3s-hero__grid">
           <div className="a3s-hero__copy">
-            <div className="a3s-eyebrow"><span />{tr.hero.eyebrow}</div>
-            <h1 id="a3s-hero-title">
+            <div className="a3s-eyebrow">{tr.hero.eyebrow}</div>
+            <h1
+              aria-label={lang === 'cn'
+                ? `${tr.hero.lineOne}${tr.hero.lineTwo}${tr.hero.accent}`
+                : `${tr.hero.lineOne} ${tr.hero.lineTwo} ${tr.hero.accent}`}
+              id="a3s-hero-title"
+            >
               <span>{tr.hero.lineOne}</span>
-              <span>{tr.hero.lineTwo}</span>
-              <em>{tr.hero.accent}</em>
+              <span>{tr.hero.lineTwo}{lang === 'cn' ? null : ' '}<em>{tr.hero.accent}</em></span>
             </h1>
             <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
@@ -48,13 +63,8 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
                 {tr.hero.secondaryAction}
               </a>
             </div>
-            <div className="a3s-hero__command" aria-label="A3S launch command">
-              <span>$</span>
-              <code>a3s code</code>
-              <i aria-hidden="true" />
-            </div>
           </div>
-          <CliCapabilityTerminal lang={lang} />
+          <GlobalWorkspaceScene lang={lang} />
         </div>
       </section>
 
@@ -114,7 +124,13 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
         <div className="a3s-cta__mark" aria-hidden="true"><A3SMark /></div>
         <div className="a3s-cta__copy">
           <span className="a3s-section-eyebrow">{tr.cta.eyebrow}</span>
-          <h2 id="a3s-cta-title">{tr.cta.title}</h2>
+          <h2
+            className={lang === 'cn' ? 'a3s-cta__title--cn' : undefined}
+            id="a3s-cta-title"
+            aria-label={tr.cta.title}
+          >
+            <CtaTitle lang={lang} title={tr.cta.title} />
+          </h2>
           <p>{tr.cta.description}</p>
           <div>
             <a className="a3s-button a3s-button--light" href={withBase('/blog/')}>{tr.cta.primary}<ArrowRight aria-hidden="true" /></a>

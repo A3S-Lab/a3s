@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../lib/api';
 import { appState } from '../../state/app-state';
-import type { PluginActivityCatalog, PluginActivityContent, PluginActivityItem } from '../../types/api';
+import type { PluginActivityCatalog, PluginActivityItem } from '../../types/api';
 import { createPluginsState } from './plugin-state';
 import { usePluginController } from './use-plugin-controller';
 
@@ -20,6 +20,7 @@ const contribution: PluginActivityItem = {
   order: 120,
   sha256: 'a'.repeat(64),
   mediaType: 'text/html',
+  documentUrl: `/api/v1/plugins/activities/science%3Aresearch/document?generation=2&revision=${'b'.repeat(64)}`,
 };
 
 const catalog: PluginActivityCatalog = {
@@ -47,38 +48,19 @@ describe('usePluginController', () => {
     Object.assign(appState, createPluginsState());
   });
 
-  it('aborts the previous asset fetch and discards its late result', async () => {
-    const first = createDeferred<PluginActivityContent>();
-    const second = createDeferred<PluginActivityContent>();
-    const signals: AbortSignal[] = [];
-    vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
-    vi.spyOn(codeApi, 'pluginActivityContent')
-      .mockImplementationOnce((_key, signal) => {
-        signals.push(signal as AbortSignal);
-        return first.promise;
-      })
-      .mockImplementationOnce((_key, signal) => {
-        signals.push(signal as AbortSignal);
-        return second.promise;
-      });
+  it('rejects an invalid executable document identity without replacing the current catalog', async () => {
+    const invalidCatalog: PluginActivityCatalog = {
+      ...catalog,
+      generation: 3,
+      revision: 'c'.repeat(64),
+      items: [contribution],
+    };
+    vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(invalidCatalog);
     const hook = renderHook(() => usePluginController());
 
-    let firstRequest!: Promise<void>;
-    let secondRequest!: Promise<void>;
-    act(() => {
-      firstRequest = hook.result.current.loadActivityContent(contribution.key, true);
-      secondRequest = hook.result.current.loadActivityContent(contribution.key, true);
-    });
-
-    expect(signals[0].aborted).toBe(true);
-    second.resolve(activityContent('<p>current</p>'));
-    await act(() => secondRequest);
-
-    first.resolve(activityContent('<p>stale</p>'));
-    await act(() => firstRequest);
-
-    expect(appState.pluginContentByKey[contribution.key]?.html).toBe('<p>current</p>');
-    expect(appState.pluginContentStatus).toBe('ready');
+    await waitFor(() => expect(appState.pluginCatalogStatus).toBe('error'));
+    expect(appState.pluginCatalog).toEqual(catalog);
+    expect(appState.pluginCatalogError).toContain('Activity document identity');
     hook.unmount();
   });
 
@@ -91,6 +73,9 @@ describe('usePluginController', () => {
     act(() => {
       hook.result.current.proposeContext({
         sourceKey: contribution.key,
+        sourceGeneration: catalog.generation,
+        sourceRevision: catalog.revision,
+        sourceDocumentUrl: contribution.documentUrl!,
         title: 'Review research context',
         summary: 'Compare recent CRISPR evidence.',
         prompt: 'Compare the selected studies and identify uncertainty.',
@@ -119,6 +104,9 @@ describe('usePluginController', () => {
     act(() => {
       hook.result.current.proposeContext({
         sourceKey: contribution.key,
+        sourceGeneration: catalog.generation,
+        sourceRevision: catalog.revision,
+        sourceDocumentUrl: contribution.documentUrl!,
         title: 'Review research context',
         summary: 'Assess a software engineering question.',
         prompt: 'Compare the selected software engineering evidence.',
@@ -141,18 +129,65 @@ describe('usePluginController', () => {
     act(() => {
       hook.result.current.proposeContext({
         sourceKey: contribution.key,
+        sourceGeneration: catalog.generation,
+        sourceRevision: catalog.revision,
+        sourceDocumentUrl: contribution.documentUrl!,
         title: 'Review research context',
         summary: 'Pending context.',
         prompt: 'This must not reach Code.',
         fields: [],
         usePackageSkill: true,
       });
-      appState.pluginCatalog = { ...catalog, items: [{ ...contribution, enabled: false }] };
+      appState.pluginCatalog = {
+        ...catalog,
+        items: [{ ...contribution, enabled: false, documentUrl: undefined }],
+      };
       hook.result.current.acceptContextProposal();
     });
 
     expect(appState.composerValue).toBe('');
     expect(appState.composerSkills).toEqual([]);
+    expect(appState.pluginContextProposal).toBeNull();
+    hook.unmount();
+  });
+
+  it('drains a pending proposal when the same Activity advances to a new Registry generation', async () => {
+    const activities = vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
+    const hook = renderHook(() => usePluginController());
+    await waitFor(() => expect(activities).toHaveBeenCalledOnce());
+
+    act(() => {
+      hook.result.current.proposeContext({
+        sourceKey: contribution.key,
+        sourceGeneration: catalog.generation,
+        sourceRevision: catalog.revision,
+        sourceDocumentUrl: contribution.documentUrl!,
+        title: 'Review research context',
+        summary: 'Pending context from the old document.',
+        prompt: 'This must be drained on upgrade.',
+        fields: [],
+        usePackageSkill: true,
+      });
+    });
+    expect(appState.pluginContextProposal).not.toBeNull();
+
+    const nextRevision = 'c'.repeat(64);
+    const nextCatalog: PluginActivityCatalog = {
+      ...catalog,
+      generation: 3,
+      revision: nextRevision,
+      items: [
+        {
+          ...contribution,
+          version: '2.0.0',
+          documentUrl: `/api/v1/plugins/activities/science%3Aresearch/document?generation=3&revision=${nextRevision}`,
+        },
+      ],
+    };
+    activities.mockResolvedValue(nextCatalog);
+    await act(() => hook.result.current.refreshActivities(true));
+
+    expect(appState.pluginCatalog).toEqual(nextCatalog);
     expect(appState.pluginContextProposal).toBeNull();
     hook.unmount();
   });
@@ -237,6 +272,9 @@ describe('usePluginController', () => {
     appState.activePluginKey = contribution.key;
     appState.pluginContextProposal = {
       sourceKey: contribution.key,
+      sourceGeneration: catalog.generation,
+      sourceRevision: catalog.revision,
+      sourceDocumentUrl: contribution.documentUrl!,
       title: 'Pending research context',
       summary: 'Pending.',
       prompt: 'Must be discarded.',
@@ -275,25 +313,3 @@ describe('usePluginController', () => {
     hook.unmount();
   });
 });
-
-function activityContent(html: string): PluginActivityContent {
-  return {
-    key: contribution.key,
-    packageId: contribution.packageId,
-    skill: contribution.skill,
-    registryRevision: catalog.revision,
-    sha256: contribution.sha256,
-    mediaType: 'text/html',
-    html,
-    styles: [],
-    scripts: [],
-  };
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-  return { promise, resolve };
-}

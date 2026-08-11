@@ -1,0 +1,110 @@
+name: Use Hot-plug Integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".gitmodules"
+      - "crates/browser"
+      - "crates/cli"
+      - "crates/ocr"
+      - "crates/use"
+      - "justfile"
+      - "scripts/ensure-dev-submodules.sh"
+      - "scripts/test-use-hotplug-e2e.sh"
+      - ".github/workflows/use-hotplug-e2e.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".gitmodules"
+      - "crates/browser"
+      - "crates/cli"
+      - "crates/ocr"
+      - "crates/use"
+      - "justfile"
+      - "scripts/ensure-dev-submodules.sh"
+      - "scripts/test-use-hotplug-e2e.sh"
+      - ".github/workflows/use-hotplug-e2e.yml"
+
+concurrency:
+  group: use-hotplug-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-process:
+    name: Real process (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      RUST_BACKTRACE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Initialize only the required repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            git config --global core.longpaths true
+          fi
+          git -c url."https://github.com/".insteadOf=git@github.com: \
+            submodule update --init -- \
+              crates/cli \
+              crates/browser \
+              crates/ocr \
+              crates/use
+          science_status="$(git submodule status packages/science)"
+          case "${science_status}" in
+            -*) ;;
+            *)
+              echo "packages/science must remain uninitialized" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run the real Use hot-plug boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          workspace="${GITHUB_WORKSPACE}"
+          runner_temp="${RUNNER_TEMP}"
+          suffix=""
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            workspace="$(cygpath -m "${GITHUB_WORKSPACE}")"
+            runner_temp="$(cygpath -m "${RUNNER_TEMP}")"
+            suffix=".exe"
+          fi
+          e2e_target="${runner_temp}/a3s-use-hotplug-e2e"
+          use_target="${e2e_target}/use"
+          code_target="${e2e_target}/code"
+          cargo build \
+            --manifest-path "${workspace}/crates/use/Cargo.toml" \
+            --locked \
+            -p a3s-use \
+            --target-dir "${use_target}"
+          cargo build \
+            --manifest-path "${workspace}/crates/browser/Cargo.toml" \
+            --locked \
+            -p a3s-use-browser-driver \
+            --target-dir "${use_target}"
+          CARGO_TARGET_DIR="${code_target}" \
+          A3S_USE_E2E_BIN="${use_target}/debug/a3s-use${suffix}" \
+          A3S_USE_E2E_BROWSER_BIN="${use_target}/debug/a3s-use-browser-driver${suffix}" \
+          A3S_USE_E2E_SOURCE_ROOT="${workspace}/crates/use" \
+          A3S_USE_E2E_BROWSER_SOURCE_ROOT="${workspace}/crates/browser" \
+          A3S_USE_E2E_OCR_SOURCE_ROOT="${workspace}/crates/ocr" \
+            bash scripts/test-use-hotplug-e2e.sh

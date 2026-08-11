@@ -31,7 +31,8 @@ import type {
   OsAccount,
   PersonalKnowledgeBaseCatalog,
   PluginActivityCatalog,
-  PluginActivityContent,
+  PluginUiCandidateCatalog,
+  PluginUiCandidateDecision,
   PluginMarketplaceCatalog,
   PluginOperationPlan,
   PluginOperationRequest,
@@ -152,6 +153,22 @@ function jsonBody(value: unknown): Pick<RequestInit, 'body' | 'headers'> {
 export interface CodeIntelligenceRequestOptions {
   sessionId?: string | null;
   signal?: AbortSignal;
+}
+
+export type PluginActivityStateRequest =
+  | { operation: 'get'; key: string }
+  | { operation: 'set'; key: string; value: unknown }
+  | { operation: 'delete'; key: string }
+  | { operation: 'clear' };
+
+export interface PluginActivityStateResponse {
+  schemaVersion: 1;
+  operation: PluginActivityStateRequest['operation'];
+  found?: boolean;
+  value?: unknown;
+  stored?: boolean;
+  deleted?: boolean;
+  cleared?: boolean;
 }
 
 const MEMORY_PAGE_LIMIT = 500;
@@ -379,8 +396,32 @@ export const codeApi = {
   skills: (workspace: string) => apiRequest<SkillCatalog>(`/api/v1/plugins?workspace=${encodeURIComponent(workspace)}`),
   pluginActivities: (signal?: AbortSignal) =>
     apiRequest<PluginActivityCatalog>('/api/v1/plugins/activities', { signal }),
-  pluginActivityContent: (key: string, signal?: AbortSignal) =>
-    apiRequest<PluginActivityContent>(`/api/v1/plugins/activities/${encodeURIComponent(key)}`, { signal }),
+  pluginActivityCandidates: (signal?: AbortSignal) =>
+    apiRequest<PluginUiCandidateCatalog>('/api/v1/plugins/activities/candidates', { signal }),
+  decidePluginActivityCandidate: (token: string, decision: PluginUiCandidateDecision, signal?: AbortSignal) =>
+    apiRequest<{ schemaVersion: number; accepted: boolean; decision: PluginUiCandidateDecision }>(
+      `/api/v1/plugins/activities/candidates/${encodeURIComponent(token)}/decision`,
+      {
+        method: 'POST',
+        signal,
+        ...jsonBody({ decision }),
+      }
+    ),
+  pluginActivityState: (
+    key: string,
+    generation: number,
+    revision: string,
+    request: PluginActivityStateRequest,
+    signal?: AbortSignal
+  ) =>
+    apiRequest<PluginActivityStateResponse>(
+      `/api/v1/plugins/activities/${encodeURIComponent(key)}/state${apiQuery({ generation, revision })}`,
+      {
+        method: 'POST',
+        signal,
+        ...jsonBody(request),
+      }
+    ),
   pluginMarketplace: (signal?: AbortSignal) =>
     apiRequest<PluginMarketplaceCatalog>('/api/v1/plugins/marketplace', { signal }),
   planPluginOperation: (request: PluginOperationRequest) =>

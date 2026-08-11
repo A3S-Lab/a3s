@@ -1,56 +1,79 @@
 import { AlertTriangle, Box, LoaderCircle, RefreshCw, ShieldCheck, Store } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button, Dialog, PageHeader, StateView, StatusBadge } from '../../../design-system/primitives';
+import { ApiError, codeApi } from '../../../lib/api';
 import { appState, navigatePlugins } from '../../../state/app-state';
-import { buildPluginDocument } from '../plugin-document';
-import { activityHostInit, parsePluginMessage } from '../plugin-protocol';
+import { resolveActivityDocument, type PluginActivityDocumentIdentity } from '../plugin-activity-document';
+import {
+  activityHostInit,
+  activityStateError,
+  activityStateResult,
+  parsePluginMessage,
+  type PluginHostMessage,
+} from '../plugin-protocol';
 import type { PluginActions } from '../use-plugin-controller';
 
 type FrameStatus = 'loading' | 'ready' | 'error';
+const ACTIVITY_READY_TIMEOUT_MS = 10_000;
+const MAX_PENDING_STATE_REQUESTS = 32;
 
 export function PluginHostPage({ actions }: { actions: PluginActions }) {
   const state = useSnapshot(appState);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const portRef = useRef<MessagePort | null>(null);
+  const stateRequestRef = useRef<{ port: MessagePort; controller: AbortController } | null>(null);
+  const frameLoadCountRef = useRef(0);
+  const loadedFrameTokenRef = useRef<string | null>(null);
+  const readyTimeoutRef = useRef<number | null>(null);
   const [frameStatus, setFrameStatus] = useState<FrameStatus>('loading');
+  const [blockedToken, setBlockedToken] = useState<string | null>(null);
   const [frameGeneration, setFrameGeneration] = useState(0);
   const key = state.activePluginKey;
   const contribution = state.pluginCatalog.items.find((item) => item.key === key && item.enabled);
-  const content = key ? state.pluginContentByKey[key] : undefined;
-  const document = useMemo(
-    () => (content ? buildPluginDocument(content.html, [...content.styles], [...content.scripts]) : ''),
-    [content]
-  );
-  const contentToken = content ? `${content.registryRevision}:${content.sha256}:${frameGeneration}` : '';
+  const { identity: documentIdentity, error: documentError } = currentActivityDocument(key);
+  const identityToken = documentIdentity?.token ?? null;
+  const frameToken = documentIdentity ? `${documentIdentity.token}:${frameGeneration}` : null;
 
-  useEffect(() => {
-    if (key && contribution) void actions.loadActivityContent(key);
-  }, [actions.loadActivityContent, contribution, key, state.pluginCatalog.revision]);
+  const clearReadyTimeout = useCallback(() => {
+    if (readyTimeoutRef.current !== null) {
+      window.clearTimeout(readyTimeoutRef.current);
+      readyTimeoutRef.current = null;
+    }
+  }, []);
 
-  useEffect(() => {
-    setFrameStatus('loading');
-    appState.pluginRuntimeError = null;
-  }, [contentToken, key]);
-
-  useEffect(() => {
-    if (!key || !contribution) return;
-    const receiveMessage = (event: MessageEvent<unknown>) => {
-      if (event.source !== iframeRef.current?.contentWindow) return;
-      const message = parsePluginMessage(event.data, key);
-      if (!message) return;
-      if (message.type === 'ready') {
-        setFrameStatus('ready');
-        appState.pluginRuntimeError = null;
-      } else if (message.type === 'context') {
-        actions.proposeContext(message.proposal);
-      } else {
-        setFrameStatus('error');
-        appState.pluginRuntimeError = message.message;
+  const releasePort = useCallback(
+    (port: MessagePort) => {
+      if (stateRequestRef.current?.port === port) {
+        stateRequestRef.current.controller.abort();
+        stateRequestRef.current = null;
       }
-    };
-    window.addEventListener('message', receiveMessage);
-    return () => window.removeEventListener('message', receiveMessage);
-  }, [actions.proposeContext, contribution, key]);
+      port.onmessage = null;
+      port.onmessageerror = null;
+      port.close();
+      if (portRef.current === port) {
+        portRef.current = null;
+        clearReadyTimeout();
+      }
+    },
+    [clearReadyTimeout]
+  );
+
+  const closeActivePort = useCallback(() => {
+    const port = portRef.current;
+    if (port) releasePort(port);
+    else clearReadyTimeout();
+  }, [clearReadyTimeout, releasePort]);
+
+  useLayoutEffect(() => {
+    closeActivePort();
+    frameLoadCountRef.current = 0;
+    loadedFrameTokenRef.current = null;
+    setFrameStatus('loading');
+    setBlockedToken(null);
+    appState.pluginRuntimeError = null;
+    return closeActivePort;
+  }, [closeActivePort, frameGeneration, identityToken, key]);
 
   if (!key || !contribution) {
     return (
@@ -64,9 +87,130 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
   }
 
   const retryFrame = () => {
+    closeActivePort();
+    frameLoadCountRef.current = 0;
+    loadedFrameTokenRef.current = null;
     appState.pluginRuntimeError = null;
     setFrameStatus('loading');
+    setBlockedToken(null);
     setFrameGeneration((value) => value + 1);
+  };
+
+  const failFrame = (message: string, block = false) => {
+    closeActivePort();
+    setFrameStatus('error');
+    appState.pluginRuntimeError = message;
+    if (block && frameToken) setBlockedToken(frameToken);
+  };
+
+  const handleFrameLoad = () => {
+    if (!documentIdentity || !frameToken) return;
+    if (loadedFrameTokenRef.current !== frameToken) {
+      closeActivePort();
+      frameLoadCountRef.current = 0;
+      loadedFrameTokenRef.current = frameToken;
+    }
+    frameLoadCountRef.current += 1;
+    if (frameLoadCountRef.current > 1) {
+      failFrame('插件尝试离开已校验文档，宿主已终止该视图。', true);
+      return;
+    }
+
+    const contentWindow = iframeRef.current?.contentWindow;
+    if (!contentWindow) {
+      failFrame('无法建立插件通信通道。');
+      return;
+    }
+
+    closeActivePort();
+    const channel = new MessageChannel();
+    const port = channel.port1;
+    const stateController = new AbortController();
+    let stateQueue = Promise.resolve();
+    let pendingStateRequests = 0;
+    portRef.current = port;
+    stateRequestRef.current = { port, controller: stateController };
+    port.onmessage = (event: MessageEvent<unknown>) => {
+      if (portRef.current !== port) return;
+      if (!isCurrentActivityDocument(documentIdentity)) {
+        releasePort(port);
+        return;
+      }
+      const message = parsePluginMessage(event.data, documentIdentity);
+      if (!message) return;
+      if (message.type === 'state') {
+        if (pendingStateRequests >= MAX_PENDING_STATE_REQUESTS) {
+          try {
+            port.postMessage(activityStateError(message.requestId, 'busy', '插件状态请求队列已满。'));
+          } catch {
+            releasePort(port);
+          }
+          return;
+        }
+        pendingStateRequests += 1;
+        stateQueue = stateQueue
+          .then(() =>
+            handleStateRequest({
+              message,
+              port,
+              controller: stateController,
+              documentIdentity,
+              isActive: () => portRef.current === port,
+              release: () => releasePort(port),
+              refreshActivities: actions.refreshActivities,
+            })
+          )
+          .catch(() => releasePort(port))
+          .finally(() => {
+            pendingStateRequests -= 1;
+          });
+      } else if (message.type === 'ready') {
+        clearReadyTimeout();
+        setFrameStatus('ready');
+        appState.pluginRuntimeError = null;
+      } else if (message.type === 'context') {
+        actions.proposeContext(message.proposal);
+      } else {
+        releasePort(port);
+        setFrameStatus('error');
+        appState.pluginRuntimeError = message.message;
+      }
+    };
+    port.onmessageerror = () => {
+      if (portRef.current !== port) return;
+      if (!isCurrentActivityDocument(documentIdentity)) {
+        releasePort(port);
+        return;
+      }
+      releasePort(port);
+      setFrameStatus('error');
+      appState.pluginRuntimeError = '插件通信通道发生协议错误。';
+    };
+    port.start();
+
+    readyTimeoutRef.current = window.setTimeout(() => {
+      if (portRef.current !== port) return;
+      releasePort(port);
+      if (!isCurrentActivityDocument(documentIdentity)) return;
+      setFrameStatus('error');
+      appState.pluginRuntimeError = '插件未在 10 秒内完成初始化。';
+    }, ACTIVITY_READY_TIMEOUT_MS);
+
+    try {
+      contentWindow.postMessage(
+        activityHostInit(
+          documentElementTheme(),
+          navigator.language || 'zh-CN',
+          contribution.packageId,
+          documentIdentity
+        ),
+        '*',
+        [channel.port2]
+      );
+    } catch {
+      channel.port2.close();
+      failFrame('无法建立插件通信通道。');
+    }
   };
 
   return (
@@ -90,49 +234,45 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
       />
 
       <div className='plugin-frame-shell'>
-        {state.pluginContentStatus === 'loading' && !content && (
+        {!documentIdentity && !documentError && (
           <PluginStateView
             icon={<LoaderCircle className='spin' size={22} />}
-            title='正在加载插件资产'
-            message='宿主正在核对注册表 revision、包归属和 SHA-256 摘要。'
+            title='正在加载插件文档'
+            message='宿主正在核对 Registry generation、revision 和文档身份。'
             role='status'
           />
         )}
-        {state.pluginContentStatus === 'error' && !content && (
+        {!documentIdentity && documentError && (
           <PluginStateView
             icon={<AlertTriangle size={22} />}
-            title='无法加载插件资产'
-            message={state.pluginContentError ?? '插件内容不可用。'}
+            title='无法加载插件文档'
+            message={documentError}
             tone='danger'
             role='alert'
             action={
-              <Button tone='primary' onClick={() => void actions.loadActivityContent(key, true)}>
+              <Button tone='primary' onClick={() => void actions.refreshActivities()}>
                 <RefreshCw size={14} />
                 重试
               </Button>
             }
           />
         )}
-        {content && (
+        {documentIdentity && (
           <>
-            <iframe
-              key={contentToken}
-              ref={iframeRef}
-              className='plugin-frame'
-              title={`${contribution.title} 插件内容`}
-              sandbox='allow-scripts'
-              referrerPolicy='no-referrer'
-              srcDoc={document}
-              onLoad={() => {
-                setFrameStatus('ready');
-                const theme = documentElementTheme();
-                iframeRef.current?.contentWindow?.postMessage(
-                  activityHostInit(theme, navigator.language || 'zh-CN', contribution.packageId, key),
-                  '*'
-                );
-              }}
-            />
-            {frameStatus === 'loading' && (
+            {blockedToken !== frameToken && (
+              <iframe
+                key={frameToken}
+                ref={iframeRef}
+                className='plugin-frame'
+                title={`${contribution.title} 插件内容`}
+                sandbox='allow-scripts'
+                referrerPolicy='no-referrer'
+                data-status={frameStatus}
+                src={documentIdentity.url}
+                onLoad={handleFrameLoad}
+              />
+            )}
+            {frameStatus === 'loading' && blockedToken !== frameToken && (
               <StateView
                 className='plugin-frame-overlay'
                 size='compact'
@@ -162,11 +302,73 @@ export function PluginHostPage({ actions }: { actions: PluginActions }) {
         )}
       </div>
 
-      {state.pluginContextProposal?.sourceKey === key && (
+      {proposalMatchesDocument(state.pluginContextProposal, documentIdentity) && (
         <ContextReviewDialog actions={actions} contributionTitle={contribution.title} skill={contribution.skill} />
       )}
     </section>
   );
+}
+
+async function handleStateRequest({
+  message,
+  port,
+  controller,
+  documentIdentity,
+  isActive,
+  release,
+  refreshActivities,
+}: {
+  message: Extract<PluginHostMessage, { type: 'state' }>;
+  port: MessagePort;
+  controller: AbortController;
+  documentIdentity: PluginActivityDocumentIdentity;
+  isActive: () => boolean;
+  release: () => void;
+  refreshActivities: () => Promise<void>;
+}): Promise<void> {
+  if (!isActive() || controller.signal.aborted || !isCurrentActivityDocument(documentIdentity)) {
+    release();
+    return;
+  }
+  try {
+    const result = await codeApi.pluginActivityState(
+      documentIdentity.key,
+      documentIdentity.generation,
+      documentIdentity.revision,
+      message.request,
+      controller.signal
+    );
+    if (!isActive() || controller.signal.aborted || !isCurrentActivityDocument(documentIdentity)) return;
+    port.postMessage(activityStateResult(message.requestId, result));
+  } catch (error) {
+    if (controller.signal.aborted || !isActive()) return;
+    if (error instanceof ApiError && error.status === 410) {
+      release();
+      void refreshActivities();
+      return;
+    }
+    if (!isCurrentActivityDocument(documentIdentity)) {
+      release();
+      return;
+    }
+    const details = stateRequestError(error);
+    try {
+      port.postMessage(activityStateError(message.requestId, details.code, details.message));
+    } catch {
+      release();
+    }
+  }
+}
+
+function stateRequestError(error: unknown): { code: string; message: string } {
+  if (!(error instanceof ApiError)) {
+    return { code: 'state-unavailable', message: '插件状态服务暂时不可用。' };
+  }
+  if (error.status === 400) return { code: 'invalid-request', message: error.message };
+  if (error.status === 404) return { code: 'not-found', message: error.message };
+  if (error.status === 413) return { code: 'capacity-exceeded', message: error.message };
+  if (error.status === 503) return { code: 'unavailable', message: error.message };
+  return { code: 'state-unavailable', message: '插件状态服务拒绝了本次操作。' };
 }
 
 function ContextReviewDialog({
@@ -260,4 +462,51 @@ function PluginStateView({
 
 function documentElementTheme(): 'light' | 'dark' {
   return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+}
+
+function currentActivityDocument(key: string | null): {
+  identity: PluginActivityDocumentIdentity | null;
+  error: string | null;
+} {
+  if (!key) return { identity: null, error: null };
+  const contribution = appState.pluginCatalog.items.find((item) => item.key === key && item.enabled);
+  if (!contribution) return { identity: null, error: null };
+  try {
+    return { identity: resolveActivityDocument(appState.pluginCatalog, contribution), error: null };
+  } catch {
+    return { identity: null, error: '插件文档身份与当前 Registry 目录不一致。' };
+  }
+}
+
+function isCurrentActivityDocument(identity: PluginActivityDocumentIdentity): boolean {
+  if (appState.activePluginKey !== identity.key) return false;
+  const catalog = appState.pluginCatalog;
+  if (catalog.generation !== identity.generation || catalog.revision !== identity.revision) return false;
+  const contribution = catalog.items.find((item) => item.key === identity.key && item.enabled);
+  if (!contribution) return false;
+  try {
+    const current = resolveActivityDocument(catalog, contribution);
+    return current.token === identity.token && current.url === identity.url;
+  } catch {
+    return false;
+  }
+}
+
+function proposalMatchesDocument(
+  proposal: Readonly<{
+    sourceKey: string;
+    sourceGeneration: number;
+    sourceRevision: string;
+    sourceDocumentUrl: string;
+  }> | null,
+  identity: PluginActivityDocumentIdentity | null
+): boolean {
+  return Boolean(
+    proposal &&
+      identity &&
+      proposal.sourceKey === identity.key &&
+      proposal.sourceGeneration === identity.generation &&
+      proposal.sourceRevision === identity.revision &&
+      proposal.sourceDocumentUrl === identity.url
+  );
 }

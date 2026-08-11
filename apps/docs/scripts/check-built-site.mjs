@@ -3,6 +3,10 @@ import path from 'node:path';
 
 const root = process.cwd();
 const output = path.join(root, 'out');
+const deploymentPath = process.env.SITE_URL
+  ? new URL(process.env.SITE_URL).pathname.replace(/\/+$/, '')
+  : '';
+const formHref = `${deploymentPath}/form/`.replace(/\/+/g, '/');
 const articleSlugs = [
   'programmable-agent-workflows',
   'domain-driven-design',
@@ -72,47 +76,49 @@ assert(chineseBlog, 'Chinese blog index is missing');
 assert(englishBlog, 'English blog index is missing');
 
 for (const marker of [
-  '为 AI Native 组织',
-  '构建的',
-  '生态系统。',
-  '每个AI Native的组织都应该有自己的AI操作系统',
-  '开发进度',
+  '为AI Native组织构建的AI操作系统生态',
+  '分布在全球的成员和 Agent 共用一个 Workspace',
+  'Shared Workspace',
+  '每个AI Native组织都需要构建专属的AI操作系统',
+  '交付阶段',
+  '不统计功能完成率',
+  'v0.10.14',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
 }
 
 for (const marker of [
-  'An ecosystem built',
-  'for AI Native',
-  'organizations.',
-  'Every AI Native organization should have its own AI operating system.',
-  'Development progress',
+  'An AI operating system ecosystem for AI Native organizations.',
+  'globally distributed humans and agents',
+  'Shared Workspace',
+  'Every AI Native organization needs to build its own AI operating system.',
+  'Delivery stage',
+  'not a feature-completion score',
+  'v0.10.14',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
 
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
-  const progressBars = homepage.match(/role="progressbar"/g) ?? [];
-  assert(progressBars.length === 36, `${locale} homepage has ${progressBars.length} progress bars instead of 36`);
+  const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
+  const formLinkCount = homepage.split(`href="${formHref}"`).length - 1;
+  assert(projectStages.length === 36, `${locale} homepage has ${projectStages.length} project stages instead of 36`);
+  assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
+  assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
-  assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage does not list A3S Form`);
+  assert(formLinkCount >= 2, `${locale} homepage does not route both A3S Form entries to the published playground`);
+  assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage is missing the separate A3S Form repository link`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
   assert(!homepage.includes('ecosystem-sites/blog.png'), `${locale} homepage still features the Site & Blog preview`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
   assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
-
-  for (const command of [
-    'a3s code exec',
-    'a3s web -d',
-    'a3s up -d',
-    'a3s bench run',
-    'a3s search doctor',
-    'a3s use capabilities --json',
-    'a3s top --view agents',
-    'a3s doctor',
-  ]) {
-    assert(homepage.includes(command), `${locale} homepage is missing the CLI capability command: ${command}`);
-  }
+  assert(homepage.includes('a3s-global-workspace'), `${locale} homepage is missing the global workspace scene`);
+  assert(
+    homepage.includes('Human') && homepage.includes('Agent'),
+    `${locale} homepage does not identify Human and Agent collaborators`,
+  );
+  assert(homepage.includes('Edge + Cloud'), `${locale} homepage does not identify the edge-cloud layer`);
+  assert(!homepage.includes('a3s-cli-terminal'), `${locale} homepage still renders the CLI hero terminal`);
 
   for (const installer of [
     'https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh',
@@ -133,6 +139,17 @@ for (const slug of articleSlugs) {
 
 const files = await collectFiles(output);
 const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
+
+if (process.env.REQUIRE_FORM_PREVIEW === '1') {
+  const formIndex = await read('form/index.html');
+  const formFiles = relativeFiles.filter((file) => file.startsWith('form/'));
+
+  assert(formIndex.includes('<title>A3S Form · 表单设计器</title>'), 'Published Form playground has an unexpected title');
+  assert(formIndex.includes('src="./static/js/'), 'Published Form playground must use relative JavaScript paths');
+  assert(formIndex.includes('href="./static/css/'), 'Published Form playground must use relative CSS paths');
+  assert(formFiles.some((file) => /^form\/static\/js\/[^/]+\.js$/.test(file)), 'Published Form playground contains no JavaScript bundle');
+  assert(formFiles.some((file) => /^form\/static\/css\/[^/]+\.css$/.test(file)), 'Published Form playground contains no CSS bundle');
+}
 
 for (const image of requiredImages) {
   assert(relativeFiles.includes(image), `Static build is missing image: ${image}`);
@@ -158,16 +175,21 @@ assert(cssFiles.length > 0, 'Static build contains no CSS assets');
 const css = (await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))).join('\n');
 for (const selector of [
   '.a3s-home-nav',
-  '.a3s-cli-terminal',
+  '.a3s-global-workspace',
   '.a3s-site-preview__image',
   '.a3s-directory-card',
-  '.a3s-project-progress',
+  '.a3s-delivery-guide',
+  '.a3s-project-delivery',
   '.a3s-blog-grid',
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
+assert(!css.includes('.a3s-cli-terminal'), 'Production CSS still contains the replaced CLI hero terminal');
+assert(!css.includes('.a3s-canvas-backdrop'), 'Production CSS still contains the replaced canvas backdrop');
 assert(!css.includes('.a3s-atlas'), 'Production CSS still contains architecture diagram styles');
 assert(!css.includes('.a3s-ecosystem-visual'), 'Production CSS still contains the replaced ecosystem hero visual');
+assert(!css.includes('.a3s-project-progress'), 'Production CSS still contains the misleading project progress component');
+assert(!css.includes('--project-progress'), 'Production CSS still contains numeric project progress scaling');
 
 if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');

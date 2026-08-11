@@ -1,6 +1,6 @@
 ---
 title: A3S 技术博客
-description: A3S 的架构、运行时与工程实践。
+description: 以当前代码、发布版本和验证记录为准的 A3S 工程文章。
 sidebar: false
 outline: false
 ---
@@ -9,63 +9,63 @@ outline: false
   <header className="a3s-blog-index__hero">
     <span>A3S / ENGINEERING BLOG</span>
     <h1>A3S 技术博客</h1>
-    <p>记录 A3S 的架构决策、运行时实现和工程验证。文章按发布日期排列。</p>
+    <p>只写当前代码、发布版本和验证边界。全部内容于 2026.08.07 重新核对。</p>
   </header>
 
   <div className="a3s-blog-index__meta">
     <span><b>08</b> 篇文章</span>
     <span><b>CN</b> 中文</span>
-    <span><b>2026</b> 持续更新</span>
+    <span><b>08.07</b> 最近核对</span>
   </div>
 
   <section className="a3s-blog-grid" aria-label="文章列表">
     <a className="a3s-blog-card is-featured" href="./programmable-agent-workflows">
       <span>WORKFLOW · RUST</span>
-      <h2>可编程、预算受限的多智能体工作流</h2>
-      <p>用 AgentExecutor、checkpoint 与共享预算组合可恢复的多 Agent 工作流。</p>
-      <time dateTime="2026-06-07">2026.06.07</time>
+      <h2>A3S Code 6.8 的多 Agent 工作流</h2>
+      <p>分清 task、dynamic_workflow、A3S Flow 和共享预算各自的边界。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./domain-driven-design">
-      <span>ARCHITECTURE · TYPESCRIPT</span>
-      <h2>领域驱动设计：回归本质的工程实践</h2>
-      <p>从业务模型、聚合、事件与 CQRS 出发，拆解 DDD 的工程实现。</p>
-      <time dateTime="2026-03-05">2026.03.05</time>
+      <span>CLOUD · RUST</span>
+      <h2>DDD 在 A3S Cloud 里怎么落地</h2>
+      <p>领域模块、CQRS、幂等、Outbox 和 Flow 在当前控制面中的分工。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./libkrun-libkrunfw-whpx">
       <span>VIRTUALIZATION · RUST</span>
-      <h2>libkrun：架构、模块与 Windows WHPX</h2>
-      <p>分析轻量 VMM 的分层结构，以及 Windows 虚拟化后端的实现。</p>
-      <time dateTime="2026-03-05">2026.03.05</time>
+      <h2>A3S Box 的 Windows 运行路径</h2>
+      <p>libkrun、libkrunfw、guest-init 与真实 WHPX 验证范围。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./http-402-generative-ui-agent-economy">
       <span>PROTOCOL · PRODUCT</span>
-      <h2>HTTP 402、生成式 UI 与智能体原生软件</h2>
-      <p>当软件的主要使用者变成 Agent，支付协议和交互层需要如何变化。</p>
-      <time dateTime="2026-03-01">2026.03.01</time>
+      <h2>HTTP 402 与 Agent 付费</h2>
+      <p>区分状态码、完整支付协议、设计建议与 A3S 已交付能力。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./why-coding-agent-is-the-core">
       <span>CODE · RUNTIME</span>
-      <h2>A3S Code v2.1.0：Coding Agent 运行时</h2>
-      <p>Session、工具、委派、记忆、回放与验证证据的运行时接口。</p>
-      <time dateTime="2026-02-27">2026.02.27</time>
+      <h2>A3S Code 6.8：当前运行时接口</h2>
+      <p>Session、受治理工具、事件、快照、委派和四种语言 SDK。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./why-ai-native-gateway">
       <span>GATEWAY · INFRASTRUCTURE</span>
-      <h2>为什么需要重新设计 AI 流量层</h2>
-      <p>流式响应、模型路由、弹性后端和长连接对网关提出的新约束。</p>
-      <time dateTime="2026-02-23">2026.02.23</time>
+      <h2>A3S Gateway 1.0 的实际边界</h2>
+      <p>协议、流式转发、原子快照，以及实验性与计划中能力。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./a3s-power-technical-deep-dive">
       <span>INFERENCE · PRIVACY</span>
-      <h2>10 美元硬件上的隐私 LLM 推理引擎</h2>
-      <p>在受限内存与 TEE 环境中运行模型并验证推理边界。</p>
-      <time dateTime="2026-02-22">2026.02.22</time>
+      <h2>A3S Power 0.7：推理、TEE 与收据</h2>
+      <p>嵌入式运行时、OpenAI 服务、模型完整性和硬件验收边界。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
     <a className="a3s-blog-card" href="./a3s-box-technical-deep-dive">
       <span>MICROVM · SANDBOX</span>
-      <h2>A3S Box：40MB MicroVM 运行时</h2>
-      <p>OCI 工作负载、硬件隔离、快速启动与 Docker 兼容接口。</p>
-      <time dateTime="2026-02-19">2026.02.19</time>
+      <h2>A3S Box 3.2：默认 MicroVM</h2>
+      <p>隔离选择、Docker-like 生命周期、平台限制和 CRI 预览状态。</p>
+      <time dateTime="2026-08-07">2026.08.07</time>
     </a>
   </section>
 </div>

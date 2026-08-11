@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { homeContent, type Lang } from './home-content';
 
@@ -13,5 +14,11 @@ describe('A3S CLI installation commands', () => {
       assert.equal(installers[2].command.startsWith('brew install a3s-lab/tap/a3s'), true);
       assert.equal(installers.every((installer) => installer.command.includes('a3s code')), true);
     }
+  });
+
+  test('keeps an accessible copy label when mobile hides the visible text', () => {
+    const source = readFileSync(new URL('./copy-command.tsx', import.meta.url), 'utf8');
+
+    assert.equal(source.includes('aria-label={copied ? copiedLabel : copyLabel}'), true);
   });
 });

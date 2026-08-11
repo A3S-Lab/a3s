@@ -496,6 +496,7 @@ export interface PluginActivityItem {
   order: number;
   sha256: string;
   mediaType: 'text/html';
+  documentUrl?: string;
 }
 
 export interface PluginActivityCatalog {
@@ -506,16 +507,22 @@ export interface PluginActivityCatalog {
   items: PluginActivityItem[];
 }
 
-export interface PluginActivityContent {
-  key: string;
+export type PluginUiCandidateDecision = 'ready' | 'load-failed' | 'protocol-error' | 'navigation-blocked' | 'timed-out';
+
+export interface PluginUiCandidate {
+  token: string;
+  scope: { kind: 'user' | 'workspace'; id: string };
   packageId: string;
-  skill: string;
-  registryRevision: string;
-  sha256: string;
-  mediaType: 'text/html';
-  html: string;
-  styles: string[];
-  scripts: string[];
+  surfaceId: string;
+  generation: number;
+  title: string;
+  assetDigest: string;
+  documentUrl: string;
+}
+
+export interface PluginUiCandidateCatalog {
+  schemaVersion: number;
+  items: PluginUiCandidate[];
 }
 
 export interface PluginMarketplaceRegistry {

@@ -1,73 +1,86 @@
 ---
-title: "A3S Code v2.1.0: The Coding Agent Runtime"
-description: How A3S Code exposes coding-agent sessions, tools, PTC, delegation, memory, replay, and verification through the Node SDK.
-date: "2026-02-27"
+title: "A3S Code 6.8: What the Coding-Agent Runtime Includes"
+description: The actual A3S Code 6.8.0 surface for sessions, governed tools, events, persistence, delegation, and cross-language SDKs, with unreleased main-branch work labeled separately.
+date: "2026-08-07"
 author: A3S Lab
-tags: [a3s-code, coding-agent, embeddable, typescript, sdk]
+tags: [a3s-code, coding-agent, rust, sdk, runtime]
 ---
 
-# A3S Code v2.1.0: The Coding Agent Runtime
+A3S Code 6.8.0 is the current stable release. It is neither a chat loop nor a wrapper around one model vendor's CLI. It separates the coding-agent runtime into replaceable contracts for models, workspaces, tools, policy, events, and persistence.
 
-A3S Code is an embeddable runtime for coding-agent workflows. A host
-application creates an agent, opens a workspace-bound session, and drives work
-through prompts, tools, deterministic programs, delegated tasks, replay, and
-verification evidence.
+## The shortest path to a running session
 
-```ts
-import { Agent } from '@a3s-lab/code';
+The terminal product ships through the A3S CLI:
 
-const agent = await Agent.create('agent.acl');
-const session = agent.session(process.cwd(), {
-  planningMode: 'enabled',
-});
-
-const result = await session.send(
-  'Find where authentication errors are handled and summarize the flow.',
-);
-
-console.log(result.text);
-console.log(result.verificationSummaryText);
+```bash
+brew install A3S-Lab/tap/a3s
+cd /path/to/project
+a3s code
 ```
 
-## Runtime Surface
+Applications can embed the Rust Core or use the Node.js, Python, and Go SDKs. All four surfaces share Session, event, and tool semantics instead of maintaining separate agent implementations.
 
-- ACL configuration with `providers` and `models` blocks.
-- OpenAI-compatible `apiKey`/`baseUrl` and `api_key`/`base_url` aliases.
-- Session options for model override, skill directories, prompt slots, planning,
-  file-backed memory/session stores, auto-save, compaction, continuation, and
-  permission-policy shape.
-- Direct tools: read, glob, grep, bash, git, generic `tool`, skill search, and
-  tool registry inspection.
-- Programmatic Tool Calling through `session.program()` and the core `program`
-  tool.
-- Task delegation with `delegateTask` and `parallelTask`.
-- Run replay, trace events, verification summaries, and run-scoped inspection.
-- Live stdio MCP registration and tool invocation.
-- Queue inspection and external-task primitives.
-- Session persistence through `save()` and `agent.resumeSession()`.
+## `Agent` and `AgentSession`
 
-## Streaming
+`Agent` resolves ACL configuration and shared capabilities. `AgentSession` binds them to one workspace and conversation.
 
-Use `.next()` to consume the stream:
+```rust
+use a3s_code_core::{Agent, AgentEvent};
 
-```ts
-const stream = await session.stream('Explain the release risk in one paragraph.');
+let agent = Agent::new("agent.acl").await?;
+let session = agent.session_builder(".").build().await?;
+let (mut events, lifecycle) = session.stream("Find the auth entry points.", None).await?;
 
-while (true) {
-  const { value: event, done } = await stream.next();
-  if (done) break;
-  if (event?.text) process.stdout.write(event.text);
+while let Some(event) = events.recv().await {
+    if let AgentEvent::TextDelta { text } = event {
+        print!("{text}");
+    }
 }
+
+let _ = lifecycle.await;
 ```
 
-Use the streaming shape documented for your installed SDK version.
+A UI does not need access to Core internals. Text, tools, approvals, plans, tasks, and terminal states are delivered through the event stream.
 
-## Why the Coding Agent Is Still the Core
+## Tools are not an unconditional registry
 
-Coding agents are valuable because they can close the loop with objective
-feedback: read code, make a change, run a command, inspect failure, and try
-again. A3S Code v2.1.0 exposes that loop as an embeddable runtime:
-sessions, tools, PTC, delegation, memory, replay, and verification evidence.
+Code registers tools according to workspace capability and policy.
 
-For the complete API surface covered by integration tests, see
-See the [A3S Code repository](https://github.com/A3S-Lab/Code) for the complete API and examples.
+- A local workspace can expose files, shell, Git, code navigation, and downloads.
+- An object-only backend does not advertise local `bash` or `git` to the model.
+- Calls pass through argument validation, permission checks, human confirmation, budgets, sandboxing, and cancellation.
+- `batch` parallelizes only calls declared safe and read-only. Writes and unknown tools are serialized.
+
+Release 6.8.0 consolidated repository discovery under `search`, with regex content search, path globbing, and bounded BM25. Delegation moved to the unified `task` contract for one task or a 1–32 item fan-out.
+
+## Resume from evidence
+
+`SessionSnapshotV1` can atomically store conversation state, runs, artifacts, traces, verification reports, and child-task records. `EventEnvelopeV1` is the lossless event protocol shared by SDK streams and persisted runs.
+
+`resume` therefore does more than resend a transcript. A host can load the authoritative run, inspect its checkpoint, and continue the same Session.
+
+Release 6.8.0 also added the bounded `a3s.code.agent.v1` headless protocol for exact release, session, and run admission, cancellation, checkpoint recovery, and event paging. It reuses Code's run store instead of creating a second Harness journal.
+
+## Programmable surfaces
+
+Core currently provides three orchestration entry points:
+
+| Surface | Best fit |
+| --- | --- |
+| `task` | Model-directed single or concurrent delegation |
+| `program` | Bounded QuickJS code calling allowed tools |
+| `dynamic_workflow` | A3S Flow-backed replay, retries, and recovery |
+
+`program` cannot recursively call itself or `dynamic_workflow`. Dynamic workflows are also registered explicitly by the host; a type existing in Core does not mean every embedding enables it automatically.
+
+## 6.8.0 versus `main`
+
+The stable release includes unified `task`, BM25 search, detached-run admission across SDKs, the headless agent protocol, and the Go SDK.
+
+Current `main` also contains a filesystem Skill Catalog. It lists metadata by repository and user scope, reads `SKILL.md` only on demand, and supports path-specific enablement and change notifications. That work is still under `Unreleased`; stable-package users should not assume it has shipped.
+
+## Code's place in A3S
+
+Code owns governed agent execution. A3S Flow owns durable workflows, A3S Box owns local isolation, A3S Gateway owns traffic, and A3S Cloud owns organization state and desired state. Moving those responsibilities back into Code would create competing sources of truth for permissions and recovery.
+
+References: [A3S Code](https://github.com/A3S-Lab/Code) · [A3S Code website](https://a3s-lab.github.io/Code/)

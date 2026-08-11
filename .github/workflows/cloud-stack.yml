@@ -18,6 +18,7 @@ on:
       - "crates/sentry"
       - "crates/updater/**"
       - "justfile"
+      - "packages/form"
       - "scripts/verify-cloud-stack.mjs"
       - "scripts/verify-cloud-stack.test.mjs"
   push:
@@ -39,6 +40,7 @@ on:
       - "crates/sentry"
       - "crates/updater/**"
       - "justfile"
+      - "packages/form"
       - "scripts/verify-cloud-stack.mjs"
       - "scripts/verify-cloud-stack.test.mjs"
 
@@ -67,6 +69,7 @@ jobs:
             crates/box \
             crates/event \
             crates/flow \
+            packages/form \
             crates/gateway \
             crates/orm \
             crates/runtime \

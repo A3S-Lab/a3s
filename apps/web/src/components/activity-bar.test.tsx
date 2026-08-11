@@ -19,6 +19,7 @@ const sciencePlugin: PluginActivityItem = {
   order: 120,
   sha256: 'a'.repeat(64),
   mediaType: 'text/html',
+  documentUrl: `/api/v1/plugins/activities/science%3Aresearch/document?generation=1&revision=${'b'.repeat(64)}`,
 };
 
 describe('A3S activity bar', () => {
@@ -62,8 +63,25 @@ describe('A3S activity bar', () => {
   it('keeps one unified Work entry while loading enabled plugin contributions', async () => {
     appState.pluginCatalog.items = [
       sciencePlugin,
-      { ...sciencePlugin, key: 'search:find', route: 'search', id: 'find', title: 'Search', order: 20, icon: 'search' },
-      { ...sciencePlugin, key: 'hidden:view', route: 'hidden', id: 'view', title: 'Hidden', enabled: false },
+      {
+        ...sciencePlugin,
+        key: 'search:find',
+        route: 'search',
+        id: 'find',
+        title: 'Search',
+        order: 20,
+        icon: 'search',
+        documentUrl: `/api/v1/plugins/activities/search%3Afind/document?generation=1&revision=${'b'.repeat(64)}`,
+      },
+      {
+        ...sciencePlugin,
+        key: 'hidden:view',
+        route: 'hidden',
+        id: 'view',
+        title: 'Hidden',
+        enabled: false,
+        documentUrl: undefined,
+      },
     ];
     render(<ActivityBar />);
 

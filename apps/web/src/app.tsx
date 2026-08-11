@@ -4,6 +4,7 @@ import { ToastRegion } from './components/toast-region';
 import { CodeBootScreen } from './features/code/components/code-boot-screen';
 import { useCodeController } from './features/code/use-code-controller';
 import { useKnowledgeController } from './features/knowledge/use-knowledge-controller';
+import { PluginCandidateReadinessHost } from './features/plugins/plugin-candidate-readiness-host';
 import { usePluginController } from './features/plugins/use-plugin-controller';
 import { useWeixinRemoteController } from './features/weixin-remote/use-weixin-remote-controller';
 import { appState } from './state/app-state';
@@ -25,6 +26,7 @@ export function App() {
 
   return (
     <>
+      <PluginCandidateReadinessHost />
       <AppShell
         actions={actions}
         pluginActions={pluginActions}
