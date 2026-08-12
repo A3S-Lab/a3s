@@ -51,13 +51,15 @@ The target Cloud, Flow, Boot, ORM, and Form composition is defined by the
 [workflow platform architecture](workflow-platform-architecture.md) and its
 ordered [development plan](workflow-platform-development-plan.md). The current
 lock pins the exact Form Core, Flow, Boot, ORM, Cloud, interaction protocols,
-evaluation protocols, and shared fixtures used by the verified Phase 1 and
-current Phase 2 implementation baseline. Native Form compilation and
-submitted-value evaluation have byte-identical Cloud evidence. Cloud's
-project-scoped canonical drafts, immutable releases, and exact Goal/Plan-bound
-WorkflowRuns persist through A3S ORM/PostgreSQL and share one CQRS authority
-across REST `1.14.0`, TypeScript client, CLI, and Management MCP. The minimal
-run slice executes Workflow-local `input`, `transform`, `branch`, and `output`
-steps through A3S Flow. This does not claim protected Form submissions,
-HumanTask commands, human/service/finite-task dispatch, typed capability steps,
-compensation, production recovery, or end-to-end HumanTask availability.
+evaluation protocols, and shared fixtures used by the verified Phase 1 and 2
+baseline plus the in-progress Phase 3 implementation slice. Native Form
+compilation and submitted-value evaluation have byte-identical Cloud evidence.
+Cloud's project-scoped canonical drafts, immutable releases, exact
+Goal/Plan-bound WorkflowRuns, and internal authority-bound HumanTask decision
+loop persist through A3S ORM/PostgreSQL. REST `1.21.0`, the TypeScript client,
+CLI, and Management MCP share protected task reads and versioned claim/release
+through the same Workflow state machine, idempotency, Outbox, audit, and
+Resource Grant authorities. This does not claim public Form submission,
+expiry/cancellation coordination, human/service/finite-task dispatch, typed
+capability steps, compensation, production recovery, or end-to-end HumanTask
+availability.

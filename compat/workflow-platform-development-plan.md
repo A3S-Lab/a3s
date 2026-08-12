@@ -119,6 +119,17 @@ Exit gate:
 
 This is the first milestone that may claim an end-to-end human workflow.
 
+Current implementation status on 2026-08-12: compatibility-lock digest
+`sha256:8a9c8955b11a969f932912c34267fab82413e8f8692bcbda1db02d6cea75f15c`
+pins Cloud `1ccfd8b8fa5be356aa4f25071718eb0739fa13a4`, which persists the internal
+authority-bound HumanTask decision loop and exposes protected list/detail reads
+plus versioned claim/release through REST `1.21.0`, the maintained TypeScript
+client, CLI, and Management MCP. These surfaces reuse the Workflow aggregate,
+A3S ORM transaction, idempotency store, Outbox, audit path, and shared Identity
+Resource Grant evaluator. Public submission, expiry/cancellation coordination,
+the named clean cross-surface and process-death evidence, and end-to-end
+availability remain open, so the Phase 3 exit gate is not yet met.
+
 ### Phase 4: Enterprise human work and Form governance
 
 Deliverables:
@@ -235,9 +246,9 @@ or browser-only path.
 6. Run `just cloud-stack-check` from a clean recursive checkout.
 7. Publish the integration claim only after the exact lock passes.
 
-Form must become a registered compatibility component before Cloud advertises
-the integrated human-task surface. Until then, source-level adapters and demos
-remain development evidence only.
+Form is a registered compatibility component. Cloud may advertise only the
+HumanTask slices whose exact lock and evidence have passed; source-level
+adapters and demos remain development evidence only.
 
 ## 6. Claim Boundaries
 
