@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "0fa29e3c332229469e6a61ed8b6a612609c5a7c7"
+  revision = "ce789bac5cc796f793afd598e0fbb2f77d7c60f1"
   source = "git"
   version = "0.1.0"
 }
@@ -109,6 +109,15 @@ component "updater" {
   package = "a3s-updater"
   path = "crates/updater"
   source = "workspace"
+  version = "0.3.0"
+}
+component "use" {
+  owner = "A3S-Lab/Use"
+  package = "a3s-use"
+  path = "crates/use"
+  repository = "git@github.com:A3S-Lab/Use.git"
+  revision = "7f7319486b75b09f53496ac5b6884872f7242b5b"
+  source = "git"
   version = "0.3.0"
 }
 protocol "cloud-gateway-snapshot" {
@@ -188,4 +197,64 @@ protocol "runtime-unit-spec" {
   owner = "A3S-Lab/Runtime"
   schema = "a3s.runtime.unit-spec.v2"
   source = "crates/runtime/src/contract/unit.rs"
+}
+protocol "use-plugin-host-apply-request" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-apply-request.v1"
+  source = "crates/use/crates/core/src/plugin/host_operation.rs"
+}
+protocol "use-plugin-host-apply-result" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-apply-result.v1"
+  source = "crates/use/crates/core/src/plugin/host_operation.rs"
+}
+protocol "use-plugin-host-capabilities" {
+  level = 4
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-capabilities.v4"
+  source = "crates/use/crates/core/src/plugin/host.rs"
+}
+protocol "use-plugin-host-enablement-plan-request" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-enablement-plan-request.v1"
+  source = "crates/use/crates/core/src/plugin/host_enablement_plan.rs"
+}
+protocol "use-plugin-host-enablement-plan-result" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-enablement-plan-result.v1"
+  source = "crates/use/crates/core/src/plugin/host_enablement_plan.rs"
+}
+protocol "use-plugin-host-managed-scope" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-managed-scope.v1"
+  source = "crates/use/crates/core/src/plugin/host.rs"
+}
+protocol "use-plugin-host-observation-request" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-observation-request.v1"
+  source = "crates/use/crates/core/src/plugin/host_observation.rs"
+}
+protocol "use-plugin-host-observation-result" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-observation-result.v1"
+  source = "crates/use/crates/core/src/plugin/host_observation.rs"
+}
+protocol "use-plugin-host-plan-request" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-plan-request.v1"
+  source = "crates/use/crates/core/src/plugin/host_plan.rs"
+}
+protocol "use-plugin-host-plan-result" {
+  level = 1
+  owner = "A3S-Lab/Use"
+  schema = "a3s.use.plugin-host-plan-result.v1"
+  source = "crates/use/crates/core/src/plugin/host_plan.rs"
 }

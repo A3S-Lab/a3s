@@ -14,11 +14,18 @@ The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
 revision drift, dirty component worktrees, Cargo manifest or lockfile drift,
-and mismatched Cloud, Form, Box Runtime, or Gateway dependencies. The verifier
-also requires Cloud's consumed Form interaction and submitted-value evaluation
-fixtures to be byte-identical to their Form-owned conformance fixtures. It
-parses and generates all tracked Cloud product-configuration fixtures and
-rejects HCL/Terraform product configuration in the Cloud integration surface.
+and mismatched Cloud, Form, Box Runtime, A3S Use, or Gateway dependencies. The
+verifier also requires Cloud's consumed Form interaction and submitted-value
+evaluation fixtures to be byte-identical to their Form-owned conformance
+fixtures. It parses and generates all tracked Cloud product-configuration
+fixtures and rejects HCL/Terraform product configuration in the Cloud
+integration surface.
+
+The Use entry pins the repository once while the verifier derives the exact
+`a3s-use-core` and `a3s-use-extension` package versions from that immutable
+revision. The lock records every protocol-level-4 `PluginHostManager` schema
+consumed by Cloud. It does not create another plugin manager or authorize
+assignment mutation before the shared A3S Use manager saga is complete.
 
 ## Proposing An Update
 

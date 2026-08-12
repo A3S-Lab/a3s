@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
@@ -15,10 +16,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LOCK_PATH = resolve(ROOT, 'compat/cloud-stack.acl');
 const LOCK_SOURCE = readFileSync(LOCK_PATH, 'utf8');
 
+function committedFile(repository, path) {
+  return execFileSync('git', ['show', `HEAD:${path}`], {
+    cwd: resolve(ROOT, repository),
+    encoding: null,
+  });
+}
+
 test('the checked-in Cloud stack is reproducible and clean', () => {
   const result = verifyCloudStack(ROOT);
   assert.match(result.digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(result.components.length, 12);
+  assert.equal(result.components.length, 13);
   assert.deepEqual(result.aclFiles, ['config/cloud.acl', 'config/node.example.acl']);
   assert.match(result.formInteractionFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
@@ -80,6 +88,17 @@ test('the Form component resolves the native core package from its nested manife
   assert.equal(form.manifest, 'crates/a3s-form-core/Cargo.toml');
   assert.equal(form.package, 'a3s-form-core');
   assert.equal(form.version, '0.1.0');
+});
+
+test('the Use component pins the sole shared manager repository', () => {
+  const use = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'use',
+  );
+  assert.ok(use);
+  assert.equal(use.manifest, 'Cargo.toml');
+  assert.equal(use.package, 'a3s-use');
+  assert.equal(use.version, '0.3.0');
+  assert.equal(use.revision, '7f7319486b75b09f53496ac5b6884872f7242b5b');
 });
 
 test('Git lock selection ignores a same-version registry package', () => {
@@ -150,6 +169,29 @@ test('the lock registers both owner-defined Form evaluation protocols', () => {
   );
 });
 
+test('the lock registers the complete Use protocol-level-4 host boundary', () => {
+  const protocols = new Map(
+    parseCloudStackLock(LOCK_SOURCE).protocols.map((protocol) => [protocol.id, protocol]),
+  );
+  assert.equal(
+    protocols.get('use-plugin-host-capabilities')?.schema,
+    'a3s.use.plugin-host-capabilities.v4',
+  );
+  for (const id of [
+    'use-plugin-host-apply-request',
+    'use-plugin-host-apply-result',
+    'use-plugin-host-enablement-plan-request',
+    'use-plugin-host-enablement-plan-result',
+    'use-plugin-host-managed-scope',
+    'use-plugin-host-observation-request',
+    'use-plugin-host-observation-result',
+    'use-plugin-host-plan-request',
+    'use-plugin-host-plan-result',
+  ]) {
+    assert.equal(protocols.get(id)?.level, 1, `${id} must remain protocol level 1`);
+  }
+});
+
 test('multiline Cargo dependency declarations are read as one binding', () => {
   const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
   const boot = tomlDependency(
@@ -214,21 +256,25 @@ test('the Cloud Form Core dependency is exact and bound to the locked Git revisi
 });
 
 test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
-  const owner = readFileSync(
-    resolve(ROOT, 'packages/form/tests/conformance/interaction-contract-v1.json'),
+  const owner = committedFile(
+    'packages/form',
+    'tests/conformance/interaction-contract-v1.json',
   );
-  const cloud = readFileSync(
-    resolve(ROOT, 'apps/cloud/crates/control-plane/tests/fixtures/form-interaction-contract-v1.json'),
+  const cloud = committedFile(
+    'apps/cloud',
+    'crates/control-plane/tests/fixtures/form-interaction-contract-v1.json',
   );
   assert.ok(owner.equals(cloud));
 });
 
 test('Cloud consumes the Form-owned submitted-value evaluation fixture byte for byte', () => {
-  const owner = readFileSync(
-    resolve(ROOT, 'packages/form/tests/conformance/value-evaluation-v1.json'),
+  const owner = committedFile(
+    'packages/form',
+    'tests/conformance/value-evaluation-v1.json',
   );
-  const cloud = readFileSync(
-    resolve(ROOT, 'apps/cloud/crates/control-plane/tests/fixtures/form-value-evaluation-v1.json'),
+  const cloud = committedFile(
+    'apps/cloud',
+    'crates/control-plane/tests/fixtures/form-value-evaluation-v1.json',
   );
   assert.ok(owner.equals(cloud));
 });

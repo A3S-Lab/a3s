@@ -25,6 +25,7 @@ const REQUIRED_COMPONENTS = [
   'runtime',
   'sentry',
   'updater',
+  'use',
 ];
 
 function invariant(condition, message) {
@@ -271,6 +272,19 @@ function git(root, args, options) {
   return run('git', args, root, options);
 }
 
+function readGitBlob(root, path, label) {
+  const result = spawnSync('git', ['show', `HEAD:${path}`], {
+    cwd: root,
+    encoding: null,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (result.status !== 0) {
+    const detail = (result.stderr ?? Buffer.alloc(0)).toString('utf8').trim();
+    throw new Error(`could not read committed ${label}${detail ? `: ${detail}` : ''}`);
+  }
+  return result.stdout;
+}
+
 function readManifestIdentity(manifestPath, componentRoot) {
   const source = readFileSync(manifestPath, 'utf8');
   if (!/^\[package\]\s*$/m.test(source)) {
@@ -447,6 +461,7 @@ function assertLockVersion(lockSource, component, label, expectedRevision) {
 function verifyDependencyBindings(root, componentMap) {
   const cloud = componentMap.get('cloud');
   const gateway = componentMap.get('gateway');
+  const use = componentMap.get('use');
   const cloudManifestPath = join(root, cloud.path, 'Cargo.toml');
   const cloudManifest = readFileSync(cloudManifestPath, 'utf8');
   const cloudLock = readFileSync(join(root, cloud.path, 'Cargo.lock'), 'utf8');
@@ -513,6 +528,37 @@ function verifyDependencyBindings(root, componentMap) {
     'Cloud a3s-runtime revision does not match the compatibility lock',
   );
   assertLockVersion(cloudLock, runtime, 'apps/cloud/Cargo.lock', runtime.revision);
+
+  const useRoot = join(root, use.path);
+  for (const manifest of ['crates/core/Cargo.toml', 'crates/extension/Cargo.toml']) {
+    const manifestPath = join(useRoot, manifest);
+    const identity = readManifestIdentity(manifestPath, useRoot);
+    const declaration = tomlDependency(
+      cloudManifest,
+      'workspace.dependencies',
+      identity.name,
+      cloudManifestPath,
+    );
+    invariant(
+      exactDependencyVersion(declaration, `Cloud ${identity.name}`) === identity.version,
+      `Cloud ${identity.name} does not match the locked Use package version`,
+    );
+    invariant(
+      dependencyField(declaration, 'git', `Cloud ${identity.name}`) ===
+        use.repository.replace('git@github.com:', 'https://github.com/'),
+      `Cloud ${identity.name} repository does not match the compatibility lock`,
+    );
+    invariant(
+      dependencyField(declaration, 'rev', `Cloud ${identity.name}`) === use.revision,
+      `Cloud ${identity.name} revision does not match the compatibility lock`,
+    );
+    assertLockVersion(
+      cloudLock,
+      { package: identity.name, version: identity.version },
+      'apps/cloud/Cargo.lock',
+      use.revision,
+    );
+  }
 
   const gatewayManifestPath = join(root, gateway.path, 'Cargo.toml');
   const gatewayManifest = readFileSync(gatewayManifestPath, 'utf8');
@@ -597,8 +643,16 @@ function verifyFormFixture(
     existsSync(cloudFixturePath),
     `Cloud ${label.toLowerCase()} fixture is missing: ${cloudRelativePath}`,
   );
-  const ownerBytes = readFileSync(ownerPath);
-  const cloudBytes = readFileSync(cloudFixturePath);
+  const ownerBytes = readGitBlob(
+    join(root, formPath),
+    `tests/conformance/${ownerFileName}`,
+    `${label} fixture`,
+  );
+  const cloudBytes = readGitBlob(
+    join(root, cloudPath),
+    `crates/control-plane/tests/fixtures/${cloudFileName}`,
+    `Cloud ${label.toLowerCase()} fixture`,
+  );
   invariant(
     ownerBytes.equals(cloudBytes),
     `Cloud ${label.toLowerCase()} fixture must be byte-identical to ${ownerRelativePath}`,

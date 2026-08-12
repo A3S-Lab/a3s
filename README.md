@@ -136,7 +136,10 @@ Five invariants keep those layers honest:
    is not HCL and must not be handled by an HCL parser.
 
 The compatibility lock pins the verified cross-product baseline through the
-current Phase 2 implementation slice for Cloud, Flow, Boot, ORM, and Form. The
+current Phase 2 implementation slice for Cloud, Flow, Boot, ORM, Form, and A3S
+Use. The pinned Use revision and host schemas certify Cloud's read-only catalog
+and Fleet adapter boundary; they do not claim assignment mutation or add a
+second plugin manager. The
 target composition is defined in the
 [Workflow platform architecture](compat/workflow-platform-architecture.md) and
 its ordered [development plan](compat/workflow-platform-development-plan.md).

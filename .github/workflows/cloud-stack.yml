@@ -16,6 +16,7 @@ on:
       - "crates/orm"
       - "crates/runtime"
       - "crates/sentry"
+      - "crates/use"
       - "crates/updater/**"
       - "justfile"
       - "packages/form"
@@ -38,6 +39,7 @@ on:
       - "crates/orm"
       - "crates/runtime"
       - "crates/sentry"
+      - "crates/use"
       - "crates/updater/**"
       - "justfile"
       - "packages/form"
@@ -73,7 +75,8 @@ jobs:
             crates/gateway \
             crates/orm \
             crates/runtime \
-            crates/sentry
+            crates/sentry \
+            crates/use
 
       - name: Install Node.js 20
         uses: actions/setup-node@v4
