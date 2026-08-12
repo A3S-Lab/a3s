@@ -199,10 +199,11 @@ inventing extra terminal states.
 
 ## 6. Human Interaction Contract
 
-The current Form interaction envelope must be replaced by a request-bound
-contract before Cloud accepts production submissions. Validation must receive
-the original request, the exact Form release, the candidate submission, current
-time, and the authenticated principal.
+The implemented HumanTask slice uses one request-bound Form interaction
+contract as its submission authority. Validation receives the original
+request, the exact Form release, the candidate submission, current time, and
+the authenticated principal. Broader production availability still depends on
+the later renderer, recovery, and scale gates in the development plan.
 
 The contract must bind at least:
 
@@ -262,7 +263,21 @@ identity and reconciliation, not a cross-system SQL transaction.
 6. Recovery projection advances WorkflowRun after observing the matching Flow
    event; missing acknowledgement remains pending and is retried.
 
-### 7.4 Required crash points
+### 7.4 Automatic expiry and parent cancellation
+
+1. The existing HumanTask coordinator recomputes expiry from the immutable Run,
+   Plan, task generation, and Flow deadline; it never trusts a mutable timer
+   payload.
+2. Parent-cancellation candidates preempt overdue candidates. A terminal
+   cancellation decision binds the exact Cloud cancelling Principal and the
+   unique Flow `RunCancellationRequested`/`RunCancelled` event pair.
+3. The existing decision transaction commits the automatic decision and resume
+   Outbox intent. The resume worker settles it from exact `HookReceived`,
+   `RunTimedOut`, or `RunCancelled` evidence.
+4. This path adds no second scheduler, queue, authorization store, or terminal
+   ledger.
+
+### 7.5 Required crash points
 
 Real PostgreSQL tests must kill the owning process after each of these points:
 
@@ -272,7 +287,7 @@ Real PostgreSQL tests must kill the owning process after each of these points:
 - hook creation before task activation;
 - submission and decision commit before Flow resume;
 - Flow resume before WorkflowRun projection; and
-- task claim or expiry racing with submission.
+- task claim, expiry, or parent cancellation racing with submission.
 
 Every restart must converge without a second run, task, submission, decision,
 hook completion, or external side effect.

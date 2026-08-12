@@ -56,11 +56,13 @@ baseline plus the in-progress Phase 3 implementation slice. Native Form
 compilation and submitted-value evaluation have byte-identical Cloud evidence.
 Cloud's project-scoped canonical drafts, immutable releases, exact
 Goal/Plan-bound WorkflowRuns, and internal authority-bound HumanTask decision
-loop persist through A3S ORM/PostgreSQL. REST `1.22.0`, the TypeScript client,
+loop persist through A3S ORM/PostgreSQL. REST `1.23.0`, the TypeScript client,
 CLI, and Management MCP share protected task reads, versioned claim/release,
 and exact native Form submission through the same Workflow state machine,
 idempotency, Outbox, audit, and Resource Grant authorities. Form remains the
 sole semantic evaluator, while Identity owns immutable authorization decision
-evidence. This does not claim expiry/cancellation coordination,
+evidence. The same coordinator and resume Outbox now close automatic expiry
+and parent cancellation using exact Flow timeout/cancellation evidence; no
+second scheduler, queue, or terminal ledger is introduced. This does not claim
 human/service/finite-task dispatch, typed capability steps, compensation,
 production recovery, or end-to-end HumanTask availability.
