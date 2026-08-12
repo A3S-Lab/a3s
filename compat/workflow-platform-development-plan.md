@@ -119,16 +119,19 @@ Exit gate:
 
 This is the first milestone that may claim an end-to-end human workflow.
 
-Current implementation status on 2026-08-12: compatibility-lock digest
-`sha256:8a9c8955b11a969f932912c34267fab82413e8f8692bcbda1db02d6cea75f15c`
-pins Cloud `1ccfd8b8fa5be356aa4f25071718eb0739fa13a4`, which persists the internal
-authority-bound HumanTask decision loop and exposes protected list/detail reads
-plus versioned claim/release through REST `1.21.0`, the maintained TypeScript
-client, CLI, and Management MCP. These surfaces reuse the Workflow aggregate,
-A3S ORM transaction, idempotency store, Outbox, audit path, and shared Identity
-Resource Grant evaluator. Public submission, expiry/cancellation coordination,
-the named clean cross-surface and process-death evidence, and end-to-end
-availability remain open, so the Phase 3 exit gate is not yet met.
+Current implementation status on 2026-08-13: compatibility-lock digest
+`sha256:c0abfcdd816e1091ea8bee4ea65555cc95b336ce85fd96a59d8397009e0de1c5`
+pins Cloud `137abfc1efabd49d14b660269f7ccc78f6835a6e`, which persists the internal
+authority-bound HumanTask decision loop and exposes protected list/detail,
+versioned claim/release, and exact native A3S Form submission through REST
+`1.22.0`, the maintained TypeScript client, CLI, and Management MCP. Form
+remains the sole semantic evaluator; Identity re-reads current credential,
+membership, and Resource Grant authority and records immutable decision
+evidence in the existing audit store. Workflow atomically persists the
+decision reference, Form submission, idempotency result, audit, Outbox, and
+Flow-resume delivery. Expiry/cancellation coordination, a controlled task inbox
+and renderer, the named clean cross-surface and process-death evidence, and
+end-to-end availability remain open, so the Phase 3 exit gate is not yet met.
 
 ### Phase 4: Enterprise human work and Form governance
 
