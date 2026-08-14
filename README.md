@@ -118,9 +118,17 @@ capability or infrastructure dependency.
 | **Build** | Agent session, model, tools, context, permissions | [Code](crates/code/), [TUI](crates/tui/), [Web](apps/web/) |
 | **Extend** | Typed capability and content packages | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
 | **Coordinate** | Replay-safe workflows, events, queues, verification | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
-| **Execute** | Finite Tasks, long-running Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [Boot](crates/boot/) |
+| **Execute** | Finite Tasks, long-running Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Boot](crates/boot/) |
 | **Scale** | Traffic, desired state, placement, reconciliation | [Gateway](crates/gateway/), [Cloud](apps/cloud/), [ORM](crates/orm/) |
 | **Govern** | Observation, enforcement decisions, signed updates | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
+
+The [MoE](crates/moe/) model layer now owns the accepted
+`Qwen/Qwen3.6-35B-A3B` text equations, checkpoint packing, and model-specific
+validation while [Power](crates/power/) remains the sole owner of expert
+residency, continuous admission, and HTTP serving. Its M8 acceptance evidence
+records independent-oracle parity, bounded CPU execution, and real concurrent
+requests on the target Windows host; accelerator execution remains a separate
+milestone.
 
 Five invariants keep those layers honest:
 
@@ -402,7 +410,7 @@ root-owned.
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, coordination, and data | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
-| Services and interfaces | [Boot](crates/boot/), [Gateway](crates/gateway/), [Power](crates/power/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
+| Services and interfaces | [Boot](crates/boot/), [Gateway](crates/gateway/), [Power](crates/power/), [MoE](crates/moe/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
 | Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Website & Blog](apps/docs/), [Homebrew Tap](homebrew-tap/) |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)
