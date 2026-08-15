@@ -125,10 +125,13 @@ capability or infrastructure dependency.
 The [MoE](crates/moe/) model layer now owns the accepted
 `Qwen/Qwen3.6-35B-A3B` text equations, checkpoint packing, and model-specific
 validation while [Power](crates/power/) remains the sole owner of expert
-residency, continuous admission, and HTTP serving. Its M8 acceptance evidence
-records independent-oracle parity, bounded CPU execution, and real concurrent
-requests on the target Windows host; accelerator execution remains a separate
-milestone.
+residency, continuous admission, HTTP serving, and model-neutral speculative
+execution primitives. Its checked evidence now records independent-oracle
+parity on CPU and `cuda:0`, real concurrent requests, and a Qwen3.6 F32 CUDA
+warm mean of `0.263611 tokens/s` on the target RTX 4090 host. The DSpark path is
+cross-architecture: model crates provide trained drafters and transactional
+state adapters, while Power provides shared scheduling and exact acceptance.
+Metal acceptance, optimized kernels, and trained DSpark adapters remain open.
 
 Five invariants keep those layers honest:
 
