@@ -69,6 +69,8 @@ describe('Work file center', () => {
     );
 
     expect(screen.getByRole('heading', { name: '今天想完成什么？' })).toBeInTheDocument();
+    expect(screen.getByText(/任务记录与产物由本地服务保存/)).toBeInTheDocument();
+    expect(screen.queryByText(/内容保留在本地/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /深度研究模式/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '运行设置' }));
     expect(screen.getByRole('region', { name: '运行设置面板' })).toBeInTheDocument();
@@ -83,8 +85,12 @@ describe('Work file center', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '浏览工作区' }));
     expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: '新建文档' }));
+    const createMenu = screen.getByRole('button', { name: '新建' });
+    fireEvent.click(createMenu);
+    expect(createMenu).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /空白文字/ }));
     expect(onCreate).toHaveBeenCalledWith('blank-document');
+    expect(createMenu).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('keeps the composer available while offering explicit resume and new-task actions', () => {
@@ -177,11 +183,16 @@ describe('Work file center', () => {
       />
     );
 
+    expect(screen.getByRole('navigation', { name: '常用操作' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '新建' })).not.toBeInTheDocument();
+    const createMenu = screen.getByRole('button', { name: '新建' });
+    fireEvent.click(createMenu);
     expect(screen.getByRole('button', { name: /空白文字/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /空白表格/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /空白演示/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /季度计划/ }));
     expect(create).toHaveBeenCalledWith('quarterly-plan');
+    expect(createMenu).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('searches and opens persisted artifacts', () => {

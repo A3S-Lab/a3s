@@ -46,11 +46,14 @@ describe('shared product navigation styles', () => {
     );
   });
 
-  it('shows readable product labels on desktop and returns to the compact rail on mobile', () => {
-    expect(activityBarStyles).toMatch(/\.activity-bar\s*\{[\s\S]*?width:\s*76px;[\s\S]*?flex:\s*0 0 76px;/);
-    expect(activityBarStyles).toMatch(/\.activity-button-label\s*\{[\s\S]*?font-size:\s*9px;/);
+  it('uses a compact desktop rail and a reachable mobile bottom bar', () => {
+    expect(baseStyles).toMatch(/--a3s-activity-rail-size:\s*52px;/);
     expect(activityBarStyles).toMatch(
-      /@media \(max-width: 620px\)[\s\S]*?\.activity-bar\s*\{[\s\S]*?width:\s*52px;[\s\S]*?\.activity-button-label\s*\{[\s\S]*?display:\s*none;/
+      /\.activity-bar\s*\{[\s\S]*?width:\s*var\(--a3s-activity-rail-size\);[\s\S]*?flex:\s*0 0 var\(--a3s-activity-rail-size\);/
+    );
+    expect(activityBarStyles).toMatch(/\.activity-button-label\s*\{[\s\S]*?position:\s*absolute;/);
+    expect(activityBarStyles).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*?\.activity-bar\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?right:\s*0;[\s\S]*?bottom:\s*0;[\s\S]*?height:\s*56px;/
     );
   });
 });

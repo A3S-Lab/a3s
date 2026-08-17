@@ -44,8 +44,21 @@ vi.mock('../use-work-code-controller', () => ({
 }));
 
 vi.mock('../components/work-home', () => ({
-  WorkHome: ({ onTaskSubmit }: { onTaskSubmit: (content: string) => void }) => (
+  WorkHome: ({
+    onTaskSubmit,
+    onOpenSidebar,
+    sidebarOpen,
+  }: {
+    onTaskSubmit: (content: string) => void;
+    onOpenSidebar: () => void;
+    sidebarOpen: boolean;
+  }) => (
     <main>
+      {!sidebarOpen && (
+        <button type='button' className='product-sidebar-open-button' onClick={onOpenSidebar}>
+          展开会话侧边栏
+        </button>
+      )}
       <div data-office-shortcuts='ignore'>
         <input aria-label='AI 指令' />
       </div>
@@ -198,6 +211,17 @@ describe('Work product shortcuts', () => {
     expect(screen.getByRole('main', { name: '独立任务对话' })).toHaveTextContent('task-from-library');
     expect(window.location.hash).toBe('#conversation/task-from-library');
     expect(screen.queryByRole('complementary', { name: 'AI 助手' })).not.toBeInTheDocument();
+  });
+
+  it('closes the task library from its mobile overlay backdrop', async () => {
+    appState.sidebarOpen = true;
+
+    render(<WorkProduct actions={codeActions()} />);
+    fireEvent.click(screen.getByRole('button', { name: '关闭任务列表' }));
+
+    expect(appState.sidebarOpen).toBe(false);
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: '任务列表' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: '展开会话侧边栏' })).toHaveFocus());
   });
 
   it('keeps the assistant contextual to the Work code scene', () => {

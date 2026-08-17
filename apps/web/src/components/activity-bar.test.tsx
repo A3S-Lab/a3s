@@ -55,6 +55,8 @@ describe('A3S activity bar', () => {
     expect(buttons[1]).toHaveAttribute('aria-label', '知识库');
     expect(buttons[0]).toHaveTextContent('任务');
     expect(buttons[1]).toHaveTextContent('知识库');
+    expect(buttons[0]).toHaveAttribute('title', '任务与文件');
+    expect(buttons[1]).toHaveAttribute('title', '知识库');
     expect(buttons[0]).toHaveAttribute('aria-current', 'page');
     expect(appState.activeProduct).toBe('work');
     expect(window.location.hash).toBe('#home');

@@ -11,8 +11,9 @@
   --a3s-panel-soft: #f2f3f5;
   --a3s-panel-strong: #e9ebef;
   --a3s-ink: #17181a;
-  --a3s-muted: #71757d;
-  --a3s-faint: #a1a5ad;
+  --a3s-muted: #62666f;
+  --a3s-subtle: #686d76;
+  --a3s-faint: #6d727b;
   --a3s-line: #e2e4e8;
   --a3s-line-strong: #d3d6dc;
   --a3s-action: #242424;
@@ -21,9 +22,9 @@
   --a3s-blue: #2864e8;
   --a3s-indigo: #4034cc;
   --a3s-purple: #5420bd;
-  --a3s-green: #14a675;
+  --a3s-green: #087f58;
   --a3s-red: #d84b4f;
-  --a3s-warning: #c97816;
+  --a3s-warning: #a85f0c;
   --a3s-file-folder: #d8a43a;
   --a3s-file-typescript: #3178c6;
   --a3s-file-javascript: #c89b18;
@@ -43,7 +44,11 @@
   --a3s-radius-sm: 9px;
   --a3s-product-sidebar-width: 232px;
   --a3s-product-sidebar-compact-width: 208px;
+  --a3s-activity-rail-size: 52px;
+  --a3s-workspace-header-size: 50px;
   --a3s-shell-icon-stroke: 1.75;
+  --a3s-scrollbar-thumb: #c5c8cf;
+  --a3s-scrollbar-thumb-hover: #aeb2ba;
   font-family:
     ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
@@ -59,7 +64,8 @@
   --a3s-panel-strong: #282b35;
   --a3s-ink: #f2f3f5;
   --a3s-muted: #a4a8b2;
-  --a3s-faint: #727783;
+  --a3s-subtle: #9196a1;
+  --a3s-faint: #828793;
   --a3s-line: #2a2d35;
   --a3s-line-strong: #3a3d48;
   --a3s-action: #f2f3f5;
@@ -81,6 +87,8 @@
   --a3s-shadow: 0 22px 70px rgb(0 0 0 / 35%);
   --a3s-shadow-soft: 0 9px 30px rgb(0 0 0 / 24%);
   --a3s-shadow-composer: none;
+  --a3s-scrollbar-thumb: #414550;
+  --a3s-scrollbar-thumb-hover: #565b67;
 }
 
 * {
@@ -115,11 +123,42 @@ body {
   line-height: 1.6;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--a3s-blue) 22%, transparent);
+}
+
+* {
+  scrollbar-color: var(--a3s-scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--a3s-scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--a3s-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
 button,
 input,
 textarea,
 select {
   font: inherit;
+  caret-color: var(--a3s-blue);
 }
 
 button {

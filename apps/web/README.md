@@ -59,6 +59,9 @@ by the
   channel list and one detail surface; Feishu currently displays only “Coming
   soon”.
   Research and Finance are not hardcoded entries.
+  The desktop switcher is a compact 52 px icon rail; below 768 px it becomes a
+  labeled 56 px bottom navigator, while the Work conversation list becomes a
+  focus-restoring overlay drawer instead of a permanent narrow rail.
 - A standalone, local-only Knowledge page lets users create, search, and pin
   personal knowledge bases; import Obsidian Vaults and other local folders; and
   open each base in an Obsidian-inspired file-tree, Markdown editing, and live
@@ -132,13 +135,14 @@ by the
   composer instead of a file grid. It preserves execution mode, model, effort,
   `@` workspace references, `$` Skill mentions, built-in `/` commands,
   drag-and-drop context, and the real
-  queue submission path. Implemented shortcuts create Office artifacts, open
-  files, prepare editable data-analysis and file-organization drafts, or enter
-  the local-files workspace. Home remains focused on preparation: successful
+  queue submission path. A quiet secondary action row opens files, enters the
+  local workspace, prepares editable data-analysis and file-organization
+  drafts, and discloses all six Office creation choices from one Create menu.
+  Home remains focused on preparation: successful
   submission enters the created or active task's independent conversation page,
-  while a failed creation stays on Home with its draft intact. Templates,
-  folders, and recent files remain directly available below the task entry, while Recent,
-  Favorites, Trash, and folder views remain focused file-management surfaces.
+  while a failed creation stays on Home with its draft intact. One “continue
+  work” area keeps search, folders, recent files, Recent, Favorites, Trash, and
+  folder views available without repeating a permanent template gallery.
 - A single-file detail editor for every non-binary code or text file in the
   selected root. It uses the same header and return flow as Office details while
   keeping Monaco syntax highlighting, diagnostics, semantic navigation, safe

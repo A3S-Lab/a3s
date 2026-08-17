@@ -5,8 +5,8 @@
 A3S Web opens its canonical `#home` route with the user's intended outcome,
 not with a file grid or a product chooser.
 The home surface therefore makes the durable A3S task composer the primary
-entry point while retaining templates, folders, and recent files as supporting
-content below it.
+entry point while retaining direct creation, folders, and recent files as
+supporting work paths without a competing template gallery.
 
 The interaction model is informed primarily by the current Codex desktop app:
 the app acts as a command center, local folders provide project context,
@@ -25,17 +25,20 @@ Reference baseline:
 
 The Work home is ordered as follows:
 
-1. A3S identity and one outcome-oriented question.
+1. One outcome-oriented question and a concise explanation of what happens
+   next.
 2. A compact current-task strip when a task is selected. It offers explicit
    resume and new-task actions but never replaces the composer.
 3. The task composer and its real queue submission path. The selected local
    workspace stays visible with both folder name and path. Execution mode stays
    at hand; research mode, effort, model, and context controls move into an
    on-demand Run settings panel.
-4. One-click capabilities that map only to implemented actions: create text,
-   spreadsheet, or presentation artifacts; open a file; prepare data-analysis
-   or file-organization tasks; and open the local-files workspace.
-5. Managed templates, folders, and recent files for direct manipulation.
+4. Quiet secondary actions that map only to implemented behavior: open a file,
+   enter the local workspace, or prepare data-analysis and file-organization
+   drafts. One accessible Create disclosure contains all six Office templates
+   and invokes the same direct artifact operations.
+5. One continue-work area for managed folders, file views, search, and recent
+   files. Templates are not repeated as a permanent gallery.
 
 Recent, Favorites, Trash, and managed-folder views remain file-management
 surfaces. They do not repeat the home hero.
@@ -79,7 +82,8 @@ Implemented in the first release:
 - AI-native hero and full task composer.
 - Persistent composer with separate resume-current and new-task actions.
 - Visible workspace identity and progressive Run settings.
-- Readable top-level navigation labels with a compact mobile rail.
+- A 52 px icon-only desktop Activity Bar with accessible names and native title
+  fallbacks, plus a labeled 56 px bottom navigator below 768 px.
 - User-facing Knowledge and Settings terminology that describes outcomes before
   implementation details.
 - Real capability shortcuts with no placeholder media features.
@@ -87,9 +91,11 @@ Implemented in the first release:
 - Reload-safe conversation route, browser-history restoration, and truthful
   missing-session recovery.
 - Contextual assistant limited to file, Office, PDF, and code scenes.
-- Existing templates and file library preserved below the task entry.
+- All six Office templates preserved in one Create disclosure, with the file
+  library retained below the task entry and no duplicate template gallery.
 - Responsive layouts for a narrow Work pane and a 360 px viewport, plus dark
-  theme support and keyboard-accessible controls.
+  theme support and keyboard-accessible controls. Opening the compact task
+  drawer focuses its collapse control; closing it restores focus to the opener.
 
 ### Phase 2 — Personalized starting points
 
@@ -136,6 +142,10 @@ Implemented in the first release:
   durable Work subroute; removed or malformed product-prefixed routes are not
   retained.
 - Non-home library views retain direct file-management behavior.
+- The compact task drawer has a clickable outside region, moves focus to its
+  collapse control when opened, and restores focus to its opener when closed.
+- Meaningful quiet text maintains at least 4.5:1 contrast against its surface
+  in both light and dark themes.
 - The page has no horizontal overflow at 360 px and remains legible in light and
   dark themes.
 - Focused component tests, type checking, lint, formatting, production build,

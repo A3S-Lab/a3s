@@ -15,6 +15,7 @@ const task = {
   title: 'Parser task',
   createdAt: 1,
 };
+const defaultInnerWidth = window.innerWidth;
 
 describe('TaskLibrary management', () => {
   beforeEach(() => {
@@ -24,7 +25,19 @@ describe('TaskLibrary management', () => {
     appState.searchQuery = '';
     appState.health = null;
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: defaultInnerWidth });
+  });
+
+  it('moves focus into the task drawer when it opens on a compact viewport', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 });
+    appState.sidebarOpen = true;
+
+    render(<TaskLibrary actions={{} as TaskActions} />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '收起任务侧边栏' })).toHaveFocus());
+  });
 
   it('uses a quiet grouped task list with relative time and collapsible search', () => {
     appState.sessions = [{ ...task, createdAt: Date.now() - 7 * 60 * 60 * 1000 }];
@@ -66,7 +79,7 @@ describe('TaskLibrary management', () => {
 
   it('closes the task overlay after selecting a task on a compact viewport', () => {
     const originalWidth = window.innerWidth;
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 });
     appState.sidebarOpen = true;
     const selectSession = vi.fn(async () => undefined);
     render(<TaskLibrary actions={{ selectSession } as unknown as TaskActions} />);

@@ -131,6 +131,7 @@ function ActivityButton({
       aria-current={active ? 'page' : undefined}
       aria-expanded={expanded}
       data-activity-tooltip={tooltip}
+      title={tooltip}
       onClick={onClick}
     >
       <Icon size={20} />

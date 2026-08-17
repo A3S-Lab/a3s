@@ -62,15 +62,20 @@ feature CSS.
 | Soft surface | `#f2f3f5` | `#1e2028` | `--a3s-panel-soft` |
 | Strong surface | `#e9ebef` | `#282b35` | `--a3s-panel-strong` |
 | Primary text | `#17181a` | `#f2f3f5` | `--a3s-ink` |
-| Secondary text | `#71757d` | `#a4a8b2` | `--a3s-muted` |
+| Secondary text | `#62666f` | `#a4a8b2` | `--a3s-muted` |
+| Quiet text | `#6d727b` | `#828793` | `--a3s-faint` |
 | Border | `#e2e4e8` | `#2a2d35` | `--a3s-line` |
 | Focus/accent | `#2864e8` | `#6ca3ff` | `--a3s-blue` |
-| Success | `#14a675` | `#3ccf91` | `--a3s-green` |
+| Success | `#087f58` | `#3ccf91` | `--a3s-green` |
 | Danger | `#d84b4f` | `#f27777` | `--a3s-red` |
-| Warning | `#c97816` | `#eda94c` | `--a3s-warning` |
+| Warning | `#a85f0c` | `#eda94c` | `--a3s-warning` |
 
 Primary action buttons use the neutral action token. Blue remains a focused
 product accent so a page does not become visually saturated.
+
+Meaningful text rendered with `--a3s-faint` must maintain at least 4.5:1
+contrast against its surface. The dark quiet-text token is intentionally
+bounded by that requirement rather than treated as decorative gray.
 
 ### File colors
 
@@ -126,7 +131,10 @@ Rules:
 
 ### Activity Bar
 
-The leftmost 52 px rail is the product switcher.
+On desktop, the leftmost 52 px rail is the product switcher. Its resting
+buttons are icon-only, with an accessible name, delayed tooltip, and native
+`title` fallback that remains discoverable when a scroll container clips custom
+tooltip geometry. Product names do not consume permanent horizontal space.
 
 Upper group:
 
@@ -142,6 +150,10 @@ Lower group:
 
 There is no separate Office or coding icon. The selected item uses an A3S-blue
 edge marker, stronger icon treatment, tooltip, and `aria-current="page"`.
+
+Below 768 px, the switcher becomes a labeled 56 px bottom navigator. The brand
+mark is removed, product and system groups remain distinct, and overflow is
+horizontal rather than shrinking targets or labels.
 
 ### Work sidebar
 
@@ -171,7 +183,7 @@ editor. Scene headers share:
 - a consistent back/collapse action;
 - left-aligned identity and current object;
 - right-aligned AI Assistant toggle and scene actions;
-- 40–44 px height where format-specific ribbon chrome is not required;
+- 50 px height where format-specific ribbon chrome is not required;
 - one bottom border and no decorative gradient.
 
 ### AI Assistant
@@ -185,14 +197,17 @@ remain visible.
 
 The initial hierarchy is:
 
-1. concise Work identity and outcome promise;
+1. concise outcome question and promise;
 2. complete production composer;
-3. implemented capability shortcuts;
-4. templates, folders, and recent files.
+3. quiet browse, open, create, analyze, and organize actions;
+4. one “continue work” area for search, managed views, folders, and recent
+   files.
 
-The hero uses generous whitespace and one restrained gradient or brand accent.
-It must not include fake generation types, promotional cards, points, rewards,
-or placeholder media tools.
+All Office templates remain available through the single Create disclosure;
+they are not repeated as a permanent card gallery. The hero uses generous
+whitespace and a flat canvas. It must not include fake generation types,
+promotional cards, points, rewards, decorative grids, or placeholder media
+tools.
 
 Recent, Favorites, Trash, and managed folders are direct file-management views
 and do not repeat the hero.
@@ -370,9 +385,12 @@ operation.
 
 ### Narrow viewport: below 768 px
 
-Preserve the primary task, file, and close actions. Secondary columns become
-overlays or collapse. Do not horizontally shrink text, controls, or Office
-canvas into unusable states. The DOM remains at least 320 px wide.
+Preserve the primary task, file, and close actions. The Activity Bar becomes a
+labeled bottom navigator. The Work conversation list becomes a left drawer
+with a dimmed, clickable outside region. Opening it moves focus to the collapse
+control; closing it restores focus to the sidebar trigger. Secondary columns
+become overlays or collapse. Do not horizontally shrink text, controls, or
+Office canvas into unusable states. The DOM remains at least 320 px wide.
 
 ## Accessibility
 
@@ -382,6 +400,7 @@ canvas into unusable states. The DOM remains at least 320 px wide.
 - menus, tabs, listboxes, dialogs, and disclosures use correct semantics;
 - selection and status are not color-only;
 - keyboard and pointer paths expose equivalent core actions;
+- opening an overlay moves focus to a useful control inside it;
 - focus returns to the invoking control after overlays close;
 - reduced motion removes non-essential transitions and spinners retain text;
 - graph and canvas experiences provide an accessible alternative browser.

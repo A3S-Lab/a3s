@@ -6,7 +6,7 @@
   flex: 1;
   flex-direction: column;
   overflow: hidden;
-  background: var(--a3s-panel);
+  background: var(--a3s-bg);
   container: work-conversation / inline-size;
 }
 
@@ -14,13 +14,13 @@
   position: relative;
   z-index: 42;
   display: flex;
-  height: 54px;
+  height: var(--a3s-workspace-header-size);
   min-width: 0;
-  flex: 0 0 54px;
+  flex: 0 0 var(--a3s-workspace-header-size);
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 12px;
+  gap: 12px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--a3s-line);
   background: var(--a3s-panel);
 }
@@ -34,12 +34,12 @@
 
 .work-conversation-leading {
   flex: 1;
-  gap: 7px;
+  gap: 6px;
 }
 
 .work-conversation-actions {
   flex: 0 0 auto;
-  gap: 6px;
+  gap: 5px;
 }
 
 .work-conversation-back.ds-icon-button,
@@ -47,25 +47,14 @@
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
-  border-radius: 8px;
-}
-
-.work-conversation-mark {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  place-items: center;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--a3s-blue) 10%, var(--a3s-panel));
-  color: var(--a3s-blue);
+  border-radius: 7px;
 }
 
 .work-conversation-identity {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .work-conversation-identity h1,
@@ -82,6 +71,7 @@
   font-size: 13px;
   font-weight: 650;
   letter-spacing: -0.015em;
+  line-height: 1.35;
 }
 
 .work-conversation-identity p {
@@ -92,7 +82,7 @@
   margin: 0;
   color: var(--a3s-muted);
   font-size: 10px;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .work-conversation-identity p svg {
@@ -108,7 +98,7 @@
 }
 
 .work-conversation-actions .ds-button {
-  gap: 6px;
+  gap: 5px;
 }
 
 .work-conversation-body {
@@ -119,7 +109,8 @@
   flex: 1;
   flex-direction: column;
   overflow: hidden;
-  animation: work-conversation-arrive 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--a3s-bg);
+  animation: work-conversation-arrive 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .work-conversation-body > .task-runtime-floating-panel {
@@ -132,8 +123,8 @@
 }
 
 .work-conversation .execution-column {
-  width: min(820px, calc(100% - 64px));
-  padding-top: 32px;
+  width: min(780px, calc(100% - 48px));
+  padding-top: 24px;
 }
 
 .work-conversation .task-welcome h1 {
@@ -159,8 +150,8 @@
 
 @keyframes work-conversation-arrive {
   from {
-    opacity: 0.82;
-    transform: translateY(4px);
+    opacity: 0.86;
+    transform: translateY(3px);
   }
 
   to {
@@ -171,22 +162,12 @@
 
 @container work-conversation (max-width: 760px) {
   .work-conversation-header {
-    height: auto;
-    min-height: 84px;
-    flex-basis: auto;
-    align-items: stretch;
-    padding: 8px 10px;
-    flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    padding: 0 8px;
   }
 
   .work-conversation-actions {
-    min-height: 30px;
-    justify-content: flex-end;
-  }
-
-  .work-conversation-status {
-    margin-right: auto;
+    gap: 4px;
   }
 
   .work-conversation-identity h1,
@@ -195,29 +176,32 @@
   }
 
   .work-conversation .execution-column {
-    width: min(calc(100% - 36px), 720px);
-    padding-top: 24px;
+    width: min(calc(100% - 32px), 720px);
+    padding-top: 20px;
   }
 
   .work-conversation > .task-composer-dock.active {
-    padding: 16px 18px 12px;
+    padding: 14px 16px 10px;
+  }
+}
+
+@container work-conversation (max-width: 520px) {
+  .work-conversation-identity p {
+    display: none;
   }
 }
 
 @container work-conversation (max-width: 430px) {
-  .work-conversation-mark {
-    display: none;
-  }
-
-  .work-conversation-identity p {
-    display: none;
+  .work-conversation-status.ds-status-badge {
+    padding-right: 6px;
+    padding-left: 6px;
   }
 
   .work-conversation-actions .ds-button {
     width: 32px;
     min-width: 32px;
-    padding: 0;
     justify-content: center;
+    padding: 0;
   }
 
   .work-conversation-actions .ds-button > span {

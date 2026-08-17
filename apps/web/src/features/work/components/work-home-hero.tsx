@@ -1,6 +1,7 @@
 import {
   BarChart3,
   ArrowRight,
+  ChevronDown,
   FileText,
   FolderCog,
   FolderOpen,
@@ -10,12 +11,12 @@ import {
   Plus,
   Sheet,
   ShieldCheck,
-  WandSparkles,
 } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { type ComponentType, useEffect, useId, useRef, useState } from 'react';
 import { appState } from '../../../state/app-state';
 import { TaskComposer } from '../../tasks/components/task-composer';
 import type { TaskActions } from '../../tasks/task-actions';
+import { WORK_TEMPLATES } from '../work-templates';
 
 interface WorkHomeHeroProps {
   taskActions: TaskActions;
@@ -32,7 +33,6 @@ interface WorkHomeCapability {
   id: string;
   label: string;
   icon: ComponentType<{ size?: string | number }>;
-  tone: 'blue' | 'green' | 'orange' | 'violet' | 'cyan' | 'yellow' | 'slate';
   run: () => void;
 }
 
@@ -50,75 +50,65 @@ export function WorkHomeHero({
   onImport,
   onOpenWorkspace,
 }: WorkHomeHeroProps) {
+  const createMenuId = useId();
+  const createMenuRef = useRef<HTMLDivElement>(null);
+  const createMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const setTaskPrompt = (prompt: string) => {
     appState.composerValue = prompt;
   };
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!createMenuRef.current?.contains(event.target as Node)) setCreateMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setCreateMenuOpen(false);
+      createMenuButtonRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [createMenuOpen]);
   const capabilities: WorkHomeCapability[] = [
     {
-      id: 'document',
-      label: '新建文档',
-      icon: FileText,
-      tone: 'blue',
-      run: () => onCreate('blank-document'),
-    },
-    {
-      id: 'spreadsheet',
-      label: '新建表格',
-      icon: Sheet,
-      tone: 'green',
-      run: () => onCreate('blank-spreadsheet'),
-    },
-    {
-      id: 'presentation',
-      label: '新建演示',
-      icon: Presentation,
-      tone: 'orange',
-      run: () => onCreate('blank-presentation'),
+      id: 'workspace',
+      label: '浏览工作区',
+      icon: FolderTree,
+      run: onOpenWorkspace,
     },
     {
       id: 'open-file',
       label: '打开文件',
       icon: FolderOpen,
-      tone: 'violet',
       run: onImport,
     },
     {
       id: 'analyze-data',
       label: '分析数据',
       icon: BarChart3,
-      tone: 'cyan',
       run: () => setTaskPrompt(DATA_ANALYSIS_PROMPT),
     },
     {
       id: 'organize-files',
       label: '整理文件',
       icon: FolderCog,
-      tone: 'yellow',
       run: () => setTaskPrompt(FILE_ORGANIZATION_PROMPT),
-    },
-    {
-      id: 'workspace',
-      label: '浏览工作区',
-      icon: FolderTree,
-      tone: 'slate',
-      run: onOpenWorkspace,
     },
   ];
 
   return (
     <section className='work-home-hero' aria-labelledby='work-home-hero-title'>
       <header className='work-home-hero-intro'>
-        <span className='work-home-agent-mark' aria-hidden='true'>
-          <WandSparkles size={23} />
-        </span>
-        <div>
-          <p>A3S · 本地智能工作台</p>
-          <h1 id='work-home-hero-title'>今天想完成什么？</h1>
-        </div>
+        <h1 id='work-home-hero-title'>今天想完成什么？</h1>
+        <p className='work-home-hero-description'>
+          描述你要的结果，A3S 会结合当前工作区完成任务，并留下可审阅的本地产物。
+        </p>
       </header>
-      <p className='work-home-hero-description'>
-        选择工作区，描述你想要的结果。A3S 会读取相关文件、完成工作，并把可审阅的产物留在本地。
-      </p>
       {activeSessionTitle && (
         <div className='work-home-active-session'>
           <button
@@ -148,14 +138,58 @@ export function WorkHomeHero({
       <div className='work-home-composer'>
         <TaskComposer actions={taskActions} variant='preparation' onSubmitStart={onTaskSubmit} />
       </div>
-      <nav className='work-home-capabilities' aria-label='Work 快捷能力'>
-        {capabilities.map((capability) => {
+      <nav className='work-home-actions' aria-label='常用操作'>
+        {capabilities.slice(0, 2).map((capability) => {
           const Icon = capability.icon;
           return (
-            <button type='button' key={capability.id} data-tone={capability.tone} onClick={capability.run}>
-              <span aria-hidden='true'>
-                <Icon size={16} />
-              </span>
+            <button type='button' key={capability.id} onClick={capability.run}>
+              <Icon size={15} aria-hidden='true' />
+              {capability.label}
+            </button>
+          );
+        })}
+        <div ref={createMenuRef} className={`work-home-create-menu ${createMenuOpen ? 'open' : ''}`}>
+          <button
+            ref={createMenuButtonRef}
+            type='button'
+            aria-controls={createMenuId}
+            aria-expanded={createMenuOpen}
+            onClick={() => setCreateMenuOpen((open) => !open)}
+          >
+            <Plus size={15} aria-hidden='true' />
+            <span>新建</span>
+            <ChevronDown className='work-home-create-chevron' size={13} aria-hidden='true' />
+          </button>
+          {createMenuOpen && (
+            <fieldset id={createMenuId} className='work-home-create-panel' aria-label='新建文件与模板'>
+              {WORK_TEMPLATES.map((template) => {
+                const Icon =
+                  template.kind === 'document' ? FileText : template.kind === 'spreadsheet' ? Sheet : Presentation;
+                return (
+                  <button
+                    type='button'
+                    key={template.id}
+                    onClick={() => {
+                      onCreate(template.id);
+                      setCreateMenuOpen(false);
+                    }}
+                  >
+                    <Icon size={16} aria-hidden='true' />
+                    <span>
+                      <strong>{template.name}</strong>
+                      <small>{template.description}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </fieldset>
+          )}
+        </div>
+        {capabilities.slice(2).map((capability) => {
+          const Icon = capability.icon;
+          return (
+            <button type='button' key={capability.id} onClick={capability.run}>
+              <Icon size={15} aria-hidden='true' />
               {capability.label}
             </button>
           );
@@ -163,7 +197,7 @@ export function WorkHomeHero({
       </nav>
       <p className='work-home-assurance'>
         <ShieldCheck size={13} aria-hidden='true' />
-        当前工作区会持续显示；涉及移动、重命名等更改时，A3S 会先说明影响并请求确认。
+        任务记录与产物由本地服务保存；文件更改会先说明影响并请求确认。
       </p>
     </section>
   );

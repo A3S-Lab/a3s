@@ -67,6 +67,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
   const pendingHomeSubmissionRef = useRef(false);
   const homeSubmissionStartedRef = useRef(false);
   const previousArtifactIdRef = useRef(actions.activeArtifact?.id ?? null);
+  const previousSidebarOpenRef = useRef(state.sidebarOpen);
   const openFilePicker = () => fileInputRef.current?.click();
   const updateSurface = (next: 'files' | 'library') => {
     setSurface(next);
@@ -149,6 +150,15 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
       setAgentProposal(null);
     }
   }, [actions.activeArtifact?.id]);
+  useEffect(() => {
+    const wasOpen = previousSidebarOpenRef.current;
+    previousSidebarOpenRef.current = state.sidebarOpen;
+    if (!wasOpen || state.sidebarOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector<HTMLButtonElement>('.product-sidebar-open-button')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [state.sidebarOpen]);
   useEffect(() => {
     if (!pendingHomeSubmissionRef.current) return;
     if (state.taskSubmissionState) homeSubmissionStartedRef.current = true;
@@ -332,11 +342,21 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
         />
       )}
       {state.sidebarOpen && (
-        <TaskLibrary
-          actions={codeActions}
-          onNewConversation={startNewConversation}
-          onSelectSession={selectConversation}
-        />
+        <>
+          <button
+            type='button'
+            className='task-library-backdrop'
+            aria-label='关闭任务列表'
+            onClick={() => {
+              appState.sidebarOpen = false;
+            }}
+          />
+          <TaskLibrary
+            actions={codeActions}
+            onNewConversation={startNewConversation}
+            onSelectSession={selectConversation}
+          />
+        </>
       )}
       {copilotOpen &&
         state.workRoute !== 'conversation' &&

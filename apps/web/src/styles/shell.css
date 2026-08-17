@@ -196,3 +196,16 @@
     animation: none;
   }
 }
+
+@media (max-width: 767px) {
+  .product-workspace {
+    height: calc(100% - 56px);
+    align-self: flex-start;
+  }
+
+  .service-connection-banner.ds-inline-notice {
+    right: 12px;
+    bottom: 68px;
+    width: calc(100% - 24px);
+  }
+}

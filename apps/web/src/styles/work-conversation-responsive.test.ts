@@ -8,6 +8,9 @@ describe('Work conversation responsive styles', () => {
   it('responds to the conversation pane after the activity bar and task library take space', () => {
     expect(conversationStyles).toMatch(/\.work-conversation\s*\{[^}]*container:\s*work-conversation \/ inline-size;/s);
     expect(conversationStyles).toMatch(
+      /@container work-conversation \(max-width:\s*760px\)[\s\S]*?\.work-conversation-header\s*\{[^}]*gap:\s*8px;/
+    );
+    expect(conversationStyles).not.toMatch(
       /@container work-conversation \(max-width:\s*760px\)[\s\S]*?\.work-conversation-header\s*\{[^}]*flex-direction:\s*column;/
     );
   });

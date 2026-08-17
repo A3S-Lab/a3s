@@ -26,16 +26,34 @@
   flex-direction: column;
 }
 
-@media (max-width: 620px) {
+.task-library-backdrop {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .task-library-backdrop {
+    position: absolute;
+    z-index: 59;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: min(312px, calc(100% - 28px));
+    display: block;
+    padding: 0;
+    border: 0;
+    background: rgb(17 24 39 / 24%);
+    cursor: default;
+  }
+
   .task-library {
     position: absolute;
     z-index: 60;
     top: 0;
     bottom: 0;
-    left: 52px;
-    width: min(var(--a3s-product-sidebar-width), calc(100% - 52px));
+    left: 0;
+    width: min(312px, calc(100% - 28px));
     height: auto;
     flex-basis: auto;
-    box-shadow: 16px 0 36px rgb(20 24 40 / 16%);
+    box-shadow: 16px 0 36px rgb(20 24 40 / 18%);
   }
 }

@@ -9,7 +9,14 @@ const shellStyles = readFileSync(resolve(process.cwd(), 'src/styles/shell.css'),
 describe('Code task responsive styles', () => {
   it('uses an overlay task library instead of squeezing the mobile conversation', () => {
     expect(codeProductStyles).toMatch(
-      /@media \(max-width: 620px\)[\s\S]*?\.task-library\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?left:\s*52px;/
+      /@media \(max-width: 767px\)[\s\S]*?\.task-library\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?bottom:\s*0;[\s\S]*?left:\s*0;/
+    );
+    expect(codeProductStyles).toMatch(/\.task-library-backdrop\s*\{[\s\S]*?display:\s*none;/);
+    expect(codeProductStyles).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*?\.task-library-backdrop\s*\{[\s\S]*?display:\s*block;/
+    );
+    expect(codeProductStyles).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*?\.task-library-backdrop\s*\{[\s\S]*?left:\s*min\(312px, calc\(100% - 28px\)\);/
     );
   });
 

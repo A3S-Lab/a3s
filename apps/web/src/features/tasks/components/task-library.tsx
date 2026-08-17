@@ -29,6 +29,7 @@ export function TaskLibrary({
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const collapseButtonRef = useRef<HTMLButtonElement>(null);
   const query = useDebounce(state.searchQuery.trim().toLowerCase(), { wait: 160 });
   const sessions = state.sessions.filter(
     (session) =>
@@ -36,6 +37,9 @@ export function TaskLibrary({
       sessionTitle(session, state.sessionTitles).toLowerCase().includes(query) ||
       session.workspace.toLowerCase().includes(query)
   );
+  useEffect(() => {
+    if (window.innerWidth < 768) collapseButtonRef.current?.focus();
+  }, []);
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
@@ -59,6 +63,7 @@ export function TaskLibrary({
           <Search size={15} />
         </IconButton>
       }
+      collapseButtonRef={collapseButtonRef}
       onCollapse={() => {
         appState.sidebarOpen = false;
       }}
@@ -149,5 +154,5 @@ export function TaskLibrary({
 }
 
 function closeCompactTaskLibrary(): void {
-  if (window.innerWidth <= 620) appState.sidebarOpen = false;
+  if (window.innerWidth <= 767) appState.sidebarOpen = false;
 }

@@ -2,7 +2,7 @@
 
 **Status:** Active product roadmap
 
-**Updated:** 2026-08-05
+**Updated:** 2026-08-17
 
 ## Purpose
 
@@ -90,6 +90,40 @@ Home/task-list transitions, browser-history restoration, truthful missing-task
 state, responsive conversation shell, and contextual-assistant boundary are
 implemented. Task-library filters, pinning, archive, and workspace grouping
 remain in this milestone.
+
+**Experience foundation update (2026-08-17):** the first WorkBuddy-informed
+interaction reset is implemented without copying WorkBuddy visuals or product
+architecture:
+
+- [x] Restore the shared 52 px desktop Activity Bar contract and replace the
+  permanent narrow rail with a labeled 56 px bottom navigator below 768 px.
+- [x] Make Home express one primary intent: describe an outcome in the
+  production composer. Keep browse, open, create, analyze, and organize as
+  quiet secondary actions.
+- [x] Move all six Office creation choices into one accessible disclosure and
+  remove the duplicate always-visible template gallery.
+- [x] Consolidate the lower Home surface around “continue work,” search,
+  folders, managed views, and recent files.
+- [x] Make the compact task library a bounded drawer with an outside-click
+  target, initial focus on its collapse control, focus restoration to its
+  opener, and the same 768 px behavior threshold used by the shell.
+- [x] Keep the conversation header on one 50 px row and reserve the center for
+  the thread, runtime evidence, and docked follow-up composer.
+
+Browser E2E validation on 2026-08-17 used the repository `.a3s/config.acl`
+default, `deepseek/deepseek-v4-pro`. A read-only task created a durable session,
+streamed file-read and code-search evidence, and returned the expected first
+root `README.md` heading (`## Quick start`, line 39). Desktop and 390 px mobile
+flows completed with an accessibility snapshot, no console messages, and no
+page errors.
+
+- [ ] Replace Web's remaining local shell/editor mirrors with package-native
+  `a3s-ui` and controlled `a3s-office` boundaries after their browser package
+  distribution and migration contracts are version-locked. Do not expand the
+  duplicated editor implementation meanwhile.
+- [ ] Project `a3s-code` retrieval mode, indexing readiness, and evidence into
+  Web only after the local service exposes a typed, versioned API. Web must not
+  infer semantic-search readiness from generic task events.
 
 ### Dedicated conversation surface
 

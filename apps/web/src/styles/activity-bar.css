@@ -1,9 +1,9 @@
 .activity-bar {
   z-index: 70;
   display: flex;
-  width: 76px;
+  width: var(--a3s-activity-rail-size);
   height: 100%;
-  flex: 0 0 76px;
+  flex: 0 0 var(--a3s-activity-rail-size);
   flex-direction: column;
   align-items: center;
   border-right: 1px solid var(--a3s-line);
@@ -13,22 +13,18 @@
 
 .activity-brand {
   display: flex;
-  width: 76px;
-  height: 64px;
+  width: var(--a3s-activity-rail-size);
+  height: var(--a3s-activity-rail-size);
+  flex: 0 0 var(--a3s-activity-rail-size);
   align-items: center;
   justify-content: center;
-  padding: 0;
-  border: 0;
   border-bottom: 1px solid var(--a3s-line);
-  background: transparent;
-  cursor: default;
 }
 
 .activity-brand img {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  box-shadow: 0 6px 18px rgb(48 69 194 / 16%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
 }
 
 .activity-products,
@@ -37,13 +33,13 @@
   width: 100%;
   align-items: center;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 0;
+  gap: 2px;
+  padding: 6px 0;
 }
 
 .activity-products {
-  flex: 1;
   min-height: 0;
+  flex: 1;
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -59,21 +55,20 @@
 .activity-button {
   position: relative;
   display: flex;
-  width: 64px;
-  min-height: 50px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 3px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--a3s-muted);
   cursor: pointer;
   transition:
-    background-color 150ms ease,
-    color 150ms ease;
+    background-color 140ms ease,
+    color 140ms ease;
 }
 
 .activity-button > svg {
@@ -82,14 +77,12 @@
 }
 
 .activity-button-label {
-  width: 100%;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
   overflow: hidden;
-  color: inherit;
-  font-size: 9px;
-  font-weight: 560;
-  line-height: 1.15;
-  text-align: center;
-  text-overflow: ellipsis;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
 
@@ -100,15 +93,15 @@
 }
 
 .activity-button.active {
-  background: color-mix(in srgb, var(--a3s-blue) 8%, var(--a3s-panel));
+  background: color-mix(in srgb, var(--a3s-blue) 9%, var(--a3s-panel));
   color: var(--a3s-blue);
 }
 
 .activity-button.active::before {
   position: absolute;
-  top: 11px;
-  bottom: 11px;
-  left: -6px;
+  top: 9px;
+  bottom: 9px;
+  left: -5px;
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: var(--a3s-blue);
@@ -149,29 +142,86 @@
   transition-delay: 220ms;
 }
 
-@media (max-width: 620px) {
+@media (max-width: 767px) {
   .activity-bar {
-    width: 52px;
-    flex-basis: 52px;
+    position: absolute;
+    z-index: 80;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 56px;
+    flex: 0 0 56px;
+    flex-direction: row;
+    align-items: stretch;
+    border-top: 1px solid var(--a3s-line);
+    border-right: 0;
+    background: color-mix(in srgb, var(--a3s-panel) 96%, transparent);
   }
 
   .activity-brand {
-    width: 52px;
-  }
-
-  .activity-button {
-    width: 42px;
-    min-height: 42px;
-    gap: 0;
-  }
-
-  .activity-button-label {
     display: none;
   }
 
+  .activity-products,
+  .activity-system {
+    width: auto;
+    height: 100%;
+    align-items: center;
+    flex-direction: row;
+    gap: 1px;
+    padding: 4px 5px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .activity-products {
+    flex: 1;
+  }
+
+  .activity-system {
+    flex: 0 0 auto;
+    border-top: 0;
+    border-left: 1px solid var(--a3s-line);
+  }
+
+  .activity-button {
+    width: 46px;
+    height: 47px;
+    min-height: 47px;
+    flex: 0 0 46px;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: 8px;
+  }
+
+  .activity-button > svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .activity-button-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
   .activity-button.active::before {
-    top: 10px;
-    bottom: 10px;
-    left: -5px;
+    top: auto;
+    right: 9px;
+    bottom: -4px;
+    left: 9px;
+    width: auto;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .activity-button::after {
+    display: none;
   }
 }

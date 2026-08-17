@@ -1,8 +1,7 @@
 import { FileText, FolderPlus, Grid2X2, List, LoaderCircle, Upload } from 'lucide-react';
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, IconButton, SearchField, StateView } from '../../../design-system/primitives';
 import type { TaskActions } from '../../tasks/task-actions';
-import { WORK_TEMPLATES } from '../work-templates';
 import type { WorkArtifact, WorkFolder, WorkLibraryView } from '../work-types';
 import { WorkHomeHero } from './work-home-hero';
 import {
@@ -10,7 +9,6 @@ import {
   ArtifactInlineEditorCard,
   FolderCard,
   FolderInlineEditorCard,
-  TemplatePreview,
   type WorkLibraryInlineOperation,
 } from './work-library-cards';
 import { WorkLibraryDeleteDialog, type WorkLibraryDeleteTarget } from './work-library-delete-dialog';
@@ -221,8 +219,8 @@ export function WorkHome({
           />
           <header className='work-home-library-header'>
             <div>
-              <p>工作资料</p>
-              <h2>继续处理你的文件</h2>
+              <h2>继续工作</h2>
+              <p>从最近任务和本地文件接着处理。</p>
             </div>
             <div className='work-home-header-actions'>
               <SearchField
@@ -233,10 +231,6 @@ export function WorkHome({
                 placeholder='搜索文件'
                 onValueChange={setQuery}
               />
-              <Button onClick={onImport}>
-                <Upload size={15} />
-                打开文件
-              </Button>
               <Button onClick={startCreateFolder}>
                 <FolderPlus size={15} />
                 新建文件夹
@@ -292,38 +286,6 @@ export function WorkHome({
             </button>
           ))}
         </nav>
-      )}
-
-      {view === 'home' && (
-        <section className='work-template-section' aria-labelledby='work-template-title'>
-          <div className='work-section-heading'>
-            <div>
-              <h2 id='work-template-title'>新建</h2>
-              <span>从空白文件或实用模板开始</span>
-            </div>
-          </div>
-          <div className='work-template-grid'>
-            {WORK_TEMPLATES.map((template) => (
-              <button
-                type='button'
-                className={`work-template-card ${template.kind}`}
-                key={template.id}
-                onClick={() => onCreate(template.id)}
-              >
-                <span
-                  className='work-template-preview'
-                  style={{ '--work-template-accent': template.accent } as CSSProperties}
-                >
-                  <TemplatePreview kind={template.kind} detailed={!template.id.startsWith('blank-')} />
-                </span>
-                <span className='work-template-copy'>
-                  <strong>{template.name}</strong>
-                  <small>{template.description}</small>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
       )}
 
       {(visibleFolders.length > 0 || inlineOperation?.kind === 'create-folder') && (

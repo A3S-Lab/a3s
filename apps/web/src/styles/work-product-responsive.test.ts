@@ -15,9 +15,9 @@ describe('Work product responsive styles', () => {
     );
   });
 
-  it('reduces library grids before cards can overflow beneath the assistant', () => {
+  it('reduces artifact and folder grids before cards can overflow beneath the assistant', () => {
     expect(productStyles).toMatch(
-      /@container work-home \(max-width:\s*620px\)[\s\S]*?\.work-template-grid,[\s\S]*?\.work-artifact-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/
+      /@container work-home \(max-width:\s*620px\)[\s\S]*?\.work-artifact-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/
     );
     expect(libraryStyles).toMatch(
       /@container work-home \(max-width:\s*620px\)[\s\S]*?\.work-folder-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/

@@ -5,7 +5,6 @@ import {
   CirclePause,
   FolderOpen,
   LoaderCircle,
-  MessageSquareText,
   Plus,
   WifiOff,
 } from 'lucide-react';
@@ -70,9 +69,6 @@ export function WorkConversation({
           <IconButton label='返回首页' className='work-conversation-back' onClick={onHome}>
             <ArrowLeft size={16} />
           </IconButton>
-          <span className='work-conversation-mark' aria-hidden='true'>
-            <MessageSquareText size={16} />
-          </span>
           <div className='work-conversation-identity'>
             <h1 title={title}>{title}</h1>
             <p title={session?.workspace || state.workspaceRoot || '未记录工作区'}>

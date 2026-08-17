@@ -1,5 +1,5 @@
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { IconButton } from '../design-system/primitives';
 
 export function ProductSidebar({
@@ -9,6 +9,7 @@ export function ProductSidebar({
   headerActions,
   children,
   onCollapse,
+  collapseButtonRef,
 }: {
   title: string;
   label: string;
@@ -16,10 +17,11 @@ export function ProductSidebar({
   headerActions?: ReactNode;
   children?: ReactNode;
   onCollapse: () => void;
+  collapseButtonRef?: Ref<HTMLButtonElement>;
 }) {
   return (
     <aside className={`product-sidebar${className ? ` ${className}` : ''}`} aria-label={label}>
-      <SidebarProductHeader title={title} onCollapse={onCollapse}>
+      <SidebarProductHeader title={title} onCollapse={onCollapse} collapseButtonRef={collapseButtonRef}>
         {headerActions}
       </SidebarProductHeader>
       {children}
@@ -61,17 +63,19 @@ function SidebarProductHeader({
   title,
   children,
   onCollapse,
+  collapseButtonRef,
 }: {
   title: string;
   children?: ReactNode;
   onCollapse: () => void;
+  collapseButtonRef?: Ref<HTMLButtonElement>;
 }) {
   return (
     <header className='sidebar-product-header'>
       <strong>{title}</strong>
       <div className='sidebar-product-header-actions'>
         {children}
-        <IconButton label={`收起${title}侧边栏`} onClick={onCollapse}>
+        <IconButton ref={collapseButtonRef} label={`收起${title}侧边栏`} onClick={onCollapse}>
           <PanelLeftClose size={16} />
         </IconButton>
       </div>

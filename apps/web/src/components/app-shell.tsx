@@ -119,5 +119,5 @@ export function AppShell({
 }
 
 function isCompactViewport(): boolean {
-  return window.innerWidth <= 620;
+  return window.innerWidth <= 767;
 }
