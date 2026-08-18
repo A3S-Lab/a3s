@@ -8,14 +8,31 @@ tags: [a3s-power, inference, tee, privacy, rust]
 
 A3S Power 0.7.0 is the current stable release. The previous headline—“a 10B model in 256 MB on $10 hardware”—was not a reproducible release guarantee and has been removed.
 
-Power now has two entry points:
+Power now has three independently selectable surfaces:
 
 | Surface | Use | Network behavior |
 | --- | --- | --- |
+| `artifact-provisioning` | Install a consumer-owned, revision-locked multi-file model bundle with bounded transfer and digest admission | Opens no listener; HTTPS is used only when the host permits first-use installation |
 | `embedded-inference` | Reuse device, weight, admission, and receipt infrastructure from OCR, vision, or language-model crates | Opens no listener |
 | Default server | Serve OpenAI-compatible chat, completion, embedding, and model lifecycle APIs | Starts an explicit service |
 
-Both share resource and integrity contracts. Model graphs, tokenizers, pre/post-processing, and quality acceptance remain the responsibility of model-owning repositories.
+All three share resource and integrity contracts. Model graphs, tokenizers, pre/post-processing, and quality acceptance remain the responsibility of model-owning repositories.
+
+## Verified artifact provisioning on `main`
+
+The minimal `artifact-provisioning` feature is new on the current `main`
+branch. A consumer supplies the immutable model identity, revision, filenames,
+maximum byte counts, source URLs, and SHA-256 digests. Power owns HTTPS
+transfer, streaming size enforcement, cross-process locking, temporary files,
+atomic file commits, deterministic URL-free receipts, and independent offline
+reuse checks. It does not choose a model or silently advance a revision.
+
+A3S Code uses this boundary for its default local workspace embedding route.
+With `local_cpu {}`, Code fixes the MiniLM/ONNX semantics and hashes while Power
+installs the bundle on first use. Users do not need to download or convert ONNX
+files. `--offline` and `A3S_NO_AUTO_INSTALL=1` keep a missing first use
+read-only, and an explicit artifact manifest remains available for
+operator-owned distribution.
 
 ## What the embedded runtime owns
 
@@ -86,7 +103,7 @@ No single item is a blanket guarantee against every host, administrator, hardwar
 
 ## 0.7.0 versus `main`
 
-Release 0.7.0 added verified SafeTensors range indexes, optional buffered/direct reads, and a standalone storage benchmark. Current `main` continues with multi-root capacity aggregation, bounded inference queues, a model Session Pool, microbatch plans, and hardware-evidence bundles. Those additions are still under `Unreleased`.
+Release 0.7.0 added verified SafeTensors range indexes, optional buffered/direct reads, and a standalone storage benchmark. Current `main` continues with verified artifact provisioning, multi-root capacity aggregation, bounded inference queues, a model Session Pool, microbatch plans, and hardware-evidence bundles. Those additions are still under `Unreleased`.
 
 ## Deployment checklist
 

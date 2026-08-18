@@ -126,7 +126,7 @@ release cadence, and detailed documentation.
 | **Web** | `a3s web` | Loopback API and browser workbench included by compatible releases |
 | **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI surfaces |
 | **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
-| **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
+| **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, verified artifact provisioning, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
 | **Flow + Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Durable orchestration composed by a self-hosted control plane under an exact compatibility lock |
 | **Search** | `a3s search …` | Browser-first search with quality-gated fallbacks |
 | **Bench** | `a3s bench …` | Evaluation runs and evidence; artifact availability remains platform-specific |
