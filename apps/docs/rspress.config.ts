@@ -31,6 +31,7 @@ const copy = {
 
 const articles = {
   cn: [
+    ['Asynchronous In-Memory Vector Retrieval in A3S Code', 'a3s-code-in-memory-vector-retrieval'],
     ['A3S Code 6.8 的多 Agent 工作流：task、Flow 与预算边界', 'programmable-agent-workflows'],
     ['DDD 在 A3S Cloud 里怎么落地', 'domain-driven-design'],
     ['A3S Box 的 Windows 路径：libkrun、libkrunfw 与 WHPX', 'libkrun-libkrunfw-whpx'],
@@ -41,6 +42,7 @@ const articles = {
     ['A3S Box 3.2：默认 MicroVM，显式 Sandbox', 'a3s-box-technical-deep-dive'],
   ],
   en: [
+    ['Asynchronous In-Memory Vector Retrieval in A3S Code', 'a3s-code-in-memory-vector-retrieval'],
     ['Multi-Agent Workflows in A3S Code 6.8: task, Flow, and Budget Limits', 'programmable-agent-workflows'],
     ['How DDD Is Used in A3S Cloud', 'domain-driven-design'],
     ['The Windows Runtime Path in A3S Box: libkrun, libkrunfw, and WHPX', 'libkrun-libkrunfw-whpx'],

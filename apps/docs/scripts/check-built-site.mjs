@@ -8,6 +8,7 @@ const deploymentPath = process.env.SITE_URL
   : '';
 const formHref = `${deploymentPath}/form/`.replace(/\/+/g, '/');
 const articleSlugs = [
+  'a3s-code-in-memory-vector-retrieval',
   'programmable-agent-workflows',
   'domain-driven-design',
   'libkrun-libkrunfw-whpx',
@@ -129,8 +130,8 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   }
 }
 
-assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'Chinese blog index does not list 8 posts');
-assert((englishBlog.match(/class="a3s-blog-card/g) ?? []).length === 8, 'English blog index does not list 8 posts');
+assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 9, 'Chinese blog index does not list 9 posts');
+assert((englishBlog.match(/class="a3s-blog-card/g) ?? []).length === 9, 'English blog index does not list 9 posts');
 
 for (const slug of articleSlugs) {
   assert(chineseBlog.includes(`href="./${slug}"`), `Chinese blog link is not Pages-compatible: ${slug}`);
@@ -208,4 +209,4 @@ if (process.env.SITE_URL) {
   }
 }
 
-console.log(`Validated 2 homepages, 2 blog indexes, 16 article routes, and ${files.length} exported files.`);
+console.log(`Validated 2 homepages, 2 blog indexes, 18 article routes, and ${files.length} exported files.`);

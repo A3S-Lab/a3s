@@ -1,0 +1,91 @@
+---
+title: "Asynchronous In-Memory Vector Retrieval in A3S Code"
+description: How A3S Code exposes semantic and hybrid workspace search through one governed tool, builds vectors asynchronously in session memory, and reports readiness and evidence in the TUI.
+date: "2026-08-18"
+author: A3S Lab
+tags: [a3s-code, retrieval, vector-search, tui, embeddings]
+---
+
+The current A3S CLI `main` branch can add semantic retrieval to a Code session without introducing a vector database service. It builds a bounded index asynchronously, keeps vectors in session-owned memory, and releases them when the session closes. This capability is newer than the stable `a3s 0.11.1` release and should not be inferred from that binary.
+
+## One governed search tool
+
+The model does not receive a separate `vector_db` tool. A3S Code extends the existing `search` contract with five modes:
+
+| Mode | Retrieval path |
+| --- | --- |
+| `grep` | Exact or regular-expression content search |
+| `glob` | Path matching |
+| `bm25` | Incremental lexical ranking |
+| `semantic` | Exact cosine ranking over the admitted in-memory vectors |
+| `hybrid` | Lexical, path, and semantic channels combined with reciprocal-rank fusion, plus an optional deterministic MMR stage |
+
+A semantic call therefore keeps the same bounded tool boundary:
+
+```json
+{
+  "mode": "semantic",
+  "query": "where is session cache invalidation handled",
+  "include": "*.rs",
+  "limit": 5
+}
+```
+
+Every mode still passes through workspace path checks, permission policy, timeouts, cancellation, result limits, and digest verification. While the semantic generation is building or degraded, exact and BM25 channels remain available. Hybrid search can return a typed lexical fallback instead of pretending incomplete vectors are complete evidence.
+
+## The index lifecycle
+
+Session construction does not wait for the workspace to be embedded. Eligible text files are cataloged, chunked, batched, and embedded in the background. Non-text files are counted but never sent to the embedding route. The host bounds vector records, accounted bytes, provider requests, queue depth, shutdown time, and the optional readiness wait.
+
+The lifecycle has five visible phases: building, partial coverage, ready, degraded, and closed. Closing the session drains the worker and releases all vector records and accounted bytes. There is no durable vector cache and no hidden external database.
+
+## Local CPU enablement
+
+Semantic retrieval is opt-in. The local route requires an official or custom CLI build with `local-cpu-embedding`, a separately installed immutable model artifact, and a trusted user ACL or deliberately selected `--config` file:
+
+```acl
+workspace_retrieval {
+  enabled = true
+  semantic_readiness_timeout_ms = 30000
+  max_records = 100000
+  max_bytes = 134217728
+  shutdown_timeout_ms = 5000
+
+  local_cpu {
+    artifact_manifest = "models/multilingual-mini/model.acl"
+    intra_threads = 2
+  }
+}
+```
+
+The manifest pins the runtime contract, model identity, revision, dimension, normalization, file set, and every SHA-256 digest. A3S does not download or silently update the model during session startup. The local route does not grant source egress.
+
+A remote OpenAI-compatible embedding endpoint is also supported, but it requires an explicit trusted `allow_source_egress = true` grant and a separately admitted provider/model route. Provider credentials, static headers, endpoints, source text, and vectors are excluded from status and debug projections.
+
+## DeepSeek remains the chat model
+
+The embedding route is independent from `default_model`. A session may use DeepSeek for reasoning and tool calls while local CPU inference supplies workspace vectors. Selecting DeepSeek never causes source files to be sent to a DeepSeek chat endpoint for embedding, and a DeepSeek chat model is not treated as an embedding model.
+
+## What the TUI exposes
+
+The footer shows a compact retrieval chip for active or problematic phases and keeps the disabled state hidden. `/status` refreshes the snapshot immediately and reports:
+
+- phase, coverage, eligible and indexed files, chunks, queue depth, and failures;
+- vector records, accounted bytes, and catalog, source, and vector revisions;
+- embedding identity and dimension, logical batches, provider requests, amplification, first-ready latency, and non-text exclusions.
+
+Semantic and hybrid Explore cards identify the ranking algorithm, channels, reranking, coverage, fallback, revisions, and digest verification. `Ctrl+T` expands the same call into a complete Retrieval evidence section. Unknown metadata, control sequences, credentials, endpoints, source text, and raw vectors are never reflected into the terminal.
+
+## Verify before use
+
+Use an explicit config path when the workspace file itself enables retrieval:
+
+```bash
+a3s --config .a3s/config.acl config validate
+a3s --config .a3s/config.acl --output json config show
+a3s --config .a3s/config.acl code
+```
+
+An automatically discovered workspace ACL is not trusted to enable embeddings or source egress. It may only disable an inherited retrieval route.
+
+Detailed contracts and qualification evidence live in the standalone CLI repository: [CLI reference](https://github.com/A3S-Lab/CLI/blob/main/docs/cli-reference.md#workspace-semantic-retrieval) · [Local CPU model admission](https://github.com/A3S-Lab/CLI/blob/main/docs/local-cpu-workspace-embedding.md) · [ACL-host evaluation](https://github.com/A3S-Lab/CLI/blob/main/docs/workspace-retrieval-evaluation.md)
