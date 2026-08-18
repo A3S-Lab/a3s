@@ -1,93 +1,91 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">A3S — the open-source operating system for agents</title>
-  <desc id="desc">A light editorial hero shows the A3S CLI running a local Code session and a progressive path from Code through Use and Runtime to Box or Cloud.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">A3S — the local-first runtime platform for agent work</title>
+  <desc id="desc">A technical editorial hero pairs the A3S name with the a3s code command and an explicit contract chain from host policy to evidence.</desc>
   <defs>
-    <linearGradient id="sky" x1="90" y1="24" x2="1110" y2="496" gradientUnits="userSpaceOnUse">
+    <linearGradient id="canvas" x1="72" y1="20" x2="1150" y2="500" gradientUnits="userSpaceOnUse">
       <stop stop-color="#ffffff"/>
-      <stop offset="0.56" stop-color="#f7fbff"/>
-      <stop offset="1" stop-color="#cfe7ff"/>
+      <stop offset="0.62" stop-color="#f8fbfe"/>
+      <stop offset="1" stop-color="#dceeff"/>
     </linearGradient>
-    <linearGradient id="terminal" x1="698" y1="58" x2="1138" y2="388" gradientUnits="userSpaceOnUse">
+    <linearGradient id="terminal" x1="704" y1="62" x2="1140" y2="384" gradientUnits="userSpaceOnUse">
       <stop stop-color="#171717"/>
-      <stop offset="1" stop-color="#20242b"/>
+      <stop offset="1" stop-color="#222831"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#171717" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#171717" flood-opacity="0.10"/>
     </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#0d74ce"/>
+    </marker>
   </defs>
 
-  <rect x="1" y="1" width="1198" height="518" rx="24" fill="url(#sky)" stroke="#dcdee0"/>
-  <path d="M1 410H1199" stroke="#e9eef4"/>
-  <path d="M84 1V519M302 1V519M520 1V519M738 1V519M956 1V519M1174 1V519" stroke="#f0f4f8"/>
+  <rect x="1" y="1" width="1198" height="518" rx="24" fill="url(#canvas)" stroke="#dcdee0"/>
+  <path d="M1 418H1199" stroke="#e5edf5"/>
+  <path d="M76 1V519M296 1V519M516 1V519M736 1V519M956 1V519M1176 1V519" stroke="#f0f4f8"/>
 
-  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-    <g transform="translate(62 48)">
-      <rect width="58" height="58" rx="14" fill="#171717"/>
-      <path d="M14 42L29 13L44 42M20 31H38" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M10 43C19 36 25 37 31 41C38 45 44 42 49 35" fill="none" stroke="#9ad0ff" stroke-width="4" stroke-linecap="round"/>
-      <text x="76" y="24" fill="#60646c" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" font-weight="700" letter-spacing="2">A3S / AI NATIVE</text>
-      <text x="76" y="51" fill="#171717" font-size="22" font-weight="600">Open source · Local first</text>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <g transform="translate(60 44)">
+      <rect width="56" height="56" rx="13" fill="#171717"/>
+      <path d="M13 41L28 13L43 41M19 31H37" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 43C18 36 24 37 30 41C37 45 43 42 48 35" fill="none" stroke="#9ad0ff" stroke-width="3.5" stroke-linecap="round"/>
+      <text x="74" y="22" fill="#60646c" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" letter-spacing="1.8">A3S / AGENT RUNTIME</text>
+      <text x="74" y="49" fill="#171717" font-size="21" font-weight="600">Open source · Local first</text>
     </g>
 
-    <text x="62" y="176" fill="#171717" font-size="64" font-weight="600" letter-spacing="-2.4">
-      <tspan x="62" dy="0">The operating system</tspan>
-      <tspan x="62" dy="72">for agents.</tspan>
+    <text x="60" y="188" fill="#171717" font-size="78" font-weight="650" letter-spacing="-3.2">A3S</text>
+    <text x="60" y="244" fill="#171717" font-size="42" font-weight="620" letter-spacing="-1.3">
+      <tspan x="60">The operating system</tspan>
+      <tspan x="60" dy="50">for agent work.</tspan>
     </text>
-    <text x="62" y="296" fill="#60646c" font-size="23">
-      <tspan x="62" dy="0">Build locally. Add capabilities, isolation,</tspan>
-      <tspan x="62" dy="34">and fleet control only when the job needs them.</tspan>
+    <text x="60" y="336" fill="#60646c" font-size="22">
+      <tspan x="60">One interface for sessions, capabilities, workflows,</tspan>
+      <tspan x="60" dy="32">execution, and Cloud — with every boundary explicit.</tspan>
     </text>
-
-    <g transform="translate(62 360)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700">
-      <rect width="134" height="34" rx="17" fill="#ffffff" stroke="#dcdee0"/>
-      <text x="18" y="23" fill="#171717">OPEN SOURCE</text>
-      <rect x="146" width="126" height="34" rx="17" fill="#ffffff" stroke="#dcdee0"/>
-      <text x="166" y="23" fill="#171717">RUST NATIVE</text>
-      <rect x="284" width="120" height="34" rx="17" fill="#ffffff" stroke="#dcdee0"/>
-      <text x="304" y="23" fill="#171717">LOCAL FIRST</text>
-    </g>
 
     <g filter="url(#shadow)">
-      <rect x="676" y="48" width="464" height="344" rx="16" fill="url(#terminal)"/>
-      <rect x="676" y="48" width="464" height="52" rx="16" fill="#24272d"/>
-      <path d="M676 84H1140" stroke="#343840"/>
-      <circle cx="704" cy="74" r="6" fill="#eb8e90"/>
-      <circle cx="727" cy="74" r="6" fill="#e8bf68"/>
-      <circle cx="750" cy="74" r="6" fill="#6fcb89"/>
-      <text x="782" y="81" fill="#b0b4ba" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">a3s cli / ~/workspace</text>
+      <rect x="690" y="48" width="450" height="326" rx="16" fill="url(#terminal)"/>
+      <rect x="690" y="48" width="450" height="52" rx="16" fill="#252a31"/>
+      <path d="M690 84H1140" stroke="#363c45"/>
+      <circle cx="718" cy="74" r="6" fill="#eb8e90"/>
+      <circle cx="741" cy="74" r="6" fill="#e8bf68"/>
+      <circle cx="764" cy="74" r="6" fill="#6fcb89"/>
+      <text x="796" y="81" fill="#b0b4ba" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">~/workspace</text>
 
-      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20">
-        <text x="706" y="139" fill="#9ad0ff" font-weight="700">$</text>
-        <text x="732" y="139" fill="#ffffff">a3s config paths</text>
-        <text x="706" y="174" fill="#b0b4ba">config</text>
-        <text x="836" y="174" fill="#d9eaff">~/.config/a3s/config.acl</text>
-        <text x="706" y="207" fill="#b0b4ba">state</text>
-        <text x="836" y="207" fill="#d9eaff">~/.local/state/a3s</text>
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+        <text x="720" y="142" fill="#9ad0ff" font-size="22" font-weight="700">$</text>
+        <text x="748" y="142" fill="#ffffff" font-size="22">a3s code</text>
 
-        <text x="706" y="259" fill="#9ad0ff" font-weight="700">$</text>
-        <text x="732" y="259" fill="#ffffff">a3s code</text>
-        <text x="706" y="298" fill="#6fcb89">✓</text>
-        <text x="736" y="298" fill="#ffffff">workspace boundary loaded</text>
-        <text x="706" y="333" fill="#6fcb89">✓</text>
-        <text x="736" y="333" fill="#ffffff">session ready</text>
-        <rect x="706" y="356" width="10" height="18" rx="2" fill="#ffffff"/>
+        <text x="720" y="190" fill="#7fd39a" font-size="18" font-weight="700">01</text>
+        <text x="762" y="190" fill="#ffffff" font-size="20">workspace policy</text>
+        <text x="1080" y="190" fill="#7fd39a" font-size="18" text-anchor="end">READY</text>
+
+        <text x="720" y="230" fill="#7fd39a" font-size="18" font-weight="700">02</text>
+        <text x="762" y="230" fill="#ffffff" font-size="20">model + tools</text>
+        <text x="1080" y="230" fill="#7fd39a" font-size="18" text-anchor="end">BOUND</text>
+
+        <text x="720" y="270" fill="#7fd39a" font-size="18" font-weight="700">03</text>
+        <text x="762" y="270" fill="#ffffff" font-size="20">AgentSession</text>
+        <text x="1080" y="270" fill="#7fd39a" font-size="18" text-anchor="end">LOCAL</text>
+
+        <path d="M720 298H1110" stroke="#3b424c"/>
+        <text x="720" y="334" fill="#b0b4ba" font-size="18">policy → contract → provider → evidence</text>
+        <rect x="720" y="348" width="11" height="18" rx="2" fill="#ffffff"/>
       </g>
     </g>
 
-    <g transform="translate(62 444)">
-      <path d="M62 20H960" stroke="#a8c8e8" stroke-width="3"/>
-      <path d="M960 20L948 13V27Z" fill="#0d74ce"/>
-      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">
-        <circle cx="62" cy="20" r="10" fill="#171717"/>
-        <text x="82" y="27" fill="#171717">CODE</text>
-        <circle cx="270" cy="20" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
-        <text x="290" y="27" fill="#171717">USE</text>
-        <circle cx="472" cy="20" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
-        <text x="492" y="27" fill="#171717">FLOW</text>
-        <circle cx="690" cy="20" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
-        <text x="710" y="27" fill="#171717">RUNTIME</text>
-        <circle cx="908" cy="20" r="10" fill="#0d74ce"/>
-        <text x="928" y="27" fill="#171717">BOX / CLOUD</text>
+    <g transform="translate(58 440)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <path d="M94 22H1010" stroke="#8ebce8" stroke-width="2.5" marker-end="url(#arrow)"/>
+      <g font-size="17" font-weight="700" text-anchor="middle">
+        <circle cx="94" cy="22" r="10" fill="#171717"/>
+        <text x="94" y="57" fill="#171717">HOST POLICY</text>
+        <circle cx="322" cy="22" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="322" y="57" fill="#171717">AGENT SESSION</text>
+        <circle cx="554" cy="22" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="554" y="57" fill="#171717">RUNTIME CONTRACT</text>
+        <circle cx="786" cy="22" r="10" fill="#ffffff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="786" y="57" fill="#171717">PROVIDER</text>
+        <circle cx="1010" cy="22" r="10" fill="#0d74ce"/>
+        <text x="1010" y="57" fill="#171717">EVIDENCE</text>
       </g>
     </g>
   </g>
