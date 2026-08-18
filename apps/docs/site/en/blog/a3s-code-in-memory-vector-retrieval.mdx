@@ -1,9 +1,9 @@
 ---
 title: "Asynchronous In-Memory Vector Retrieval in A3S Code"
-description: How A3S Code exposes semantic and hybrid workspace search through one governed tool, builds vectors asynchronously in session memory, and reports readiness and evidence in the TUI.
+description: How A3S Code exposes semantic and hybrid workspace search through one governed tool, provisions local embeddings with A3S Power, and keeps vectors in session memory.
 date: "2026-08-18"
 author: A3S Lab
-tags: [a3s-code, retrieval, vector-search, tui, embeddings]
+tags: [a3s-code, a3s-power, retrieval, vector-search, tui, embeddings]
 ---
 
 The current A3S CLI `main` branch can add semantic retrieval to a Code session without introducing a vector database service. It builds a bounded index asynchronously, keeps vectors in session-owned memory, and releases them when the session closes. This capability is newer than the stable `a3s 0.11.1` release and should not be inferred from that binary.
@@ -41,7 +41,7 @@ The lifecycle has five visible phases: building, partial coverage, ready, degrad
 
 ## Local CPU enablement
 
-Semantic retrieval is opt-in. The local route requires an official or custom CLI build with `local-cpu-embedding`, a separately installed immutable model artifact, and a trusted user ACL or deliberately selected `--config` file:
+Semantic retrieval is opt-in. The local route requires an official or custom CLI build with `local-cpu-embedding` and a trusted user ACL or deliberately selected `--config` file. Users do not need to find, convert, or install an ONNX model:
 
 ```text
 workspace_retrieval {
@@ -52,13 +52,31 @@ workspace_retrieval {
   shutdown_timeout_ms = 5000
 
   local_cpu {
-    artifact_manifest = "models/multilingual-mini/model.acl"
     intra_threads = 2
   }
 }
 ```
 
-The manifest pins the runtime contract, model identity, revision, dimension, normalization, file set, and every SHA-256 digest. A3S does not download or silently update the model during session startup. The local route does not grant source egress.
+With no `artifact_manifest`, A3S Code selects a locked
+`Xenova/all-MiniLM-L6-v2` revision and delegates installation to A3S Power.
+On first use, Power downloads the roughly 23 MiB ONNX and tokenizer bundle over
+HTTPS, enforces per-file and whole-bundle size limits, verifies every SHA-256
+digest, serializes concurrent installers, and atomically commits admitted files
+below the A3S data root. Later sessions re-admit and reuse the same bundle
+offline. The provisioning library is linked into compatible CLI releases; no
+separate `a3s-power` daemon is required. Source URLs are excluded from receipts,
+errors, and debug output.
+
+`--offline` and `A3S_NO_AUTO_INSTALL=1` are strict boundaries. If the bundle is
+missing, startup fails without creating its directory or receipt. Configuration
+validation never downloads the bundle, while `a3s config show` reports its
+managed mode, readiness, and locked revision without exposing a path or URL.
+
+An explicit `artifact_manifest` remains available for an enterprise-owned or
+self-hosted bundle. In that mode, the manifest pins the runtime contract, model
+identity, revision, dimension, normalization, file set, and every SHA-256
+digest, and Power does not replace the operator's distribution path. Neither
+local mode grants workspace source egress.
 
 A remote OpenAI-compatible embedding endpoint is also supported, but it requires an explicit trusted `allow_source_egress = true` grant and a separately admitted provider/model route. Provider credentials, static headers, endpoints, source text, and vectors are excluded from status and debug projections.
 

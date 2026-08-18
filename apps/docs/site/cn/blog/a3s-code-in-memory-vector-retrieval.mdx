@@ -1,9 +1,9 @@
 ---
 title: "Asynchronous In-Memory Vector Retrieval in A3S Code"
-description: How A3S Code exposes semantic and hybrid workspace search through one governed tool, builds vectors asynchronously in session memory, and reports readiness and evidence in the TUI.
+description: How A3S Code exposes semantic and hybrid workspace search through one governed tool, provisions local embeddings with A3S Power, and keeps vectors in session memory.
 date: "2026-08-18"
 author: A3S Lab
-tags: [a3s-code, retrieval, vector-search, tui, embeddings]
+tags: [a3s-code, a3s-power, retrieval, vector-search, tui, embeddings]
 ---
 
 The current A3S CLI `main` branch can add semantic retrieval to a Code session without introducing a vector database service. It builds a bounded index asynchronously, keeps vectors in session-owned memory, and releases them when the session closes. This capability is newer than the stable `a3s 0.11.1` release and should not be inferred from that binary.
@@ -31,7 +31,7 @@ Building, partial, ready, degraded, and closed are explicit phases. Closing the 
 
 ## Local CPU enablement
 
-The local route requires a CLI build with `local-cpu-embedding`, a separately installed immutable model artifact, and a trusted user ACL or deliberately selected `--config` file:
+The local route requires a CLI build with `local-cpu-embedding` and a trusted user ACL or deliberately selected `--config` file. Users do not need to prepare MiniLM or ONNX files:
 
 ```text
 workspace_retrieval {
@@ -42,13 +42,26 @@ workspace_retrieval {
   shutdown_timeout_ms = 5000
 
   local_cpu {
-    artifact_manifest = "models/multilingual-mini/model.acl"
     intra_threads = 2
   }
 }
 ```
 
-The manifest pins model identity, revision, dimension, normalization, runtime, file set, and every SHA-256 digest. A3S does not download or silently update the model during startup. A remote OpenAI-compatible route is also supported, but it requires an explicit trusted source-egress grant. Credentials, endpoints, headers, source text, and vectors are excluded from diagnostics.
+The empty managed form selects a revision-locked
+`Xenova/all-MiniLM-L6-v2` bundle. A3S Power downloads the roughly 23 MiB ONNX
+and tokenizer files over HTTPS on first use, applies byte limits and per-file
+SHA-256 admission, serializes concurrent installers, and atomically stores the
+verified bundle below the A3S data root. Later sessions re-admit and reuse it
+offline. The provisioning library is linked into compatible CLI releases, so a
+separate `a3s-power` daemon is not required. `--offline` and
+`A3S_NO_AUTO_INSTALL=1` forbid a missing first-use installation without creating
+a directory or receipt. Configuration validation does not download anything.
+
+An explicit `artifact_manifest` remains available for self-managed or
+enterprise-owned distribution. A remote OpenAI-compatible route is also
+supported, but it requires an explicit trusted source-egress grant. Credentials,
+download URLs, endpoints, headers, source text, and vectors are excluded from
+diagnostics.
 
 ## DeepSeek and TUI diagnostics
 
