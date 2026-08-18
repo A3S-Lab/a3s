@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/readme/hero.svg" width="100%" alt="A3S is the open-source, local-first operating system for agents">
+  <img src="assets/readme/hero.svg" width="100%" alt="A3S is a local-first, open-source runtime platform for agent work">
 </p>
 
 <p align="center">
-  <strong>Build, run, and operate agents through one explicit interface—from a local workspace to Box and Cloud.</strong>
+  <strong>Build locally. Add capabilities, isolation, workflows, and fleet control only when the job needs them.</strong>
 </p>
 
 <p align="center">
@@ -15,8 +15,8 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#how-a3s-grows-with-the-job">Architecture</a> ·
+  <a href="#start-in-60-seconds">Quick start</a> ·
+  <a href="#one-owner-per-concern">Architecture</a> ·
   <a href="#product-surfaces">Products</a> ·
   <a href="#repository-map">Repository map</a> ·
   <a href="https://a3s-lab.github.io/a3s/">Website &amp; Blog</a>
@@ -24,22 +24,22 @@
 
 ---
 
-A3S treats an agent as a unit that can be **built, deployed, and operated**—not
-as a chat box attached to an existing system. It gives sessions, models, tools,
-state, workflows, execution, and permissions one interface while keeping every
-external dependency visible.
+A3S treats an agent as a unit that can be **built, run, and operated**, not as
+a chat box attached to another system. One interface connects sessions,
+models, tools, permissions, durable workflows, isolated execution, and Cloud
+operations while keeping every authority boundary and external dependency
+visible.
 
-A3S is the integration snapshot for independently versioned products and
-libraries. The canonical [`a3s` CLI](crates/cli/) is pinned as a submodule; its
-standalone repository owns source, CI, tags, releases, and detailed product
-documentation. The monorepo root owns orchestration, integration gates,
-installers, compatibility locks, and directly tracked applications—not a
-second Rust package.
+This repository is the reviewed integration snapshot for independently
+versioned A3S products. The canonical [`a3s` CLI](crates/cli/) and most
+components live in their own repositories and are pinned here as submodules.
+The root owns installers, orchestration, compatibility locks, documentation,
+and directly tracked applications; it is not a second Rust package.
 
-## Quick start
+## Start in 60 seconds
 
-Install the latest stable CLI on macOS or glibc Linux, then launch Code inside a
-project:
+Install the stable CLI on macOS or glibc Linux, enter a project, and start a
+local Code session:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -49,9 +49,9 @@ cd /path/to/project
 a3s code
 ```
 
-A model-backed session needs a configured provider or compatible local account.
-The CLI itself, local configuration, component inspection, Web host, and
-local-only research do not require an A3S OS login.
+A model-backed session needs a configured provider or compatible local
+account. Configuration inspection, component discovery, the local Web host,
+and local-only research do not require an A3S OS login.
 
 ```bash
 a3s config init
@@ -60,371 +60,166 @@ a3s model list
 a3s model use <provider>/<model>
 ```
 
-Once configured, the same entrypoint supports interactive work, automation, a
-local browser workbench, and evidence-backed research:
+The same command surface scales from one interactive session to automation,
+browser work, research, isolation, and evaluation:
 
-```bash
-a3s code
-a3s code exec "Check the API boundary and run its focused tests."
-a3s web -d
-a3s code research --web "Compare the current implementation with its design"
-```
+| Intent | First command |
+| --- | --- |
+| Work interactively | `a3s code` |
+| Run one bounded task | `a3s code exec "Check the API boundary and run its focused tests."` |
+| Open the local browser workbench | `a3s web start --detach` |
+| Produce evidence-backed research | `a3s code research --web "Compare the implementation with its design"` |
+| Inspect isolated workloads | `a3s box ps` |
+| Inspect installed products | `a3s list --installed` |
 
-See [Installation](#installation) for Windows, Homebrew, Cargo, offline use, and
-release-channel details.
+See [Installation](#installation) for Windows, Homebrew, Cargo, offline use,
+and release-channel details. The complete command reference lives with the
+[pinned CLI](crates/cli/docs/cli-reference.md).
 
-Runtime-hosted Agent releases use the same bundled Code engine through the one
-native process declared by the release contract:
-
-~~~bash
-a3s code harness --manifest /app/.a3s/asset.acl
-~~~
-
-This process exposes only the bounded Code command, event-page, and declared
-health routes. Cloud, Fleet, and the Node Agent transport those contracts; they
-do not own another Harness loop, run store, scheduler, or event log. If the
-manifest declares `persistent_data = "external"`, the active Code ACL config
-must point `sessions_dir` at an existing absolute Runtime-mounted directory.
-`persistent_data = "none"` keeps Harness session and memory state process-local.
-
-The complete TUI, permission, session, and component command reference lives in
-the [pinned CLI reference](crates/cli/docs/cli-reference.md).
-
-## Why A3S
-
-- **Local first.** Ordinary work stays on the developer machine. Box and Cloud
-  are explicit execution choices, not hidden defaults.
-- **One boundary model.** ACL configuration, permissions, accounts, models, and
-  component lifecycle are resolved by the umbrella CLI.
-- **Durable work.** Sessions, events, artifacts, memory, workflow checkpoints,
-  and evaluation results survive one conversation or process.
-- **Composable contracts.** Hosts own policy; Runtime, capability, data, and
-  infrastructure providers remain replaceable.
-- **Evidence over implication.** Installation, authorization, activation,
-  execution, health, and publication are separate states with separate proof.
-
-## How A3S grows with the job
+## One owner per concern
 
 <p align="center">
-  <img src="assets/readme/architecture.svg" width="100%" alt="A3S architecture from local product hosts through agent capabilities and coordination to replaceable runtime providers">
+  <img src="assets/readme/architecture.svg" width="100%" alt="A3S architecture: product hosts set policy, agent and workflow contracts compose work, Runtime and Power execute through replaceable providers, and evidence returns to the owning authority">
 </p>
 
-The system expands progressively. A local Code session does not require the
-whole platform, and adding a catalog entry does not silently activate a
-capability or infrastructure dependency.
+A3S grows progressively. A local session does not require the whole platform,
+and installing a package does not silently grant it authority or activate an
+infrastructure dependency.
 
-| Stage | Contract introduced | Projects that own it |
+| Layer | Contract | Owners |
 | --- | --- | --- |
-| **Build** | Agent session, model, tools, context, permissions | [Code](crates/code/), [TUI](crates/tui/), [Web](apps/web/) |
-| **Extend** | Typed capability and content packages | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
-| **Coordinate** | Replay-safe workflows, events, queues, verification | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
-| **Execute** | Finite Tasks, long-running Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Boot](crates/boot/) |
+| **Host** | Invocation, policy, models, tools, permissions | [CLI](crates/cli/), [Code](crates/code/), [Web](apps/web/), [Cloud](apps/cloud/) |
+| **Extend** | Signed capabilities and typed content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
+| **Coordinate** | Replay-safe workflows, events, queues, tests | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
+| **Execute** | Tasks, Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Boot](crates/boot/) |
 | **Scale** | Traffic, desired state, placement, reconciliation | [Gateway](crates/gateway/), [Cloud](apps/cloud/), [ORM](crates/orm/) |
 | **Govern** | Observation, enforcement decisions, signed updates | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
 
-The [MoE](crates/moe/) model layer now owns the accepted
-`Qwen/Qwen3.6-35B-A3B` text equations, checkpoint packing, and model-specific
-validation while [Power](crates/power/) remains the sole owner of expert
-residency, continuous admission, HTTP serving, and model-neutral speculative
-execution primitives. Its checked evidence now records independent-oracle
-parity on CPU and `cuda:0`, real concurrent requests, and a Qwen3.6 F32 CUDA
-warm mean of `0.263611 tokens/s` on the target RTX 4090 host. The DSpark path is
-cross-architecture: model crates provide trained drafters and transactional
-state adapters, while Power provides shared scheduling and exact acceptance.
-Metal acceptance, optimized kernels, and trained DSpark adapters remain open.
+The architecture follows five invariants:
 
-Five invariants keep those layers honest:
+1. **Hosts own policy.** Product hosts choose models, tools, providers, and
+   permissions; execution backends do not invent authority.
+2. **One authority owns each concern.** Cloud owns tenant and desired state,
+   Flow owns durable orchestration, Runtime owns provider-neutral Task and
+   Service lifecycles, and concrete providers own enforcement mechanics.
+3. **Contracts are replaceable.** Local processes, containers, MicroVMs, model
+   servers, and remote providers meet typed boundaries instead of becoming
+   hidden defaults.
+4. **State has identity.** Sessions, runs, tasks, artifacts, receipts, and
+   operations retain stable identities, revisions, and digests across restart
+   and replay.
+5. **Evidence closes the loop.** Installation, authorization, activation,
+   execution, health, and publication are distinct states with distinct proof.
 
-1. Product hosts own policy and select the models, tools, providers, and
-   permissions they use.
-2. Core interfaces stay replaceable; external services are never treated as
-   invisible defaults.
-3. Durable systems persist identity for sessions, workflows, runtime units,
-   evaluations, and Cloud operations.
-4. Policy and enforcement remain separate—for example, Code routes permission
-   decisions while a sandbox provider enforces a local command boundary.
-5. Configuration is ACL parsed and generated by [`a3s-acl`](crates/acl/). ACL
-   is not HCL and must not be handled by an HCL parser.
-
-The compatibility lock pins the verified cross-product baseline plus the
-in-progress Workflow Phase 3 implementation slice for Cloud, Flow, Boot, ORM,
-Form, and A3S Use. The pinned Use revision and host schemas certify Cloud's
-read-only catalog and Fleet adapter boundary; they do not claim assignment
-mutation or add a second plugin manager. The
-target composition is defined in the
-[Workflow platform architecture](compat/workflow-platform-architecture.md) and
-its ordered [development plan](compat/workflow-platform-development-plan.md).
-The pinned Form interaction and submitted-value evaluation fixtures prove
-byte-identical native Form Core behavior in Cloud at the locked revisions.
-Cloud also persists project-scoped canonical Form drafts, immutable
-owner-compiled releases, exact Goal/Plan-bound WorkflowRuns, and the internal
-authority-bound HumanTask decision loop through A3S ORM/PostgreSQL. REST
-`1.23.0`, the maintained TypeScript client, CLI, and Management MCP expose
-protected task reads, versioned claim/release, and exact native Form submission
-through one Workflow state machine and the shared Identity Resource Grant
-evaluator. The existing coordinator and resume Outbox also close automatic
-expiry and parent cancellation from exact Flow terminal evidence without a
-second scheduler or queue. Human/service/finite-task dispatch, typed capability
-steps, compensation, and production recovery remain later gates. Component
-roadmaps and the compatibility lock remain the sources of truth for delivered
-behavior.
-
-The detailed command and process design lives in the
-[CLI product design](crates/cli/docs/cli-product-design.md) and
-[CLI technical architecture](crates/cli/docs/cli-technical-architecture.md).
+Configuration is ACL parsed and generated by [`a3s-acl`](crates/acl/). ACL is
+not HCL and must not be processed with an HCL parser.
 
 ## Product surfaces
 
-The standalone CLI owns invocation context, shared configuration, output
-policy, credentials, discovery, and lifecycle. Product behavior stays in the
-component that implements it.
+The umbrella CLI owns invocation context, shared configuration, credentials,
+discovery, and output policy. Each product continues to own its behavior,
+release cadence, and detailed documentation.
 
-| Surface | Start here | Delivery boundary |
+| Surface | Start here | Boundary |
 | --- | --- | --- |
-| **Code** | `a3s code` | Bundled agent runtime and terminal host |
-| **Web** | `a3s web` | Bundled loopback API plus Web assets when the release includes them |
-| **Research** | `a3s code research --web "…"` | Bundled typed runner producing run-scoped Markdown and editable HTML evidence |
-| **Top** | `a3s top` | Bundled view of agents, containers, sessions, and events |
-| **Box** | `a3s box ps` | Managed product for explicit local isolation and OCI workloads |
-| **Search** | `a3s search …` | Managed Browser-first search product with quality-gated fallbacks |
-| **Use** | `a3s use capabilities --json` | Independently versioned AI-native package manager for signed dependency graphs and hot-pluggable Tool, MCP, OKF, A3S Flow, Skill, and UI surfaces |
-| **Bench** | `a3s bench …` | Managed evaluation product; [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) ships compatible components for Linux x86_64 and macOS arm64 |
-| **Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Self-hosted control plane governed by a revision and protocol compatibility lock |
-
-Use has not shipped a supported cognitive-package product release. The pinned
-preview accepts one contract line only: manifest v3, catalog v3, receipt v3,
-capability Registry v2, plan v4, host protocol v4, manager tools v4, pending
-graph v2, enablement state/operation v2, lifecycle intent v3, lifecycle
-diagnostic v1, and CLI plugin operation record v3. Superseded preview records
-are rejected with cleanup and reinstall guidance; SemVer, `requires_use`,
-target, and provider checks remain package-manager correctness rules.
-
-One package generation may contain Tool, MCP, OKF, A3S Flow, Skill, and UI
-surfaces. Lifecycle intents, Runtime/Flow/OKF bindings, Knowledge evidence, and
-capability observations retain the complete `PlanScope { kind, id }`; User and
-Workspace state remain disjoint even when their IDs match. The pinned CLI host
-observes the Use-owned generation and performs reviewed enable or disable
-without reinstalling package bytes or rewriting the dependency graph. CLI,
-Web, and Code TUI `/packages` use the same persisted plan, collect confirmation,
-and apply only its operation ID and canonical digest. Complete graph plans bind
-the exact User/Workspace Grant scope and durable revision, apply host policy,
-and forward unchanged authority and confirmation into Use-owned apply and
-replay. Permission-bearing enablement uses the same Grant-before-publish and
-hide/drain-before-revoke saga.
-
-`a3s use extension inspect <publisher/name> --json` now projects the latest and
-previous package lifecycle records for the default User scope under the same
-package-scoped journal lock. Its versioned output includes bounded checkpoint
-status, digests, timings, failure codes, and rollback evidence, while excluding
-idempotency keys, credentials, tokens, secret values, and package-authored
-error text. Both applying and rolling-back records reject a conflicting new
-intent until terminal completion. This diagnostic is read-only evidence, not
-restore authority or the still-open product telemetry layer.
-Candidate and retirement phases created by one reviewed graph operation may
-share an `operationId`; `intentDigest` is the exact phase identity, and a
-duplicate latest/previous intent digest fails closed.
-
-Code configuration and plugin authorization are separate trust boundaries. TUI
-and each Web host create one `PluginManager`; every Web plugin route clones the
-startup instance, while cross-process mutations retain the same durable file
-lock. Detached Web and the read-only management MCP reparse only the
-operator-selected ACL source under a normalized digest lock. An automatically
-discovered workspace ACL cannot authorize plugin mutation, and an existing Web
-process is reused only when its policy digest and offline mode match exactly.
-The shared Plugin Manager now binds its internal User plan to Use's canonical
-`user/current` scope instead of a host-local shorthand, so Web-created Grants,
-journals, and lifecycle diagnostics resolve the same authority after restart.
-Repository CI builds Use independently and exercises the real signed Code
-watcher boundary, TUI first-use, and generic Web install, restart, upgrade, and
-uninstall on Linux, macOS, and Windows without initializing Science.
-
-The standalone Use host now persists a bounded named Registry set in the sole
-canonical `state/use/registries.acl` document, with an enabled/default selection
-and a content-derived configuration revision shared by CLI, Marketplace, Web,
-MCP, and plan/apply. Install may select an explicit `registryName`; dependency
-resolution uses the complete enabled set, while upgrade and uninstall remain
-bound to installed provenance. Every reviewed plan reports the exact source
-revision used, and a new apply intent rejects revision drift before mutation.
-Each source identity binds its name, canonical URL, and pinned bootstrap-root
-digest to an isolated TUF/cache datastore. Reviewed replacement, default
-selection, enablement, disablement, and removal use revision-bound confirmation;
-they do not rewrite installed provenance or delete prior source evidence.
-
-The pinned Runtime/Use/CLI line now shares one managed execution lifecycle.
-Running Services publish generation-bound typed loopback endpoints; retirement
-drains the Gateway route, stops Runtime, removes the route, removes Runtime,
-and deletes the exact binding receipt last. Finite Tool Tasks persist a reviewed
-`a3s.use.runtime-task-binding.v4` receipt with the parameter-free Runtime
-template and exact Grant, provider, capability, and enforcement evidence. The
-shared Plugin Manager leases the exact published generation and can reconstruct
-an invocation after restart from that receipt plus the host Provider registry;
-hidden, stale, or provider-drifted generations fail closed, while an accepted
-call blocks lifecycle drain until logs are captured and Runtime cleanup
-completes. Capability Registry v2 projects a provider-qualified finite Task as
-a bounded, conservative `use_tool_*` tool into the shared TUI and Web
-AgentSessions. The projection carries exact package and manifest digests,
-lifecycle generation, scope, surface, and reviewed provider identity; upgrade
-or disable withdraws the old tool before replacement. Code still injects no
-production Runtime selection or Gateway adapter by default. A missing reviewed
-provider therefore produces a warning and no tool instead of falling back to a
-package-local launcher; release-backed Tool Tasks, Tool Services, and HTTP MCP
-remain unavailable by default.
-
-Signed UI surfaces now use exact generation/revision-bound Activity documents
-inside an opaque-origin Code Web sandbox and a dedicated `a3s.activity.v3`
-`MessagePort`. Code owns bounded durable state per scope, lifecycle package,
-and surface; every operation holds the exact published-generation lease. State
-survives restart, disable, rollback, and an upgrade that explicitly retains the
-surface, while true uninstall or surface removal clears it. Before a
-UI-bearing install or upgrade cuts over, Code Web loads the exact N+1 candidate
-in a hidden script-only sandbox and transfers only a dedicated `MessagePort`
-plus readiness-mode `host.init`. The candidate receives no state, context,
-Tool, MCP, Flow, or other backend authority. Only `activity.ready` passes;
-load, navigation, protocol, and timeout failures keep N callable, roll back the
-candidate without receipt or generation residue, and terminalize the reviewed
-plan. A fresh plan may retry the same N+1 lifecycle generation before exactly
-one successful Registry cutover. CLI, TUI, and native compositions remain
-static-integrity-only; reviewed backend bindings and native UI hosting are
-still release gates.
-
-Signed OKF surfaces now project into a scope-aware local SQLite/FTS5 Knowledge
-carrier. Restart, upgrade, disable, re-enable, and uninstall preserve or
-withdraw the exact package generation, while cited read-only search hot-plugs
-into current and replacement Code TUI/Web sessions. Each accepted query leases
-the exact published package, manifest, and lifecycle generation through backend
-search and final Registry revision verification, so it participates in Use
-lifecycle drain; missing or conflicting lease evidence fails closed before
-SQLite access. The composed backend now enforces receipt-accounted whole-scope
-byte/projection quotas, bounded per-surface generations and tombstones, physical
-SQLite/WAL cleanup, and exact User/Workspace usage diagnostics. Scope-bound
-integrity audit verifies SQLite, foreign keys, receipts, accounting, identity,
-and FTS evidence; confirmed repair can rebuild only the derived search rows.
-Versioned non-overwriting backups bind
-the exact scope and can be verified offline. A backup digest detects corruption
-but is not a Registry signature or a whole-product recovery artifact. This
-remains a local preview boundary: coordinated restore, authority recovery,
-backup rotation, managed rollback semantics, distributed Knowledge placement,
-and full cross-platform qualification are still release gates.
-
-The standalone Use lifecycle composes real `a3s-flow` Native TypeScript
-preflight only when `A3S_FLOW_NATIVE_TS_COMPILER` identifies an explicit
-absolute compiler path. Failed preflight keeps the candidate installed-disabled
-with no active named-surface projection; retry after provider repair resumes the
-same durable plan and generation. Signed Unix and Windows x86_64 real-process
-tests cover install, restart observation, exact upgrade, uninstall, failure,
-and replay. The Windows gate also kills an upgrade after graph cutover and
-proves restart cleanup does not republish or inflate the capability generation.
-It now also runs the complete current non-Science Use workspace suite. A shared
-host-metadata guard rejects Unix symbolic links and Windows reparse points
-across package, Registry/cache, Grant, lifecycle, Runtime, Flow, MCP, and
-Knowledge trust boundaries; Windows tests create a real directory junction and
-prove package copying fails before external content is read.
-
-Install, upgrade, and uninstall accept only verified catalog-v3 evidence with
-complete Use-owned dependency locks. Reviewed apply runs through Use in the
-host process; there is no child `a3s` mutation or direct Web package-toggle
-fallback. Upgrade binds the exact prior and candidate locks, while graph-wide
-add/replace/remove/retain preserves dependencies still owned by another root.
-Registry mutations wait for a transient watcher reconciliation lock within a
-bounded budget, while steady-state watcher reads remain non-blocking and a
-genuinely concurrent writer still fails closed with `use.extension.busy`.
-Watcher snapshots cannot publish installed-disabled lifecycle candidates, so
-the reviewed atomic cutover remains the sole owner of each Registry generation
-transition.
-
-Use the machine-readable commands before scripting an optional product:
-
-```bash
-a3s list --installed
-a3s info box
-a3s doctor
-a3s use extension inspect <publisher/name> --json
-a3s use knowledge usage --json
-a3s use knowledge audit --json
-a3s use knowledge backup ./user.a3s-okf-backup --json
-a3s use knowledge verify-backup ./user.a3s-okf-backup --json
-# Rebuild only a derived FTS index after authoritative state passes audit.
-a3s use knowledge repair-search-index --yes --json
-```
+| **Code** | `a3s code` | Bundled agent engine and terminal host |
+| **Web** | `a3s web` | Loopback API and browser workbench included by compatible releases |
+| **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI surfaces |
+| **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
+| **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
+| **Flow + Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Durable orchestration composed by a self-hosted control plane under an exact compatibility lock |
+| **Search** | `a3s search …` | Browser-first search with quality-gated fallbacks |
+| **Bench** | `a3s bench …` | Evaluation runs and evidence; artifact availability remains platform-specific |
+| **Top** | `a3s top` | Local view of agents, containers, sessions, and events |
 
 > [!NOTE]
-> A catalog record describes discovery and installation policy. It does not
-> prove that every platform or release channel currently contains a compatible
-> artifact.
+> Discovery is not availability. A catalog record can describe installation
+> policy without proving that every platform or release channel contains a
+> compatible artifact.
 
-## Current release boundaries
+## What is verified today
 
-The CLI release channel is owned by the standalone
-[`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository. These boundaries
-describe the integration snapshot pinned by this repository's `main` branch:
+- The standalone [`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository
+  owns CLI source, CI, tags, releases, and product documentation. This root
+  pins one reviewed revision and retains an asset-only relay for legacy 0.11.x
+  clients that briefly used the monorepo release endpoint.
+- The pinned [Code](crates/code/) revision includes a capability ledger and
+  release qualification for retrieval, code intelligence, context and memory,
+  Flow and State Graph projection, persistence, and hermetic S3, browser, and
+  OpenTelemetry boundaries. Remote-provider and public-network latency remain
+  explicitly out of scope.
+- The Cloud compatibility lock pins exact Cloud, ACL, Boot, Box, Event, Flow,
+  Form, Gateway, ORM, Runtime, Sentry, Updater, and Use revisions plus their
+  shared protocol levels. Run `just cloud-stack-check` before publishing a new
+  integration claim.
+- Workflow Phases 0–2 have verified contract, Form lifecycle, and minimal run
+  baselines. Phase 3 has a pinned internal HumanTask decision slice, including
+  protected reads, claim/release, native Form submission, expiry, cancellation,
+  and Outbox resume; the controlled inbox and full end-to-end exit gate remain
+  open. See the [architecture](compat/workflow-platform-architecture.md) and
+  [ordered plan](compat/workflow-platform-development-plan.md).
+- Use is a preview, not a supported product release. Its exact accepted schema
+  line and remaining cross-platform gates are owned by the pinned component
+  README and the compatibility lock.
+- MoE owns model-specific equations and validation; Power owns model-neutral
+  execution. Model support evidence does not imply that every optimized kernel,
+  accelerator backend, or speculative adapter is complete.
+- Ash and Parser are early-stage, Office is pre-1.0, and OCI Runtime's native
+  Linux path remains experimental rather than the default launch claim.
 
-| Area | Current boundary |
-| --- | --- |
-| Standalone CLI | Code, Web, Research, configuration, auth, models, diagnostics, reviewed plugin plan/apply, shared TUI/Web Plugin Manager policy, shared Use managed lifecycle composition, component lifecycle, CI, tags, and releases are owned by `A3S-Lab/CLI`; this repository pins one reviewed gitlink |
-| Managed products | Box and Search install and run as independently versioned components; artifact availability is platform- and channel-specific |
-| Use | `main` pins the single current preview baseline: manifest/catalog/receipt v3, capability Registry v2, plan/host/manager tools v4, lifecycle intent v3, lifecycle diagnostic v1, CLI plugin operation record v3, exact SemVer dependency locks, the sole revision-addressed `state/use/registries.acl` source document with identity-isolated TUF/cache state, install-time Registry selection and provenance-pinned upgrade/uninstall, in-process reviewed Grants and graph apply, shared dependency ownership, canonical `user/current` authority across CLI/TUI/Web plans and Use lifecycle journals, restart-safe hot-plug across Tool, MCP, OKF, A3S Flow, Skill, and UI, Code-owned bounded durable UI state with exact published-generation leases and retained-surface cleanup, Code Web failed-N+1 browser readiness with authority-free candidate documents, fail-closed rollback, terminal stale-plan rejection, fresh-plan retry, and a single successful cutover, secret-free latest/previous lifecycle checkpoint evidence with applying/rolling-back exclusion and same-operation phase identity by intent digest, typed Runtime Service endpoint consumption with Gateway drain → Runtime stop → route removal → Runtime removal, receipt-recoverable exact-generation Runtime Task dispatch with provider/capability/enforcement evidence and drain-safe cleanup, provider-qualified TUI/Web `use_tool_*` projection with bounded argv, exact lifecycle identity, and fail-closed withdrawal when the reviewed provider is absent, explicit standalone Flow preflight with exact replay, a scope-aware local SQLite/FTS5 OKF Knowledge carrier with cited TUI/Web search and exact published-generation query leases, receipt-accounted scope quota, bounded generations/tombstones, physical cleanup, usage diagnostics, scope-bound integrity audit, derived-index repair, versioned backup/offline verification, CI-enforced real-process Code watcher, TUI first-use, and generic Web lifecycle coverage on Linux/macOS/Windows through a configured replaceable Registry source, and a Windows x86_64 signed Registry/graph/Grant/Flow/OKF CLI lifecycle plus killed-process cutover-recovery gate. Broader operational telemetry, managed Knowledge rollback, coordinated restore and authority recovery, backup rotation, distributed Knowledge placement, reviewed Activity backend bindings, equivalent browser/native readiness outside Code Web, native UI hosting, production Runtime provider selection and Gateway injection, the real-provider Runtime Task cross-platform upgrade/uninstall recovery matrix, Tool Service/HTTP MCP composition, distributed Flow recovery/retention, production Registry operations, broader Windows six-surface/failure-injection parity, and the complete six-surface cross-platform real-process matrix remain release gates. Use is not a released product. |
-| Bench | [v0.1.2](https://github.com/A3S-Lab/Bench/releases/tag/v0.1.2) is installable on Linux x86_64 and macOS arm64; local runs require Docker and remain `local_unofficial` by governance |
-| Cloud | R0–E0 is the verified cumulative baseline; the compatibility manifest additionally pins native Form compilation/evaluation, Form/Flow interaction contracts, the tenant-isolated Form lifecycle, Goal/Plan-bound WorkflowRuns, and the authority-bound HumanTask decision loop. REST `1.23.0`, TypeScript client, CLI, and Management MCP expose protected task reads, versioned claim/release, and exact native Form submission through the existing Workflow and Identity authorities; the shared coordinator/Outbox closes automatic expiry and parent cancellation from exact Flow terminal evidence. The complete W0 product remains unavailable: human/service/finite-task dispatch, typed capability steps, compensation, expanded recovery evidence, and W0.4–W0.5 remain open |
-| Early projects | Ash is pre-release, Parser is pre-alpha, Office is pre-1.0, and OCI Runtime's native Linux path is experimental rather than the default launch claim |
-
-Release-bearing projects publish on their own cadence. Their manifests and
-READMEs are the source of truth for feature flags, supported platforms, tests,
-and maturity; this root README describes integration boundaries rather than
-duplicating every component changelog.
+Component READMEs, releases, roadmaps, and the compatibility lock are the
+sources of truth for exact feature flags, platforms, versions, and remaining
+gates. This page describes the composition, not a merged changelog.
 
 ## Installation
 
 | Method | Command | Notes |
 | --- | --- | --- |
-| macOS / glibc Linux | `curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh \| sh` | Installs to `~/.local/bin` by default; does not edit shell profiles unless `A3S_MODIFY_PATH=1` |
+| macOS / glibc Linux | `curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh \| sh` | Installs to `~/.local/bin` by default; set `A3S_MODIFY_PATH=1` to edit shell profiles |
 | Homebrew | `brew install a3s-lab/tap/a3s` | Supported on macOS and Linux |
 | Windows PowerShell 5.1+ | `irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 \| iex` | Installs under `%LOCALAPPDATA%\Programs\a3s\bin` by default |
-| Cargo | `cargo install a3s` | CLI-only installation; it does not bundle the complete Web workspace or WebView helper |
+| Cargo | `cargo install a3s` | CLI only; does not bundle the complete Web workspace or WebView helper |
 
-The release installers resolve one stable version, require one exact artifact
-for the detected platform, verify GitHub's SHA-256 release digest and the staged
-binary version, reject unsafe archive entries, and preserve the previous
-installation if activation fails.
+Release installers resolve one stable version, require an exact artifact for
+the detected platform, verify its SHA-256 release digest and staged binary
+version, reject unsafe archive entries, and preserve the previous installation
+if activation fails.
 
-Use `A3S_OFFLINE=1` and `A3S_NO_AUTO_INSTALL=1` when automatic setup must perform
-zero network access and zero component mutation. Standalone macOS and Linux
-installs can use `a3s self update --check` and `a3s self update`; Homebrew-managed
-installs should update through Homebrew. Windows currently upgrades by rerunning
-the installer.
-
-Full installer controls and platform notes are in the
-[CLI reference](docs/cli-reference.md) and the standalone [CLI repository](crates/cli/).
-
-Standalone versions 0.9.9 through 0.10.10 already read `A3S-Lab/CLI` releases.
-Versions 0.11.0 and 0.11.1 briefly used the monorepo endpoint; a verified,
-asset-only compatibility relay remains here so those clients can perform one
-update back to the CLI-owned release channel.
+Set `A3S_OFFLINE=1` and `A3S_NO_AUTO_INSTALL=1` when setup must perform zero
+network access and zero component mutation. Standalone macOS and Linux installs
+can use `a3s self update`; Homebrew installations should update through
+Homebrew. Windows upgrades currently rerun the installer.
 
 ## Repository map
 
-The repository root is a monorepo integration point, not a Rust package or
-Cargo workspace. Most components are external repositories tracked as git
-submodules, while directly tracked applications and integration assets remain
+The root is a monorepo integration point, not a Rust workspace. Most components
+are external repositories tracked as git submodules; directly tracked
+applications, integration assets, `crates/common`, and `crates/updater` remain
 root-owned.
+
+```text
+a3s/
+├── apps/       cloud control plane, docs, Web, and Windhole
+├── packages/   Form, Office, Science, and UI
+├── crates/     product hosts, capabilities, runtimes, services, and SDKs
+├── compat/     exact cross-project revisions and protocol locks
+├── assets/     repository-native README visuals
+└── homebrew-tap/
+```
 
 | Group | Projects |
 | --- | --- |
 | Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Web](apps/web/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
-| Runtime, coordination, and data | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
+| Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
-| Services and interfaces | [Boot](crates/boot/), [Gateway](crates/gateway/), [Power](crates/power/), [MoE](crates/moe/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
+| Interfaces and services | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
 | Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Website & Blog](apps/docs/), [Homebrew Tap](homebrew-tap/) |
 
-The [CLI repository migration record](docs/cli-repository-migration.md)
-documents the temporary 0.11.x root migration, restored standalone ownership,
-and legacy-client release relay. The interactive
-[project directory](https://a3s-lab.github.io/a3s/#ecosystem) records each
-project's responsibility, repository-level delivery stage, current version or
-channel, website, and source-code entrypoint. The snapshot is checked against
-current project versions, public releases, READMEs, and roadmaps. Stage labels
-describe how each project can be used today; they are categories, not
-feature-completion percentages.
+The [CLI migration record](docs/cli-repository-migration.md) explains the
+temporary 0.11.x root migration and restored standalone ownership. The
+interactive [project directory](https://a3s-lab.github.io/a3s/#ecosystem)
+shows each project's role, stage, version or channel, website, and source.
 
 ## Development
 
@@ -438,11 +233,10 @@ cd a3s
 For an existing checkout, run `git submodule update --init --recursive`.
 
 > [!IMPORTANT]
-> The repository root is not a Rust package or Cargo workspace. Run Rust
-> commands from the submodule that owns the code; the root `justfile` only
-> orchestrates cross-project development and verification.
+> Do not create a root `Cargo.toml`, run `cargo init` here, or treat the root as
+> a Rust crate. Work and test inside the component that owns the change.
 
-A typical CLI validation runs from the pinned CLI submodule:
+For example, validate the pinned CLI from its submodule:
 
 ```bash
 cd crates/cli
@@ -451,16 +245,7 @@ cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
 ```
 
-Validate another Rust project from its owning submodule instead:
-
-```bash
-cd crates/<project>
-cargo fmt --all -- --check
-cargo test --all-targets
-cargo clippy --all-targets -- -D warnings
-```
-
-The root `justfile` provides the common integration entrypoints:
+The root `justfile` orchestrates integration workflows:
 
 ```bash
 just code
@@ -471,19 +256,19 @@ just use-hotplug-e2e
 just cloud-stack-check
 ```
 
-Submodules and the root repository have separate Git histories. Commit a
-component change in its owning repository before updating its gitlink here, and
-read [AGENTS.md](AGENTS.md) before changing repository structure.
+Submodules and the root have separate histories. Commit a component change in
+its owning repository before advancing its gitlink here, and read
+[AGENTS.md](AGENTS.md) before changing repository structure.
 
 ## Documentation and community
 
 - [A3S website and engineering blog](https://a3s-lab.github.io/a3s/)
 - [CLI reference](docs/cli-reference.md)
+- [Workflow platform architecture](compat/workflow-platform-architecture.md)
+- [Workflow development plan](compat/workflow-platform-development-plan.md)
+- [Cloud compatibility lock](compat/cloud-stack.acl)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)
-
-Each project README records its detailed APIs, feature flags, platform
-requirements, verification commands, and remaining limitations.
 
 ## License
 
