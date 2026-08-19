@@ -124,8 +124,7 @@ jobs:
             fi
             for archive in "${archives[@]}"; do
               expected="$(awk -v asset="$archive" \
-                '($2 == asset || $2 == "*" asset) && length($1) == 64
-                 && $1 !~ /[^0-9a-f]/ { digest = $1; count += 1 }
+                '($2 == asset || $2 == "*" asset) && length($1) == 64 && $1 !~ /[^0-9a-f]/ { digest = $1; count += 1 }
                  END { if (count == 1) print digest }' "$checksum")"
               actual="$(sha256sum "source-assets/${archive}" | awk '{ print $1 }')"
               if [[ -z "$expected" || "$actual" != "$expected" ]]; then
