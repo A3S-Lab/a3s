@@ -82,7 +82,7 @@ for (const marker of [
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
   const formLinkCount = homepage.split(`href="${formHref}"`).length - 1;
-  assert(projectStages.length === 36, `${locale} homepage has ${projectStages.length} project stages instead of 36`);
+  assert(projectStages.length === 35, `${locale} homepage has ${projectStages.length} project stages instead of 35`);
   assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
   assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
