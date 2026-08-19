@@ -9,7 +9,6 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Code',
     website: 'https://a3s-lab.github.io/Code/',
   },
-  web: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/web' },
   windhole: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/windhole' },
   box: {
     repository: 'https://github.com/A3S-Lab/Box',

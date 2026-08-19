@@ -1,7 +1,7 @@
 # A3S Agent Evaluation Design System
 
-A3S Agent Evaluation adapts [A3S Code Web's design system](../web/DESIGN.md) to a tactical
-simulation interface. The shared principles remain authoritative: direct Chinese
+A3S Agent Evaluation uses a tactical simulation interface built around direct Chinese
+copy. Its product principles remain authoritative: direct Chinese
 copy, one obvious next action, progressive disclosure, restrained elevation,
 honest states, keyboard access, and A3S brand blue for selection and focus.
 
@@ -27,7 +27,7 @@ state, Bench state, or provenance.
 - Green means ready or completed.
 - Amber/orange means caution, quarantined evidence, preview, or unstable flow.
 - Red means blocked or failed.
-- Primary actions use a high-contrast neutral fill, following `apps/web`.
+- Primary actions use a high-contrast neutral fill.
 
 The A3S blue–indigo–purple gradient appears only in the small brand signature.
 Persistent panels use one-pixel dividers and surface contrast, not large
@@ -93,7 +93,7 @@ configuration source.
 
 ## Typography and controls
 
-- Chinese UI uses the same platform-first font stack as `apps/web`.
+- Chinese UI uses the platform-first font stack defined by this application.
 - Technical IDs and telemetry use the platform monospace stack.
 - Chinese headings never receive artificial letter spacing.
 - Standard controls are 34–38 px high with 7–9 px radii.

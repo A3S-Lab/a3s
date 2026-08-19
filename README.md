@@ -50,8 +50,8 @@ a3s code
 ```
 
 A model-backed session needs a configured provider or compatible local
-account. Configuration inspection, component discovery, the local Web host,
-and local-only research do not require an A3S OS login.
+account. Configuration inspection, component discovery, and local-only
+research do not require an A3S OS login.
 
 ```bash
 a3s config init
@@ -67,7 +67,6 @@ browser work, research, isolation, and evaluation:
 | --- | --- |
 | Work interactively | `a3s code` |
 | Run one bounded task | `a3s code exec "Check the API boundary and run its focused tests."` |
-| Open the local browser workbench | `a3s web start --detach` |
 | Produce evidence-backed research | `a3s code research --web "Compare the implementation with its design"` |
 | Inspect isolated workloads | `a3s box ps` |
 | Inspect installed products | `a3s list --installed` |
@@ -88,7 +87,7 @@ infrastructure dependency.
 
 | Layer | Contract | Owners |
 | --- | --- | --- |
-| **Host** | Invocation, policy, models, tools, permissions | [CLI](crates/cli/), [Code](crates/code/), [Web](apps/web/), [Cloud](apps/cloud/) |
+| **Host** | Invocation, policy, models, tools, permissions | [CLI](crates/cli/), [Code](crates/code/), [Cloud](apps/cloud/) |
 | **Extend** | Signed capabilities and typed content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
 | **Coordinate** | Replay-safe workflows, events, queues, tests | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
 | **Execute** | Tasks, Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Boot](crates/boot/) |
@@ -123,7 +122,6 @@ release cadence, and detailed documentation.
 | Surface | Start here | Boundary |
 | --- | --- | --- |
 | **Code** | `a3s code` | Bundled agent engine and terminal host |
-| **Web** | `a3s web` | Loopback API and browser workbench included by compatible releases |
 | **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI surfaces |
 | **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
 | **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, verified artifact provisioning, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
@@ -178,7 +176,7 @@ gates. This page describes the composition, not a merged changelog.
 | macOS / glibc Linux | `curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh \| sh` | Installs to `~/.local/bin` by default; set `A3S_MODIFY_PATH=1` to edit shell profiles |
 | Homebrew | `brew install a3s-lab/tap/a3s` | Supported on macOS and Linux |
 | Windows PowerShell 5.1+ | `irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 \| iex` | Installs under `%LOCALAPPDATA%\Programs\a3s\bin` by default |
-| Cargo | `cargo install a3s` | CLI only; does not bundle the complete Web workspace or WebView helper |
+| Cargo | `cargo install a3s` | Builds the CLI only; install the optional WebView helper separately |
 
 Release installers resolve one stable version, require an exact artifact for
 the detected platform, verify its SHA-256 release digest and staged binary
@@ -199,7 +197,7 @@ root-owned.
 
 ```text
 a3s/
-├── apps/       cloud control plane, docs, Web, and Windhole
+├── apps/       cloud control plane, docs, and Windhole
 ├── packages/   Form, Office, Science, and UI
 ├── crates/     product hosts, capabilities, runtimes, services, and SDKs
 ├── compat/     exact cross-project revisions and protocol locks
@@ -209,7 +207,7 @@ a3s/
 
 | Group | Projects |
 | --- | --- |
-| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Web](apps/web/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
+| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |

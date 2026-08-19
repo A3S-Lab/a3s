@@ -29,7 +29,7 @@ export const homeContent = {
       title: 'Five rules that keep the parts understandable.',
       description: 'They define where decisions are made, what survives a restart, and which component is responsible when work fails.',
       items: [
-        { index: '01', title: 'Policy stays with the host', description: 'CLI, Web, Bench, and Cloud choose the active models, tools, permissions, and workflows.' },
+        { index: '01', title: 'Policy stays with the host', description: 'CLI, Bench, and Cloud choose the active models, tools, permissions, and workflows.' },
         { index: '02', title: 'Backends stay replaceable', description: 'Drivers, providers, stores, executors, and adapters meet through explicit interfaces.' },
         { index: '03', title: 'State survives restarts', description: 'Sessions, workflow runs, runtime units, and evaluation results are written beyond process memory.' },
         { index: '04', title: 'Requirements are named', description: 'Accounts, browsers, brokers, hypervisors, databases, and models are configured rather than assumed.' },
@@ -109,7 +109,7 @@ export const homeContent = {
       title: '让各个组件保持清晰的五条规则。',
       description: '这些规则说明由谁做决定、哪些状态需要跨重启保留，以及任务失败时该由哪个组件负责。',
       items: [
-        { index: '01', title: '策略留在宿主', description: 'CLI、Web、Bench 与 Cloud 选择启用哪些模型、工具、权限和工作流。' },
+        { index: '01', title: '策略留在宿主', description: 'CLI、Bench 与 Cloud 选择启用哪些模型、工具、权限和工作流。' },
         { index: '02', title: '后端可以替换', description: '驱动、Provider、Store、Executor 与 Adapter 通过明确接口协作。' },
         { index: '03', title: '状态跨重启保留', description: 'Session、工作流、运行时单元和评测结果都会写入进程之外。' },
         { index: '04', title: '依赖明确写出', description: '账户、浏览器、Broker、Hypervisor、数据库和模型都需要配置，而不是默认存在。' },

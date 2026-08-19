@@ -140,10 +140,9 @@ jobs:
         env:
           A3S_GITHUB_TOKEN: ${{ github.token }}
           A3S_INSTALL_DIR: ${{ runner.temp }}/a3s-smoke/bin
-          A3S_DATA_HOME: ${{ runner.temp }}/a3s-smoke/data
         run: sh install.sh --no-modify-path
 
-      - name: Verify binary and Web workspace
+      - name: Verify binary
         if: steps.cli-release.outputs.available == 'true'
         shell: bash
         run: |
@@ -151,7 +150,6 @@ jobs:
           binary="${RUNNER_TEMP}/a3s-smoke/bin/a3s"
           version="$("$binary" --version | awk '{ print $2 }')"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          test -f "${RUNNER_TEMP}/a3s-smoke/data/web/${version}/index.html"
 
   windows-release-smoke:
     name: Windows x64 release
@@ -184,7 +182,6 @@ jobs:
         shell: powershell
         env:
           A3S_GITHUB_TOKEN: ${{ github.token }}
-          A3S_DATA_HOME: ${{ runner.temp }}\a3s-smoke\data
         run: |
           $installDir = Join-Path $env:RUNNER_TEMP 'a3s-smoke\bin'
           & .\install.ps1 -InstallDir $installDir
@@ -195,10 +192,6 @@ jobs:
           }
           $versionText = $Matches[1]
           $installedVersion = [version]$versionText
-          $index = Join-Path $env:A3S_DATA_HOME "web\$versionText\index.html"
-          if (-not (Test-Path -LiteralPath $index -PathType Leaf)) {
-            throw "missing Web workspace: $index"
-          }
           $supportManifest = Join-Path $installDir 'support\managed-srt\package.json'
           if (Test-Path -LiteralPath $supportManifest -PathType Leaf) {
             $supportCli = Join-Path $installDir 'support\managed-srt\node_modules\@anthropic-ai\sandbox-runtime\dist\cli.js'

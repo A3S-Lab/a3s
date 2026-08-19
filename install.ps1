@@ -3,7 +3,6 @@
 # Environment overrides:
 #   A3S_VERSION          Release tag (for example v0.9.8); defaults to latest.
 #   A3S_INSTALL_DIR      Binary directory; defaults to LocalAppData\Programs\a3s\bin.
-#   A3S_DATA_HOME        Data directory for versioned Web assets.
 #   A3S_MODIFY_PATH      Set to 1 to add the install directory to the user PATH.
 #   A3S_GITHUB_TOKEN     Optional GitHub token for release API rate limits.
 
@@ -77,7 +76,7 @@ param(
         $parentWithSeparator = $fullParent + [IO.Path]::DirectorySeparatorChar
         $leaf = [IO.Path]::GetFileName($fullPath)
         if (-not $fullPath.StartsWith($parentWithSeparator, [StringComparison]::OrdinalIgnoreCase) -or
-            $leaf -notmatch '^\.a3s-(?:web|support)\.(new|backup|failed)\.[0-9a-f-]+$') {
+            $leaf -notmatch '^\.a3s-support\.(new|backup|failed)\.[0-9a-f-]+$') {
             throw "refusing to remove unexpected directory $fullPath"
         }
         Remove-Item -LiteralPath $fullPath -Recurse -Force
@@ -205,16 +204,6 @@ param(
     Assert-NoReparsePoint -Path $installDir
     $installDir = (Get-Item -LiteralPath $installDir -Force).FullName.TrimEnd('\', '/')
 
-    if (-not [string]::IsNullOrWhiteSpace($env:A3S_DATA_HOME)) {
-        if (-not (Test-AbsoluteWindowsPath -Path $env:A3S_DATA_HOME)) {
-            throw 'A3S_DATA_HOME must be absolute for installer-managed Web assets'
-        }
-        $requestedDataRoot = [IO.Path]::GetFullPath($env:A3S_DATA_HOME).TrimEnd('\', '/')
-        if ($requestedDataRoot -eq [IO.Path]::GetPathRoot($requestedDataRoot).TrimEnd('\', '/')) {
-            throw 'A3S_DATA_HOME cannot be a filesystem root'
-        }
-    }
-
     if ($env:A3S_MODIFY_PATH -match '^(1|true|yes)$') {
         $UpdatePath = $true
     }
@@ -295,11 +284,6 @@ param(
     $webviewPath = Join-Path $installDir 'a3s-webview.exe'
     $supportPath = Join-Path $installDir 'support'
 
-    $webParent = ''
-    $webDir = ''
-    $stagedWeb = ''
-    $backupWeb = ''
-    $failedWeb = ''
     $stagedBinary = ''
     $backupBinary = ''
     $failedBinary = ''
@@ -309,15 +293,12 @@ param(
     $stagedSupport = ''
     $backupSupport = ''
     $failedSupport = ''
-    $webActive = $false
-    $oldWebSaved = $false
     $binaryActive = $false
     $oldBinarySaved = $false
     $webviewActive = $false
     $oldWebviewSaved = $false
     $supportActive = $false
     $oldSupportSaved = $false
-    $webActivationStarted = $false
     $binaryActivationStarted = $false
     $webviewActivationStarted = $false
     $supportActivationStarted = $false
@@ -378,9 +359,8 @@ param(
             $entryNames = @($entries | ForEach-Object { $_.FullName.Replace('\', '/') })
             $webviewEntryCount = @($entryNames | Where-Object { $_ -ceq 'a3s-webview.exe' }).Count
             if (@($entryNames | Where-Object { $_ -ceq 'a3s.exe' }).Count -ne 1 -or
-                $webviewEntryCount -gt 1 -or
-                @($entryNames | Where-Object { $_ -ceq 'web/index.html' }).Count -ne 1) {
-                throw 'release archive must contain exactly one a3s.exe and web/index.html, and at most one a3s-webview.exe'
+                $webviewEntryCount -gt 1) {
+                throw 'release archive must contain exactly one a3s.exe and at most one a3s-webview.exe'
             }
             $hasBundledWebview = $webviewEntryCount -eq 1
             $supportEntryCount = @($entryNames | Where-Object {
@@ -441,7 +421,7 @@ param(
                 $unixFileType = (($entry.ExternalAttributes -shr 16) -band 0xF000)
                 $isReleaseCompatEntry = $releaseCompatRequiredEntries -ccontains $entryName -or
                     $releaseCompatDirectoryEntries -ccontains $entryName
-                if (($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe|web/?|web/.+|support/?|support/.+)$' -and
+                if (($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe|support/?|support/.+)$' -and
                     -not $isReleaseCompatEntry) -or
                     ('/' + $entryName + '/') -match '/(\.|\.\.)/' -or
                     $unixFileType -notin @(0, 0x4000, 0x8000) -or
@@ -456,11 +436,9 @@ param(
         Expand-Archive -LiteralPath $archive -DestinationPath $extracted
         $extractedBinary = Join-Path $extracted 'a3s.exe'
         $extractedWebview = Join-Path $extracted 'a3s-webview.exe'
-        $extractedWeb = Join-Path $extracted 'web'
         $extractedSupport = Join-Path $extracted 'support'
         if (-not (Test-Path -LiteralPath $extractedBinary -PathType Leaf) -or
-            ($hasBundledWebview -and -not (Test-Path -LiteralPath $extractedWebview -PathType Leaf)) -or
-            -not (Test-Path -LiteralPath (Join-Path $extractedWeb 'index.html') -PathType Leaf)) {
+            ($hasBundledWebview -and -not (Test-Path -LiteralPath $extractedWebview -PathType Leaf))) {
             throw 'the extracted release layout is invalid'
         }
         if ($hasBundledSupport) {
@@ -481,40 +459,7 @@ param(
             throw "release archive extracted a reparse point: $($reparseEntries[0].FullName)"
         }
 
-        if (-not [string]::IsNullOrWhiteSpace($env:A3S_DATA_HOME)) {
-            if (-not (Test-AbsoluteWindowsPath -Path $env:A3S_DATA_HOME)) {
-                throw 'A3S_DATA_HOME must be absolute for installer-managed Web assets'
-            }
-            $dataRoot = [IO.Path]::GetFullPath($env:A3S_DATA_HOME)
-        } else {
-            $dataRoot = Join-Path $localAppData 'A3S\Data'
-        }
-        if ($dataRoot.TrimEnd('\', '/') -eq [IO.Path]::GetPathRoot($dataRoot).TrimEnd('\', '/')) {
-            throw 'refusing to install Web assets directly below a filesystem root'
-        }
-        $webParent = Join-Path $dataRoot 'web'
-        $webDir = Join-Path $webParent $expectedVersion
-
-        [IO.Directory]::CreateDirectory($webParent) | Out-Null
-        Assert-NoReparsePoint -Path $webParent
-        $webParent = (Get-Item -LiteralPath $webParent -Force).FullName.TrimEnd('\', '/')
-        $webDir = Join-Path $webParent $expectedVersion
-
-        $siblingWeb = Join-Path $installDir 'web\index.html'
-        if (Test-Path -LiteralPath $siblingWeb -PathType Leaf) {
-            throw "$($siblingWeb | Split-Path -Parent) would override the versioned Web assets; remove that packaged Web directory and retry"
-        }
-        if ((Split-Path -Leaf $installDir) -ieq 'bin') {
-            $prefixWeb = Join-Path (Split-Path -Parent $installDir) 'share\a3s\web'
-            if (Test-Path -LiteralPath (Join-Path $prefixWeb 'index.html') -PathType Leaf) {
-                throw "$prefixWeb would override the versioned Web assets; remove that packaged Web directory and retry"
-            }
-        }
-
         $activationId = [Guid]::NewGuid().ToString('D')
-        $stagedWeb = Join-Path $webParent ".a3s-web.new.$activationId"
-        $backupWeb = Join-Path $webParent ".a3s-web.backup.$activationId"
-        $failedWeb = Join-Path $webParent ".a3s-web.failed.$activationId"
         $stagedBinary = Join-Path $installDir ".a3s.new.$activationId.exe"
         $backupBinary = Join-Path $installDir ".a3s.backup.$activationId.exe"
         $failedBinary = Join-Path $installDir ".a3s.failed.$activationId.exe"
@@ -526,7 +471,6 @@ param(
         $failedSupport = Join-Path $installDir ".a3s-support.failed.$activationId"
 
         foreach ($generatedPath in @(
-            $stagedWeb, $backupWeb, $failedWeb,
             $stagedBinary, $backupBinary, $failedBinary,
             $stagedWebview, $backupWebview, $failedWebview,
             $stagedSupport, $backupSupport, $failedSupport
@@ -536,7 +480,6 @@ param(
             }
         }
 
-        Move-Item -LiteralPath $extractedWeb -Destination $stagedWeb
         Copy-Item -LiteralPath $extractedBinary -Destination $stagedBinary
         if ($hasBundledWebview) {
             Copy-Item -LiteralPath $extractedWebview -Destination $stagedWebview
@@ -545,21 +488,6 @@ param(
             Move-Item -LiteralPath $extractedSupport -Destination $stagedSupport
         }
         Assert-A3sVersion -Path $stagedBinary -ExpectedVersion $expectedVersion
-
-        $webActivationStarted = $true
-        if (Test-Path -LiteralPath $webDir) {
-            Assert-NoReparsePoint -Path $webDir
-            $existingReparseEntries = @(Get-ChildItem -LiteralPath $webDir -Recurse -Force |
-                Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 })
-            if ($existingReparseEntries.Count -ne 0) {
-                throw "refusing to replace Web assets containing a reparse point: $($existingReparseEntries[0].FullName)"
-            }
-            Move-Item -LiteralPath $webDir -Destination $backupWeb
-            $oldWebSaved = $true
-        }
-        Move-Item -LiteralPath $stagedWeb -Destination $webDir
-        $webActive = $true
-        $stagedWeb = ''
 
         if ($hasBundledSupport) {
             $supportActivationStarted = $true
@@ -634,15 +562,6 @@ param(
         Assert-A3sVersion -Path $binaryPath -ExpectedVersion $expectedVersion
 
         $committed = $true
-        if ($oldWebSaved) {
-            try {
-                Remove-GeneratedDirectory -Path $backupWeb -ExpectedParent $webParent
-                $oldWebSaved = $false
-                $backupWeb = ''
-            } catch {
-                Write-InstallerWarning "could not remove the old Web backup at $backupWeb`: $($_.Exception.Message)"
-            }
-        }
         if ($oldBinarySaved) {
             try {
                 Remove-GeneratedFile -Path $backupBinary -ExpectedParent $installDir
@@ -724,7 +643,6 @@ param(
         if ($hasBundledSupport) {
             Write-InstallerInfo "installed managed sandbox support to $supportPath"
         }
-        Write-InstallerInfo "installed Web assets to $webDir"
     } finally {
         if (-not $committed) {
             if ($binaryActivationStarted) {
@@ -847,61 +765,6 @@ param(
                 }
             }
 
-            if ($webActivationStarted) {
-                $stagedWebPresent = -not [string]::IsNullOrEmpty($stagedWeb) -and
-                    (Test-Path -LiteralPath $stagedWeb)
-                if (-not $stagedWebPresent) {
-                    if (Test-Path -LiteralPath $webDir) {
-                        try {
-                            Move-Item -LiteralPath $webDir -Destination $failedWeb
-                            $webActive = $false
-                        } catch {
-                            $webActive = $true
-                            Write-InstallerWarning "could not move the failed Web assets; the previous assets are preserved at $backupWeb"
-                        }
-                    } else {
-                        $webActive = $false
-                    }
-                } else {
-                    $webActive = $false
-                }
-
-                if (Test-Path -LiteralPath $backupWeb) {
-                    if (-not (Test-Path -LiteralPath $webDir)) {
-                        try {
-                            Move-Item -LiteralPath $backupWeb -Destination $webDir
-                            $oldWebSaved = $false
-                        } catch {
-                            $oldWebSaved = $true
-                            Write-InstallerWarning "could not restore the previous Web assets; their backup is preserved at $backupWeb"
-                        }
-                    } else {
-                        $oldWebSaved = $true
-                        Write-InstallerWarning "could not restore the previous Web assets; their backup is preserved at $backupWeb"
-                    }
-                } else {
-                    $oldWebSaved = $false
-                }
-            }
-        }
-
-        if (-not [string]::IsNullOrEmpty($webParent)) {
-            foreach ($path in @($stagedWeb, $failedWeb)) {
-                try {
-                    Remove-GeneratedDirectory -Path $path -ExpectedParent $webParent
-                } catch {
-                    Write-InstallerWarning "cleanup failed for $path`: $($_.Exception.Message)"
-                }
-            }
-            if ($oldWebSaved) {
-                Write-InstallerWarning "preserved the previous Web assets at $backupWeb"
-            } else {
-                try {
-                    Remove-GeneratedDirectory -Path $backupWeb -ExpectedParent $webParent
-                } catch {
-                    Write-InstallerWarning "cleanup failed for $backupWeb`: $($_.Exception.Message)"
-                }
-            }
         }
         foreach ($path in @($stagedBinary, $failedBinary)) {
             try {
