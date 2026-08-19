@@ -199,10 +199,29 @@ jobs:
           EOF
 
           verify_relay() {
+            local asset_id
+            local relay_id
+            local relay_json
+            relay_id="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+              --json databaseId --jq .databaseId)"
+            if ! [[ "$relay_id" =~ ^[0-9]+$ ]]; then
+              echo "::error::Could not resolve the owned relay release ID"
+              exit 1
+            fi
+            relay_json="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/releases/${relay_id}")"
+
             rm -rf relayed-assets
             mkdir relayed-assets
-            gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
-              --dir relayed-assets --pattern "a3s-${tag}-*"
+            while IFS= read -r asset; do
+              asset_id="$(jq -er --arg asset "$asset" \
+                '[.assets[] | select(.name == $asset)]
+                 | if length == 1 then .[0].id else empty end' \
+                <<<"$relay_json")"
+              gh api -H "Accept: application/octet-stream" \
+                "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+                > "relayed-assets/${asset}"
+            done < expected-assets.txt
             find relayed-assets -mindepth 1 -maxdepth 1 -type f \
               -exec basename {} \; | sort > relayed-assets.txt
             diff -u expected-assets.txt relayed-assets.txt
@@ -214,7 +233,8 @@ jobs:
             done < expected-assets.txt
 
             for attempt in 1 2 3 4 5 6 7 8 9 10; do
-              relay_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")"
+              relay_json="$(gh api \
+                "repos/${GITHUB_REPOSITORY}/releases/${relay_id}")"
               ready=true
               while IFS= read -r asset; do
                 relay_digest="$(jq -r --arg asset "$asset" \
