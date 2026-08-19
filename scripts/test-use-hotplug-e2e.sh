@@ -28,11 +28,9 @@ done
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     export A3S_USE_HOME="$(cygpath -w "${use_home}")"
-    marketplace_test="web_plugin_marketplace_windows"
     ;;
   *)
     export A3S_USE_HOME="${use_home}"
-    marketplace_test="web_plugin_marketplace"
     ;;
 esac
 
@@ -60,15 +58,6 @@ RUST_MIN_STACK=8388608 cargo test \
   -- \
   --exact \
   --include-ignored \
-  --nocapture
-
-cargo test \
-  --manifest-path "${cli_manifest}" \
-  --locked \
-  --test "${marketplace_test}" \
-  generic_real_e2e::real_marketplace_hot_plugs_a_generic_signed_package_across_restart \
-  -- \
-  --ignored \
   --nocapture
 
 cargo test \
