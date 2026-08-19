@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "1e24b05e365ba2222b65075b9dad1a3d4cd66c3f"
+  revision = "1a68a9120c018fe1c91fac8001b0165c9740be92"
   source = "git"
   version = "0.1.0"
 }
@@ -54,9 +54,9 @@ component "flow" {
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "0650f598a1d31e0036ea94b218d5db41031ec042"
+  revision = "878df66915ca9c1c8c5454b0872043937b60f0e7"
   source = "git"
-  version = "0.12.0"
+  version = "1.0.0-rc.1"
 }
 component "form" {
   manifest = "crates/a3s-form-core/Cargo.toml"
@@ -116,9 +116,9 @@ component "use" {
   package = "a3s-use"
   path = "crates/use"
   repository = "git@github.com:A3S-Lab/Use.git"
-  revision = "7f7319486b75b09f53496ac5b6884872f7242b5b"
+  revision = "09ec2b1243c01b4de86338610cd71fbd8b1aec43"
   source = "git"
-  version = "0.3.0"
+  version = "0.3.2"
 }
 protocol "cloud-gateway-snapshot" {
   level = 3
