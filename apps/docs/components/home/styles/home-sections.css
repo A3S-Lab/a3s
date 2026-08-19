@@ -394,18 +394,6 @@
   box-shadow: 0 14px 34px rgba(2, 8, 25, 0.25);
 }
 
-.a3s-button--outline {
-  border-color: rgba(223, 234, 255, 0.42);
-  background: rgba(8, 14, 28, 0.18);
-  color: #ecf3ff !important;
-  backdrop-filter: blur(10px);
-}
-
-.a3s-button--outline:hover {
-  border-color: rgba(223, 234, 255, 0.7);
-  background: rgba(8, 14, 28, 0.34);
-}
-
 .a3s-footer {
   background: #ffffff;
 }

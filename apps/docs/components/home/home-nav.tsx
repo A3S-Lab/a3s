@@ -1,4 +1,4 @@
-import { ArrowUpRight, GithubLogo, List } from '@phosphor-icons/react/dist/ssr';
+import { GithubLogo, List } from '@phosphor-icons/react/dist/ssr';
 import { withBase } from '@rspress/core/runtime';
 import { A3SMark } from '@/components/home/a3s-mark';
 import { homeContent, type Lang } from '@/components/home/home-content';
@@ -8,7 +8,6 @@ export function HomeNav({ lang }: { lang: Lang }) {
   const homeHref = withBase('/');
   const rootHref = lang === 'en' ? homeHref.replace(/en\/$/, '') : homeHref;
   const languageHref = lang === 'cn' ? `${rootHref}en/` : rootHref;
-  const blogHref = withBase('/blog/');
 
   const anchorLinks = [
     { label: tr.ecosystem, href: '#ecosystem' },
@@ -39,10 +38,6 @@ export function HomeNav({ lang }: { lang: Lang }) {
           <a className="a3s-home-nav__github" href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer" aria-label="A3S on GitHub">
             <GithubLogo aria-hidden="true" weight="fill" />
           </a>
-          <a className="a3s-home-nav__docs" href={blogHref}>
-            {tr.blog}
-            <ArrowUpRight aria-hidden="true" />
-          </a>
         </div>
 
         <details className="a3s-home-nav__mobile">
@@ -55,7 +50,6 @@ export function HomeNav({ lang }: { lang: Lang }) {
                 {item.label}
               </a>
             ))}
-            <a href={blogHref}>{tr.blog}</a>
             <a href={languageHref}>{tr.language}</a>
             <a href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer">
               GitHub

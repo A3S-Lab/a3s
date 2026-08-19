@@ -19,7 +19,7 @@
   <a href="#one-owner-per-concern">Architecture</a> ·
   <a href="#product-surfaces">Products</a> ·
   <a href="#repository-map">Repository map</a> ·
-  <a href="https://a3s-lab.github.io/a3s/">Website &amp; Blog</a>
+  <a href="https://a3s-lab.github.io/a3s/">Website</a>
 </p>
 
 ---
@@ -214,7 +214,7 @@ a3s/
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
 | Interfaces and services | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
-| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Website & Blog](apps/docs/), [Homebrew Tap](homebrew-tap/) |
+| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Website](apps/docs/), [Homebrew Tap](homebrew-tap/) |
 
 The [CLI migration record](docs/cli-repository-migration.md) explains the
 temporary 0.11.x root migration and restored standalone ownership. The
@@ -262,7 +262,7 @@ its owning repository before advancing its gitlink here, and read
 
 ## Documentation and community
 
-- [A3S website and engineering blog](https://a3s-lab.github.io/a3s/)
+- [A3S website](https://a3s-lab.github.io/a3s/)
 - [CLI reference](docs/cli-reference.md)
 - [Workflow platform architecture](compat/workflow-platform-architecture.md)
 - [Workflow development plan](compat/workflow-platform-development-plan.md)

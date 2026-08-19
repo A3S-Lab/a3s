@@ -13,45 +13,16 @@ const alternateBase = locale === 'en' ? rootBase : `${rootBase}en/`;
 const copy = {
   cn: {
     title: 'A3S — 为AI Native组织构建的AI操作系统生态',
-    description: 'A3S 项目索引与工程博客。查看 36 个项目的职责、交付阶段、当前版本或通道和代码入口。',
+    description: 'A3S 项目索引。查看 36 个项目的职责、交付阶段、当前版本或通道和代码入口。',
     ecosystem: '生态',
-    blog: '博客',
-    articles: '文章',
     alternate: 'EN',
   },
   en: {
     title: 'A3S — The AI operating system ecosystem for AI Native organizations',
-    description: 'The A3S project index and engineering blog. Browse 36 projects, their delivery stages, current versions or channels, sites, and source.',
+    description: 'The A3S project index. Browse 36 projects, their delivery stages, current versions or channels, sites, and source.',
     ecosystem: 'Ecosystem',
-    blog: 'Blog',
-    articles: 'Articles',
     alternate: '中文',
   },
-} as const;
-
-const articles = {
-  cn: [
-    ['Asynchronous In-Memory Vector Retrieval in A3S Code', 'a3s-code-in-memory-vector-retrieval'],
-    ['A3S Code 6.8 的多 Agent 工作流：task、Flow 与预算边界', 'programmable-agent-workflows'],
-    ['DDD 在 A3S Cloud 里怎么落地', 'domain-driven-design'],
-    ['A3S Box 的 Windows 路径：libkrun、libkrunfw 与 WHPX', 'libkrun-libkrunfw-whpx'],
-    ['HTTP 402 与 Agent 付费：先把协议边界说清楚', 'http-402-generative-ui-agent-economy'],
-    ['A3S Code 6.8：Coding Agent 运行时现在包含什么', 'why-coding-agent-is-the-core'],
-    ['A3S Gateway 1.0：AI 流量层的实际边界', 'why-ai-native-gateway'],
-    ['A3S Power 0.7：模型无关推理、TEE 与可验证收据', 'a3s-power-technical-deep-dive'],
-    ['A3S Box 3.2：默认 MicroVM，显式 Sandbox', 'a3s-box-technical-deep-dive'],
-  ],
-  en: [
-    ['Asynchronous In-Memory Vector Retrieval in A3S Code', 'a3s-code-in-memory-vector-retrieval'],
-    ['Multi-Agent Workflows in A3S Code 6.8: task, Flow, and Budget Limits', 'programmable-agent-workflows'],
-    ['How DDD Is Used in A3S Cloud', 'domain-driven-design'],
-    ['The Windows Runtime Path in A3S Box: libkrun, libkrunfw, and WHPX', 'libkrun-libkrunfw-whpx'],
-    ['HTTP 402 and Agent Payments: Start with the Protocol Boundary', 'http-402-generative-ui-agent-economy'],
-    ['A3S Code 6.8: What the Coding-Agent Runtime Includes', 'why-coding-agent-is-the-core'],
-    ['A3S Gateway 1.0: The Actual AI Traffic Boundary', 'why-ai-native-gateway'],
-    ['A3S Power 0.7: Model-Neutral Inference, TEEs, and Verifiable Receipts', 'a3s-power-technical-deep-dive'],
-    ['A3S Box 3.2: MicroVM by Default, Sandbox by Request', 'a3s-box-technical-deep-dive'],
-  ],
 } as const;
 
 function canonicalRoute(routePath: string) {
@@ -113,23 +84,11 @@ export default defineConfig({
     lastUpdated: true,
     nav: [
       { text: copy[locale].ecosystem, link: '/' },
-      { text: copy[locale].blog, link: '/blog/' },
       {
         text: copy[locale].alternate,
         link: `${publicSite.origin}${alternateBase}`,
       },
     ],
-    sidebar: {
-      '/blog/': [
-        {
-          text: copy[locale].articles,
-          items: articles[locale].map(([text, slug]) => ({
-            text,
-            link: `/blog/${slug}`,
-          })),
-        },
-      ],
-    },
     socialLinks: [
       {
         icon: 'github',

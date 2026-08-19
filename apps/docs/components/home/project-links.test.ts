@@ -7,4 +7,9 @@ describe('project links', () => {
     assert.equal(getProjectPrimaryHref('form'), '/form/');
     assert.equal(getProjectRepositoryHref('form'), 'https://github.com/A3S-Lab/Form');
   });
+
+  test('opens the Site project at the ecosystem homepage', () => {
+    assert.equal(getProjectPrimaryHref('site'), '/');
+    assert.equal(getProjectRepositoryHref('site'), 'https://github.com/A3S-Lab/a3s/tree/main/apps/docs');
+  });
 });

@@ -201,14 +201,14 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
   },
   {
     id: 'site',
-    name: 'Site & Blog',
+    name: 'Site',
     category: 'products',
-    role: localized('A3S 项目索引与中英文工程博客。', 'The A3S project index and its Chinese and English engineering blog.'),
+    role: localized('A3S 中英文生态项目索引。', 'The bilingual A3S ecosystem project index.'),
     href: getProjectPrimaryHref('site'),
     nodes: [
-      node('routes', 'Rspress Routes', 'surface', '提供中文首页、英文首页与双语博客路由。', 'Serves Chinese and English homepages plus bilingual blog routes.'),
+      node('routes', 'Rspress Routes', 'surface', '提供中文与英文生态首页。', 'Serves the Chinese and English ecosystem homepages.'),
       node('locale', 'Locale Builds', 'core', '分别构建中文根路径与英文 /en 路径。', 'Builds the Chinese root and English /en route separately.'),
-      node('content', 'Blog MDX', 'contract', '用 MDX 保存文章正文、发布日期和页面元数据。', 'Stores article bodies, publication dates, and page metadata in MDX.'),
+      node('content', 'Homepage Content', 'contract', '用类型化内容和 MDX 入口维护两个语言版本。', 'Maintains both locales through typed content and MDX entrypoints.'),
       node('home', 'Ecosystem Index', 'runtime', '展示项目职责、开发阶段、网站预览与仓库入口。', 'Shows project ownership, delivery stages, site previews, and repositories.'),
       node('export', 'Static Build', 'evidence', '检查路由和资源后发布完整静态站点。', 'Checks routes and assets before publishing the complete static site.'),
     ],

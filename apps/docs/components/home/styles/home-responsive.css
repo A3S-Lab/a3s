@@ -387,12 +387,6 @@
     font-size: clamp(36px, 9.5vw, 42px);
   }
 
-  .a3s-hero__actions {
-    display: grid;
-    align-items: stretch;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  }
-
   .a3s-button {
     width: auto;
     padding-right: 12px;

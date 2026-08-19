@@ -1,16 +1,14 @@
-# A3S Site and Blog
+# A3S Site
 
-This application builds the A3S ecosystem homepage and bilingual engineering
-blog with Rspress. It does not publish product documentation or tutorials.
+This application builds the bilingual A3S ecosystem homepage with Rspress. It
+does not publish product documentation, tutorials, or articles.
 
 ## Routes
 
 | Route | Content |
 | --- | --- |
 | `/` | Chinese ecosystem homepage |
-| `/blog/` | Chinese engineering blog |
 | `/en/` | English ecosystem homepage |
-| `/en/blog/` | English engineering blog |
 
 The production build runs Rspress once per language and assembles both outputs
 under `out/`. Chinese remains the unprefixed default language.
@@ -23,9 +21,9 @@ apps/docs/
 ├── public/brand/             # A3S OS brand assets
 ├── public/ecosystem-sites/   # Captured project-site previews
 ├── scripts/                  # Build, validation, and screenshot tasks
-├── site/cn/                  # Chinese homepage and blog MDX
-├── site/en/                  # English homepage and blog MDX
-├── theme/                    # Rspress theme extension and blog styles
+├── site/cn/                  # Chinese homepage entrypoint
+├── site/en/                  # English homepage entrypoint
+├── theme/                    # Rspress theme extension
 └── rspress.config.ts
 ```
 
@@ -63,19 +61,6 @@ Set `SITE_URL` when validating a deployment under a non-root path, for example:
 ```bash
 SITE_URL=https://a3s-lab.github.io/a3s/ bun run build
 ```
-
-## Writing blog posts
-
-Every post has one Chinese and one English MDX file with the same slug:
-
-```text
-site/cn/blog/<slug>.mdx
-site/en/blog/<slug>.mdx
-```
-
-Keep `title`, `description`, `date`, `author`, and `tags` in frontmatter. Add the
-post to both blog index pages and to the locale article lists in
-`rspress.config.ts`.
 
 ## Project-site screenshots
 

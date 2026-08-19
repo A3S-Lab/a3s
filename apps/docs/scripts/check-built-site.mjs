@@ -7,17 +7,6 @@ const deploymentPath = process.env.SITE_URL
   ? new URL(process.env.SITE_URL).pathname.replace(/\/+$/, '')
   : '';
 const formHref = `${deploymentPath}/form/`.replace(/\/+/g, '/');
-const articleSlugs = [
-  'a3s-code-in-memory-vector-retrieval',
-  'programmable-agent-workflows',
-  'domain-driven-design',
-  'libkrun-libkrunfw-whpx',
-  'http-402-generative-ui-agent-economy',
-  'why-coding-agent-is-the-core',
-  'why-ai-native-gateway',
-  'a3s-power-technical-deep-dive',
-  'a3s-box-technical-deep-dive',
-];
 const requiredImages = [
   'brand/a3s-os-logo.png',
   'ecosystem-sites/cloud.png',
@@ -54,12 +43,6 @@ async function collectFiles(directory) {
 const routeFiles = [
   'index.html',
   'en/index.html',
-  'blog/index.html',
-  'en/blog/index.html',
-  ...articleSlugs.flatMap((slug) => [
-    `blog/${slug}.html`,
-    `en/blog/${slug}.html`,
-  ]),
 ];
 
 const routeEntries = await Promise.all(
@@ -68,13 +51,9 @@ const routeEntries = await Promise.all(
 const routeHtml = new Map(routeEntries);
 const chineseHome = routeHtml.get('index.html');
 const englishHome = routeHtml.get('en/index.html');
-const chineseBlog = routeHtml.get('blog/index.html');
-const englishBlog = routeHtml.get('en/blog/index.html');
 
 assert(chineseHome, 'Chinese homepage is missing');
 assert(englishHome, 'English homepage is missing');
-assert(chineseBlog, 'Chinese blog index is missing');
-assert(englishBlog, 'English blog index is missing');
 
 for (const marker of [
   '为AI Native组织构建的AI操作系统生态',
@@ -110,7 +89,6 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   assert(formLinkCount >= 2, `${locale} homepage does not route both A3S Form entries to the published playground`);
   assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage is missing the separate A3S Form repository link`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
-  assert(!homepage.includes('ecosystem-sites/blog.png'), `${locale} homepage still features the Site & Blog preview`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
   assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
   assert(homepage.includes('a3s-global-workspace'), `${locale} homepage is missing the global workspace scene`);
@@ -130,16 +108,13 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   }
 }
 
-assert((chineseBlog.match(/class="a3s-blog-card/g) ?? []).length === 9, 'Chinese blog index does not list 9 posts');
-assert((englishBlog.match(/class="a3s-blog-card/g) ?? []).length === 9, 'English blog index does not list 9 posts');
-
-for (const slug of articleSlugs) {
-  assert(chineseBlog.includes(`href="./${slug}"`), `Chinese blog link is not Pages-compatible: ${slug}`);
-  assert(englishBlog.includes(`href="./${slug}"`), `English blog link is not Pages-compatible: ${slug}`);
-}
-
 const files = await collectFiles(output);
 const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
+
+assert(
+  !relativeFiles.some((file) => /(^|\/)blog(\/|$)/.test(file)),
+  'Static build still contains a blog route',
+);
 
 if (process.env.REQUIRE_FORM_PREVIEW === '1') {
   const formIndex = await read('form/index.html');
@@ -169,6 +144,10 @@ assert(
   !localHrefs.some((href) => /(^|\/)(docs|tutorials)(\/|$|[?#])/.test(href)),
   'Static routes still link to docs or tutorials',
 );
+assert(
+  !localHrefs.some((href) => /(^|\/)blog(\/|$|[?#])/.test(href)),
+  'Static routes still link to the removed blog',
+);
 assert(!/fumadocs/i.test(html), 'Static routes still contain a Fumadocs reference');
 
 const cssFiles = files.filter((file) => file.endsWith('.css'));
@@ -181,7 +160,6 @@ for (const selector of [
   '.a3s-directory-card',
   '.a3s-delivery-guide',
   '.a3s-project-delivery',
-  '.a3s-blog-grid',
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
@@ -196,17 +174,6 @@ if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');
   assert(chineseHome.includes(`href="${canonicalSite}/"`), 'Chinese canonical URL is incorrect');
   assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
-
-  for (const slug of articleSlugs) {
-    assert(
-      routeHtml.get(`blog/${slug}.html`).includes(`href="${canonicalSite}/blog/${slug}"`),
-      `Chinese article canonical URL is not Pages-compatible: ${slug}`,
-    );
-    assert(
-      routeHtml.get(`en/blog/${slug}.html`).includes(`href="${canonicalSite}/en/blog/${slug}"`),
-      `English article canonical URL is not Pages-compatible: ${slug}`,
-    );
-  }
 }
 
-console.log(`Validated 2 homepages, 2 blog indexes, 18 article routes, and ${files.length} exported files.`);
+console.log(`Validated 2 homepages and ${files.length} exported files.`);

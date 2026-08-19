@@ -16,8 +16,6 @@ function MarkdownHome({ lang }: { lang: Lang }) {
       </p>
       <h2>{lang === 'cn' ? '项目目录' : 'Project directory'}</h2>
       <p>{lang === 'cn' ? '每个项目都列出职责、交付阶段、当前版本或通道和代码入口。' : 'Every project lists its responsibility, delivery stage, current version or channel, and source.'}</p>
-      <h2>{lang === 'cn' ? '工程博客' : 'Engineering blog'}</h2>
-      <p>{lang === 'cn' ? '工程文章记录架构选择、运行时边界和实际实现。' : 'Engineering notes cover architecture choices, runtime boundaries, and implementation work.'}</p>
     </main>
   );
 }

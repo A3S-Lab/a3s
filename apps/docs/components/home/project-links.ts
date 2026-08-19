@@ -38,7 +38,7 @@ export const projectLinks = {
   },
   site: {
     repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/docs',
-    website: '/blog/',
+    website: '/',
   },
   runtime: { repository: 'https://github.com/A3S-Lab/Runtime' },
   'oci-runtime': { repository: 'https://github.com/A3S-Lab/OCI-Runtime' },

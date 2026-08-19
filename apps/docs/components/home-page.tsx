@@ -59,9 +59,6 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
                 {tr.hero.primaryAction}
                 <ArrowRight aria-hidden="true" weight="bold" />
               </a>
-              <a className="a3s-button a3s-button--ghost" href={withBase('/blog/')}>
-                {tr.hero.secondaryAction}
-              </a>
             </div>
           </div>
           <GlobalWorkspaceScene lang={lang} />
@@ -133,9 +130,8 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           </h2>
           <p>{tr.cta.description}</p>
           <div>
-            <a className="a3s-button a3s-button--light" href={withBase('/blog/')}>{tr.cta.primary}<ArrowRight aria-hidden="true" /></a>
-            <a className="a3s-button a3s-button--outline" href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer">
-              <GithubLogo aria-hidden="true" weight="fill" />{tr.cta.secondary}
+            <a className="a3s-button a3s-button--light" href="https://github.com/A3S-Lab/a3s" target="_blank" rel="noopener noreferrer">
+              <GithubLogo aria-hidden="true" weight="fill" />{tr.cta.primary}
             </a>
           </div>
         </div>
@@ -150,7 +146,7 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           <div className="a3s-footer__column">
             <b>{tr.footer.resources}</b>
             <a href="#ecosystem">{tr.footer.ecosystem}</a>
-            <a href={withBase('/blog/')}>{tr.footer.blog}</a>
+            <a href="#quickstart">{tr.footer.quickstart}</a>
           </div>
           <div className="a3s-footer__column">
             <b>{tr.footer.community}</b>

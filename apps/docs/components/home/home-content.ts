@@ -11,7 +11,6 @@ export const homeContent = {
     nav: {
       ecosystem: 'Ecosystem',
       principles: 'Principles',
-      blog: 'Blog',
       language: '中文',
       menu: 'Open navigation',
     },
@@ -23,7 +22,6 @@ export const homeContent = {
       description:
         'A3S brings together 36 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure. Start locally, then add only the components the job needs.',
       primaryAction: 'Browse 36 projects',
-      secondaryAction: 'Engineering blog',
     },
     signal: ['36 focused projects', '8 public project sites', '3 system layers', 'Status and source in one place'],
     principles: {
@@ -76,15 +74,14 @@ export const homeContent = {
       eyebrow: 'USE ONLY WHAT YOU NEED',
       title: 'Every AI Native organization needs to build its own AI operating system.',
       description: 'Each project has its own repository, release cadence, and operating limits. The directory shows where to begin.',
-      primary: 'Engineering blog',
-      secondary: 'View source',
+      primary: 'View source',
     },
     footer: {
       description: 'Open tools for agent products, local work, and infrastructure.',
       resources: 'Resources',
       community: 'Community',
       ecosystem: 'Project directory',
-      blog: 'Blog',
+      quickstart: 'Quick start',
       github: 'GitHub',
       discord: 'Discord',
       license: 'MIT licensed · Source available on GitHub',
@@ -94,7 +91,6 @@ export const homeContent = {
     nav: {
       ecosystem: '生态',
       principles: '原则',
-      blog: '博客',
       language: 'EN',
       menu: '打开导航',
     },
@@ -106,7 +102,6 @@ export const homeContent = {
       description:
         'A3S 包含 36 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。先在本地开始，再按任务需要添加组件。',
       primaryAction: '浏览 36 个项目',
-      secondaryAction: '工程博客',
     },
     signal: ['36 个职责明确的项目', '8 个公开项目页面', '3 个系统层级', '状态与代码统一索引'],
     principles: {
@@ -159,15 +154,14 @@ export const homeContent = {
       eyebrow: '只用需要的部分',
       title: '每个AI Native组织都需要构建专属的AI操作系统',
       description: '每个项目都有独立仓库、发布节奏和使用边界。项目目录会告诉你该从哪里开始。',
-      primary: '工程博客',
-      secondary: '查看代码',
+      primary: '查看代码',
     },
     footer: {
       description: '面向 Agent 产品、本地工作与基础设施的开放工具。',
       resources: '资源',
       community: '社区',
       ecosystem: '项目目录',
-      blog: '博客',
+      quickstart: '快速开始',
       github: 'GitHub',
       discord: 'Discord',
       license: 'MIT 协议 · 代码公开在 GitHub',
