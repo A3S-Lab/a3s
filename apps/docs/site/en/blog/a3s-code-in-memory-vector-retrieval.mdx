@@ -6,7 +6,7 @@ author: A3S Lab
 tags: [a3s-code, a3s-power, retrieval, vector-search, tui, embeddings]
 ---
 
-The current A3S CLI `main` branch can add semantic retrieval to a Code session without introducing a vector database service. It builds a bounded index asynchronously, keeps vectors in session-owned memory, and releases them when the session closes. This capability is newer than the stable `a3s 0.11.1` release and should not be inferred from that binary.
+On supported release targets, A3S CLI 0.12.1 can add semantic retrieval to a Code session without introducing a vector database service. It builds a bounded index asynchronously, keeps vectors in session-owned memory, and releases them when the session closes. The feature remains opt-in and requires a binary built with `local-cpu-embedding` for the managed local route.
 
 ## One governed search tool
 

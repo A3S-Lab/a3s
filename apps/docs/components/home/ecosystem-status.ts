@@ -16,35 +16,35 @@ interface DeliveryStageCopy {
 
 // Verified against current project versions, public releases, READMEs, and roadmaps.
 // A released project can still contain explicitly preview or experimental subfeatures.
-export const statusVerifiedAt = '2026-08-09';
+export const statusVerifiedAt = '2026-08-19';
 
 const statusByProject = {
-  cli: { stage: 'preview', release: 'v0.10.14' },
-  code: { stage: 'released', release: 'v6.8.0' },
-  web: { stage: 'preview', release: 'A3S v0.11.1' },
+  cli: { stage: 'preview', release: 'v0.12.1' },
+  code: { stage: 'released', release: 'v7.0.1' },
+  web: { stage: 'preview', release: 'A3S v0.12.1' },
   windhole: { stage: 'preview', release: 'main' },
   box: { stage: 'released', release: 'v3.1.0' },
   bench: { stage: 'preview', release: 'v0.1.2' },
   search: { stage: 'released', release: 'v3.0.9' },
   browser: { stage: 'preview', release: 'v0.3.2' },
   ocr: { stage: 'preview', release: 'v0.5.0' },
-  use: { stage: 'preview', release: 'v0.3.0' },
+  use: { stage: 'preview', release: 'v0.3.2' },
   office: { stage: 'preview', release: 'v0.3.0' },
   science: { stage: 'preview', release: 'main' },
   cloud: { stage: 'experimental', release: 'main' },
   form: { stage: 'preview', release: 'main' },
   site: { stage: 'released', release: 'live' },
-  runtime: { stage: 'preview', release: 'v0.2.0' },
+  runtime: { stage: 'preview', release: 'v0.3.0' },
   'oci-runtime': { stage: 'experimental', release: 'v0.2.0' },
   flow: { stage: 'preview', release: 'v0.11.0' },
   event: { stage: 'preview', release: 'v0.3.0' },
   lane: { stage: 'preview', release: 'v0.5.1' },
-  memory: { stage: 'preview', release: 'v0.1.2' },
+  memory: { stage: 'preview', release: 'v0.1.3' },
   orm: { stage: 'preview', release: 'v0.2.0' },
   common: { stage: 'preview', release: 'v0.1.1' },
   boot: { stage: 'preview', release: 'v0.1.3' },
   gateway: { stage: 'released', release: 'v1.0.13' },
-  power: { stage: 'preview', release: 'v0.8.0' },
+  power: { stage: 'preview', release: 'v0.9.0' },
   ahp: { stage: 'released', release: 'v2.4.0' },
   acl: { stage: 'preview', release: 'v0.3.0' },
   tui: { stage: 'preview', release: 'v0.1.14' },
