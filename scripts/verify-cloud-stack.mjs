@@ -17,6 +17,7 @@ const REQUIRED_COMPONENTS = [
   'boot',
   'box',
   'cloud',
+  'code',
   'event',
   'flow',
   'form',
@@ -481,7 +482,7 @@ function verifyDependencyBindings(root, componentMap) {
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
   }
 
-  for (const id of ['box', 'flow', 'form', 'orm']) {
+  for (const id of ['box', 'code', 'flow', 'form', 'orm']) {
     const component = componentMap.get(id);
     const declaration = tomlDependency(
       cloudManifest,

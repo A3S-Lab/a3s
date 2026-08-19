@@ -26,7 +26,7 @@ function committedFile(repository, path) {
 test('the checked-in Cloud stack is reproducible and clean', () => {
   const result = verifyCloudStack(ROOT);
   assert.match(result.digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(result.components.length, 13);
+  assert.equal(result.components.length, 14);
   assert.deepEqual(result.aclFiles, ['config/cloud.acl', 'config/node.example.acl']);
   assert.match(result.formInteractionFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
@@ -90,6 +90,17 @@ test('the Form component resolves the native core package from its nested manife
   assert.equal(form.version, '0.1.0');
 });
 
+test('the Code component pins the Cloud host dependency', () => {
+  const code = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'code',
+  );
+  assert.ok(code);
+  assert.equal(code.manifest, 'core/Cargo.toml');
+  assert.equal(code.package, 'a3s-code-core');
+  assert.equal(code.version, '7.0.1');
+  assert.equal(code.revision, '6b0fa2f9f2716817b93f42a23a3942be6634f1dc');
+});
+
 test('the Use component pins the sole shared manager repository', () => {
   const use = parseCloudStackLock(LOCK_SOURCE).components.find(
     (component) => component.id === 'use',
@@ -98,7 +109,7 @@ test('the Use component pins the sole shared manager repository', () => {
   assert.equal(use.manifest, 'Cargo.toml');
   assert.equal(use.package, 'a3s-use');
   assert.equal(use.version, '0.3.2');
-  assert.equal(use.revision, '09ec2b1243c01b4de86338610cd71fbd8b1aec43');
+  assert.equal(use.revision, '8d45bd43cb19fe3813b559c8839051406830ce4b');
 });
 
 test('Git lock selection ignores a same-version registry package', () => {

@@ -148,8 +148,8 @@ release cadence, and detailed documentation.
   Flow and State Graph projection, persistence, and hermetic S3, browser, and
   OpenTelemetry boundaries. Remote-provider and public-network latency remain
   explicitly out of scope.
-- The Cloud compatibility lock pins exact Cloud, ACL, Boot, Box, Event, Flow,
-  Form, Gateway, ORM, Runtime, Sentry, Updater, and Use revisions plus their
+- The Cloud compatibility lock pins exact Cloud, Code, ACL, Boot, Box, Event,
+  Flow, Form, Gateway, ORM, Runtime, Sentry, Updater, and Use revisions plus their
   shared protocol levels. Run `just cloud-stack-check` before publishing a new
   integration claim.
 - Workflow Phases 0–2 have verified contract, Form lifecycle, and minimal run
