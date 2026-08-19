@@ -5,8 +5,8 @@ import { linkedProjectIds } from '../project-links';
 
 describe('homepage ecosystem project data', () => {
   test('covers every project in the repository map', () => {
-    assert.equal(architectureProjects.length, 36);
-    assert.equal(new Set(architectureProjects.map((project) => project.id)).size, 36);
+    assert.equal(architectureProjects.length, 35);
+    assert.equal(new Set(architectureProjects.map((project) => project.id)).size, 35);
     assert.deepEqual(
       [...linkedProjectIds].sort(),
       architectureProjects.map((project) => project.id).sort(),
@@ -47,6 +47,6 @@ describe('homepage ecosystem project data', () => {
       return counts;
     }, {});
 
-    assert.deepEqual(totals, { products: 15, runtime: 8, interfaces: 13 });
+    assert.deepEqual(totals, { products: 14, runtime: 8, interfaces: 13 });
   });
 });

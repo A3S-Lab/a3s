@@ -98,7 +98,7 @@ test('the Code component pins the Cloud host dependency', () => {
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
   assert.equal(code.version, '7.0.1');
-  assert.equal(code.revision, '6b0fa2f9f2716817b93f42a23a3942be6634f1dc');
+  assert.equal(code.revision, '120946e71b113e217d02152a5b0092ed63b909e6');
 });
 
 test('the Use component pins the sole shared manager repository', () => {
@@ -109,7 +109,7 @@ test('the Use component pins the sole shared manager repository', () => {
   assert.equal(use.manifest, 'Cargo.toml');
   assert.equal(use.package, 'a3s-use');
   assert.equal(use.version, '0.3.2');
-  assert.equal(use.revision, '8d45bd43cb19fe3813b559c8839051406830ce4b');
+  assert.equal(use.revision, '2b30b2c69055b9c38fc1128c5b3d308ebdc946cc');
 });
 
 test('Git lock selection ignores a same-version registry package', () => {

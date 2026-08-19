@@ -62,7 +62,7 @@ for (const marker of [
   '每个AI Native组织都需要构建专属的AI操作系统',
   '交付阶段',
   '不统计功能完成率',
-  'v0.12.1',
+  'v0.12.2',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
 }
@@ -74,7 +74,7 @@ for (const marker of [
   'Every AI Native organization needs to build its own AI operating system.',
   'Delivery stage',
   'not a feature-completion score',
-  'v0.12.1',
+  'v0.12.2',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
