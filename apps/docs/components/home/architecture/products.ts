@@ -6,14 +6,14 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'cli',
     name: 'CLI',
     category: 'products',
-    role: localized('安装和管理 A3S 组件，并提供 Code 终端和本地 Web API。', 'Installs and manages A3S components, with the Code terminal and a local Web API.'),
+    role: localized('安装和管理 A3S 组件，并提供 Code 终端。', 'Installs and manages A3S components and provides the Code terminal.'),
     href: getProjectPrimaryHref('cli'),
     nodes: [
       node('entry', 'a3s CLI', 'surface', '解析统一命令，并把产品选择留在用户可见的入口。', 'Parses the umbrella command while keeping product selection visible at the entrypoint.'),
       node('policy', 'Host Policy', 'core', '拥有账户、模型、权限、工作区与展示策略。', 'Owns account, model, permission, workspace, and presentation policy.'),
       node('code', 'Code Runtime', 'contract', '通过稳定运行时契约启动并恢复 Agent 会话。', 'Starts and resumes agent sessions through stable runtime contracts.'),
       node('components', 'Components', 'runtime', '发现、安装并管理 Box、Use 等独立组件。', 'Discovers, installs, and manages independent components such as Box and Use.'),
-      node('surfaces', 'TUI / Web API', 'evidence', '把会话、活动与组件状态投影到终端和本地接口。', 'Projects sessions, activity, and component state into terminal and local API surfaces.'),
+      node('surfaces', 'Terminal UI', 'evidence', '把会话、活动与组件状态投影到终端界面。', 'Projects sessions, activity, and component state into the terminal interface.'),
     ],
   },
   {
@@ -28,20 +28,6 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
       node('session', 'AgentSession', 'contract', '拥有有序事件、运行、恢复和生命周期语义。', 'Owns ordered events, runs, recovery, and lifecycle semantics.'),
       node('extensions', 'Extension Contracts', 'runtime', '通过类型化 Provider、Store、Tool、Hook 与 MCP 扩展。', 'Extends through typed providers, stores, tools, hooks, and MCP.'),
       node('evidence', 'Evidence & State', 'evidence', '持久化 trace、artifact、snapshot 与可选状态图。', 'Persists traces, artifacts, snapshots, and the optional state graph.'),
-    ],
-  },
-  {
-    id: 'web',
-    name: 'Web',
-    category: 'products',
-    role: localized('把任务、文件、知识库和 Office 工具放在一个本地工作台里。', 'A local workspace for tasks, files, knowledge, Office tools, and research.'),
-    href: getProjectPrimaryHref('web'),
-    nodes: [
-      node('work', 'Work Surface', 'surface', '用一个任务入口承载代码、文件、Office 与扩展场景。', 'Uses one task entrypoint for code, files, Office, and extension scenes.'),
-      node('loopback', 'Loopback API', 'core', '只在本机边界内协调浏览器界面与可信宿主能力。', 'Coordinates the browser UI and trusted host capabilities inside the local boundary.'),
-      node('tasks', 'Task Runtime', 'contract', '持久化任务、会话、提案与审批状态。', 'Persists tasks, sessions, proposals, and approval state.'),
-      node('files', 'Files & Office', 'runtime', '提供真实文件系统、代码编辑器与原生文档编辑路径。', 'Provides real filesystem, code editor, and native document editing paths.'),
-      node('knowledge', 'Knowledge & Packages', 'evidence', '编译本地知识并投影经过审查的 Use 包能力。', 'Compiles local knowledge and projects reviewed Use package capabilities.'),
     ],
   },
   {
@@ -149,7 +135,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     role: localized('读取、编辑和生成 Office 文件，支持 CLI、MCP 和 Skill。', 'Reads, edits, and creates Office files through the CLI, MCP, and Skill.'),
     href: getProjectPrimaryHref('office'),
     nodes: [
-      node('host', 'Host Product', 'surface', '由 Web、独立 Playground 或自动化宿主提供产品策略。', 'Receives product policy from Web, the standalone Playground, or automation hosts.'),
+      node('host', 'Host Product', 'surface', '由独立 Playground 或自动化宿主提供产品策略。', 'Receives product policy from the standalone Playground or automation hosts.'),
       node('contracts', 'Typed Contracts', 'core', '编辑与自动化平面共享有界内容模型和操作契约。', 'Editing and automation planes share bounded content models and operation contracts.'),
       node('browser', 'Browser Plane', 'contract', '组合编辑器、Worker、WASM 与 PDFium。', 'Combines editors, workers, WebAssembly, and PDFium.'),
       node('native', 'Native Rust Plane', 'runtime', '用独立 Rust 核心处理文件系统与 OOXML package。', 'Handles filesystem and OOXML package concerns in a separate Rust core.'),

@@ -5,7 +5,6 @@
 # Environment overrides:
 #   A3S_VERSION          Release tag (for example v0.9.8); defaults to latest.
 #   A3S_INSTALL_DIR      Binary directory; defaults to $HOME/.local/bin.
-#   A3S_DATA_HOME        Data directory for versioned Web assets.
 #   A3S_MODIFY_PATH      Set to 1 to add the default directory to a shell profile.
 #   A3S_GITHUB_TOKEN     Optional GitHub token for release API rate limits.
 
@@ -48,9 +47,9 @@ Options:
   --no-modify-path      Leave shell profiles unchanged (the default)
   -h, --help            Show this help
 
-The same settings are available through A3S_VERSION, A3S_INSTALL_DIR,
-A3S_DATA_HOME, and A3S_MODIFY_PATH. A3S_GITHUB_TOKEN can raise GitHub API rate
-limits. Shell profiles are not changed unless explicitly requested.
+The same settings are available through A3S_VERSION, A3S_INSTALL_DIR, and
+A3S_MODIFY_PATH. A3S_GITHUB_TOKEN can raise GitHub API rate limits. Shell
+profiles are not changed unless explicitly requested.
 EOF
 }
 
@@ -98,20 +97,6 @@ esac
 requested_default_install=0
 if [ -n "$DEFAULT_INSTALL_DIR" ] && [ "$install_dir" = "$DEFAULT_INSTALL_DIR" ]; then
     requested_default_install=1
-fi
-
-if [ -n "${A3S_DATA_HOME:-}" ]; then
-    case "$A3S_DATA_HOME" in
-        /) die "A3S_DATA_HOME cannot be a filesystem root" ;;
-        /*) ;;
-        *) die "A3S_DATA_HOME must be absolute for installer-managed Web assets" ;;
-    esac
-fi
-if [ -n "${XDG_DATA_HOME:-}" ]; then
-    case "$XDG_DATA_HOME" in
-        /*) ;;
-        *) die "XDG_DATA_HOME must be absolute for installer-managed Web assets" ;;
-    esac
 fi
 
 case "$version" in
@@ -162,23 +147,12 @@ install_dir=$(CDPATH= cd -P "$install_dir" && pwd -P) \
 
 lock_dir="$install_dir/.a3s-installer.lock"
 lock_acquired=0
-web_lock_dir=""
-web_lock_acquired=0
 release_install_lock() {
     if [ "$lock_acquired" -eq 1 ]; then
         if rmdir "$lock_dir" 2>/dev/null; then
             lock_acquired=0
         else
             warn "could not remove installer lock $lock_dir"
-        fi
-    fi
-}
-release_web_lock() {
-    if [ "$web_lock_acquired" -eq 1 ]; then
-        if rmdir "$web_lock_dir" 2>/dev/null; then
-            web_lock_acquired=0
-        else
-            warn "could not remove Web installer lock $web_lock_dir"
         fi
     fi
 }
@@ -311,11 +285,6 @@ temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/a3s-install.XXXXXX") \
 archive="$temp_dir/$asset_name"
 archive_list="$temp_dir/archive.list"
 
-web_parent=""
-web_dir=""
-staged_web=""
-backup_web=""
-failed_web=""
 staged_binary=""
 backup_binary=""
 failed_binary=""
@@ -326,28 +295,16 @@ support_dir=""
 staged_support=""
 backup_support=""
 failed_support=""
-web_active=0
-old_web_saved=0
 binary_active=0
 old_binary_saved=0
 webview_active=0
 old_webview_saved=0
 support_active=0
 old_support_saved=0
-web_activation_started=0
 binary_activation_started=0
 webview_activation_started=0
 support_activation_started=0
 committed=0
-
-remove_generated_web_tree() {
-    generated_path=${1:-}
-    [ -n "$generated_path" ] || return 0
-    case "$generated_path" in
-        "$web_parent"/.a3s-web.*) rm -rf -- "$generated_path" ;;
-        *) warn "refusing to remove unexpected directory $generated_path" ;;
-    esac
-}
 
 remove_generated_support_tree() {
     generated_path=${1:-}
@@ -476,38 +433,6 @@ rollback_activation() {
         fi
     fi
 
-    if [ "$web_activation_started" -eq 1 ]; then
-        if [ ! -e "$staged_web" ] && [ ! -L "$staged_web" ]; then
-            if [ -e "$web_dir" ] || [ -L "$web_dir" ]; then
-                if mv "$web_dir" "$failed_web"; then
-                    web_active=0
-                else
-                    web_active=1
-                    warn "could not move the failed Web assets; the previous assets are preserved at $backup_web"
-                fi
-            else
-                web_active=0
-            fi
-        else
-            web_active=0
-        fi
-
-        if [ -e "$backup_web" ] || [ -L "$backup_web" ]; then
-            if [ ! -e "$web_dir" ] && [ ! -L "$web_dir" ]; then
-                if mv "$backup_web" "$web_dir"; then
-                    old_web_saved=0
-                else
-                    old_web_saved=1
-                    warn "could not restore the previous Web assets; their backup is preserved at $backup_web"
-                fi
-            else
-                old_web_saved=1
-                warn "could not restore the previous Web assets; their backup is preserved at $backup_web"
-            fi
-        else
-            old_web_saved=0
-        fi
-    fi
 }
 
 cleanup() {
@@ -517,13 +442,6 @@ cleanup() {
     if [ "$committed" -ne 1 ]; then
         rollback_activation
     fi
-    remove_generated_web_tree "$staged_web"
-    if [ "$old_web_saved" -eq 0 ]; then
-        remove_generated_web_tree "$backup_web"
-    elif [ -e "$backup_web" ] || [ -L "$backup_web" ]; then
-        warn "preserved the previous Web assets at $backup_web"
-    fi
-    remove_generated_web_tree "$failed_web"
     remove_generated_binary "$staged_binary"
     if [ "$old_binary_saved" -eq 0 ]; then
         remove_generated_binary "$backup_binary"
@@ -546,14 +464,10 @@ cleanup() {
     fi
     remove_generated_support_tree "$failed_support"
     rm -f -- "$archive" "$archive_list" "$temp_dir/a3s" "$temp_dir/a3s-webview"
-    if [ -d "$temp_dir/web" ]; then
-        rm -rf -- "$temp_dir/web"
-    fi
     if [ -d "$temp_dir/support" ]; then
         rm -rf -- "$temp_dir/support"
     fi
     rmdir "$temp_dir" 2>/dev/null
-    release_web_lock
     release_install_lock
     exit "$exit_status"
 }
@@ -617,8 +531,6 @@ if [ "$release_compat_entry_count" -gt 0 ]; then
             || die "release compatibility marker must contain exactly one $required_release_compat_entry"
     done
 fi
-[ "$(grep -Fxc 'web/index.html' "$archive_list")" -eq 1 ] \
-    || die "release archive must contain exactly one web/index.html"
 duplicate_entries=$(awk '{ sub(/\/$/, ""); print }' "$archive_list" | LC_ALL=C sort | uniq -d)
 [ -z "$duplicate_entries" ] \
     || die "release archive contains duplicate paths: $duplicate_entries"
@@ -652,7 +564,7 @@ is_release_compat_directory() {
 
 while IFS= read -r entry; do
     case "$entry" in
-        a3s|a3s-webview|web|web/|web/*|support|support/|support/*) ;;
+        a3s|a3s-webview|support|support/|support/*) ;;
         release-compat|release-compat/*)
             is_release_compat_file "$entry" || is_release_compat_directory "$entry" \
                 || die "release archive contains an unexpected compatibility marker path: $entry"
@@ -664,7 +576,7 @@ while IFS= read -r entry; do
     esac
 done <"$archive_list"
 
-archive_members="a3s web"
+archive_members="a3s"
 if [ "$has_bundled_webview" -eq 1 ]; then
     archive_members="$archive_members a3s-webview"
 fi
@@ -691,11 +603,6 @@ if [ "$has_bundled_support" -eq 1 ]; then
     [ -z "$unsafe_support" ] \
         || die "the extracted support payload contains a link or special file: $unsafe_support"
 fi
-[ -f "$temp_dir/web/index.html" ] && [ ! -L "$temp_dir/web/index.html" ] \
-    || die "the extracted Web workspace is invalid"
-unsafe_extracted=$(find "$temp_dir/web" ! -type d ! -type f -print)
-[ -z "$unsafe_extracted" ] \
-    || die "the extracted Web workspace contains a link or special file: $unsafe_extracted"
 chmod 755 "$temp_dir/a3s" || die "failed to make the staged a3s binary executable"
 if [ "$has_bundled_webview" -eq 1 ]; then
     chmod 755 "$temp_dir/a3s-webview" \
@@ -711,50 +618,7 @@ verify_binary_version() {
     }
 }
 
-if [ -n "${A3S_DATA_HOME:-}" ]; then
-    data_root=${A3S_DATA_HOME%/}
-elif [ "$os" = apple-darwin ]; then
-    [ -n "${HOME:-}" ] || die "HOME or A3S_DATA_HOME is required for Web assets"
-    data_root="$HOME/Library/Application Support/A3S"
-elif [ -n "${XDG_DATA_HOME:-}" ]; then
-    data_root="${XDG_DATA_HOME%/}/a3s"
-else
-    [ -n "${HOME:-}" ] || die "HOME, XDG_DATA_HOME, or A3S_DATA_HOME is required for Web assets"
-    data_root="$HOME/.local/share/a3s"
-fi
-mkdir -p "$data_root" || die "failed to create $data_root"
-data_root=$(CDPATH= cd -P "$data_root" && pwd -P) \
-    || die "failed to resolve the A3S data directory"
-[ "$data_root" != / ] || die "refusing to use a filesystem root as A3S_DATA_HOME"
-web_parent="$data_root/web"
-mkdir -p "$web_parent" || die "failed to create $web_parent"
-web_parent=$(CDPATH= cd -P "$web_parent" && pwd -P) \
-    || die "failed to resolve the Web data directory"
-[ "$web_parent" != / ] || die "refusing to install Web assets into /"
-web_dir="$web_parent/$expected_version"
-web_lock_dir="$web_parent/.a3s-installer.lock"
-if [ "$web_lock_dir" != "$lock_dir" ]; then
-    mkdir "$web_lock_dir" 2>/dev/null \
-        || die "another installer may be updating $web_parent (remove a stale lock only after checking)"
-    web_lock_acquired=1
-fi
-
-if [ -f "$install_dir/web/index.html" ]; then
-    die "$install_dir/web would override the versioned Web assets; remove that packaged Web directory and retry"
-fi
-case "$install_dir" in
-    */bin)
-        packaged_web="${install_dir%/bin}/share/a3s/web"
-        if [ -f "$packaged_web/index.html" ]; then
-            die "$packaged_web would override the versioned Web assets; remove that packaged Web directory and retry"
-        fi
-        ;;
-esac
-
 activation_id=$$
-staged_web="$web_parent/.a3s-web.new.$activation_id"
-backup_web="$web_parent/.a3s-web.backup.$activation_id"
-failed_web="$web_parent/.a3s-web.failed.$activation_id"
 staged_binary="$install_dir/.a3s.new.$activation_id"
 backup_binary="$install_dir/.a3s.backup.$activation_id"
 failed_binary="$install_dir/.a3s.failed.$activation_id"
@@ -770,15 +634,13 @@ if [ "$has_bundled_support" -eq 1 ]; then
     failed_support="$install_dir/.a3s-support.failed.$activation_id"
 fi
 
-for generated_path in "$staged_web" "$backup_web" "$failed_web" \
-    "$staged_binary" "$backup_binary" "$failed_binary" \
+for generated_path in "$staged_binary" "$backup_binary" "$failed_binary" \
     "$staged_webview" "$backup_webview" "$failed_webview" \
     "$staged_support" "$backup_support" "$failed_support"; do
     [ ! -e "$generated_path" ] && [ ! -L "$generated_path" ] \
         || die "temporary activation path already exists: $generated_path"
 done
 
-mv "$temp_dir/web" "$staged_web" || die "failed to stage Web assets"
 cp "$temp_dir/a3s" "$staged_binary" || die "failed to stage the a3s binary"
 chmod 755 "$staged_binary" || die "failed to make the a3s binary executable"
 if [ "$has_bundled_webview" -eq 1 ]; then
@@ -793,19 +655,6 @@ if [ "$has_bundled_support" -eq 1 ]; then
 fi
 verify_binary_version "$staged_binary" \
     || die "the staged a3s binary failed its version check"
-
-web_activation_started=1
-if [ -L "$web_dir" ]; then
-    die "refusing to replace symlink $web_dir"
-fi
-if [ -e "$web_dir" ]; then
-    [ -d "$web_dir" ] || die "$web_dir is not a directory"
-    mv "$web_dir" "$backup_web" || die "failed to back up the existing Web assets"
-    old_web_saved=1
-fi
-mv "$staged_web" "$web_dir" || die "failed to activate the Web assets"
-web_active=1
-staged_web=""
 
 if [ "$has_bundled_support" -eq 1 ]; then
     support_activation_started=1
@@ -867,12 +716,6 @@ verify_binary_version "$install_dir/a3s" \
     || die "the installed a3s binary failed its version check"
 
 committed=1
-if remove_generated_web_tree "$backup_web"; then
-    old_web_saved=0
-    backup_web=""
-else
-    warn "could not remove the old Web backup at $backup_web"
-fi
 if remove_generated_binary "$backup_binary"; then
     old_binary_saved=0
     backup_binary=""
@@ -955,4 +798,3 @@ fi
 if [ "$has_bundled_support" -eq 1 ]; then
     info "installed managed sandbox support to $support_dir"
 fi
-info "installed Web assets to $web_dir"

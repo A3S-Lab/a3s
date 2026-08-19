@@ -1,7 +1,5 @@
 # A3S - Justfile
 
-host := env_var_or_default("A3S_CODE_WEB_HOST", "127.0.0.1")
-port := env_var_or_default("A3S_CODE_WEB_PORT", "29653")
 use_e2e_target := env_var_or_default("A3S_USE_E2E_TARGET", justfile_directory() / "target/use-hotplug-e2e")
 use_e2e_use_target := use_e2e_target / "use"
 use_e2e_code_target := use_e2e_target / "code"
@@ -85,15 +83,11 @@ code: cli-submodule webview-submodule
     CARGO_TARGET_DIR='{{ agent_island_target }}' cargo build --manifest-path crates/webview/Cargo.toml --bin a3s-webview
     A3S_AGENT_ISLAND_BIN='{{ agent_island_bin }}' cargo run --manifest-path crates/cli/Cargo.toml -- code
 
-# Test Code, TUI, and Web hot-plug against a real, independently built A3S Use process
+# Test Code and TUI hot-plug against a real, independently built A3S Use process
 use-hotplug-e2e: use-e2e-submodules
     CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/use/Cargo.toml -p a3s-use
     CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/browser/Cargo.toml -p a3s-use-browser-driver
     CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_bin }}' A3S_USE_E2E_BROWSER_BIN='{{ use_e2e_browser_bin }}' A3S_USE_E2E_SOURCE_ROOT='{{ justfile_directory() }}/crates/use' A3S_USE_E2E_BROWSER_SOURCE_ROOT='{{ justfile_directory() }}/crates/browser' A3S_USE_E2E_OCR_SOURCE_ROOT='{{ justfile_directory() }}/crates/ocr' bash scripts/test-use-hotplug-e2e.sh
-
-# Build and start the A3S Web application
-web: cli-submodule
-    cd apps/web && A3S_HOST={{ host }} A3S_PORT={{ port }} just web
 
 # Start the Windhole visual A3S Bench laboratory
 windhole:

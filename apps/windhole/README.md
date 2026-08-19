@@ -208,7 +208,7 @@ archive.
 
 ## Stack and architecture
 
-A3S智能体评测 follows the frontend architecture used by `apps/web`:
+A3S智能体评测 uses the following frontend architecture:
 
 - Rsbuild and React 19;
 - strict TypeScript;
