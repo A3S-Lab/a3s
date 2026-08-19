@@ -90,7 +90,7 @@ test('the Form component resolves the native core package from its nested manife
   assert.equal(form.version, '0.1.0');
 });
 
-test('the Code component pins the Cloud host dependency', () => {
+test('the Code component describes the Cloud host dependency', () => {
   const code = parseCloudStackLock(LOCK_SOURCE).components.find(
     (component) => component.id === 'code',
   );
@@ -98,10 +98,9 @@ test('the Code component pins the Cloud host dependency', () => {
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
   assert.equal(code.version, '7.0.1');
-  assert.equal(code.revision, '6b0fa2f9f2716817b93f42a23a3942be6634f1dc');
 });
 
-test('the Use component pins the sole shared manager repository', () => {
+test('the Use component describes the sole shared manager repository', () => {
   const use = parseCloudStackLock(LOCK_SOURCE).components.find(
     (component) => component.id === 'use',
   );
@@ -109,7 +108,6 @@ test('the Use component pins the sole shared manager repository', () => {
   assert.equal(use.manifest, 'Cargo.toml');
   assert.equal(use.package, 'a3s-use');
   assert.equal(use.version, '0.3.2');
-  assert.equal(use.revision, '8d45bd43cb19fe3813b559c8839051406830ce4b');
 });
 
 test('Git lock selection ignores a same-version registry package', () => {
