@@ -10,6 +10,7 @@ on:
       - "crates/acl"
       - "crates/boot"
       - "crates/box"
+      - "crates/code"
       - "crates/event"
       - "crates/flow"
       - "crates/gateway"
@@ -33,6 +34,7 @@ on:
       - "crates/acl"
       - "crates/boot"
       - "crates/box"
+      - "crates/code"
       - "crates/event"
       - "crates/flow"
       - "crates/gateway"
@@ -69,6 +71,7 @@ jobs:
             crates/acl \
             crates/boot \
             crates/box \
+            crates/code \
             crates/event \
             crates/flow \
             packages/form \
