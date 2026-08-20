@@ -46,9 +46,9 @@ component "code" {
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "50fec8b06bd4fabd57a2a27100ae8ceab91ac6bd"
+  revision = "c37f810e142611edba30818f5ceef7dd5a941f4a"
   source = "git"
-  version = "7.0.1"
+  version = "7.0.2"
 }
 component "event" {
   owner = "A3S-Lab/Event"
