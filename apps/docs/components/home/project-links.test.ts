@@ -5,7 +5,10 @@ import { getProjectPrimaryHref, getProjectRepositoryHref } from './project-links
 describe('project links', () => {
   test('opens the published Form playground and links source to UI', () => {
     assert.equal(getProjectPrimaryHref('form'), '/form/');
-    assert.equal(getProjectRepositoryHref('form'), 'https://github.com/A3S-Lab/UI');
+    assert.equal(
+      getProjectRepositoryHref('form'),
+      'https://github.com/A3S-Lab/UI/tree/main/modules/form',
+    );
   });
 
   test('opens the Site project at the ecosystem homepage', () => {

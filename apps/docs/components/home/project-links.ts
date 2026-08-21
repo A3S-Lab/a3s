@@ -32,7 +32,7 @@ export const projectLinks = {
     website: 'https://a3s-lab.github.io/Cloud/',
   },
   form: {
-    repository: 'https://github.com/A3S-Lab/UI',
+    repository: 'https://github.com/A3S-Lab/UI/tree/main/modules/form',
     website: '/form/',
   },
   site: {
