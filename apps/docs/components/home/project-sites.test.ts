@@ -66,22 +66,25 @@ describe('featured project site previews', () => {
       new URL('../../../../.github/workflows/site.yml', import.meta.url),
       'utf8',
     );
-    const formRevision = workflow.indexOf('FORM_REVISION:');
+    const uiRepository = workflow.indexOf('UI_REPOSITORY: https://github.com/A3S-Lab/UI.git');
+    const uiRevision = workflow.indexOf('UI_REVISION:');
     const formBase = workflow.indexOf('A3S_FORM_BASE: ./');
-    const formBuild = workflow.indexOf('playground:build');
+    const formBuild = workflow.indexOf('form:playground:build');
     const formPreviewUrl = workflow.indexOf('A3S_FORM_PREVIEW_URL: http://127.0.0.1:4176/');
     const screenshotCapture = workflow.indexOf('bun run capture:sites');
     const siteBuild = workflow.indexOf('run: bun run build');
-    const formPublish = workflow.indexOf('cp -R "$RUNNER_TEMP/a3s-form/playground-dist" apps/docs/out/form');
+    const formPublish = workflow.indexOf('cp -R "$RUNNER_TEMP/a3s-ui/modules/form/playground-dist" apps/docs/out/form');
     const formValidation = workflow.indexOf("REQUIRE_FORM_PREVIEW: '1'");
 
-    assert.notEqual(formRevision, -1, 'Form preview source must be pinned');
+    assert.notEqual(uiRepository, -1, 'Form preview source must be the UI repository');
+    assert.notEqual(uiRevision, -1, 'UI preview source must be pinned');
     assert.notEqual(formBase, -1, 'Form playground assets must use relative paths');
     assert.notEqual(formBuild, -1, 'Form playground must be built');
     assert.notEqual(formPreviewUrl, -1, 'Capture must use the local Form build');
     assert.notEqual(formPublish, -1, 'Form playground must be included in the Pages artifact');
     assert.notEqual(formValidation, -1, 'Pages validation must require the Form playground');
-    assert.equal(formRevision < formBuild, true);
+    assert.equal(uiRepository < formBuild, true);
+    assert.equal(uiRevision < formBuild, true);
     assert.equal(formBase < formBuild, true);
     assert.equal(formBuild < screenshotCapture, true);
     assert.equal(formPreviewUrl < screenshotCapture, true);

@@ -84,12 +84,13 @@ for (const marker of [
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
   const formLinkCount = homepage.split(`href="${formHref}"`).length - 1;
+  const uiRepositoryLinkCount = homepage.split('href="https://github.com/A3S-Lab/UI"').length - 1;
   assert(projectStages.length === 35, `${locale} homepage has ${projectStages.length} project stages instead of 35`);
   assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
   assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
   assert(formLinkCount >= 2, `${locale} homepage does not route both A3S Form entries to the published playground`);
-  assert(homepage.includes('https://github.com/A3S-Lab/Form'), `${locale} homepage is missing the separate A3S Form repository link`);
+  assert(uiRepositoryLinkCount >= 2, `${locale} homepage does not route both UI and Form source links to A3S-Lab/UI`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
   assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
