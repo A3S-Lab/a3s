@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "121e3222b0209b292a238e701179cefe013d213d"
+  revision = "142de87cfb4c646c8540dd641c662dcd6dd65af4"
   source = "git"
   version = "0.1.0"
 }
@@ -74,7 +74,7 @@ component "form" {
   package = "a3s-form-core"
   path = "packages/form"
   repository = "git@github.com:A3S-Lab/Form.git"
-  revision = "8d73dba5e88ded0de7ae0e1c7b1e599a5d9134de"
+  revision = "a734dcdb224a1ab39a56921f88bd7ad68c6ad344"
   source = "git"
   version = "0.1.0"
 }
