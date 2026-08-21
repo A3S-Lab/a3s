@@ -20,7 +20,7 @@ on:
       - "crates/use"
       - "crates/updater/**"
       - "justfile"
-      - "packages/form"
+      - "packages/ui"
       - "scripts/verify-cloud-stack.mjs"
       - "scripts/verify-cloud-stack.test.mjs"
   push:
@@ -44,7 +44,7 @@ on:
       - "crates/use"
       - "crates/updater/**"
       - "justfile"
-      - "packages/form"
+      - "packages/ui"
       - "scripts/verify-cloud-stack.mjs"
       - "scripts/verify-cloud-stack.test.mjs"
 
@@ -74,7 +74,7 @@ jobs:
             crates/code \
             crates/event \
             crates/flow \
-            packages/form \
+            packages/ui \
             crates/gateway \
             crates/orm \
             crates/runtime \

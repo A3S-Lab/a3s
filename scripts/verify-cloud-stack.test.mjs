@@ -15,6 +15,10 @@ import {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LOCK_PATH = resolve(ROOT, 'compat/cloud-stack.acl');
 const LOCK_SOURCE = readFileSync(LOCK_PATH, 'utf8');
+const CLOUD_STACK_WORKFLOW_SOURCE = readFileSync(
+  resolve(ROOT, '.github/workflows/cloud-stack.yml'),
+  'utf8',
+);
 
 function committedFile(repository, path) {
   return execFileSync('git', ['show', `HEAD:${path}`], {
@@ -262,6 +266,33 @@ test('the Cloud Form Core dependency is exact and bound to the locked Git revisi
   assert.ok(declaration.includes(`version = "=${form.version}"`));
   assert.ok(declaration.includes(`rev = "${form.revision}"`));
   assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/UI\.git"/);
+});
+
+test('Cloud Stack CI watches and initializes every locked Git component', () => {
+  const watchedPaths = new Set(
+    CLOUD_STACK_WORKFLOW_SOURCE.split(/\r?\n/)
+      .map((line) => /^\s*- "([^"]+)"$/.exec(line)?.[1])
+      .filter(Boolean),
+  );
+  const initializedPaths = new Set(
+    CLOUD_STACK_WORKFLOW_SOURCE.split(/\r?\n/).map((line) => {
+      const value = line.trim();
+      return value.endsWith('\\') ? value.slice(0, -1).trimEnd() : value;
+    }),
+  );
+  const gitComponents = parseCloudStackLock(LOCK_SOURCE).components.filter(
+    (component) => component.source === 'git',
+  );
+  for (const component of gitComponents) {
+    assert.ok(
+      watchedPaths.has(component.path),
+      `${component.path} is not watched by Cloud Stack CI`,
+    );
+    assert.ok(
+      initializedPaths.has(component.path),
+      `${component.path} is not initialized by Cloud Stack CI`,
+    );
+  }
 });
 
 test('Cloud consumes the UI-owned Form interaction fixture byte for byte', () => {
