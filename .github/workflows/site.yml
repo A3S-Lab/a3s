@@ -5,11 +5,13 @@ on:
     paths:
       - 'apps/docs/**'
       - '.github/workflows/site.yml'
+      - 'packages/ui'
   push:
     branches: [main]
     paths:
       - 'apps/docs/**'
       - '.github/workflows/site.yml'
+      - 'packages/ui'
   workflow_dispatch:
 
 permissions:
@@ -26,14 +28,18 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SITE_URL: https://a3s-lab.github.io/a3s/
-      FORM_REPOSITORY: https://github.com/A3S-Lab/Form.git
-      FORM_REVISION: b16990174f714af86727f49231553e8922216b52
+      UI_REPOSITORY: https://github.com/A3S-Lab/UI.git
+      UI_REVISION: b0446169548aacfcb95117de42728d6e273fc843
     steps:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
       - name: Install dependencies
         working-directory: apps/docs
@@ -53,24 +59,24 @@ jobs:
           sudo apt-get install --yes --no-install-recommends fonts-noto-cjk
           fc-cache --force
 
-      - name: Build pinned A3S Form preview
+      - name: Build pinned A3S Form preview from UI
         env:
           A3S_FORM_BASE: ./
         run: |
-          git init "$RUNNER_TEMP/a3s-form"
-          git -C "$RUNNER_TEMP/a3s-form" remote add origin "$FORM_REPOSITORY"
-          git -C "$RUNNER_TEMP/a3s-form" fetch --depth 1 origin "$FORM_REVISION"
-          git -C "$RUNNER_TEMP/a3s-form" switch --detach FETCH_HEAD
-          bun install --cwd "$RUNNER_TEMP/a3s-form" --frozen-lockfile
-          bun run --cwd "$RUNNER_TEMP/a3s-form" build
-          bun run --cwd "$RUNNER_TEMP/a3s-form" playground:build
+          git init "$RUNNER_TEMP/a3s-ui"
+          git -C "$RUNNER_TEMP/a3s-ui" remote add origin "$UI_REPOSITORY"
+          git -C "$RUNNER_TEMP/a3s-ui" fetch --depth 1 origin "$UI_REVISION"
+          git -C "$RUNNER_TEMP/a3s-ui" switch --detach FETCH_HEAD
+          npm --prefix "$RUNNER_TEMP/a3s-ui" ci
+          npm --prefix "$RUNNER_TEMP/a3s-ui" run build
+          npm --prefix "$RUNNER_TEMP/a3s-ui" run form:playground:build
 
       - name: Refresh project previews
         working-directory: apps/docs
         env:
           A3S_FORM_PREVIEW_URL: http://127.0.0.1:4176/
         run: |
-          bun "$RUNNER_TEMP/a3s-form/scripts/serve-playground.mjs" > "$RUNNER_TEMP/a3s-form-preview.log" 2>&1 &
+          node "$RUNNER_TEMP/a3s-ui/modules/form/scripts/serve-playground.mjs" > "$RUNNER_TEMP/a3s-form-preview.log" 2>&1 &
           form_preview_pid=$!
           trap 'kill "$form_preview_pid" 2>/dev/null || true' EXIT
           for attempt in {1..30}; do
@@ -88,8 +94,8 @@ jobs:
 
       - name: Publish A3S Form Playground
         run: |
-          test -f "$RUNNER_TEMP/a3s-form/playground-dist/index.html"
-          cp -R "$RUNNER_TEMP/a3s-form/playground-dist" apps/docs/out/form
+          test -f "$RUNNER_TEMP/a3s-ui/modules/form/playground-dist/index.html"
+          cp -R "$RUNNER_TEMP/a3s-ui/modules/form/playground-dist" apps/docs/out/form
 
       - name: Validate exported routes
         working-directory: apps/docs

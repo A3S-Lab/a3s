@@ -90,6 +90,9 @@ test('the Form component resolves the native core package from its nested manife
   );
   assert.ok(form);
   assert.equal(form.manifest, 'modules/form/crates/a3s-form-core/Cargo.toml');
+  assert.equal(form.owner, 'A3S-Lab/UI');
+  assert.equal(form.path, 'packages/ui');
+  assert.equal(form.repository, 'git@github.com:A3S-Lab/UI.git');
   assert.equal(form.package, 'a3s-form-core');
   assert.equal(form.version, '0.1.0');
 });
