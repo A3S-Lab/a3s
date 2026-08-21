@@ -1,7 +1,8 @@
 # A3S Site
 
-This application builds the bilingual A3S ecosystem homepage with Rspress. It
-does not publish product documentation, tutorials, or articles.
+This application builds the bilingual A3S ecosystem homepage and publishes the
+pinned A3S Power website in the same Rspress-based Pages artifact. Other
+product documentation, tutorials, and articles remain with their owners.
 
 ## Routes
 
@@ -9,9 +10,13 @@ does not publish product documentation, tutorials, or articles.
 | --- | --- |
 | `/` | Chinese ecosystem homepage |
 | `/en/` | English ecosystem homepage |
+| `/power/` | Chinese A3S Power website and current documentation |
+| `/power/en/` | English A3S Power website and current documentation |
+| `/power/v0.9.0/` | Versioned A3S Power documentation |
 
-The production build runs Rspress once per language and assembles both outputs
-under `out/`. Chinese remains the unprefixed default language.
+The production build runs the ecosystem Rspress app once per language, builds
+the exact Power site locked by the `crates/power` gitlink, and assembles every
+route under `out/`. Chinese remains the unprefixed default language.
 
 ## Project layout
 
@@ -27,10 +32,15 @@ apps/docs/
 └── rspress.config.ts
 ```
 
+Power pages stay owned by `crates/power/site`; the main site consumes that
+locked source directly instead of copying its Markdown or theme.
+
 ## Development
 
 ```bash
+git -C ../.. submodule update --init crates/power
 bun install
+npm ci --prefix ../../crates/power/site
 bun run dev
 ```
 
@@ -52,6 +62,7 @@ Individual commands are also available:
 ```bash
 bun run test
 bun run typecheck
+bun run typecheck:power
 bun run build
 bun run check:site
 ```

@@ -26,7 +26,11 @@ import {
 } from '@/components/home/ecosystem-status';
 import type { Lang } from '@/components/home/home-content';
 import { getProjectRepositoryHref } from '@/components/home/project-links';
-import { featuredProjectSites, type FeaturedProjectSite } from '@/components/home/project-sites';
+import {
+  featuredProjectSites,
+  getFeaturedProjectSiteHref,
+  type FeaturedProjectSite,
+} from '@/components/home/project-sites';
 
 type DirectoryFilter = 'all' | ArchitectureCategory;
 
@@ -151,7 +155,7 @@ function ProjectSitePreview({ project, site }: { project: ArchitectureProject; s
 
 function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProject; site: FeaturedProjectSite; lang: Lang }) {
   const tr = copy[lang];
-  const href = sharedSiteHref(site.href, lang);
+  const href = sharedSiteHref(getFeaturedProjectSiteHref(site, lang), lang);
 
   return (
     <article className="a3s-site-card" data-preview-mode={site.mode} data-site={project.id}>
@@ -182,7 +186,7 @@ function ProjectCard({ project, index, lang }: { project: ArchitectureProject; i
     site.id === project.id && site.destination === 'site'
   ));
   const projectHref = featuredSite
-    ? sharedSiteHref(featuredSite.href, lang)
+    ? sharedSiteHref(getFeaturedProjectSiteHref(featuredSite, lang), lang)
     : localizedHref(project.href, lang);
   const repositoryHref = getProjectRepositoryHref(project.id);
   const hasDistinctRepository = repositoryHref !== projectHref;

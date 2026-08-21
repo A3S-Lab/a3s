@@ -8,10 +8,11 @@
     "dev:en": "bun scripts/dev-site.mjs en",
     "build": "bun scripts/build-site.mjs",
     "capture:sites": "bun scripts/capture-project-sites.ts",
-    "check": "bun run test && bun run typecheck && bun run build && bun run check:site",
+    "check": "bun run test && bun run typecheck && bun run typecheck:power && bun run build && bun run check:site",
     "check:site": "node scripts/check-built-site.mjs",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:power": "node scripts/run-power-site-script.mjs typecheck"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
