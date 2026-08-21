@@ -3,7 +3,11 @@ import path from 'node:path';
 
 const root = process.cwd();
 const output = path.join(root, 'out');
-const powerHref = 'https://a3s-lab.github.io/Power/';
+const publicSite = new URL(process.env.SITE_URL ?? 'https://a3s.dev/');
+const deploymentPath = publicSite.pathname.replace(/\/+$/, '');
+const powerHref = `${deploymentPath}/power/`.replace(/\/+/g, '/');
+const powerEnglishHref = `${deploymentPath}/power/en/`.replace(/\/+/g, '/');
+const standalonePowerHref = 'https://a3s-lab.github.io/Power/';
 const requiredImages = [
   'brand/a3s-os-logo.png',
   'ecosystem-sites/cloud.png',
@@ -48,9 +52,42 @@ const routeEntries = await Promise.all(
 const routeHtml = new Map(routeEntries);
 const chineseHome = routeHtml.get('index.html');
 const englishHome = routeHtml.get('en/index.html');
+const powerRouteChecks = [
+  {
+    file: 'power/index.html',
+    lang: 'zh',
+    copy: ['Rust 模型推理', '运行时。', 'MTP 推测解码', '176.6109'],
+  },
+  {
+    file: 'power/en/index.html',
+    lang: 'en',
+    copy: ['A Rust runtime', 'for model inference.', 'MTP speculative decoding', '176.6109'],
+  },
+  {
+    file: 'power/v0.9.0/index.html',
+    lang: 'zh',
+    copy: ['Rust 模型推理', '运行时。', 'v0.9.0'],
+  },
+  {
+    file: 'power/v0.9.0/en/index.html',
+    lang: 'en',
+    copy: ['A Rust runtime', 'for model inference.', 'v0.9.0'],
+  },
+];
+const powerRouteEntries = await Promise.all(
+  powerRouteChecks.map(async (route) => ({ ...route, html: await read(route.file) })),
+);
 
 assert(chineseHome, 'Chinese homepage is missing');
 assert(englishHome, 'English homepage is missing');
+
+for (const route of powerRouteEntries) {
+  assert(route.html.includes(`<html lang="${route.lang}">`), `Power route has the wrong language: ${route.file}`);
+  assert(route.html.includes('a3s-os-logo.png'), `Power route is missing the A3S OS logo: ${route.file}`);
+  for (const marker of route.copy) {
+    assert(route.html.includes(marker), `Power route ${route.file} is missing: ${marker}`);
+  }
+}
 
 for (const marker of [
   '为AI Native组织构建的AI操作系统生态',
@@ -78,14 +115,18 @@ for (const marker of [
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
 
-for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
+for (const [homepage, locale, localizedPowerHref] of [
+  [chineseHome, 'Chinese', powerHref],
+  [englishHome, 'English', powerEnglishHref],
+]) {
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
-  const powerLinkCount = homepage.split(`href="${powerHref}"`).length - 1;
+  const powerLinkCount = homepage.split(`href="${localizedPowerHref}"`).length - 1;
   assert(projectStages.length === 34, `${locale} homepage has ${projectStages.length} project stages instead of 34`);
   assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
   assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
-  assert(powerLinkCount >= 2, `${locale} homepage does not route both A3S Power entries to its website`);
+  assert(powerLinkCount >= 2, `${locale} homepage does not route A3S Power entries inside the A3S site`);
+  assert(!homepage.includes(standalonePowerHref), `${locale} homepage still links to the standalone Power site`);
   assert(!homepage.includes('/form/'), `${locale} homepage still links to the removed Form site`);
   assert(!homepage.includes('A3S Form'), `${locale} homepage still includes the removed Form project`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
@@ -110,6 +151,7 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
 
 const files = await collectFiles(output);
 const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
+const powerHtmlFiles = relativeFiles.filter((file) => file.startsWith('power/') && file.endsWith('.html'));
 
 assert(
   !relativeFiles.some((file) => /(^|\/)blog(\/|$)/.test(file)),
@@ -120,6 +162,10 @@ assert(
   !relativeFiles.some((file) => file.startsWith('form/')),
   'Static build still contains the removed Form site',
 );
+
+assert(powerHtmlFiles.length >= 33, `Static build contains only ${powerHtmlFiles.length} Power pages`);
+assert(relativeFiles.includes('power/a3s-os-logo.png'), 'Static build is missing the Power site logo');
+assert(relativeFiles.includes('power/social-card.svg'), 'Static build is missing the Power social card');
 
 for (const image of requiredImages) {
   assert(relativeFiles.includes(image), `Static build is missing image: ${image}`);
@@ -168,6 +214,14 @@ if (process.env.SITE_URL) {
   const canonicalSite = process.env.SITE_URL.replace(/\/$/, '');
   assert(chineseHome.includes(`href="${canonicalSite}/"`), 'Chinese canonical URL is incorrect');
   assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
+  assert(
+    powerRouteEntries[0].html.includes(`href="${canonicalSite}/power/"`),
+    'Chinese Power canonical URL is incorrect',
+  );
+  assert(
+    powerRouteEntries[1].html.includes(`href="${canonicalSite}/power/en/"`),
+    'English Power canonical URL is incorrect',
+  );
 }
 
-console.log(`Validated 2 homepages and ${files.length} exported files.`);
+console.log(`Validated 2 ecosystem homepages, ${powerHtmlFiles.length} Power pages, and ${files.length} exported files.`);

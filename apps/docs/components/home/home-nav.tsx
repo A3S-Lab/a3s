@@ -8,9 +8,11 @@ export function HomeNav({ lang }: { lang: Lang }) {
   const homeHref = withBase('/');
   const rootHref = lang === 'en' ? homeHref.replace(/en\/$/, '') : homeHref;
   const languageHref = lang === 'cn' ? `${rootHref}en/` : rootHref;
+  const powerHref = lang === 'cn' ? `${rootHref}power/` : `${rootHref}power/en/`;
 
   const anchorLinks = [
     { label: tr.ecosystem, href: '#ecosystem' },
+    { label: tr.power, href: powerHref },
     { label: tr.principles, href: '#principles' },
   ];
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { architectureProjects } from './architecture';
-import { featuredProjectSites } from './project-sites';
+import { featuredProjectSites, getFeaturedProjectSiteHref } from './project-sites';
 
 describe('featured project site previews', () => {
   test('point to known projects and committed screenshots', () => {
@@ -33,8 +33,10 @@ describe('featured project site previews', () => {
 
     assert.equal(box?.href, 'https://a3s-lab.github.io/Box/');
     assert.equal(box?.mode, 'live');
-    assert.equal(power?.captureUrl, 'https://a3s-lab.github.io/Power/');
-    assert.equal(power?.href, 'https://a3s-lab.github.io/Power/');
+    assert.equal(power?.captureUrl, 'https://a3s-lab.github.io/a3s/power/');
+    assert.equal(power?.href, '/power/');
+    assert.equal(power && getFeaturedProjectSiteHref(power, 'cn'), '/power/');
+    assert.equal(power && getFeaturedProjectSiteHref(power, 'en'), '/power/en/');
     assert.equal(power?.mode, 'live');
     assert.equal(power?.destination, 'site');
     assert.equal(featuredProjectSites.map((site) => String(site.id)).includes('site'), false);
@@ -62,16 +64,25 @@ describe('featured project site previews', () => {
     assert.equal(fontInstall < screenshotCapture, true, 'CJK fonts must be installed before screenshots are captured');
   });
 
-  test('captures live project sites without publishing a nested Form playground', () => {
+  test('builds the pinned Power site without publishing a nested Form playground', () => {
     const workflow = readFileSync(
       new URL('../../../../.github/workflows/site.yml', import.meta.url),
       'utf8',
     );
     const screenshotCapture = workflow.indexOf('bun run capture:sites');
     const siteBuild = workflow.indexOf('run: bun run build');
+    const powerSubmodule = workflow.indexOf('submodule update --init --depth 1 crates/power');
+    const powerInstall = workflow.indexOf('npm ci --prefix crates/power/site');
+    const powerTypecheck = workflow.indexOf('bun run typecheck:power');
 
     assert.notEqual(screenshotCapture, -1, 'Pages must refresh project screenshots');
     assert.notEqual(siteBuild, -1, 'Pages must build the Rspress site');
+    assert.notEqual(powerSubmodule, -1, 'Pages must initialize the pinned Power source');
+    assert.notEqual(powerInstall, -1, 'Pages must install the pinned Power site dependencies');
+    assert.notEqual(powerTypecheck, -1, 'Pages must typecheck the pinned Power site');
+    assert.equal(powerSubmodule < powerInstall, true);
+    assert.equal(powerInstall < powerTypecheck, true);
+    assert.equal(powerTypecheck < siteBuild, true);
     assert.equal(screenshotCapture < siteBuild, true);
     assert.equal(workflow.includes('UI_REPOSITORY'), false);
     assert.equal(workflow.includes('UI_REVISION'), false);

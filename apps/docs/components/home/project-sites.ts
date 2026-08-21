@@ -1,8 +1,10 @@
 import type { ProjectId } from './project-links';
+import type { Lang } from './home-content';
 
 export interface FeaturedProjectSite {
   id: ProjectId;
   href: string;
+  hrefByLang?: Partial<Record<Lang, string>>;
   captureUrl: string;
   displayUrl: string;
   screenshot: string;
@@ -44,9 +46,10 @@ export const featuredProjectSites = [
   },
   {
     id: 'power',
-    href: 'https://a3s-lab.github.io/Power/',
-    captureUrl: 'https://a3s-lab.github.io/Power/',
-    displayUrl: 'a3s-lab.github.io/Power',
+    href: '/power/',
+    hrefByLang: { en: '/power/en/' },
+    captureUrl: 'https://a3s-lab.github.io/a3s/power/',
+    displayUrl: 'a3s-lab.github.io/a3s/power',
     screenshot: '/ecosystem-sites/power.png',
     settleMs: 5_000,
     mode: 'live',
@@ -93,3 +96,7 @@ export const featuredProjectSites = [
     destination: 'site',
   },
 ] as const satisfies readonly FeaturedProjectSite[];
+
+export function getFeaturedProjectSiteHref(site: FeaturedProjectSite, lang: Lang): string {
+  return site.hrefByLang?.[lang] ?? site.href;
+}
