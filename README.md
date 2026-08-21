@@ -88,7 +88,7 @@ infrastructure dependency.
 | Layer | Contract | Owners |
 | --- | --- | --- |
 | **Host** | Invocation, policy, models, tools, permissions | [CLI](crates/cli/), [Code](crates/code/), [Cloud](apps/cloud/) |
-| **Extend** | Signed capabilities and typed content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](https://github.com/A3S-Lab/UI/tree/main/modules/form), [Office](packages/office/), [Science](packages/science/) |
+| **Extend** | Signed capabilities and typed content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | **Coordinate** | Replay-safe workflows, events, queues, tests | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
 | **Execute** | Tasks, Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Boot](crates/boot/) |
 | **Scale** | Traffic, desired state, placement, reconciliation | [Gateway](crates/gateway/), [Cloud](apps/cloud/), [ORM](crates/orm/) |
@@ -198,7 +198,7 @@ root-owned.
 ```text
 a3s/
 ├── apps/       cloud control plane, docs, and Windhole
-├── packages/   Office, Science, and UI (including Form)
+├── packages/   Office, Science, and UI
 ├── crates/     product hosts, capabilities, runtimes, services, and SDKs
 ├── compat/     exact cross-project revisions and protocol locks
 ├── assets/     repository-native README visuals
@@ -208,7 +208,7 @@ a3s/
 | Group | Projects |
 | --- | --- |
 | Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
-| Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](https://github.com/A3S-Lab/UI/tree/main/modules/form), [Office](packages/office/), [Science](packages/science/) |
+| Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
 | Interfaces and services | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |

@@ -27,16 +27,16 @@ describe('featured project site previews', () => {
     }
   });
 
-  test('features the Box site and the published Form playground', () => {
+  test('features the Box and Power sites', () => {
     const box = featuredProjectSites.find((site) => site.id === 'box');
-    const form = featuredProjectSites.find((site) => site.id === 'form');
+    const power = featuredProjectSites.find((site) => site.id === 'power');
 
     assert.equal(box?.href, 'https://a3s-lab.github.io/Box/');
     assert.equal(box?.mode, 'live');
-    assert.equal(form?.captureUrl, 'https://a3s-lab.github.io/a3s/form/');
-    assert.equal(form?.href, '/form/');
-    assert.equal(form?.mode, 'live');
-    assert.equal(form?.destination, 'site');
+    assert.equal(power?.captureUrl, 'https://a3s-lab.github.io/Power/');
+    assert.equal(power?.href, 'https://a3s-lab.github.io/Power/');
+    assert.equal(power?.mode, 'live');
+    assert.equal(power?.destination, 'site');
     assert.equal(featuredProjectSites.map((site) => String(site.id)).includes('site'), false);
   });
 
@@ -46,6 +46,7 @@ describe('featured project site previews', () => {
     assert.equal((settleTimes.get('cloud') ?? 0) >= 10_000, true);
     assert.equal((settleTimes.get('code') ?? 0) >= 12_000, true);
     assert.equal((settleTimes.get('box') ?? 0) >= 4_000, true);
+    assert.equal((settleTimes.get('power') ?? 0) >= 5_000, true);
   });
 
   test('install Chinese fonts before build-time screenshots are captured', () => {
@@ -61,35 +62,23 @@ describe('featured project site previews', () => {
     assert.equal(fontInstall < screenshotCapture, true, 'CJK fonts must be installed before screenshots are captured');
   });
 
-  test('builds and publishes the pinned Form playground', () => {
+  test('captures live project sites without publishing a nested Form playground', () => {
     const workflow = readFileSync(
       new URL('../../../../.github/workflows/site.yml', import.meta.url),
       'utf8',
     );
-    const uiRepository = workflow.indexOf('UI_REPOSITORY: https://github.com/A3S-Lab/UI.git');
-    const uiRevision = workflow.indexOf('UI_REVISION:');
-    const formBase = workflow.indexOf('A3S_FORM_BASE: ./');
-    const formBuild = workflow.indexOf('form:playground:build');
-    const formPreviewUrl = workflow.indexOf('A3S_FORM_PREVIEW_URL: http://127.0.0.1:4176/');
     const screenshotCapture = workflow.indexOf('bun run capture:sites');
     const siteBuild = workflow.indexOf('run: bun run build');
-    const formPublish = workflow.indexOf('cp -R "$RUNNER_TEMP/a3s-ui/modules/form/playground-dist" apps/docs/out/form');
-    const formValidation = workflow.indexOf("REQUIRE_FORM_PREVIEW: '1'");
 
-    assert.notEqual(uiRepository, -1, 'Form preview source must be the UI repository');
-    assert.notEqual(uiRevision, -1, 'UI preview source must be pinned');
-    assert.notEqual(formBase, -1, 'Form playground assets must use relative paths');
-    assert.notEqual(formBuild, -1, 'Form playground must be built');
-    assert.notEqual(formPreviewUrl, -1, 'Capture must use the local Form build');
-    assert.notEqual(formPublish, -1, 'Form playground must be included in the Pages artifact');
-    assert.notEqual(formValidation, -1, 'Pages validation must require the Form playground');
-    assert.equal(uiRepository < formBuild, true);
-    assert.equal(uiRevision < formBuild, true);
-    assert.equal(formBase < formBuild, true);
-    assert.equal(formBuild < screenshotCapture, true);
-    assert.equal(formPreviewUrl < screenshotCapture, true);
-    assert.equal(siteBuild < formPublish, true);
-    assert.equal(formPublish < formValidation, true);
+    assert.notEqual(screenshotCapture, -1, 'Pages must refresh project screenshots');
+    assert.notEqual(siteBuild, -1, 'Pages must build the Rspress site');
+    assert.equal(screenshotCapture < siteBuild, true);
+    assert.equal(workflow.includes('UI_REPOSITORY'), false);
+    assert.equal(workflow.includes('UI_REVISION'), false);
+    assert.equal(workflow.includes('A3S_FORM'), false);
+    assert.equal(workflow.includes('form:playground:build'), false);
+    assert.equal(workflow.includes('apps/docs/out/form'), false);
+    assert.equal(workflow.includes('REQUIRE_FORM_PREVIEW'), false);
   });
 
   test('checks preview HTTP status before Chrome can replace a committed screenshot', () => {
