@@ -31,10 +31,6 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Cloud',
     website: 'https://a3s-lab.github.io/Cloud/',
   },
-  form: {
-    repository: 'https://github.com/A3S-Lab/UI/tree/main/modules/form',
-    website: '/form/',
-  },
   site: {
     repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/docs',
     website: '/',
@@ -52,7 +48,10 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Gateway',
     website: 'https://a3s-lab.github.io/Gateway/',
   },
-  power: { repository: 'https://github.com/A3S-Lab/Power' },
+  power: {
+    repository: 'https://github.com/A3S-Lab/Power',
+    website: 'https://a3s-lab.github.io/Power/',
+  },
   ahp: { repository: 'https://github.com/A3S-Lab/AgentHarnessProtocol' },
   acl: { repository: 'https://github.com/A3S-Lab/ACL' },
   tui: { repository: 'https://github.com/A3S-Lab/TUI' },

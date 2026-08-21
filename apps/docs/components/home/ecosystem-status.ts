@@ -31,7 +31,6 @@ const statusByProject = {
   office: { stage: 'preview', release: 'v0.3.0' },
   science: { stage: 'preview', release: 'main' },
   cloud: { stage: 'experimental', release: 'main' },
-  form: { stage: 'preview', release: 'main' },
   site: { stage: 'released', release: 'live' },
   runtime: { stage: 'preview', release: 'v0.3.0' },
   'oci-runtime': { stage: 'experimental', release: 'v0.2.0' },

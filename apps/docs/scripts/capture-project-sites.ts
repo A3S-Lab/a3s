@@ -400,9 +400,7 @@ async function capture(site: (typeof featuredProjectSites)[number]) {
   const output = path.join(outputDirectory, path.basename(site.screenshot));
   const temporaryOutput = path.join(temporaryDirectory, path.basename(site.screenshot));
   const profile = path.join(temporaryDirectory, `${site.id}-profile`);
-  const captureUrl = site.id === 'form'
-    ? process.env.A3S_FORM_PREVIEW_URL ?? site.captureUrl
-    : site.captureUrl;
+  const captureUrl = site.captureUrl;
 
   try {
     await assertCaptureUrlIsHealthy(captureUrl);

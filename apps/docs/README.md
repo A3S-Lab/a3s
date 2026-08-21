@@ -82,21 +82,6 @@ Each project defines its own animation settle time in
 images, lets the hero reach that frame, then freezes CSS, SVG, video, and GIF
 motion before writing the PNG.
 
-The Form playground is built from a pinned UI revision and published with this
-site at `/form/`. Point the capture at a local build when refreshing its
-screenshot:
-
-```bash
-A3S_FORM_PREVIEW_URL=http://127.0.0.1:4173/ \
-  bun run capture:sites --site=form
-```
-
-The Pages workflow checks out a pinned UI revision, builds the Form playground
-from `modules/form`, uses it for the screenshot step, and copies the same build
-to `out/form/` for deployment. Update `UI_REVISION` in
-`.github/workflows/site.yml` when intentionally refreshing or publishing a
-newer UI commit.
-
 The capture task keeps an existing committed image when a remote site is
 temporarily unavailable. Add or change destinations in
 `components/home/project-sites.ts`.

@@ -172,20 +172,6 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     ],
   },
   {
-    id: 'form',
-    name: 'Form',
-    category: 'products',
-    role: localized('用可视化编辑器设计 AI Native 表单，并编译成可嵌入产物。', 'Designs AI Native forms visually and compiles them into embeddable output.'),
-    href: getProjectPrimaryHref('form'),
-    nodes: [
-      node('designer', 'Form Designer', 'surface', '提供字段目录、结构树、布局拖放、实时预览与撤销重做。', 'Provides a field catalog, structure tree, layout drag and drop, live preview, and undo/redo.'),
-      node('document', 'FormDocument', 'core', '用一份版本化文档保存 schema、界面、规则、引用与元数据。', 'Stores schema, UI, rules, references, and metadata in one versioned document.'),
-      node('compiler', 'Deterministic Compiler', 'contract', '验证能力与依赖关系，并生成不可变 FormPlan 和规范摘要。', 'Validates capabilities and dependencies, then produces an immutable FormPlan and canonical digest.'),
-      node('adapters', 'React / Vue / Web Component', 'runtime', '通过受控值、动作回调与宿主注册表嵌入不同产品。', 'Embeds into products through controlled values, action callbacks, and host registries.'),
-      node('evidence', 'Revision + SHA-256', 'evidence', '把 Agent 提交的 FormPatch 绑定到基准版本并保留可核验摘要。', 'Binds agent-authored FormPatch changes to a base revision and verifiable digest.'),
-    ],
-  },
-  {
     id: 'site',
     name: 'Site',
     category: 'products',

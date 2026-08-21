@@ -3,10 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const output = path.join(root, 'out');
-const deploymentPath = process.env.SITE_URL
-  ? new URL(process.env.SITE_URL).pathname.replace(/\/+$/, '')
-  : '';
-const formHref = `${deploymentPath}/form/`.replace(/\/+/g, '/');
+const powerHref = 'https://a3s-lab.github.io/Power/';
 const requiredImages = [
   'brand/a3s-os-logo.png',
   'ecosystem-sites/cloud.png',
@@ -15,7 +12,7 @@ const requiredImages = [
   'ecosystem-sites/use.png',
   'ecosystem-sites/ui.png',
   'ecosystem-sites/gateway.png',
-  'ecosystem-sites/form.png',
+  'ecosystem-sites/power.png',
   'ecosystem-sites/box.png',
 ];
 
@@ -62,7 +59,7 @@ for (const marker of [
   '每个AI Native组织都需要构建专属的AI操作系统',
   '交付阶段',
   '不统计功能完成率',
-  '35 个职责明确的项目',
+  '34 个职责明确的项目',
   'v0.12.4',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
@@ -75,7 +72,7 @@ for (const marker of [
   'Every AI Native organization needs to build its own AI operating system.',
   'Delivery stage',
   'not a feature-completion score',
-  '35 focused projects',
+  '34 focused projects',
   'v0.12.4',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
@@ -83,16 +80,14 @@ for (const marker of [
 
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
-  const formLinkCount = homepage.split(`href="${formHref}"`).length - 1;
-  assert(projectStages.length === 35, `${locale} homepage has ${projectStages.length} project stages instead of 35`);
+  const powerLinkCount = homepage.split(`href="${powerHref}"`).length - 1;
+  assert(projectStages.length === 34, `${locale} homepage has ${projectStages.length} project stages instead of 34`);
   assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
   assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
-  assert(formLinkCount >= 2, `${locale} homepage does not route both A3S Form entries to the published playground`);
-  assert(
-    homepage.includes('href="https://github.com/A3S-Lab/UI/tree/main/modules/form"'),
-    `${locale} homepage does not route Form source to the UI module`,
-  );
+  assert(powerLinkCount >= 2, `${locale} homepage does not route both A3S Power entries to its website`);
+  assert(!homepage.includes('/form/'), `${locale} homepage still links to the removed Form site`);
+  assert(!homepage.includes('A3S Form'), `${locale} homepage still includes the removed Form project`);
   assert(homepage.includes('a3s-lab.github.io/Box'), `${locale} homepage does not feature the A3S Box site`);
   assert(!homepage.includes('id="architecture"'), `${locale} homepage still renders the architecture diagram`);
   assert(!homepage.includes('href="#architecture"'), `${locale} homepage still links to the architecture diagram`);
@@ -121,16 +116,10 @@ assert(
   'Static build still contains a blog route',
 );
 
-if (process.env.REQUIRE_FORM_PREVIEW === '1') {
-  const formIndex = await read('form/index.html');
-  const formFiles = relativeFiles.filter((file) => file.startsWith('form/'));
-
-  assert(formIndex.includes('<title>A3S Form · 表单设计器</title>'), 'Published Form playground has an unexpected title');
-  assert(formIndex.includes('src="./static/js/'), 'Published Form playground must use relative JavaScript paths');
-  assert(formIndex.includes('href="./static/css/'), 'Published Form playground must use relative CSS paths');
-  assert(formFiles.some((file) => /^form\/static\/js\/[^/]+\.js$/.test(file)), 'Published Form playground contains no JavaScript bundle');
-  assert(formFiles.some((file) => /^form\/static\/css\/[^/]+\.css$/.test(file)), 'Published Form playground contains no CSS bundle');
-}
+assert(
+  !relativeFiles.some((file) => file.startsWith('form/')),
+  'Static build still contains the removed Form site',
+);
 
 for (const image of requiredImages) {
   assert(relativeFiles.includes(image), `Static build is missing image: ${image}`);
