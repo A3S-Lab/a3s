@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "bb24a09c4518052f659e2b14a72939fcbd871bd8"
+  revision = "af6b31850f70cda89915b44212391c85d114d803"
   source = "git"
   version = "0.1.0"
 }
@@ -69,12 +69,12 @@ component "flow" {
   version = "1.0.0"
 }
 component "form" {
-  manifest = "crates/a3s-form-core/Cargo.toml"
-  owner = "A3S-Lab/Form"
+  manifest = "modules/form/crates/a3s-form-core/Cargo.toml"
+  owner = "A3S-Lab/UI"
   package = "a3s-form-core"
-  path = "packages/form"
-  repository = "git@github.com:A3S-Lab/Form.git"
-  revision = "a734dcdb224a1ab39a56921f88bd7ad68c6ad344"
+  path = "packages/ui"
+  repository = "git@github.com:A3S-Lab/UI.git"
+  revision = "b0446169548aacfcb95117de42728d6e273fc843"
   source = "git"
   version = "0.1.0"
 }
@@ -162,33 +162,33 @@ protocol "flow-resume-receipt" {
 }
 protocol "form-core-evaluate-request" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-core/evaluate-request/v1alpha1"
-  source = "packages/form/crates/a3s-form-core/src/evaluation/protocol.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/evaluation/protocol.rs"
 }
 protocol "form-core-evaluate-response" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-core/evaluate-response/v1alpha1"
-  source = "packages/form/crates/a3s-form-core/src/evaluation/protocol.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/evaluation/protocol.rs"
 }
 protocol "form-interaction-request" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-interaction-request/v1"
-  source = "packages/form/crates/a3s-form-core/src/interaction_types.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "form-interaction-submission" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-interaction-submission/v1"
-  source = "packages/form/crates/a3s-form-core/src/interaction_types.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "form-release-ref" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-release-ref/v1"
-  source = "packages/form/crates/a3s-form-core/src/interaction_types.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "runtime-capabilities" {
   level = 4

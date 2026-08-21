@@ -31,7 +31,7 @@ test('the checked-in Cloud stack is reproducible and clean', () => {
   assert.match(result.formInteractionFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
     result.formInteractionFixture.owner,
-    'packages/form/tests/conformance/interaction-contract-v1.json',
+    'packages/ui/modules/form/tests/conformance/interaction-contract-v1.json',
   );
   assert.equal(
     result.formInteractionFixture.cloud,
@@ -40,7 +40,7 @@ test('the checked-in Cloud stack is reproducible and clean', () => {
   assert.match(result.formValueEvaluationFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
     result.formValueEvaluationFixture.owner,
-    'packages/form/tests/conformance/value-evaluation-v1.json',
+    'packages/ui/modules/form/tests/conformance/value-evaluation-v1.json',
   );
   assert.equal(
     result.formValueEvaluationFixture.cloud,
@@ -85,7 +85,7 @@ test('the Form component resolves the native core package from its nested manife
     (component) => component.id === 'form',
   );
   assert.ok(form);
-  assert.equal(form.manifest, 'crates/a3s-form-core/Cargo.toml');
+  assert.equal(form.manifest, 'modules/form/crates/a3s-form-core/Cargo.toml');
   assert.equal(form.package, 'a3s-form-core');
   assert.equal(form.version, '0.1.0');
 });
@@ -261,13 +261,13 @@ test('the Cloud Form Core dependency is exact and bound to the locked Git revisi
   );
   assert.ok(declaration.includes(`version = "=${form.version}"`));
   assert.ok(declaration.includes(`rev = "${form.revision}"`));
-  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Form\.git"/);
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/UI\.git"/);
 });
 
-test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
+test('Cloud consumes the UI-owned Form interaction fixture byte for byte', () => {
   const owner = committedFile(
-    'packages/form',
-    'tests/conformance/interaction-contract-v1.json',
+    'packages/ui',
+    'modules/form/tests/conformance/interaction-contract-v1.json',
   );
   const cloud = committedFile(
     'apps/cloud',
@@ -276,10 +276,10 @@ test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
   assert.ok(owner.equals(cloud));
 });
 
-test('Cloud consumes the Form-owned submitted-value evaluation fixture byte for byte', () => {
+test('Cloud consumes the UI-owned Form submitted-value evaluation fixture byte for byte', () => {
   const owner = committedFile(
-    'packages/form',
-    'tests/conformance/value-evaluation-v1.json',
+    'packages/ui',
+    'modules/form/tests/conformance/value-evaluation-v1.json',
   );
   const cloud = committedFile(
     'apps/cloud',

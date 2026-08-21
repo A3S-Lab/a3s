@@ -630,12 +630,30 @@ function verifyAclConfiguration(root, cloudPath) {
 function verifyFormFixture(
   root,
   cloudPath,
-  formPath,
+  form,
   ownerFileName,
   cloudFileName,
   label,
 ) {
-  const ownerRelativePath = `${formPath}/tests/conformance/${ownerFileName}`;
+  const nestedCratesIndex = form.manifest.lastIndexOf('/crates/');
+  let formModuleRoot = null;
+  if (nestedCratesIndex >= 0) {
+    formModuleRoot = form.manifest.slice(0, nestedCratesIndex);
+  } else if (form.manifest.startsWith('crates/')) {
+    formModuleRoot = '';
+  }
+  invariant(
+    formModuleRoot !== null,
+    `Form manifest must be rooted in a crates directory: ${form.manifest}`,
+  );
+  const ownerRepositoryRelativePath = [
+    formModuleRoot,
+    'tests/conformance',
+    ownerFileName,
+  ]
+    .filter(Boolean)
+    .join('/');
+  const ownerRelativePath = `${form.path}/${ownerRepositoryRelativePath}`;
   const cloudRelativePath = `${cloudPath}/crates/control-plane/tests/fixtures/${cloudFileName}`;
   const ownerPath = join(root, ownerRelativePath);
   const cloudFixturePath = join(root, cloudRelativePath);
@@ -645,8 +663,8 @@ function verifyFormFixture(
     `Cloud ${label.toLowerCase()} fixture is missing: ${cloudRelativePath}`,
   );
   const ownerBytes = readGitBlob(
-    join(root, formPath),
-    `tests/conformance/${ownerFileName}`,
+    join(root, form.path),
+    ownerRepositoryRelativePath,
     `${label} fixture`,
   );
   const cloudBytes = readGitBlob(
@@ -767,7 +785,7 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
   const formInteractionFixture = verifyFormFixture(
     root,
     componentMap.get('cloud').path,
-    componentMap.get('form').path,
+    componentMap.get('form'),
     'interaction-contract-v1.json',
     'form-interaction-contract-v1.json',
     'Form interaction',
@@ -775,7 +793,7 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
   const formValueEvaluationFixture = verifyFormFixture(
     root,
     componentMap.get('cloud').path,
-    componentMap.get('form').path,
+    componentMap.get('form'),
     'value-evaluation-v1.json',
     'form-value-evaluation-v1.json',
     'Form value evaluation',
