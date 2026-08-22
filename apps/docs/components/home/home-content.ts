@@ -10,7 +10,6 @@ export const homeContent = {
   en: {
     nav: {
       ecosystem: 'Ecosystem',
-      power: 'Power',
       principles: 'Principles',
       language: '中文',
       menu: 'Open navigation',
@@ -91,7 +90,6 @@ export const homeContent = {
   cn: {
     nav: {
       ecosystem: '生态',
-      power: 'Power',
       principles: '原则',
       language: 'EN',
       menu: '打开导航',

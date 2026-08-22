@@ -4,7 +4,7 @@ import { getProjectPrimaryHref, getProjectRepositoryHref } from './project-links
 
 describe('project links', () => {
   test('opens the Power website and links its source repository', () => {
-    assert.equal(getProjectPrimaryHref('power'), '/power/');
+    assert.equal(getProjectPrimaryHref('power'), 'https://a3s-lab.github.io/Power/');
     assert.equal(getProjectRepositoryHref('power'), 'https://github.com/A3S-Lab/Power');
   });
 

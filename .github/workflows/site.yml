@@ -4,13 +4,11 @@ on:
   pull_request:
     paths:
       - 'apps/docs/**'
-      - 'crates/power'
       - '.github/workflows/site.yml'
   push:
     branches: [main]
     paths:
       - 'apps/docs/**'
-      - 'crates/power'
       - '.github/workflows/site.yml'
   workflow_dispatch:
 
@@ -31,27 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Initialize pinned Power site
-        run: >-
-          git -c url.https://github.com/.insteadOf=git@github.com:
-          submodule update --init --depth 1 crates/power
-
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: crates/power/site/package-lock.json
-
       - name: Install dependencies
         working-directory: apps/docs
         run: bun install --frozen-lockfile
-
-      - name: Install pinned Power site dependencies
-        run: npm ci --prefix crates/power/site
 
       - name: Test site data
         working-directory: apps/docs
@@ -60,10 +44,6 @@ jobs:
       - name: Typecheck site
         working-directory: apps/docs
         run: bun run typecheck
-
-      - name: Typecheck pinned Power site
-        working-directory: apps/docs
-        run: bun run typecheck:power
 
       - name: Install project preview fonts
         run: |
