@@ -134,7 +134,13 @@ function DeliveryStageGuide({ lang }: { lang: Lang }) {
   );
 }
 
-function ProjectSitePreview({ project, site }: { project: ArchitectureProject; site: FeaturedProjectSite }) {
+function ProjectSitePreview({ project, site, lang }: {
+  project: ArchitectureProject;
+  site: FeaturedProjectSite;
+  lang: Lang;
+}) {
+  const screenshot = site.localizedPreviews?.[lang]?.screenshot ?? site.screenshot;
+
   return (
     <div className="a3s-site-preview" data-site={project.id} aria-hidden="true">
       <div className="a3s-site-preview__chrome">
@@ -143,7 +149,7 @@ function ProjectSitePreview({ project, site }: { project: ArchitectureProject; s
         <b />
       </div>
       <div className="a3s-site-preview__image">
-        <img alt="" height="800" loading="lazy" src={withBase(site.screenshot)} width="1280" />
+        <img alt="" height="800" loading="lazy" src={withBase(screenshot)} width="1280" />
       </div>
     </div>
   );
@@ -155,7 +161,7 @@ function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProjec
 
   return (
     <article className="a3s-site-card" data-preview-mode={site.mode} data-site={project.id}>
-      <ProjectSitePreview project={project} site={site} />
+      <ProjectSitePreview lang={lang} project={project} site={site} />
       <div className="a3s-site-card__body">
         <div className="a3s-site-card__heading">
           <div>

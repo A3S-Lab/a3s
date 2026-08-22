@@ -1,11 +1,21 @@
 import type { ProjectId } from './project-links';
 
+export type ProjectSiteCaptureLanguage = 'en' | 'zh';
+
+export interface LocalizedProjectSitePreview {
+  captureLanguage: ProjectSiteCaptureLanguage;
+  captureUrl?: string;
+  screenshot: string;
+}
+
 export interface FeaturedProjectSite {
   id: ProjectId;
   href: string;
   captureUrl: string;
+  captureLanguage?: ProjectSiteCaptureLanguage;
   displayUrl: string;
   screenshot: string;
+  localizedPreviews?: Partial<Record<'cn' | 'en', LocalizedProjectSitePreview>>;
   settleMs: number;
   mode: 'live' | 'build';
   destination: 'site' | 'repository';
@@ -86,8 +96,15 @@ export const featuredProjectSites = [
     id: 'gateway',
     href: 'https://a3s-lab.github.io/Gateway/',
     captureUrl: 'https://a3s-lab.github.io/Gateway/',
+    captureLanguage: 'zh',
     displayUrl: 'a3s-lab.github.io/Gateway',
     screenshot: '/ecosystem-sites/gateway.png',
+    localizedPreviews: {
+      en: {
+        captureLanguage: 'en',
+        screenshot: '/ecosystem-sites/gateway-en.png',
+      },
+    },
     settleMs: 3_500,
     mode: 'live',
     destination: 'site',

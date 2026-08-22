@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { architectureProjects } from './architecture';
-import { featuredProjectSites } from './project-sites';
+import { featuredProjectSites, type FeaturedProjectSite } from './project-sites';
 
 describe('featured project site previews', () => {
   test('point to known projects and committed screenshots', () => {
@@ -11,7 +11,7 @@ describe('featured project site previews', () => {
     assert.equal(featuredProjectSites.length, 8);
     assert.equal(new Set(featuredProjectSites.map((site) => site.id)).size, 8);
 
-    for (const site of featuredProjectSites) {
+    for (const site of featuredProjectSites as readonly FeaturedProjectSite[]) {
       assert.equal(projectIds.has(site.id), true);
       assert.equal(site.captureUrl.startsWith('https://'), true);
       assert.equal(
@@ -24,7 +24,24 @@ describe('featured project site previews', () => {
         true,
         `Missing screenshot for ${site.id}`,
       );
+
+      for (const preview of Object.values(site.localizedPreviews ?? {})) {
+        assert.equal(
+          existsSync(new URL(`../../public/${preview.screenshot.slice(1)}`, import.meta.url)),
+          true,
+          `Missing localized screenshot for ${site.id}`,
+        );
+      }
     }
+  });
+
+  test('matches Gateway screenshots to the homepage language', () => {
+    const gateway = featuredProjectSites.find((site) => site.id === 'gateway');
+
+    assert.equal(gateway?.captureLanguage, 'zh');
+    assert.equal(gateway?.screenshot, '/ecosystem-sites/gateway.png');
+    assert.equal(gateway?.localizedPreviews?.en.captureLanguage, 'en');
+    assert.equal(gateway?.localizedPreviews?.en.screenshot, '/ecosystem-sites/gateway-en.png');
   });
 
   test('features the Box and Power sites', () => {
@@ -87,7 +104,7 @@ describe('featured project site previews', () => {
       'utf8',
     );
     const healthCheck = captureScript.indexOf('await assertCaptureUrlIsHealthy(captureUrl)');
-    const chromeCapture = captureScript.indexOf('await captureWithChrome(captureUrl');
+    const chromeCapture = captureScript.indexOf('await captureWithChrome(');
 
     assert.notEqual(healthCheck, -1);
     assert.notEqual(chromeCapture, -1);
@@ -98,6 +115,8 @@ describe('featured project site previews', () => {
     assert.equal(captureScript.includes('await waitForPageTarget(port, chromeProcess)'), true);
     assert.equal(captureScript.includes('animation-play-state: paused'), true);
     assert.equal(captureScript.includes("document.querySelectorAll('video')"), true);
+    assert.equal(captureScript.includes("[data-language-toggle]"), true);
+    assert.equal(captureScript.includes('site.captureLanguage'), true);
     assert.equal(captureScript.includes('--virtual-time-budget'), false);
   });
 });

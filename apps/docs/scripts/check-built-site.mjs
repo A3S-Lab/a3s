@@ -12,6 +12,7 @@ const requiredImages = [
   'ecosystem-sites/use.png',
   'ecosystem-sites/ui.png',
   'ecosystem-sites/gateway.png',
+  'ecosystem-sites/gateway-en.png',
   'ecosystem-sites/power.png',
   'ecosystem-sites/box.png',
 ];
@@ -51,6 +52,14 @@ const englishHome = routeHtml.get('en/index.html');
 
 assert(chineseHome, 'Chinese homepage is missing');
 assert(englishHome, 'English homepage is missing');
+assert(
+  chineseHome.includes('/ecosystem-sites/gateway.png'),
+  'Chinese homepage does not use the Chinese Gateway preview',
+);
+assert(
+  englishHome.includes('/ecosystem-sites/gateway-en.png'),
+  'English homepage does not use the English Gateway preview',
+);
 
 for (const marker of [
   '为AI Native组织构建的AI操作系统生态',
