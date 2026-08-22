@@ -82,6 +82,11 @@ Each project defines its own animation settle time in
 images, lets the hero reach that frame, then freezes CSS, SVG, video, and GIF
 motion before writing the PNG.
 
+Projects with language-aware pages can define a capture language and localized
+preview overrides. The capture task switches the remote page through its
+`data-language-toggle` control and verifies the resulting `data-language`
+state, so each homepage locale receives the matching committed screenshot.
+
 The capture task keeps an existing committed image when a remote site is
 temporarily unavailable. Add or change destinations in
 `components/home/project-sites.ts`.
