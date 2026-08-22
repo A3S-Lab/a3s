@@ -50,7 +50,7 @@ export const projectLinks = {
   },
   power: {
     repository: 'https://github.com/A3S-Lab/Power',
-    website: '/power/',
+    website: 'https://a3s-lab.github.io/Power/',
   },
   ahp: { repository: 'https://github.com/A3S-Lab/AgentHarnessProtocol' },
   acl: { repository: 'https://github.com/A3S-Lab/ACL' },
