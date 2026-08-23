@@ -2,8 +2,8 @@
 
 This application builds the bilingual A3S ecosystem site with Rspress. It
 publishes the ecosystem homepage, the cross-platform A3S Desktop download
-page, and an interactive Workflow Designer Playground, but no product
-reference documentation, tutorials, articles, or blog.
+page, and links to the public sites owned by individual A3S products. It does
+not publish product reference documentation, tutorials, articles, or a blog.
 
 ## Routes
 
@@ -11,13 +11,16 @@ reference documentation, tutorials, articles, or blog.
 | --- | --- |
 | `/` | Chinese ecosystem homepage |
 | `/en/` | English ecosystem homepage |
-| `/playground/workflow-designer/` | Chinese Workflow Designer Playground |
-| `/en/playground/workflow-designer/` | English Workflow Designer Playground |
 | `/download/` | Chinese A3S Desktop downloads |
 | `/en/download/` | English A3S Desktop downloads |
 
 The production build runs Rspress once per language and assembles both outputs
 under `out/`. Chinese remains the unprefixed default language.
+
+Workflow authoring components, node references, React and Vue hooks, CLI
+commands, and the Agent Skill are maintained by A3S Flow at
+<https://a3s-lab.github.io/Flow/>. The ecosystem site links there instead of
+shipping a second workflow surface.
 
 The download page uses stable `releases/latest/download` links from `A3S-Lab/Desktop`. Asset names
 are owned by the Desktop repository release workflow and must change in both repositories if
@@ -27,16 +30,14 @@ packaging names change.
 
 ```text
 apps/docs/
-├── components/home/                 # Shared homepage and download-page styles
+├── components/home/          # Shared homepage and download-page styles
 ├── components/download/             # Desktop release links and localized copy
-├── components/workflow-playground/  # Interactive workflow editor
-├── public/brand/                    # A3S OS brand assets
-├── public/ecosystem-sites/          # Captured project-site previews
-├── scripts/                         # Build, validation, and screenshot tasks
-├── site/cn/                         # Chinese route entrypoints
-├── site/en/                         # English route entrypoints
-├── tests/e2e/                       # Deterministic browser regression suites
-├── theme/                           # Rspress theme extension
+├── public/brand/             # A3S OS brand assets
+├── public/ecosystem-sites/   # Captured project-site previews
+├── scripts/                  # Build, validation, and screenshot tasks
+├── site/cn/                  # Chinese route entrypoints
+├── site/en/                  # English route entrypoints
+├── theme/                    # Rspress theme extension
 └── rspress.config.ts
 ```
 
@@ -67,14 +68,6 @@ bun run test
 bun run typecheck
 bun run build
 bun run check:site
-```
-
-With the development server running on port `4173`, validate or run the
-deterministic browser flow with A3S Test:
-
-```bash
-a3s-test check tests/e2e/workflow-playground.acl --json
-a3s-test run tests/e2e/workflow-playground.acl --json
 ```
 
 Set `SITE_URL` when validating a deployment under a non-root path, for example:

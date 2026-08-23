@@ -37,7 +37,10 @@ export const projectLinks = {
   },
   runtime: { repository: 'https://github.com/A3S-Lab/Runtime' },
   'oci-runtime': { repository: 'https://github.com/A3S-Lab/OCI-Runtime' },
-  flow: { repository: 'https://github.com/A3S-Lab/Flow' },
+  flow: {
+    repository: 'https://github.com/A3S-Lab/Flow',
+    website: 'https://a3s-lab.github.io/Flow/',
+  },
   event: { repository: 'https://github.com/A3S-Lab/Event' },
   lane: { repository: 'https://github.com/A3S-Lab/Lane' },
   memory: { repository: 'https://github.com/A3S-Lab/Memory' },
