@@ -1,4 +1,4 @@
-# A3S Ecosystem Site
+# A3S Documentation Site
 
 <!-- impeccable:product-schema 1 -->
 
@@ -8,31 +8,41 @@ web
 
 ## Users
 
-Platform engineers, AI application builders, and operators evaluating the A3S
-ecosystem. They need a reliable directory that explains project ownership,
-delivery status, public sites, source repositories, and installation paths.
+Platform engineers, AI application builders, and operators evaluating or
+learning the A3S ecosystem. They need a reliable project directory, release
+and installation paths, and a way to understand a workflow by manipulating the
+same graph concepts exposed by A3S Cloud without provisioning a control plane
+first.
 
 ## Product Purpose
 
-The bilingual A3S site explains the ecosystem, publishes Desktop downloads,
-and routes visitors to each product's owned website. Success means a visitor
-can find the project responsible for a job, understand its current delivery
-boundary, and continue to the maintained product surface.
+The bilingual A3S site is the ecosystem index, Desktop download surface, and
+interactive Workflow Designer Playground. Success means a visitor can find the
+product that owns a capability, compose and simulate a representative workflow
+directly in the browser, and understand how that graph maps to A3S Cloud
+terminology.
 
 ## Positioning
 
-The root site is an index, not a second home for product interfaces. A3S Flow
-owns workflow authoring components, node documentation, React and Vue hooks,
-CLI commands, and its Agent Skill. The root site links to the Flow website and
-uses a captured preview from that deployed product surface.
+The Playground is a repository-derived teaching surface. Its node catalog and
+labels follow the current A3S Cloud semantic workflow contract instead of
+inventing a separate visual-only runtime model.
+
+A3S Flow owns reusable workflow-authoring components, framework integrations,
+CLI and Skill usage, and node reference documentation on its product site. The
+root site links to that authoritative surface while keeping the browser-local
+Playground as a safe, zero-setup learning and integration experience. It does
+not duplicate Flow's package documentation or claim to publish workflows.
 
 ## Operating Context
 
 - Rspress builds Chinese at `/` and English under `/en/`.
 - Desktop downloads live at `/download/` and `/en/download/`.
 - Product cards use committed previews captured from healthy public sites.
-- Product-specific documentation and interactive authoring stay in the
-  repository that owns the product.
+- The Playground runs entirely in the browser and requires no credentials.
+- Users work on a pannable node canvas, configure the selected step in a side
+  panel, and inspect validation, variables, execution trace, and run history.
+- Example runs are deterministic simulations and must be labeled as such.
 
 ## Capabilities and Constraints
 
@@ -40,15 +50,31 @@ uses a captured preview from that deployed product surface.
 - Every entry exposes a categorical delivery stage and a checked release or
   channel. The site never turns those categories into completion percentages.
 - Public product sites receive a primary link and a separate source link.
-- Chinese and English routes remain structurally equivalent.
-- The build rejects removed Playground, Form, blog, docs, and tutorial routes.
+- The node catalog mirrors the current Cloud semantic step kinds: Input,
+  Output, Transform, Branch, Human Decision, Execution, Agent, MCP, Model,
+  Tool, Service, Memory, and Subworkflow.
+- Graph editing includes adding, selecting, moving, connecting, duplicating,
+  deleting, undoing, redoing, zooming, fitting, and resetting the example.
+- Debugging includes graph validation, per-step runs, whole-workflow runs,
+  editable input variables, execution trace, output inspection, and local run
+  history.
+- Playground state is local and ephemeral. It does not publish revisions or
+  call production A3S Cloud APIs.
+- Public copy, source comments, route metadata, and documentation use only A3S
+  product terminology.
+- Product cards and navigation link to each independently maintained product
+  site for detailed capabilities and release documentation.
+- Existing homepage routes, locale behavior, and project-directory behavior
+  remain intact.
+- The build rejects removed Form, blog, docs, and tutorial routes.
 
 ## Brand Commitments
 
 - Use the A3S name, logo, Geist type family, cool white surfaces, restrained
-  blue accents, and green delivery state already present in `apps/docs`.
-- Keep the interface precise, readable, and operational. Product previews
-  support navigation and must not become decorative mockups.
+  blue selection state, and green execution state already present in
+  `apps/docs`.
+- Keep the interface precise, compact, and operational. Decoration must not
+  compete with the graph.
 
 ## Evidence on Hand
 
@@ -58,15 +84,24 @@ uses a captured preview from that deployed product surface.
 - `apps/docs/components/home/project-links.ts` owns product destinations.
 - `apps/docs/components/home/ecosystem-status.ts` records checked release and
   delivery-stage data.
+- `apps/cloud/docs/domain-model.md` documents the Workflow semantic step kinds
+  and standalone-to-Cloud mapping.
+- `apps/cloud/crates/control-plane/src/modules/workflow/domain/workflow_contract.rs`
+  is the executable source of truth for the closed step-kind catalog.
+- No production credentials, customer data, benchmarks, or hosted execution
+  endpoint are available to the browser Playground.
 - <https://a3s-lab.github.io/Flow/> is the owned workflow product surface.
 
 ## Product Principles
 
-1. Route every product concept to its owning repository.
+1. Route every product concept to its owning repository and maintained site.
 2. Show checked status and source instead of invented completion metrics.
-3. Use real deployed pages for previews.
-4. Keep product-specific components out of the root site.
-5. Keep Chinese and English experiences structurally equivalent.
+3. Demonstrate real A3S concepts instead of marketing abstractions.
+4. Keep graph manipulation familiar enough to learn by direct use.
+5. Make validation and runtime state visible at the point of action.
+6. Preserve a safe boundary between deterministic simulation and production
+   execution.
+7. Keep Chinese and English experiences structurally equivalent.
 
 ## Accessibility & Inclusion
 

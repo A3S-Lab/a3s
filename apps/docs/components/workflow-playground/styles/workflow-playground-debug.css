@@ -1,0 +1,320 @@
+.a3s-debug-panel {
+  position: absolute;
+  z-index: 35;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--workflow-debug-height);
+  border-top: 1px solid var(--workflow-line);
+  background: var(--workflow-surface);
+  box-shadow: 0 -12px 34px rgba(35, 55, 84, 0.1);
+  transition: right 180ms ease-out;
+}
+
+.has-right-panel .a3s-debug-panel {
+  right: var(--workflow-panel-width);
+}
+
+.a3s-debug-panel > header {
+  display: flex;
+  height: 46px;
+  padding: 0 9px 0 12px;
+  border-bottom: 1px solid var(--workflow-line);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.a3s-debug-panel > header nav {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: 2px;
+}
+
+.a3s-debug-panel > header button {
+  display: inline-flex;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--workflow-muted);
+  font-size: 10px;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.a3s-debug-panel > header button:hover,
+.a3s-debug-panel > header button.is-active {
+  background: var(--workflow-surface-muted);
+  color: var(--workflow-blue-dark);
+}
+
+.a3s-debug-panel > header button.is-active {
+  font-weight: 680;
+}
+
+.a3s-debug-panel > header svg {
+  width: 14px;
+  height: 14px;
+}
+
+.a3s-debug-trace {
+  display: grid;
+  height: calc(100% - 46px);
+  grid-template-columns: minmax(210px, 0.32fr) minmax(0, 0.68fr);
+}
+
+.a3s-debug-trace__list {
+  min-width: 0;
+  padding: 8px;
+  border-right: 1px solid var(--workflow-line);
+  overflow-y: auto;
+}
+
+.a3s-debug-trace__list > p,
+.a3s-debug-trace__detail > p,
+.a3s-debug-history > p {
+  margin: 16px;
+  color: var(--workflow-muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.a3s-debug-trace__list > button {
+  display: grid;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  align-items: center;
+  gap: 8px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  text-align: left;
+  cursor: pointer;
+}
+
+.a3s-debug-trace__list > button:hover,
+.a3s-debug-trace__list > button.is-active {
+  background: var(--workflow-blue-soft);
+}
+
+.a3s-debug-trace__list > button > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--workflow-green);
+}
+
+.a3s-debug-trace__list > button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.a3s-debug-trace__list strong {
+  overflow: hidden;
+  color: var(--workflow-text);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.a3s-debug-trace__list small {
+  color: var(--workflow-faint);
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+}
+
+.a3s-debug-trace__list time {
+  color: var(--workflow-faint);
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.a3s-debug-trace__running {
+  display: flex;
+  min-height: 40px;
+  padding: 0 10px;
+  align-items: center;
+  gap: 9px;
+  color: var(--workflow-green);
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.a3s-debug-trace__running i {
+  width: 9px;
+  height: 9px;
+  border: 2px solid #8acbb2;
+  border-top-color: var(--workflow-green);
+  border-radius: 50%;
+}
+
+.a3s-debug-trace__detail {
+  min-width: 0;
+  padding: 12px;
+  overflow: auto;
+  background: #fbfcfe;
+}
+
+.a3s-debug-trace__detail > div:first-child {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.a3s-debug-trace__detail > div:first-child strong {
+  font-size: 11px;
+}
+
+.a3s-debug-trace__detail > div:first-child span {
+  color: var(--workflow-green);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.a3s-debug-json-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.a3s-debug-json-grid section {
+  min-width: 0;
+}
+
+.a3s-debug-json-grid h4 {
+  margin: 0 0 6px;
+  color: var(--workflow-faint);
+  font-size: 9px;
+  font-weight: 640;
+}
+
+.a3s-debug-json-grid pre {
+  height: 160px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--workflow-line);
+  border-radius: 8px;
+  background: #121a29;
+  color: #dce7f7;
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.a3s-debug-variables {
+  height: calc(100% - 46px);
+  padding: 10px 14px;
+  overflow-y: auto;
+}
+
+.a3s-debug-variables label {
+  display: grid;
+  min-height: 47px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--workflow-line);
+  align-items: center;
+  gap: 16px;
+  grid-template-columns: minmax(160px, 0.32fr) minmax(0, 0.68fr);
+}
+
+.a3s-debug-variables label > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.a3s-debug-variables code {
+  color: var(--workflow-blue-dark);
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+}
+
+.a3s-debug-variables small {
+  margin-top: 2px;
+  color: var(--workflow-faint);
+  font-size: 9px;
+}
+
+.a3s-debug-variables input {
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--workflow-line);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--workflow-surface);
+  color: var(--workflow-text);
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+}
+
+.a3s-debug-variables input:focus {
+  border-color: var(--workflow-blue);
+  box-shadow: 0 0 0 3px rgba(18, 100, 255, 0.1);
+}
+
+.a3s-debug-history {
+  height: calc(100% - 46px);
+  padding: 10px 14px;
+  overflow-y: auto;
+}
+
+.a3s-debug-history article {
+  display: grid;
+  min-height: 48px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--workflow-line);
+  align-items: center;
+  gap: 10px;
+  grid-template-columns: 18px minmax(150px, 1fr) auto auto;
+}
+
+.a3s-debug-history article > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--workflow-green);
+}
+
+.a3s-debug-history article > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.a3s-debug-history strong {
+  color: var(--workflow-text);
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+}
+
+.a3s-debug-history time,
+.a3s-debug-history article > span {
+  color: var(--workflow-faint);
+  font-size: 9px;
+}
+
+.a3s-debug-history b {
+  color: var(--workflow-muted);
+  font-family: var(--workflow-mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .a3s-debug-trace__running i {
+    animation: a3s-workflow-spin 700ms linear infinite;
+  }
+}
+
+@keyframes a3s-workflow-spin {
+  to { transform: rotate(360deg); }
+}

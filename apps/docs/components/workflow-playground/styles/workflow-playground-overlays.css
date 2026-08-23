@@ -1,0 +1,202 @@
+.a3s-validation-popover {
+  position: fixed;
+  z-index: 80;
+  top: 76px;
+  right: 14px;
+  width: min(390px, calc(100vw - 28px));
+  padding: 13px;
+  border: 1px solid var(--workflow-line-strong);
+  border-radius: 11px;
+  background: var(--workflow-surface);
+  box-shadow: 0 18px 46px rgba(35, 55, 84, 0.18);
+}
+
+.a3s-validation-popover > header {
+  display: grid;
+  align-items: start;
+  gap: 10px;
+  grid-template-columns: 21px minmax(0, 1fr) 28px;
+}
+
+.a3s-validation-popover > header > svg {
+  width: 19px;
+  height: 19px;
+  color: var(--workflow-green);
+}
+
+.a3s-validation-popover:has(ul) > header > svg {
+  color: var(--workflow-amber);
+}
+
+.a3s-validation-popover strong {
+  color: var(--workflow-text);
+  font-size: 11px;
+  font-weight: 680;
+}
+
+.a3s-validation-popover p {
+  margin: 3px 0 0;
+  color: var(--workflow-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.a3s-validation-popover button {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  color: var(--workflow-muted);
+  cursor: pointer;
+}
+
+.a3s-validation-popover button:hover {
+  background: var(--workflow-surface-muted);
+}
+
+.a3s-validation-popover button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.a3s-validation-popover ul {
+  margin: 11px 0 0 31px;
+  padding-left: 14px;
+  color: var(--workflow-red);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.a3s-workflow-dialog-backdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: flex;
+  padding: 20px;
+  background: rgba(16, 24, 39, 0.34);
+  align-items: center;
+  justify-content: center;
+}
+
+.a3s-workflow-dialog {
+  position: static;
+  display: block;
+  width: min(390px, 100%);
+  margin: 0;
+  padding: 22px;
+  border: 1px solid var(--workflow-line-strong);
+  border-radius: 12px;
+  background: var(--workflow-surface);
+  box-shadow: 0 22px 60px rgba(25, 42, 69, 0.24);
+  color: var(--workflow-text);
+}
+
+.a3s-workflow-dialog > svg {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--workflow-red-soft);
+  color: var(--workflow-red);
+}
+
+.a3s-workflow-dialog h2 {
+  margin: 16px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.a3s-workflow-dialog p {
+  margin: 7px 0 0;
+  color: var(--workflow-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.a3s-workflow-dialog > div {
+  display: flex;
+  margin-top: 21px;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.a3s-workflow-dialog button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--workflow-line);
+  border-radius: 8px;
+  background: var(--workflow-surface);
+  color: var(--workflow-text);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.a3s-workflow-dialog button:hover {
+  background: var(--workflow-surface-muted);
+}
+
+.a3s-workflow-dialog button.is-danger {
+  border-color: var(--workflow-red);
+  background: var(--workflow-red);
+  color: #ffffff;
+}
+
+.a3s-workflow-toast {
+  position: fixed;
+  z-index: 100;
+  bottom: 18px;
+  left: 50%;
+  display: flex;
+  min-height: 42px;
+  max-width: min(480px, calc(100vw - 32px));
+  padding: 0 14px;
+  border: 1px solid #a7d7c5;
+  border-radius: 9px;
+  background: var(--workflow-green-soft);
+  box-shadow: 0 14px 40px rgba(24, 76, 57, 0.16);
+  align-items: center;
+  gap: 8px;
+  color: var(--workflow-green);
+  font-size: 10px;
+  font-weight: 650;
+  transform: translateX(-50%);
+}
+
+.a3s-workflow-toast svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .a3s-validation-popover,
+  .a3s-workflow-toast,
+  .a3s-workflow-dialog {
+    animation: a3s-workflow-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes a3s-workflow-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.a3s-workflow-toast {
+  transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .a3s-workflow-toast {
+    animation-name: a3s-workflow-toast-enter;
+  }
+}
+
+@keyframes a3s-workflow-toast-enter {
+  from { opacity: 0; transform: translate(-50%, 7px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}

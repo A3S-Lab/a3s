@@ -44,6 +44,8 @@ async function collectFiles(directory) {
 const routeFiles = [
   'index.html',
   'en/index.html',
+  'playground/workflow-designer.html',
+  'en/playground/workflow-designer.html',
   'download/index.html',
   'en/download/index.html',
 ];
@@ -54,11 +56,15 @@ const routeEntries = await Promise.all(
 const routeHtml = new Map(routeEntries);
 const chineseHome = routeHtml.get('index.html');
 const englishHome = routeHtml.get('en/index.html');
+const chineseWorkflow = routeHtml.get('playground/workflow-designer.html');
+const englishWorkflow = routeHtml.get('en/playground/workflow-designer.html');
 const chineseDownload = routeHtml.get('download/index.html');
 const englishDownload = routeHtml.get('en/download/index.html');
 
 assert(chineseHome, 'Chinese homepage is missing');
 assert(englishHome, 'English homepage is missing');
+assert(chineseWorkflow, 'Chinese Workflow Designer Playground is missing');
+assert(englishWorkflow, 'English Workflow Designer Playground is missing');
 assert(chineseDownload, 'Chinese Desktop download page is missing');
 assert(englishDownload, 'English Desktop download page is missing');
 assert(
@@ -122,6 +128,26 @@ for (const marker of [
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
 
+for (const marker of [
+  '工作流设计器 Playground',
+  '客户支持分流',
+  '本地模拟',
+  '添加节点',
+  '测试运行',
+]) {
+  assert(chineseWorkflow.includes(marker), `Chinese Workflow Playground is missing: ${marker}`);
+}
+
+for (const marker of [
+  'Workflow Designer Playground',
+  'Customer support triage',
+  'Local simulation',
+  'Add node',
+  'Test run',
+]) {
+  assert(englishWorkflow.includes(marker), `English Workflow Playground is missing: ${marker}`);
+}
+
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
   const flowLinkCount = homepage.split(`href="${flowHref}"`).length - 1;
@@ -167,11 +193,6 @@ assert(
   'Static build still contains the removed Form site',
 );
 
-assert(
-  !relativeFiles.some((file) => /(^|\/)playground(\/|$)/.test(file)),
-  'Static build still contains a standalone Playground route',
-);
-
 for (const image of requiredImages) {
   assert(relativeFiles.includes(image), `Static build is missing image: ${image}`);
 }
@@ -207,6 +228,10 @@ for (const selector of [
   '.a3s-directory-card',
   '.a3s-delivery-guide',
   '.a3s-project-delivery',
+  '.a3s-workflow-playground',
+  '.a3s-workflow-node',
+  '.a3s-node-inspector',
+  '.a3s-debug-panel',
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
@@ -223,4 +248,4 @@ if (process.env.SITE_URL) {
   assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
 }
 
-console.log(`Validated 2 homepages, 2 Desktop download pages, and ${files.length} exported files.`);
+console.log(`Validated 2 homepages, 2 Desktop download pages, 2 Workflow Playgrounds, and ${files.length} exported files.`);
