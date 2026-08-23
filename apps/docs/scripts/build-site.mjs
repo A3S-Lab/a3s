@@ -37,4 +37,10 @@ await cp(path.join(buildRoot, 'cn'), output, { recursive: true });
 await mkdir(path.join(output, 'en'), { recursive: true });
 await cp(path.join(buildRoot, 'en'), path.join(output, 'en'), { recursive: true });
 
+for (const route of ['download', 'en/download']) {
+  const routeDirectory = path.join(output, route);
+  await mkdir(routeDirectory, { recursive: true });
+  await cp(`${routeDirectory}.html`, path.join(routeDirectory, 'index.html'));
+}
+
 console.log('Assembled Chinese and English Rspress builds in out/.');
