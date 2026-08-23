@@ -17,8 +17,8 @@ without credentials or a control-plane deployment.
 | --- | --- |
 | `/` | Chinese ecosystem homepage |
 | `/en/` | English ecosystem homepage |
-| `/playground/workflow-designer/` | Chinese Workflow Designer Playground |
-| `/en/playground/workflow-designer/` | English Workflow Designer Playground |
+| `/playground/workflow-designer` | Chinese Workflow Designer Playground |
+| `/en/playground/workflow-designer` | English Workflow Designer Playground |
 | `/download/` | Chinese A3S Desktop downloads |
 | `/en/download/` | English A3S Desktop downloads |
 

@@ -88,7 +88,7 @@ export default defineConfig({
     lastUpdated: true,
     nav: [
       { text: copy[locale].ecosystem, link: '/' },
-      { text: copy[locale].playground, link: '/playground/workflow-designer/' },
+      { text: copy[locale].playground, link: '/playground/workflow-designer' },
       { text: copy[locale].flow, link: 'https://a3s-lab.github.io/Flow/' },
       {
         text: copy[locale].alternate,

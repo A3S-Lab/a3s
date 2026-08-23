@@ -68,7 +68,7 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
   const copy = workflowCopy[lang];
   const homeHref = withBase('/');
   const rootHref = lang === 'en' ? homeHref.replace(/en\/$/, '') : homeHref;
-  const languageHref = lang === 'cn' ? `${rootHref}en/playground/workflow-designer/` : `${rootHref}playground/workflow-designer/`;
+  const languageHref = lang === 'cn' ? `${rootHref}en/playground/workflow-designer` : `${rootHref}playground/workflow-designer`;
   const storageKey = `a3s-workflow-playground:${lang}`;
   const {
     graph,

@@ -7,7 +7,7 @@ suite "docs-workflow-playground" {
         timeout_ms = 120000
 
         navigate "open-playground" {
-            url = "http://127.0.0.1:4173/en/playground/workflow-designer/"
+            url = "http://127.0.0.1:4173/en/playground/workflow-designer"
         }
 
         viewport "desktop" {
@@ -113,7 +113,7 @@ suite "docs-workflow-playground" {
         }
 
         navigate "reload-mobile" {
-            url = "http://127.0.0.1:4173/en/playground/workflow-designer/?viewport=mobile"
+            url = "http://127.0.0.1:4173/en/playground/workflow-designer?viewport=mobile"
         }
 
         wait "mobile-workflow-ready" {
