@@ -19,7 +19,8 @@
   <a href="#one-owner-per-concern">Architecture</a> ·
   <a href="#product-surfaces">Products</a> ·
   <a href="#repository-map">Repository map</a> ·
-  <a href="https://a3s-lab.github.io/a3s/">Website</a>
+  <a href="https://a3s-lab.github.io/a3s/">Website</a> ·
+  <a href="https://a3s-lab.github.io/a3s/download/">Desktop download</a>
 </p>
 
 ---
@@ -122,6 +123,7 @@ release cadence, and detailed documentation.
 | Surface | Start here | Boundary |
 | --- | --- | --- |
 | **Code** | `a3s code` | Bundled agent engine and terminal host |
+| **Desktop** | [Download](https://a3s-lab.github.io/a3s/download/) · [Source](apps/desktop/) | Native React workbench powered by the local A3S Code kernel; Office is available while Code and Design keep explicit preview boundaries |
 | **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI surfaces |
 | **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
 | **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, verified artifact provisioning, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
@@ -205,7 +207,7 @@ root-owned.
 
 ```text
 a3s/
-├── apps/       cloud control plane, docs, and Windhole
+├── apps/       Cloud, Desktop, docs, and Windhole applications
 ├── packages/   Office, Science, and UI
 ├── crates/     product hosts, capabilities, runtimes, services, and SDKs
 ├── compat/     exact cross-project revisions and protocol locks
@@ -215,7 +217,7 @@ a3s/
 
 | Group | Projects |
 | --- | --- |
-| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
+| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Desktop](apps/desktop/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |

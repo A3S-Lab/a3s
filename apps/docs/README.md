@@ -1,8 +1,9 @@
 # A3S Site
 
-This application builds the bilingual A3S ecosystem homepage and an
-interactive Workflow Designer Playground with Rspress. It does not publish
-product reference documentation, tutorials, or articles.
+This application builds the bilingual A3S ecosystem site with Rspress. It
+publishes the ecosystem homepage, the cross-platform A3S Desktop download
+page, and an interactive Workflow Designer Playground, but no product
+reference documentation, tutorials, articles, or blog.
 
 ## Routes
 
@@ -12,21 +13,28 @@ product reference documentation, tutorials, or articles.
 | `/en/` | English ecosystem homepage |
 | `/playground/workflow-designer/` | Chinese Workflow Designer Playground |
 | `/en/playground/workflow-designer/` | English Workflow Designer Playground |
+| `/download/` | Chinese A3S Desktop downloads |
+| `/en/download/` | English A3S Desktop downloads |
 
 The production build runs Rspress once per language and assembles both outputs
 under `out/`. Chinese remains the unprefixed default language.
+
+The download page uses stable `releases/latest/download` links from `A3S-Lab/Desktop`. Asset names
+are owned by the Desktop repository release workflow and must change in both repositories if
+packaging names change.
 
 ## Project layout
 
 ```text
 apps/docs/
-├── components/home/                 # Homepage UI and ecosystem data
+├── components/home/                 # Shared homepage and download-page styles
+├── components/download/             # Desktop release links and localized copy
 ├── components/workflow-playground/  # Interactive workflow editor
 ├── public/brand/                    # A3S OS brand assets
 ├── public/ecosystem-sites/          # Captured project-site previews
 ├── scripts/                         # Build, validation, and screenshot tasks
-├── site/cn/                         # Chinese homepage entrypoint
-├── site/en/                         # English homepage entrypoint
+├── site/cn/                         # Chinese route entrypoints
+├── site/en/                         # English route entrypoints
 ├── tests/e2e/                       # Deterministic browser regression suites
 ├── theme/                           # Rspress theme extension
 └── rspress.config.ts
