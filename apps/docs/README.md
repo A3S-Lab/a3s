@@ -1,7 +1,8 @@
 # A3S Site
 
-This application builds the bilingual A3S ecosystem homepage with Rspress. It
-does not publish product documentation, tutorials, or articles.
+This application builds the bilingual A3S ecosystem site with Rspress. It publishes the ecosystem
+homepage and the cross-platform A3S Desktop download page, but no product documentation, tutorials,
+articles, or blog.
 
 ## Routes
 
@@ -9,20 +10,27 @@ does not publish product documentation, tutorials, or articles.
 | --- | --- |
 | `/` | Chinese ecosystem homepage |
 | `/en/` | English ecosystem homepage |
+| `/download/` | Chinese A3S Desktop downloads |
+| `/en/download/` | English A3S Desktop downloads |
 
 The production build runs Rspress once per language and assembles both outputs
 under `out/`. Chinese remains the unprefixed default language.
+
+The download page uses stable `releases/latest/download` links from `A3S-Lab/Desktop`. Asset names
+are owned by the Desktop repository release workflow and must change in both repositories if
+packaging names change.
 
 ## Project layout
 
 ```text
 apps/docs/
-├── components/home/          # Homepage UI and ecosystem data
+├── components/home/          # Shared site UI, homepage, and download-page styles
+├── components/download/      # Desktop release links and localized download copy
 ├── public/brand/             # A3S OS brand assets
 ├── public/ecosystem-sites/   # Captured project-site previews
 ├── scripts/                  # Build, validation, and screenshot tasks
-├── site/cn/                  # Chinese homepage entrypoint
-├── site/en/                  # English homepage entrypoint
+├── site/cn/                  # Chinese route entrypoints
+├── site/en/                  # English route entrypoints
 ├── theme/                    # Rspress theme extension
 └── rspress.config.ts
 ```

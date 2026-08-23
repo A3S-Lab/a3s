@@ -41,6 +41,8 @@ async function collectFiles(directory) {
 const routeFiles = [
   'index.html',
   'en/index.html',
+  'download/index.html',
+  'en/download/index.html',
 ];
 
 const routeEntries = await Promise.all(
@@ -49,9 +51,13 @@ const routeEntries = await Promise.all(
 const routeHtml = new Map(routeEntries);
 const chineseHome = routeHtml.get('index.html');
 const englishHome = routeHtml.get('en/index.html');
+const chineseDownload = routeHtml.get('download/index.html');
+const englishDownload = routeHtml.get('en/download/index.html');
 
 assert(chineseHome, 'Chinese homepage is missing');
 assert(englishHome, 'English homepage is missing');
+assert(chineseDownload, 'Chinese Desktop download page is missing');
+assert(englishDownload, 'English Desktop download page is missing');
 assert(
   chineseHome.includes('/ecosystem-sites/gateway.png'),
   'Chinese homepage does not use the Chinese Gateway preview',
@@ -60,6 +66,24 @@ assert(
   englishHome.includes('/ecosystem-sites/gateway-en.png'),
   'English homepage does not use the English Gateway preview',
 );
+
+const releaseBase = 'https://github.com/A3S-Lab/Desktop/releases/latest/download';
+for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDownload, 'English']]) {
+  for (const asset of ['A3S-macos.zip', 'A3S-windows.zip', 'A3S-linux.tar.gz', 'SHA256SUMS.txt']) {
+    assert(
+      downloadPage.includes(`${releaseBase}/${asset}`),
+      `${locale} download page is missing ${asset}`,
+    );
+  }
+  assert(
+    downloadPage.includes('https://github.com/A3S-Lab/Desktop/releases'),
+    `${locale} download page is missing release history`,
+  );
+  assert(
+    downloadPage.includes('https://github.com/A3S-Lab/Desktop'),
+    `${locale} download page is missing source`,
+  );
+}
 
 for (const marker of [
   '为AI Native组织构建的AI操作系统生态',
@@ -179,4 +203,4 @@ if (process.env.SITE_URL) {
   assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
 }
 
-console.log(`Validated 2 homepages and ${files.length} exported files.`);
+console.log(`Validated 2 homepages, 2 Desktop download pages, and ${files.length} exported files.`);
