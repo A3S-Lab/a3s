@@ -18,6 +18,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@phosphor-icons/react": "^2.1.10",
     "@rspress/core": "^2.0.17",
+    "@xyflow/react": "^12.11.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

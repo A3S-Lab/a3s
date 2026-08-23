@@ -12,6 +12,7 @@ export function HomeNav({ lang }: { lang: Lang }) {
   const anchorLinks = [
     { label: tr.ecosystem, href: '#ecosystem' },
     { label: tr.principles, href: '#principles' },
+    { label: tr.playground, href: withBase('/playground/workflow-designer/') },
   ];
 
   return (

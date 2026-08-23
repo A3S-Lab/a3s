@@ -1,0 +1,132 @@
+suite "docs-workflow-playground" {
+    version = 1
+
+    scenario "edit-debug-and-run" {
+        name = "Edit and simulate a workflow from the documentation Playground"
+        surface = "web"
+        timeout_ms = 30000
+
+        navigate "open-playground" {
+            url = "http://127.0.0.1:4173/en/playground/workflow-designer/"
+        }
+
+        viewport "desktop" {
+            width = 1440
+            height = 900
+            scale = 1
+        }
+
+        wait "workflow-ready" {
+            visible = testid("workflow-playground")
+        }
+
+        expect "starter-workflow" {
+            text = "Customer support triage"
+        }
+
+        click "open-node-library" {
+            target = css(".a3s-workflow-rail [aria-label='Add node']")
+        }
+
+        wait "node-library-open" {
+            visible = testid("node-library")
+        }
+
+        click "add-transform" {
+            target = css("[data-node-kind='transform']")
+        }
+
+        wait "inspector-open" {
+            visible = testid("node-inspector")
+        }
+
+        fill "rename-transform" {
+            target = label("Name")
+            value = "Prepare context"
+        }
+
+        expect "renamed-node" {
+            text = "Prepare context"
+        }
+
+        click "run-transform" {
+            target = role("button", "Run this step")
+        }
+
+        wait "debug-open" {
+            visible = testid("debug-panel")
+        }
+
+        wait "step-succeeded" {
+            text = "Succeeded"
+        }
+
+        click "reset-example" {
+            target = role("button", "Reset example")
+        }
+
+        wait "reset-dialog" {
+            visible = css(".a3s-workflow-dialog")
+        }
+
+        click "confirm-reset" {
+            target = role("button", "Reset workflow")
+        }
+
+        click "open-test-run" {
+            target = role("button", "Test run")
+        }
+
+        wait "run-drawer-open" {
+            visible = testid("run-drawer")
+        }
+
+        click "start-run" {
+            target = role("button", "Start run")
+        }
+
+        wait "workflow-succeeded" {
+            text = "Succeeded"
+        }
+
+        click "open-history" {
+            target = css(".a3s-debug-panel nav button:nth-child(3)")
+        }
+
+        expect "history-recorded" {
+            text = "run-001"
+        }
+
+        screenshot "desktop-result" {
+            path = "screenshots/workflow-desktop.png"
+        }
+
+        page_errors "desktop-errors" {
+            path = "evidence/desktop-errors.json"
+            clear = true
+        }
+
+        viewport "mobile" {
+            width = 390
+            height = 844
+            scale = 1
+        }
+
+        navigate "reload-mobile" {
+            url = "http://127.0.0.1:4173/en/playground/workflow-designer/?viewport=mobile"
+        }
+
+        wait "mobile-workflow-ready" {
+            visible = testid("workflow-playground")
+        }
+
+        screenshot "mobile-result" {
+            path = "screenshots/workflow-mobile.png"
+        }
+
+        page_errors "mobile-errors" {
+            path = "evidence/mobile-errors.json"
+            clear = false
+        }
+    }
+}

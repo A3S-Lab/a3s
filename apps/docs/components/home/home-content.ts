@@ -11,6 +11,7 @@ export const homeContent = {
     nav: {
       ecosystem: 'Ecosystem',
       principles: 'Principles',
+      playground: 'Workflow Playground',
       language: '中文',
       menu: 'Open navigation',
     },
@@ -82,6 +83,7 @@ export const homeContent = {
       community: 'Community',
       ecosystem: 'Project directory',
       quickstart: 'Quick start',
+      playground: 'Workflow Playground',
       github: 'GitHub',
       discord: 'Discord',
       license: 'MIT licensed · Source available on GitHub',
@@ -91,6 +93,7 @@ export const homeContent = {
     nav: {
       ecosystem: '生态',
       principles: '原则',
+      playground: '工作流 Playground',
       language: 'EN',
       menu: '打开导航',
     },
@@ -162,6 +165,7 @@ export const homeContent = {
       community: '社区',
       ecosystem: '项目目录',
       quickstart: '快速开始',
+      playground: '工作流 Playground',
       github: 'GitHub',
       discord: 'Discord',
       license: 'MIT 协议 · 代码公开在 GitHub',
