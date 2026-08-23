@@ -166,16 +166,18 @@ release cadence, and detailed documentation.
   accelerator backend, or speculative adapter is complete.
 - Ash and Parser are early-stage, and Office is pre-1.0.
 - The pinned OCI Runtime revision uses schema-v9 containerd metadata, recovers
-  committed init Start, exec Start, and init Kill effects from the Runtime's
-  exact-generation state after shim replacement, and replays pending Pause,
-  Resume, and body-complete Update controls with their original operation
-  identities. Exec Start adopts the one existing process and PID without
-  redispatch, while init Kill preserves init and exec PIDs and proves
-  `all=true` fanout plus `all=false` isolation. Three consecutive same-Host
-  Ubuntu arm64/containerd 2.2.2 matrices retain all six replacement gates with
-  zero matching runtime residue. Native Linux remains experimental; broader
-  containerd-version, published-artifact, and cross-driver release
-  qualification remain open.
+  committed init Start, exec Start, live init Kill, and terminal init Kill
+  effects from the Runtime's exact-generation state after shim replacement,
+  and replays pending Pause, Resume, and body-complete Update controls with
+  their original operation identities. Exec Start adopts the one existing
+  process and PID without redispatch. Live init Kill preserves init and exec
+  PIDs and proves `all=true` fanout plus `all=false` isolation; terminal init
+  Kill imports the Runtime's durable exit with one bounded Wait before signal
+  replay and therefore avoids a second Kill dispatch. Three consecutive
+  same-Host Ubuntu arm64/containerd 2.2.2 matrices retain all seven replacement
+  gates with zero matching live runtime residue. Native Linux remains
+  experimental; broader containerd-version, published-artifact, and
+  cross-driver release qualification remain open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
