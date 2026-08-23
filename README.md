@@ -164,12 +164,14 @@ release cadence, and detailed documentation.
   accelerator backend, or speculative adapter is complete.
 - Ash and Parser are early-stage, and Office is pre-1.0.
 - The pinned OCI Runtime revision uses schema-v9 containerd metadata, recovers
-  a committed init Start from the Runtime's exact-generation state after shim
-  replacement, and replays persisted `Starting` exec work plus pending Pause,
-  Resume, and body-complete Update controls with their original operation
-  identities. Native Linux remains experimental; the real-containerd Start
-  replacement gate still needs fresh-host evidence, and broader cross-driver
-  release qualification remains open.
+  committed init Start and init Kill effects from the Runtime's exact-generation
+  state after shim replacement, and replays persisted `Starting` exec work plus
+  pending Pause, Resume, and body-complete Update controls with their original
+  operation identities. The init-Kill gate preserves init and exec PIDs while
+  proving `all=true` fanout and `all=false` isolation. Native Linux remains
+  experimental; the real-containerd Start, init-Kill, and control replacement
+  gates still need fresh-host evidence, and broader cross-driver release
+  qualification remains open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
