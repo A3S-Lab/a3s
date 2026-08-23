@@ -8,8 +8,8 @@ describe('featured project site previews', () => {
   test('point to known projects and committed screenshots', () => {
     const projectIds = new Set(architectureProjects.map((project) => project.id));
 
-    assert.equal(featuredProjectSites.length, 8);
-    assert.equal(new Set(featuredProjectSites.map((site) => site.id)).size, 8);
+    assert.equal(featuredProjectSites.length, 9);
+    assert.equal(new Set(featuredProjectSites.map((site) => site.id)).size, 9);
 
     for (const site of featuredProjectSites as readonly FeaturedProjectSite[]) {
       assert.equal(projectIds.has(site.id), true);
@@ -44,12 +44,19 @@ describe('featured project site previews', () => {
     assert.equal(gateway?.localizedPreviews?.en.screenshot, '/ecosystem-sites/gateway-en.png');
   });
 
-  test('features the Box and Power sites', () => {
+  test('features the Box, Flow, and Power sites', () => {
     const box = featuredProjectSites.find((site) => site.id === 'box');
+    const flow = featuredProjectSites.find((site) => site.id === 'flow');
     const power = featuredProjectSites.find((site) => site.id === 'power');
 
     assert.equal(box?.href, 'https://a3s-lab.github.io/Box/');
     assert.equal(box?.mode, 'live');
+    assert.equal(flow?.captureUrl, 'https://a3s-lab.github.io/Flow/');
+    assert.equal(flow?.href, 'https://a3s-lab.github.io/Flow/');
+    assert.equal(flow?.mode, 'live');
+    assert.equal(flow?.destination, 'site');
+    assert.equal(flow?.localizedPreviews?.en?.captureUrl, 'https://a3s-lab.github.io/Flow/en/');
+    assert.equal(flow?.localizedPreviews?.en?.screenshot, '/ecosystem-sites/flow-en.png');
     assert.equal(power?.captureUrl, 'https://a3s-lab.github.io/Power/');
     assert.equal(power?.href, 'https://a3s-lab.github.io/Power/');
     assert.equal(power?.mode, 'live');
@@ -62,6 +69,7 @@ describe('featured project site previews', () => {
 
     assert.equal((settleTimes.get('cloud') ?? 0) >= 10_000, true);
     assert.equal((settleTimes.get('code') ?? 0) >= 12_000, true);
+    assert.equal((settleTimes.get('flow') ?? 0) >= 1_500, true);
     assert.equal((settleTimes.get('box') ?? 0) >= 4_000, true);
     assert.equal((settleTimes.get('power') ?? 0) >= 5_000, true);
   });
@@ -79,7 +87,7 @@ describe('featured project site previews', () => {
     assert.equal(fontInstall < screenshotCapture, true, 'CJK fonts must be installed before screenshots are captured');
   });
 
-  test('captures live project sites without publishing a nested Form playground', () => {
+  test('captures public project sites without building a nested product surface', () => {
     const workflow = readFileSync(
       new URL('../../../../.github/workflows/site.yml', import.meta.url),
       'utf8',

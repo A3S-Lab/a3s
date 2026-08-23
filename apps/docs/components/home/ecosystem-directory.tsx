@@ -38,9 +38,9 @@ const categoryIcons: Record<ArchitectureCategory, Icon> = {
 
 const copy = {
   cn: {
-    liveEyebrow: '公开项目页面 / 8',
+    liveEyebrow: '公开项目页面 / 9',
     liveTitle: '看看已经可以访问的项目页面。',
-    liveDescription: '这些入口包括产品页面和交互式 Playground。预览截图取自线上页面或当前构建。',
+    liveDescription: '这些入口由各项目自己维护，预览截图取自正式站点或当前构建。',
     live: '在线',
     buildPreview: '构建预览',
     openSite: '打开页面',
@@ -65,9 +65,9 @@ const copy = {
     },
   },
   en: {
-    liveEyebrow: '8 PROJECT SITES',
+    liveEyebrow: '9 PROJECT SITES',
     liveTitle: 'Open the projects that already have a public page.',
-    liveDescription: 'These links go to product pages and interactive playgrounds. Previews come from the live page or its current build.',
+    liveDescription: 'Each destination is maintained by its product repository. Previews come from the live site or its current build.',
     live: 'ONLINE',
     buildPreview: 'BUILD PREVIEW',
     openSite: 'Open site',

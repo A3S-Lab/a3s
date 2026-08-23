@@ -3,7 +3,7 @@ import type { ProjectId } from './project-links';
 export type ProjectSiteCaptureLanguage = 'en' | 'zh';
 
 export interface LocalizedProjectSitePreview {
-  captureLanguage: ProjectSiteCaptureLanguage;
+  captureLanguage?: ProjectSiteCaptureLanguage;
   captureUrl?: string;
   screenshot: string;
 }
@@ -39,6 +39,22 @@ export const featuredProjectSites = [
     displayUrl: 'a3s-lab.github.io/Code',
     screenshot: '/ecosystem-sites/code.png',
     settleMs: 14_000,
+    mode: 'live',
+    destination: 'site',
+  },
+  {
+    id: 'flow',
+    href: 'https://a3s-lab.github.io/Flow/',
+    captureUrl: 'https://a3s-lab.github.io/Flow/',
+    displayUrl: 'a3s-lab.github.io/Flow',
+    screenshot: '/ecosystem-sites/flow.png',
+    localizedPreviews: {
+      en: {
+        captureUrl: 'https://a3s-lab.github.io/Flow/en/',
+        screenshot: '/ecosystem-sites/flow-en.png',
+      },
+    },
+    settleMs: 1_800,
     mode: 'live',
     destination: 'site',
   },
