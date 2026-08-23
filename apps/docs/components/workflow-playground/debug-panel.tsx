@@ -94,7 +94,7 @@ export function DebugPanel({
                 }}
               >
                 <CheckCircle aria-hidden="true" weight="fill" />
-                <span><strong>{step.label}</strong><small>{step.kind}</small></span>
+                <span><strong>{step.label}</strong><small>{step.profile}</small></span>
                 <time>{step.durationMs} ms</time>
               </button>
             ))}
@@ -130,6 +130,12 @@ export function DebugPanel({
               />
             </label>
           ))}
+          {trace.flatMap((step) => Object.entries(step.output).map(([key, value]) => (
+            <label className="is-readonly" key={`${step.nodeId}.${key}`}>
+              <span><code>{step.nodeId}.{key}</code><small>{Array.isArray(value) ? 'array' : typeof value}</small></span>
+              <input readOnly value={typeof value === 'string' ? value : JSON.stringify(value)} aria-label={`${step.label}: ${key}`} />
+            </label>
+          )))}
         </div>
       ) : null}
 

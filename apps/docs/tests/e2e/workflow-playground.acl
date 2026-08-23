@@ -24,6 +24,18 @@ suite "docs-workflow-playground" {
             text = "Customer support triage"
         }
 
+        wait "pan-mode-active" {
+            visible = css("[data-testid='workflow-playground'][data-canvas-mode='pan']")
+        }
+
+        click "select-mode" {
+            target = role("button", "Select and move nodes")
+        }
+
+        wait "select-mode-active" {
+            visible = css("[data-testid='workflow-playground'][data-canvas-mode='select']")
+        }
+
         click "open-node-library" {
             target = css(".a3s-workflow-rail [aria-label='Add node']")
         }
@@ -32,15 +44,27 @@ suite "docs-workflow-playground" {
             visible = css("[data-testid='node-library']")
         }
 
-        click "add-transform" {
-            target = css("[data-node-kind='transform']")
+        click "open-tools" {
+            target = role("button", "Tools")
+        }
+
+        expect "tool-profile" {
+            text = "Apply an admitted A3S Use capability"
+        }
+
+        click "open-nodes" {
+            target = role("button", "Nodes")
+        }
+
+        click "add-template" {
+            target = css("[data-node-profile='template']")
         }
 
         wait "inspector-open" {
             visible = css("[data-testid='node-inspector']")
         }
 
-        fill "rename-transform" {
+        fill "rename-template" {
             target = label("Name")
             value = "Prepare context"
         }
@@ -49,7 +73,7 @@ suite "docs-workflow-playground" {
             text = "Prepare context"
         }
 
-        click "run-transform" {
+        click "run-template" {
             target = role("button", "Run this step")
         }
 
@@ -59,6 +83,18 @@ suite "docs-workflow-playground" {
 
         wait "step-succeeded" {
             text = "Succeeded"
+        }
+
+        click "open-last-run" {
+            target = role("button", "Last run")
+        }
+
+        expect "last-run-output" {
+            text = "Output"
+        }
+
+        click "open-more-actions" {
+            target = role("button", "More workflow actions")
         }
 
         click "reset-example" {

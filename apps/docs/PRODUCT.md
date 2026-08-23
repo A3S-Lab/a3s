@@ -50,11 +50,16 @@ not duplicate Flow's package documentation or claim to publish workflows.
 - Every entry exposes a categorical delivery stage and a checked release or
   channel. The site never turns those categories into completion percentages.
 - Public product sites receive a primary link and a separate source link.
-- The node catalog mirrors the current Cloud semantic step kinds: Input,
-  Output, Transform, Branch, Human Decision, Execution, Agent, MCP, Model,
-  Tool, Service, Memory, and Subworkflow.
+- The node catalog exposes all 23 versioned A3S Cloud node Profiles and maps
+  each Profile to its owning semantic step kind and execution class.
 - Graph editing includes adding, selecting, moving, connecting, duplicating,
-  deleting, undoing, redoing, zooming, fitting, and resetting the example.
+  deleting, undoing, redoing, zooming, fitting, resetting, JSON export,
+  pointer-mode switching, edge insertion, and context-menu insertion.
+- The canvas uses a compact top action bar, floating node tools, bottom history
+  controls, cached-variable access, a minimap, and zoom controls. The node
+  inspector separates editable settings from the most recent local run.
+- Holding Shift while a node is selected focuses its connected relationship
+  chain and dims unrelated graph elements.
 - Debugging includes graph validation, per-step runs, whole-workflow runs,
   editable input variables, execution trace, output inspection, and local run
   history.
@@ -84,10 +89,10 @@ not duplicate Flow's package documentation or claim to publish workflows.
 - `apps/docs/components/home/project-links.ts` owns product destinations.
 - `apps/docs/components/home/ecosystem-status.ts` records checked release and
   delivery-stage data.
-- `apps/cloud/docs/domain-model.md` documents the Workflow semantic step kinds
-  and standalone-to-Cloud mapping.
-- `apps/cloud/crates/control-plane/src/modules/workflow/domain/workflow_contract.rs`
-  is the executable source of truth for the closed step-kind catalog.
+- `apps/cloud/contracts/app-platform/v1/workflow-node-profiles.acl` is the
+  source of truth for the project-authorized 23-node discovery catalog.
+- `apps/cloud/docs/domain-model.md` and the Workflow domain contracts document
+  semantic step kinds and standalone-to-Cloud mapping.
 - No production credentials, customer data, benchmarks, or hosted execution
   endpoint are available to the browser Playground.
 - <https://a3s-lab.github.io/Flow/> is the owned workflow product surface.

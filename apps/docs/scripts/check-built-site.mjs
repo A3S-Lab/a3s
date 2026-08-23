@@ -134,6 +134,9 @@ for (const marker of [
   '本地模拟',
   '添加节点',
   '测试运行',
+  'data-canvas-mode="pan"',
+  'aria-label="画布历史"',
+  '查看缓存变量',
 ]) {
   assert(chineseWorkflow.includes(marker), `Chinese Workflow Playground is missing: ${marker}`);
 }
@@ -144,6 +147,9 @@ for (const marker of [
   'Local simulation',
   'Add node',
   'Test run',
+  'data-canvas-mode="pan"',
+  'aria-label="Canvas history"',
+  'View cached variables',
 ]) {
   assert(englishWorkflow.includes(marker), `English Workflow Playground is missing: ${marker}`);
 }
@@ -182,6 +188,47 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
 
 const files = await collectFiles(output);
 const relativeFiles = files.map((file) => path.relative(output, file).split(path.sep).join('/'));
+const publicTextFiles = files.filter((file) => /\.(?:css|html|js|json)$/i.test(file));
+const publicText = (await Promise.all(publicTextFiles.map((file) => readFile(file, 'utf8')))).join('\n');
+
+for (const profile of [
+  'agent',
+  'answer',
+  'code',
+  'document-extractor',
+  'http-request',
+  'human-input',
+  'if-else',
+  'integration-trigger',
+  'iteration',
+  'knowledge-retrieval',
+  'list-operator',
+  'llm',
+  'loop',
+  'output',
+  'parameter-extractor',
+  'question-classifier',
+  'schedule-trigger',
+  'template',
+  'tool',
+  'user-input',
+  'variable-aggregator',
+  'variable-assigner',
+  'webhook-trigger',
+]) {
+  assert(publicText.includes(profile), `Static build is missing workflow node Profile: ${profile}`);
+}
+
+for (const marker of [
+  'data-node-profile',
+  'is-relationship-focus',
+  'Select and move nodes',
+  'Settings',
+  'Last run',
+  'Tools',
+]) {
+  assert(publicText.includes(marker), `Static build is missing Workflow Designer behavior: ${marker}`);
+}
 
 assert(
   !relativeFiles.some((file) => /(^|\/)blog(\/|$)/.test(file)),
@@ -204,7 +251,8 @@ assert(
 
 const html = routeEntries.map(([, content]) => content).join('\n');
 const disallowedReferenceName = String.fromCharCode(100, 105, 102, 121);
-assert(!html.toLowerCase().includes(disallowedReferenceName), 'Public routes contain a disallowed reference-product name');
+const disallowedReferencePattern = new RegExp(`\\b${disallowedReferenceName}\\b`, 'i');
+assert(!disallowedReferencePattern.test(publicText), 'Public build contains a disallowed reference-product name');
 const localHrefs = [...html.matchAll(/href="([^"]+)"/g)]
   .map((match) => match[1])
   .filter((href) => !/^https?:\/\//.test(href));
@@ -229,6 +277,8 @@ for (const selector of [
   '.a3s-delivery-guide',
   '.a3s-project-delivery',
   '.a3s-workflow-playground',
+  '.a3s-workflow-canvas-tools',
+  '.a3s-workflow-cached-variables',
   '.a3s-workflow-node',
   '.a3s-node-inspector',
   '.a3s-debug-panel',

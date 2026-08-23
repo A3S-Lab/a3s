@@ -33,10 +33,15 @@ function WorkflowEdgeComponent({
 
   return (
     <>
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} className={selected ? 'is-selected' : undefined} />
+      <BaseEdge
+        id={id}
+        path={path}
+        markerEnd={markerEnd}
+        className={[selected ? 'is-selected' : '', data?.relationState === 'dimmed' ? 'is-dimmed' : ''].filter(Boolean).join(' ') || undefined}
+      />
       <EdgeLabelRenderer>
         <div
-          className="a3s-workflow-edge-label nodrag nopan"
+          className={`a3s-workflow-edge-label nodrag nopan${data?.relationState === 'dimmed' ? ' is-dimmed' : ''}`}
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
         >
           {data?.route ? <span>{data.route}</span> : null}

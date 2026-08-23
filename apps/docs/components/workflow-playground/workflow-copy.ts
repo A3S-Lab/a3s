@@ -20,11 +20,18 @@ export interface WorkflowPlaygroundCopy {
   run: string;
   stop: string;
   addNode: string;
+  selectMode: string;
+  panMode: string;
+  canvasTools: string;
+  moreActions: string;
   variables: string;
+  viewCachedVariables: string;
   history: string;
   fitView: string;
   nodeLibrary: string;
   nodeLibraryDescription: string;
+  nodesTab: string;
+  toolsTab: string;
   searchNodes: string;
   noNodes: string;
   close: string;
@@ -58,6 +65,7 @@ export interface WorkflowPlaygroundCopy {
   delete: string;
   selectNode: string;
   debug: string;
+  settingsTab: string;
   lastRun: string;
   trace: string;
   cachedVariables: string;
@@ -92,6 +100,25 @@ export interface WorkflowPlaygroundCopy {
   removeRoute: string;
   keyboardHint: string;
   canvasLabel: string;
+  modelRoute: string;
+  prompt: string;
+  code: string;
+  method: string;
+  url: string;
+  query: string;
+  filterField: string;
+  filterValue: string;
+  collectionVariable: string;
+  loopCondition: string;
+  maxIterations: string;
+  variableSelectors: string;
+  addVariable: string;
+  removeVariable: string;
+  assignmentMode: string;
+  assignmentOverwrite: string;
+  assignmentAppend: string;
+  assignmentClear: string;
+  noNodeRun: string;
   groups: Record<WorkflowNodeGroup, string>;
   statuses: Record<WorkflowNodeStatus, string>;
   validation: Record<WorkflowValidationCode, string>;
@@ -113,11 +140,18 @@ export const workflowCopy: Record<PlaygroundLang, WorkflowPlaygroundCopy> = {
     run: 'Test run',
     stop: 'Stop run',
     addNode: 'Add node',
+    selectMode: 'Select and move nodes',
+    panMode: 'Pan canvas',
+    canvasTools: 'Canvas history',
+    moreActions: 'More workflow actions',
     variables: 'Variables',
+    viewCachedVariables: 'View cached variables',
     history: 'Run history',
     fitView: 'Fit workflow',
     nodeLibrary: 'Add a node',
-    nodeLibraryDescription: 'Choose one of the semantic step kinds admitted by A3S Cloud.',
+    nodeLibraryDescription: 'Choose from the versioned node profiles defined by A3S Cloud.',
+    nodesTab: 'Nodes',
+    toolsTab: 'Tools',
     searchNodes: 'Search nodes',
     noNodes: 'No matching nodes',
     close: 'Close',
@@ -151,6 +185,7 @@ export const workflowCopy: Record<PlaygroundLang, WorkflowPlaygroundCopy> = {
     delete: 'Delete node',
     selectNode: 'Select a node to configure it.',
     debug: 'Debug console',
+    settingsTab: 'Settings',
     lastRun: 'Last run',
     trace: 'Trace',
     cachedVariables: 'Variables',
@@ -185,10 +220,32 @@ export const workflowCopy: Record<PlaygroundLang, WorkflowPlaygroundCopy> = {
     removeRoute: 'Remove route',
     keyboardHint: 'Drag to move. Scroll to pan. Ctrl or Cmd + Z to undo.',
     canvasLabel: 'Interactive workflow canvas',
+    modelRoute: 'Model route',
+    prompt: 'Prompt',
+    code: 'Code',
+    method: 'Method',
+    url: 'URL',
+    query: 'Query',
+    filterField: 'Filter field',
+    filterValue: 'Equals',
+    collectionVariable: 'Collection variable',
+    loopCondition: 'Loop condition',
+    maxIterations: 'Maximum iterations',
+    variableSelectors: 'Variables',
+    addVariable: 'Add variable',
+    removeVariable: 'Remove variable',
+    assignmentMode: 'Assignment mode',
+    assignmentOverwrite: 'Overwrite',
+    assignmentAppend: 'Append',
+    assignmentClear: 'Clear',
+    noNodeRun: 'Run this node to inspect its latest input and output.',
     groups: {
-      flow: 'Flow control',
+      core: 'Core',
       intelligence: 'Intelligence',
+      logic: 'Logic',
+      transform: 'Transform',
       integration: 'Integrations',
+      trigger: 'Triggers',
       human: 'Human interaction',
     },
     statuses: {
@@ -225,11 +282,18 @@ export const workflowCopy: Record<PlaygroundLang, WorkflowPlaygroundCopy> = {
     run: '测试运行',
     stop: '停止运行',
     addNode: '添加节点',
+    selectMode: '选择并移动节点',
+    panMode: '平移画布',
+    canvasTools: '画布历史',
+    moreActions: '更多工作流操作',
     variables: '变量',
+    viewCachedVariables: '查看缓存变量',
     history: '运行历史',
     fitView: '适配画布',
     nodeLibrary: '添加节点',
-    nodeLibraryDescription: '选择 A3S Cloud 当前准入的语义步骤类型。',
+    nodeLibraryDescription: '选择 A3S Cloud 定义的版本化节点 Profile。',
+    nodesTab: '节点',
+    toolsTab: '工具',
     searchNodes: '搜索节点',
     noNodes: '没有匹配的节点',
     close: '关闭',
@@ -263,6 +327,7 @@ export const workflowCopy: Record<PlaygroundLang, WorkflowPlaygroundCopy> = {
     delete: '删除节点',
     selectNode: '选择一个节点进行配置。',
     debug: '调试控制台',
+    settingsTab: '设置',
     lastRun: '上次运行',
     trace: '跟踪',
     cachedVariables: '变量',
@@ -297,10 +362,32 @@ export const workflowCopy: Record<PlaygroundLang, WorkflowPlaygroundCopy> = {
     removeRoute: '删除路由',
     keyboardHint: '拖动节点，滚动平移，Ctrl 或 Cmd + Z 撤销。',
     canvasLabel: '交互式工作流画布',
+    modelRoute: '模型路由',
+    prompt: '提示词',
+    code: '代码',
+    method: '方法',
+    url: 'URL',
+    query: '查询',
+    filterField: '筛选字段',
+    filterValue: '等于',
+    collectionVariable: '集合变量',
+    loopCondition: '循环条件',
+    maxIterations: '最大迭代次数',
+    variableSelectors: '变量',
+    addVariable: '添加变量',
+    removeVariable: '移除变量',
+    assignmentMode: '赋值模式',
+    assignmentOverwrite: '覆盖',
+    assignmentAppend: '追加',
+    assignmentClear: '清除',
+    noNodeRun: '运行此节点后，可在这里检查最近一次输入和输出。',
     groups: {
-      flow: '流程控制',
+      core: '核心',
       intelligence: '智能能力',
+      logic: '逻辑',
+      transform: '转换',
       integration: '集成',
+      trigger: '触发器',
       human: '人工交互',
     },
     statuses: {

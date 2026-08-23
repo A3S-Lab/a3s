@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-23T17:33:22.197Z",
+  "generatedAt": "2026-08-23T23:23:35.815Z",
   "title": "Design System: A3S Documentation Site",
   "extensions": {
     "colorMeta": {
@@ -199,6 +199,21 @@
           "oklch(95% 0.0186 171.5)"
         ]
       },
+      "runtime-line": {
+        "role": "secondary",
+        "displayName": "Runtime Line",
+        "canonical": "#a7d7c5",
+        "tonalRamp": [
+          "oklch(15% 0.042 166)",
+          "oklch(26% 0.042 166)",
+          "oklch(38% 0.042 166)",
+          "oklch(50% 0.042 166)",
+          "oklch(62% 0.042 166)",
+          "oklch(74% 0.042 166)",
+          "oklch(86% 0.042 166)",
+          "oklch(95% 0.042 166)"
+        ]
+      },
       "decision-amber": {
         "role": "secondary",
         "displayName": "Decision Amber",
@@ -319,6 +334,21 @@
           "oklch(95% 0.0163 12.8)"
         ]
       },
+      "danger-line": {
+        "role": "secondary",
+        "displayName": "Failure Line",
+        "canonical": "#e4b5bc",
+        "tonalRamp": [
+          "oklch(15% 0.046 13)",
+          "oklch(26% 0.046 13)",
+          "oklch(38% 0.046 13)",
+          "oklch(50% 0.046 13)",
+          "oklch(62% 0.046 13)",
+          "oklch(74% 0.046 13)",
+          "oklch(86% 0.046 13)",
+          "oklch(95% 0.046 13)"
+        ]
+      },
       "topology": {
         "role": "neutral",
         "displayName": "Topology Gray",
@@ -332,6 +362,21 @@
           "oklch(74% 0.0348 256.8)",
           "oklch(86% 0.0348 256.8)",
           "oklch(95% 0.0348 256.8)"
+        ]
+      },
+      "topology-strong": {
+        "role": "neutral",
+        "displayName": "Strong Topology Gray",
+        "canonical": "#8999ad",
+        "tonalRamp": [
+          "oklch(15% 0.036 257)",
+          "oklch(26% 0.036 257)",
+          "oklch(38% 0.036 257)",
+          "oklch(50% 0.036 257)",
+          "oklch(62% 0.036 257)",
+          "oklch(74% 0.036 257)",
+          "oklch(86% 0.036 257)",
+          "oklch(95% 0.036 257)"
         ]
       },
       "canvas-dot": {
@@ -377,6 +422,21 @@
           "oklch(74% 0.0375 258.4)",
           "oklch(86% 0.0375 258.4)",
           "oklch(95% 0.0375 258.4)"
+        ]
+      },
+      "code-ink": {
+        "role": "neutral",
+        "displayName": "Code Ink",
+        "canonical": "#dce7f7",
+        "tonalRamp": [
+          "oklch(15% 0.026 255)",
+          "oklch(26% 0.026 255)",
+          "oklch(38% 0.026 255)",
+          "oklch(50% 0.026 255)",
+          "oklch(62% 0.026 255)",
+          "oklch(74% 0.026 255)",
+          "oklch(86% 0.026 255)",
+          "oklch(95% 0.026 255)"
         ]
       }
     },
@@ -435,6 +495,11 @@
         "purpose": "Canvas controls and compact floating utilities."
       },
       {
+        "name": "node-toolbar",
+        "value": "0 7px 20px rgba(35, 55, 84, 0.14)",
+        "purpose": "Selected-node quick actions."
+      },
+      {
         "name": "node-selected",
         "value": "0 10px 26px rgba(26, 76, 154, 0.18)",
         "purpose": "The currently selected graph node."
@@ -443,6 +508,26 @@
         "name": "panel-float",
         "value": "0 18px 46px rgba(35, 55, 84, 0.16)",
         "purpose": "Node library and contextual side surfaces."
+      },
+      {
+        "name": "panel-float-left",
+        "value": "-18px 0 46px rgba(35, 55, 84, 0.16)",
+        "purpose": "Right-side inspector overlays on compact viewports."
+      },
+      {
+        "name": "overlay-float",
+        "value": "0 18px 46px rgba(35, 55, 84, 0.18)",
+        "purpose": "Validation and transient workflow overlays."
+      },
+      {
+        "name": "modal",
+        "value": "0 22px 60px rgba(25, 42, 69, 0.24)",
+        "purpose": "Blocking confirmation dialogs."
+      },
+      {
+        "name": "runtime-toast",
+        "value": "0 14px 40px rgba(24, 76, 57, 0.16)",
+        "purpose": "Transient successful runtime evidence."
       },
       {
         "name": "console-rise",

@@ -2,14 +2,18 @@ import { memo } from 'react';
 import { Copy, Play, Trash } from '@phosphor-icons/react';
 import { Handle, NodeToolbar, Position, type NodeProps } from '@xyflow/react';
 import { workflowCopy } from './workflow-copy';
-import { workflowIconByKind } from './workflow-icons';
-import { getCatalogItem, type WorkflowNode } from './workflow-model';
+import { workflowIconByProfile } from './workflow-icons';
+import { getCatalogItem, isTerminalProfile, isTriggerProfile, type WorkflowNode } from './workflow-model';
 
 function configurationSummary(node: WorkflowNode): string {
   const config = node.data.configuration;
-  if (node.data.kind === 'branch') return config.selector;
-  if (node.data.kind === 'transform' || node.data.kind === 'output') return config.template;
-  if (node.data.kind === 'human_decision') return `${config.expiresAfterSeconds}s`;
+  if (node.data.profile === 'if-else' || node.data.profile === 'question-classifier') return config.selector || config.model;
+  if (node.data.profile === 'template' || node.data.profile === 'output' || node.data.profile === 'answer') return config.template;
+  if (node.data.profile === 'human-input') return `${config.expiresAfterSeconds}s`;
+  if (node.data.profile === 'llm' || node.data.profile === 'parameter-extractor') return config.model;
+  if (node.data.profile === 'http-request') return `${config.method} ${config.url}`;
+  if (node.data.profile === 'list-operator') return `${config.listFilterField} = ${config.listFilterValue}`;
+  if (node.data.profile === 'iteration' || node.data.profile === 'loop') return `max ${config.maxIterations}`;
   if (config.capability) return config.capability;
   return node.data.description;
 }
@@ -17,17 +21,19 @@ function configurationSummary(node: WorkflowNode): string {
 function WorkflowNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) {
   const lang = data.lang ?? 'en';
   const copy = workflowCopy[lang];
-  const Icon = workflowIconByKind[data.kind];
+  const Icon = workflowIconByProfile[data.profile];
   const status = data.runtimeStatus ?? 'idle';
-  const hasTarget = data.kind !== 'input';
-  const hasSource = data.kind !== 'output';
+  const hasTarget = !isTriggerProfile(data.profile);
+  const hasSource = !isTerminalProfile(data.profile);
 
   return (
     <article
       className="a3s-workflow-node"
+      data-profile={data.profile}
       data-kind={data.kind}
       data-status={status}
-      aria-label={`${data.label}, ${getCatalogItem(data.kind).name[lang]}, ${copy.statuses[status]}`}
+      data-relation={data.relationState}
+      aria-label={`${data.label}, ${getCatalogItem(data.profile).name[lang]}, ${copy.statuses[status]}`}
     >
       <NodeToolbar className="a3s-node-toolbar" isVisible={selected} position={Position.Top}>
         <button type="button" onClick={() => data.onRun?.(id)} aria-label={copy.runStep} title={copy.runStep}>
@@ -47,7 +53,7 @@ function WorkflowNodeComponent({ id, data, selected }: NodeProps<WorkflowNode>) 
         <span className="a3s-workflow-node__icon" aria-hidden="true"><Icon weight="duotone" /></span>
         <span>
           <strong>{data.label}</strong>
-          <small>{getCatalogItem(data.kind).name[lang]}</small>
+          <small>{getCatalogItem(data.profile).name[lang]}</small>
         </span>
         <i className="a3s-workflow-node__status" title={copy.statuses[status]} aria-hidden="true" />
       </header>

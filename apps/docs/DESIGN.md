@@ -15,6 +15,7 @@ colors:
   action-cobalt-soft: "#eaf2ff"
   runtime-green: "#087a5a"
   runtime-green-soft: "#e6f6f0"
+  runtime-line: "#a7d7c5"
   decision-amber: "#9a6100"
   decision-amber-soft: "#fff4d6"
   capability-violet: "#6750b8"
@@ -23,10 +24,13 @@ colors:
   integration-cyan-soft: "#e8f7fb"
   danger-red: "#b42335"
   danger-red-soft: "#fff0f1"
+  danger-line: "#e4b5bc"
   topology: "#9cabc0"
+  topology-strong: "#8999ad"
   canvas-dot: "#c5cfdd"
   variable-ink: "#194a98"
   variable-line: "#c8d8f0"
+  code-ink: "#dce7f7"
 typography:
   display:
     fontFamily: "'Geist Variable', 'PingFang SC', 'Microsoft YaHei', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -256,7 +260,7 @@ The palette is cool, high-legibility, and state-led; most of every screen remain
 
 Reading surfaces sit inside a centered frame up to 1440px with responsive horizontal gutters and fine vertical borders. The workflow editor is a separate operate-density expression: it fills `100dvh`, keeps a 64px product header, and gives the remaining stage to the graph.
 
-On wide screens the inspector is 390px and the debug console is 304px, with the canvas reserving their space when open. At 1180px the inspector tightens to 360px. At 980px it becomes a right-side overlay so the graph no longer shrinks. At 760px the vertical rail becomes a 58px bottom toolbar, primary touch targets grow to 44px, the minimap and keyboard hint recede, and the debug console caps itself against the viewport. At 520px the inspector is full width, library items collapse to one column, trace steps scroll horizontally, and variable rows stack.
+On wide screens the inspector is 390px and the debug console is 304px, with the canvas reserving their space when open. Compact history controls sit at the lower left, cached variables remain directly accessible at the lower center, and the minimap and zoom controls occupy the lower right. At 1180px the inspector tightens to 360px. At 980px it becomes a right-side overlay so the graph no longer shrinks. At 760px the vertical rail becomes a 58px bottom toolbar, primary touch targets grow to 44px, the minimap and keyboard hint recede, and the debug console caps itself against the viewport. At 520px the inspector is full width, library items collapse to one column, trace steps scroll horizontally, and variable rows stack.
 
 Within the workflow editor only, the pannable canvas uses a 22px dotted rhythm and fine topology lines. Panels reveal contextually: selection opens configuration at the right edge, while validation, variables, trace, and history occupy dedicated overlays or the bottom console.
 
@@ -316,9 +320,9 @@ The form language is softly squared and compact. Six- and seven-pixel corners be
 
 ### Navigation
 
-- **Style:** The full-screen editor uses a 64px product header, centered history tools, right-aligned validate/run actions, and a floating compact tool rail.
+- **Style:** The full-screen editor uses a 64px product header, right-aligned validate/run actions, a floating compact tool rail, lower-left history controls, and lower-center cached-variable access.
 - **States:** Neutral controls gain a muted fill and deep cobalt ink on hover; the add and run actions remain solid cobalt.
-- **Mobile:** History tools recede, header actions retain text, the rail moves to the bottom, and tap targets grow to 44px.
+- **Mobile:** The rail moves to the bottom, canvas utilities rise above it, secondary header copy compresses, and tap targets grow to 44px.
 
 ### Workflow Node
 

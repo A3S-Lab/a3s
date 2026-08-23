@@ -119,7 +119,9 @@ node documentation are maintained by [A3S Flow](https://a3s-lab.github.io/Flow/)
 The root ecosystem site links to that authoritative product surface and keeps
 a browser-local [Workflow Designer Playground](https://a3s-lab.github.io/a3s/playground/workflow-designer)
 for learning and validating the shared graph model without credentials or a
-control-plane deployment.
+control-plane deployment. The Playground exposes all 23 versioned Cloud node
+Profiles with full-canvas editing, inspection, validation, and deterministic
+local simulation.
 
 ## Product surfaces
 

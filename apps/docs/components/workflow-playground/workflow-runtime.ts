@@ -32,6 +32,7 @@ export function stripWorkflowRuntimeData(graph: WorkflowGraph): WorkflowGraph {
       ...node,
       selected: false,
       data: {
+        profile: node.data.profile,
         kind: node.data.kind,
         label: node.data.label,
         description: node.data.description,

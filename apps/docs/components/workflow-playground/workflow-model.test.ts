@@ -4,30 +4,43 @@ import {
   createInitialWorkflow,
   createWorkflowNode,
   insertNodeOnEdge,
-  simulateWorkflow,
+  relatedNodeIds,
   topologicalNodes,
   validateWorkflow,
   workflowCatalog,
 } from './workflow-model';
+import { simulateWorkflow, simulateWorkflowStep } from './workflow-simulator';
 
 describe('Workflow Designer Playground model', () => {
-  test('publishes the complete closed Cloud step-kind catalog', () => {
-    assert.deepEqual(workflowCatalog.map((item) => item.kind), [
-      'input',
-      'output',
-      'transform',
-      'branch',
-      'subworkflow',
+  test('publishes the complete closed Cloud node-profile catalog', () => {
+    assert.deepEqual(workflowCatalog.map((item) => item.profile), [
       'agent',
-      'model',
-      'memory',
-      'mcp',
+      'answer',
+      'code',
+      'document-extractor',
+      'http-request',
+      'human-input',
+      'if-else',
+      'integration-trigger',
+      'iteration',
+      'knowledge-retrieval',
+      'list-operator',
+      'llm',
+      'loop',
+      'output',
+      'parameter-extractor',
+      'question-classifier',
+      'schedule-trigger',
+      'template',
       'tool',
-      'service',
-      'execution',
-      'human_decision',
+      'user-input',
+      'variable-aggregator',
+      'variable-assigner',
+      'webhook-trigger',
     ]);
-    assert.equal(new Set(workflowCatalog.map((item) => item.kind)).size, 13);
+    assert.equal(new Set(workflowCatalog.map((item) => item.profile)).size, 23);
+    assert.equal(workflowCatalog.find((item) => item.profile === 'iteration')?.kind, 'subworkflow');
+    assert.equal(workflowCatalog.find((item) => item.profile === 'http-request')?.kind, 'service');
   });
 
   test('ships a valid bilingual example graph', () => {
@@ -44,7 +57,7 @@ describe('Workflow Designer Playground model', () => {
 
   test('inserts a node by splitting the selected edge', () => {
     const graph = createInitialWorkflow('en');
-    const node = createWorkflowNode('transform', { x: 220, y: 300 }, 'en', 'normalize');
+    const node = createWorkflowNode('template', { x: 220, y: 300 }, 'en', 'normalize');
     const inserted = insertNodeOnEdge(graph, 'input-classify', node);
 
     assert.equal(inserted.edges.some((edge) => edge.id === 'input-classify'), false);
@@ -69,6 +82,39 @@ describe('Workflow Designer Playground model', () => {
     assert.ok(codes.includes('missing_incoming'));
     assert.ok(codes.includes('missing_outgoing'));
     assert.ok(topologicalNodes(graph).length < graph.nodes.length);
+  });
+
+  test('simulates every published node Profile without an external service', () => {
+    for (const item of workflowCatalog) {
+      const node = createWorkflowNode(item.profile, { x: 0, y: 0 }, 'en', item.profile);
+      const result = simulateWorkflowStep(
+        node,
+        {
+          customer_message: 'Invoice issue',
+          priority: 'normal',
+          items: [{ name: 'hero.png', type: 'image' }],
+        },
+        {},
+      );
+
+      assert.equal(result.profile, item.profile);
+      assert.equal(result.status, 'succeeded');
+      assert.equal(typeof result.output, 'object');
+      if (item.profile === 'question-classifier') assert.equal(result.output.selectedHandle, 'standard');
+    }
+  });
+
+  test('finds every upstream and downstream relationship for focus mode', () => {
+    const graph = createInitialWorkflow('en');
+
+    assert.deepEqual([...relatedNodeIds(graph, 'priority')].sort(), [
+      'classify',
+      'compose',
+      'input',
+      'output',
+      'priority',
+      'review',
+    ]);
   });
 
   test('simulates a deterministic topological trace', () => {
@@ -107,6 +153,41 @@ describe('Workflow Designer Playground model', () => {
       'priority',
       'compose',
       'output',
+    ]);
+  });
+
+  test('simulates local list and variable operator profiles deterministically', () => {
+    const list = createWorkflowNode('list-operator', { x: 0, y: 0 }, 'en', 'files');
+    list.data.configuration.listFilterField = 'type';
+    list.data.configuration.listFilterValue = 'image';
+    const aggregator = createWorkflowNode('variable-aggregator', { x: 0, y: 0 }, 'en', 'merge');
+    const listResult = simulateWorkflow(
+      {
+        nodes: [
+          createWorkflowNode('user-input', { x: 0, y: 0 }, 'en', 'input'),
+          list,
+          aggregator,
+          createWorkflowNode('output', { x: 0, y: 0 }, 'en', 'output'),
+        ],
+        edges: [
+          { id: 'a', source: 'input', target: 'files', type: 'workflow', data: {} },
+          { id: 'b', source: 'files', target: 'merge', type: 'workflow', data: {} },
+          { id: 'c', source: 'merge', target: 'output', type: 'workflow', data: {} },
+        ],
+      },
+      {
+        items: [
+          { name: 'hero.png', type: 'image' },
+          { name: 'brief.pdf', type: 'document' },
+        ],
+      },
+    );
+
+    assert.deepEqual(listResult.find((step) => step.nodeId === 'files')?.output.items, [
+      { name: 'hero.png', type: 'image' },
+    ]);
+    assert.deepEqual(listResult.find((step) => step.nodeId === 'merge')?.output.value, [
+      { name: 'hero.png', type: 'image' },
     ]);
   });
 

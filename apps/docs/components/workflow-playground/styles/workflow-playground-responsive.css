@@ -4,10 +4,10 @@
   }
 
   .a3s-workflow-header {
-    grid-template-columns: minmax(230px, 1fr) auto minmax(230px, 1fr);
+    grid-template-columns: minmax(230px, 1fr) auto;
   }
 
-  .a3s-workflow-header__actions button {
+  .a3s-workflow-header__actions > button {
     min-width: 84px;
     padding-right: 10px;
     padding-left: 10px;
@@ -17,10 +17,6 @@
 @media (max-width: 980px) {
   .a3s-workflow-header {
     grid-template-columns: minmax(220px, 1fr) auto;
-  }
-
-  .a3s-workflow-header__history {
-    display: none;
   }
 
   .has-right-panel .a3s-workflow-canvas {
@@ -36,7 +32,11 @@
     z-index: 50;
     width: min(420px, 100%);
     border-left: 1px solid var(--workflow-line);
-    box-shadow: -18px 0 46px rgba(35, 55, 84, 0.16);
+    box-shadow: var(--workflow-shadow-panel-left);
+  }
+
+  .has-right-panel .a3s-workflow-cached-variables {
+    left: 50%;
   }
 }
 
@@ -101,7 +101,8 @@
     font-size: 9px;
   }
 
-  .a3s-workflow-header__actions button {
+  .a3s-workflow-header__actions > button,
+  .a3s-workflow-header__menu > summary {
     width: auto;
     min-width: 64px;
     height: 44px;
@@ -109,7 +110,12 @@
     gap: 5px;
   }
 
-  .a3s-workflow-header__actions button span {
+  .a3s-workflow-header__menu > summary {
+    width: 44px;
+    min-width: 44px;
+  }
+
+  .a3s-workflow-header__actions > button span {
     position: static;
     width: auto;
     height: auto;
@@ -119,17 +125,13 @@
 
   .a3s-workflow-rail {
     top: auto;
-    right: 12px;
+    right: auto;
     bottom: 10px;
     left: 12px;
-    width: auto;
+    width: max-content;
     height: 58px;
     padding: 6px;
     flex-direction: row;
-  }
-
-  .a3s-workflow-rail > span {
-    flex: 1;
   }
 
   .a3s-workflow-rail button {
@@ -137,17 +139,38 @@
     height: 44px;
   }
 
-  .a3s-workflow-rail button.a3s-workflow-rail__fit {
-    width: auto;
-    padding: 0 9px;
-    gap: 6px;
+  .a3s-workflow-canvas-tools {
+    bottom: 78px;
+    left: 12px;
+    height: 52px;
   }
 
-  .a3s-workflow-rail__fit > span {
-    display: inline;
-    color: var(--workflow-muted);
-    font-size: 10px;
-    font-weight: 620;
+  .a3s-workflow-canvas-tools button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .a3s-workflow-canvas-tools > span {
+    height: 24px;
+  }
+
+  .a3s-workflow-cached-variables,
+  .has-right-panel .a3s-workflow-cached-variables {
+    right: 12px;
+    bottom: 78px;
+    left: auto;
+    min-height: 52px;
+    transform: none;
+  }
+
+  .has-debug-panel .a3s-workflow-canvas-tools {
+    bottom: calc(var(--workflow-debug-height) + 14px);
+  }
+
+  .has-debug-panel .a3s-workflow-cached-variables {
+    right: 12px;
+    bottom: calc(var(--workflow-debug-height) + 14px);
+    left: auto;
   }
 
   .a3s-node-library {
@@ -169,7 +192,7 @@
 
   .a3s-workflow-canvas .react-flow__controls {
     right: 12px;
-    bottom: 82px;
+    bottom: 142px;
   }
 
   .a3s-workflow-canvas .react-flow__controls-button {
@@ -216,12 +239,49 @@
 }
 
 @media (max-width: 520px) {
+  .a3s-workflow-header__actions > button.is-validate {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
+  .a3s-workflow-header__actions > button.is-validate span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .a3s-workflow-header__identity > svg {
     display: none;
   }
 
   .a3s-workflow-header__identity strong {
     max-width: 20vw;
+  }
+
+  .a3s-workflow-cached-variables {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .a3s-workflow-cached-variables span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .a3s-node-library__groups section > div {

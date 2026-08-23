@@ -20,7 +20,7 @@ import { NodeInspector } from './node-inspector';
 import { NodeLibrary } from './node-library';
 import { RunDrawer } from './run-drawer';
 import { useWorkflowDocument } from './use-workflow-document';
-import { WorkflowHeader, WorkflowRail } from './workflow-chrome';
+import { WorkflowCanvasDock, WorkflowHeader, WorkflowRail } from './workflow-chrome';
 import { workflowCopy } from './workflow-copy';
 import { WorkflowEdgeView } from './workflow-edge';
 import {
@@ -28,18 +28,20 @@ import {
   createInitialWorkflow,
   createWorkflowNode,
   insertNodeOnEdge,
-  simulateWorkflow,
-  simulateWorkflowStep,
+  normalizePersistedWorkflow,
+  relatedNodeIds,
   validateWorkflow,
   workflowCatalog,
   type PlaygroundLang,
+  type WorkflowCanvasMode,
   type WorkflowEdge,
   type WorkflowGraph,
   type WorkflowNode,
   type WorkflowNodeData,
+  type WorkflowNodeProfile,
   type WorkflowNodeStatus,
-  type WorkflowStepKind,
 } from './workflow-model';
+import { simulateWorkflow, simulateWorkflowStep } from './workflow-simulator';
 import { WorkflowNodeView } from './workflow-node';
 import { WorkflowOverlays } from './workflow-overlays';
 import {
@@ -59,7 +61,7 @@ function WorkflowMarkdown({ lang }: { lang: PlaygroundLang }) {
       <h1>{copy.pageTitle}</h1>
       <p>{copy.simulatedNotice}</p>
       <h2>{copy.nodeLibrary}</h2>
-      <ul>{workflowCatalog.map((item) => <li key={item.kind}>{item.name[lang]}: {item.description[lang]}</li>)}</ul>
+      <ul>{workflowCatalog.map((item) => <li key={item.profile}>{item.name[lang]}: {item.description[lang]}</li>)}</ul>
     </main>
   );
 }
@@ -84,8 +86,11 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
   } = useWorkflowDocument(() => createInitialWorkflow(lang));
   const { fitView, screenToFlowPosition } = useReactFlow<WorkflowNode, WorkflowEdge>();
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
+  const [canvasMode, setCanvasMode] = useState<WorkflowCanvasMode>('pan');
+  const [relationshipFocus, setRelationshipFocus] = useState(false);
   const [nodeLibraryOpen, setNodeLibraryOpen] = useState(false);
   const [insertEdgeId, setInsertEdgeId] = useState<string>();
+  const [pendingNodePosition, setPendingNodePosition] = useState<{ x: number; y: number }>();
   const [runDrawerOpen, setRunDrawerOpen] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugTab, setDebugTab] = useState<DebugTab>('trace');
@@ -112,7 +117,7 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
       const persisted = window.localStorage.getItem(storageKey);
       if (persisted) {
         const parsed = JSON.parse(persisted) as WorkflowGraph;
-        if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) restore(parsed);
+        if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) restore(normalizePersistedWorkflow(parsed));
       }
     } catch {
       window.localStorage.removeItem(storageKey);
@@ -239,27 +244,29 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
     }));
   }, [commit]);
 
-  const openNodeLibrary = useCallback((edgeId?: string) => {
+  const openNodeLibrary = useCallback((edgeId?: string, position?: { x: number; y: number }) => {
     if (running) return;
     setInsertEdgeId(edgeId);
+    setPendingNodePosition(position);
     setNodeLibraryOpen(true);
   }, [running]);
 
-  const addNode = useCallback((kind: WorkflowStepKind) => {
-    let id = `${kind}-${nodeCounter.current++}`;
-    while (graph.nodes.some((node) => node.id === id)) id = `${kind}-${nodeCounter.current++}`;
+  const addNode = useCallback((profile: WorkflowNodeProfile) => {
+    let id = `${profile}-${nodeCounter.current++}`;
+    while (graph.nodes.some((node) => node.id === id)) id = `${profile}-${nodeCounter.current++}`;
     const targetEdge = insertEdgeId ? graph.edges.find((edge) => edge.id === insertEdgeId) : undefined;
     const source = targetEdge ? graph.nodes.find((node) => node.id === targetEdge.source) : undefined;
     const target = targetEdge ? graph.nodes.find((node) => node.id === targetEdge.target) : undefined;
     const position = source && target
       ? { x: (source.position.x + target.position.x) / 2, y: (source.position.y + target.position.y) / 2 + 90 }
-      : screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-    const node = createWorkflowNode(kind, position, lang, id);
+      : pendingNodePosition ?? screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    const node = createWorkflowNode(profile, position, lang, id);
     commit((current) => insertEdgeId ? insertNodeOnEdge(current, insertEdgeId, node) : ({ ...current, nodes: [...current.nodes, node] }));
     setSelectedNodeId(id);
     setNodeLibraryOpen(false);
     setInsertEdgeId(undefined);
-  }, [commit, graph.edges, graph.nodes, insertEdgeId, lang, screenToFlowPosition]);
+    setPendingNodePosition(undefined);
+  }, [commit, graph.edges, graph.nodes, insertEdgeId, lang, pendingNodePosition, screenToFlowPosition]);
 
   const connectNodes = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target || connection.source === connection.target || running) return;
@@ -306,11 +313,28 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
         setNodeLibraryOpen(false);
         setRunDrawerOpen(false);
         setValidationOpen(false);
+      } else if (event.key === 'Shift' && selectedNodeId) {
+        setRelationshipFocus(true);
       }
     };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Shift') setRelationshipFocus(false);
+    };
+    const handleBlur = () => setRelationshipFocus(false);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
   }, [deleteNode, duplicateNode, redo, selectedNodeId, undo]);
+
+  const relatedNodes = useMemo(
+    () => relationshipFocus && selectedNodeId ? relatedNodeIds(graph, selectedNodeId) : undefined,
+    [graph, relationshipFocus, selectedNodeId],
+  );
 
   const displayNodes = useMemo(() => graph.nodes.map((node) => ({
     ...node,
@@ -319,18 +343,25 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
       ...node.data,
       lang,
       runtimeStatus: statuses[node.id] ?? 'idle',
+      relationState: relatedNodes ? (relatedNodes.has(node.id) ? 'active' as const : 'dimmed' as const) : undefined,
+      lastRun: [...trace].reverse().find((step) => step.nodeId === node.id),
       onRun: runSingleStep,
       onDuplicate: duplicateNode,
       onDelete: deleteNode,
     },
-  })), [deleteNode, duplicateNode, graph.nodes, lang, runSingleStep, selectedNodeId, statuses]);
+  })), [deleteNode, duplicateNode, graph.nodes, lang, relatedNodes, runSingleStep, selectedNodeId, statuses, trace]);
 
   const displayEdges = useMemo(() => graph.edges.map((edge) => ({
     ...edge,
     markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
     animated: running && (statuses[edge.source] === 'running' || statuses[edge.target] === 'running'),
-    data: { ...edge.data, insertLabel: copy.addNode, onInsert: openNodeLibrary },
-  })), [copy.addNode, graph.edges, openNodeLibrary, running, statuses]);
+    data: {
+      ...edge.data,
+      insertLabel: copy.addNode,
+      relationState: relatedNodes ? (relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? 'active' as const : 'dimmed' as const) : undefined,
+      onInsert: openNodeLibrary,
+    },
+  })), [copy.addNode, graph.edges, openNodeLibrary, relatedNodes, running, statuses]);
 
   const exportGraph = () => {
     const blob = new Blob([JSON.stringify(stripWorkflowRuntimeData(graph), null, 2)], { type: 'application/json' });
@@ -360,10 +391,11 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
     rightPanelOpen ? 'has-right-panel' : '',
     debugOpen ? 'has-debug-panel' : '',
     debugOpen && debugTab === 'history' ? 'is-history-view' : '',
+    relationshipFocus ? 'is-relationship-focus' : '',
   ].filter(Boolean).join(' ');
 
   return (
-    <main className={shellClass} data-language={lang} data-testid="workflow-playground">
+    <main className={shellClass} data-language={lang} data-canvas-mode={canvasMode} data-testid="workflow-playground">
       <a className="a3s-workflow-skip" href="#workflow-canvas">{copy.canvasLabel}</a>
       <WorkflowHeader
         copy={copy}
@@ -371,12 +403,8 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
         homeHref={homeHref}
         languageHref={languageHref}
         saveState={saveState}
-        canUndo={canUndo}
-        canRedo={canRedo}
         running={running}
         issueCount={issues.length}
-        onUndo={undo}
-        onRedo={redo}
         onReset={() => setResetOpen(true)}
         onExport={exportGraph}
         onValidate={() => setValidationOpen(true)}
@@ -387,8 +415,18 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
         <WorkflowRail
           copy={copy}
           onAdd={() => openNodeLibrary()}
+          mode={canvasMode}
+          onModeChange={setCanvasMode}
+        />
+
+        <WorkflowCanvasDock
+          copy={copy}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          running={running}
+          onUndo={undo}
+          onRedo={redo}
           onDebugTab={(tab) => { setDebugOpen(true); setDebugTab(tab); }}
-          onFitView={() => void fitView({ duration: 280, padding: 0.16, minZoom: 0.25, maxZoom: 1 })}
         />
 
         <div className="a3s-workflow-canvas" id="workflow-canvas" aria-label={copy.canvasLabel}>
@@ -402,14 +440,19 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
             onConnect={connectNodes}
             onNodeClick={(_, node) => { setSelectedNodeId(node.id); setRunDrawerOpen(false); }}
             onPaneClick={() => setSelectedNodeId(undefined)}
+            onPaneContextMenu={(event) => {
+              event.preventDefault();
+              openNodeLibrary(undefined, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+            }}
             onNodeDragStart={beginDrag}
             onNodeDragStop={endDrag}
             nodesDraggable={!running}
             nodesConnectable={!running}
             elementsSelectable={!running}
             deleteKeyCode={null}
+            panOnDrag={canvasMode === 'pan'}
             panOnScroll
-            selectionOnDrag
+            selectionOnDrag={canvasMode === 'select'}
             fitView
             fitViewOptions={{ padding: 0.16, minZoom: 0.44, maxZoom: 1 }}
             minZoom={0.25}
@@ -423,11 +466,14 @@ function WorkflowDesignerSurface({ lang }: { lang: PlaygroundLang }) {
           <p className="a3s-workflow-hint">{copy.keyboardHint}</p>
         </div>
 
-        <NodeLibrary copy={copy} lang={lang} open={nodeLibraryOpen} onClose={() => { setNodeLibraryOpen(false); setInsertEdgeId(undefined); }} onSelect={addNode} />
+        <NodeLibrary copy={copy} lang={lang} open={nodeLibraryOpen} onClose={() => { setNodeLibraryOpen(false); setInsertEdgeId(undefined); setPendingNodePosition(undefined); }} onSelect={addNode} />
 
         {selectedNode && !runDrawerOpen ? (
           <NodeInspector
-            node={selectedNode}
+            node={{
+              ...selectedNode,
+              data: { ...selectedNode.data, lastRun: [...trace].reverse().find((step) => step.nodeId === selectedNode.id) },
+            }}
             lang={lang}
             copy={copy}
             onClose={() => setSelectedNodeId(undefined)}

@@ -8,7 +8,7 @@
   border: 1px solid var(--workflow-line-strong);
   border-radius: 12px;
   background: var(--workflow-surface);
-  box-shadow: 0 8px 20px rgba(35, 55, 84, 0.1);
+  box-shadow: var(--workflow-shadow-node);
   cursor: pointer;
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out;
 }
@@ -20,6 +20,16 @@
 
 .react-flow__node.dragging .a3s-workflow-node {
   transform: scale(1.015);
+}
+
+.a3s-workflow-node[data-relation='dimmed'] {
+  opacity: 0.22;
+  filter: grayscale(0.55);
+}
+
+.a3s-workflow-canvas .react-flow__edge-path.is-dimmed,
+.a3s-workflow-edge-label.is-dimmed {
+  opacity: 0.16;
 }
 
 .a3s-workflow-node[data-kind='agent'],
@@ -40,6 +50,18 @@
 .a3s-workflow-node[data-kind='human_decision'] {
   --node-accent: var(--workflow-amber);
   --node-accent-soft: var(--workflow-amber-soft);
+}
+
+.a3s-workflow-node[data-profile='knowledge-retrieval'] {
+  --node-accent: var(--workflow-green);
+  --node-accent-soft: var(--workflow-green-soft);
+}
+
+.a3s-workflow-node[data-profile='iteration'],
+.a3s-workflow-node[data-profile='loop'],
+.a3s-workflow-node[data-profile='if-else'] {
+  --node-accent: var(--workflow-cyan);
+  --node-accent-soft: var(--workflow-cyan-soft);
 }
 
 .a3s-workflow-node header {
@@ -123,7 +145,7 @@
 }
 
 .a3s-workflow-node[data-status='running'] {
-  border-color: #6fc3a4;
+  border-color: var(--workflow-success-line);
 }
 
 .a3s-workflow-node[data-status='failed'] .a3s-workflow-node__status {
@@ -135,8 +157,8 @@
   width: 11px !important;
   height: 11px !important;
   border: 2px solid var(--workflow-surface) !important;
-  background: #8999ad !important;
-  box-shadow: 0 0 0 1px #8999ad;
+  background: var(--workflow-topology-strong) !important;
+  box-shadow: 0 0 0 1px var(--workflow-topology-strong);
 }
 
 .react-flow__node.selected .a3s-node-handle,
@@ -151,7 +173,7 @@
   border: 1px solid var(--workflow-line);
   border-radius: 8px;
   background: var(--workflow-surface);
-  box-shadow: 0 7px 20px rgba(35, 55, 84, 0.14);
+  box-shadow: var(--workflow-shadow-toolbar);
   gap: 2px;
 }
 
@@ -204,7 +226,7 @@
   border: 1px solid var(--workflow-line-strong);
   border-radius: 7px;
   background: var(--workflow-surface);
-  box-shadow: 0 4px 12px rgba(35, 55, 84, 0.1);
+  box-shadow: var(--workflow-shadow-node);
   align-items: center;
   justify-content: center;
   color: var(--workflow-muted);

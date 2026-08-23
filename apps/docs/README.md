@@ -11,6 +11,14 @@ the node reference. This site links to that authoritative documentation and
 keeps a browser-local Playground for learning and validating the graph model
 without credentials or a control-plane deployment.
 
+The Playground provides a full-canvas authoring experience backed by the 23
+versioned node Profiles in the A3S Cloud contract. It includes a searchable
+Nodes/Tools library, pan and selection modes, edge and context-menu
+insertion, node settings and last-run inspection, relationship focus, cached
+variables, validation, deterministic step/workflow simulation, run history,
+undo/redo, reset, and JSON export. Execution remains browser-local and never
+implies production publication or control-plane availability.
+
 ## Routes
 
 | Route | Content |
