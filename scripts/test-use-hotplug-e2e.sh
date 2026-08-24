@@ -25,6 +25,11 @@ for name in "${required_environment[@]}"; do
   fi
 done
 
+# The test-built Browser driver is an independently versioned sibling binary.
+# Bind its exact path explicitly so wrapped Use processes do not depend on the
+# launcher's current-executable or PATH layout when publishing the MCP surface.
+export A3S_USE_BROWSER_DRIVER="${A3S_USE_E2E_BROWSER_BIN}"
+
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     export A3S_USE_HOME="$(cygpath -w "${use_home}")"
