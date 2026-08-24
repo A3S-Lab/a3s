@@ -185,12 +185,22 @@ release cadence, and detailed documentation.
   DeleteProcess stores a separate task-identity- and generation-bound receipt
   before removing an exec from main metadata, so a replacement shim can replay
   the exact PID, status, and nanosecond exit time; a durable new incarnation of
-  the same exec ID consumes the old receipt.
-  Three consecutive same-Host Ubuntu arm64/containerd 2.2.2 matrices retain
-  all nine replacement and response-replay gates with zero matching live
-  runtime residue. Native Linux remains experimental; broader containerd-version
-  and cross-driver qualification plus published-artifact compatibility remain
-  open.
+  the same exec ID consumes the old receipt. Task Delete stores a separate
+  namespace-, task-incarnation-, generation-, and bundle-bound receipt before
+  dispatch; after committed metadata removal, a replacement validates the
+  serving task, reproduces the exact PID, status, and nanosecond exit time, and
+  exits after serving. Restoration publishes validated task state before
+  starting output pumps, while partial pump-start rollback stops every pump
+  already created.
+  Contract v1 continues to advertise only Ubuntu arm64/containerd 2.2.2; three
+  consecutive same-Host matrices retain all nine earlier replacement and
+  response-replay gates with zero matching live runtime residue. Three
+  additional source-build Ubuntu x86_64/containerd 2.2.3 matrices retained the
+  full suite plus exact task Delete response replay and also left zero matching
+  task, container, bundle, cgroup, mount, shim, or agent residue. That 2.2.3
+  regression evidence does not expand the contract-v1 compatibility claim.
+  Native Linux remains experimental; broader containerd-version and
+  cross-driver qualification plus published-artifact compatibility remain open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
