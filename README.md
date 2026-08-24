@@ -186,10 +186,15 @@ release cadence, and detailed documentation.
   dispatch. Terminal exec SignalProcess performs an exact zero-timeout
   WaitProcess before replay, settles an already durable exit without a second
   signal, and preserves the existing replay path when the exec remains live.
+  DeleteProcess stores a separate task-identity- and generation-bound receipt
+  before removing an exec from main metadata, so a replacement shim can replay
+  the exact PID, status, and nanosecond exit time; a durable new incarnation of
+  the same exec ID consumes the old receipt.
   Three consecutive same-Host Ubuntu arm64/containerd 2.2.2 matrices retain
-  all eight replacement gates with zero matching live runtime residue. Native
-  Linux remains experimental; broader containerd-version, published-artifact,
-  and cross-driver release qualification remain open.
+  all nine replacement and response-replay gates with zero matching live
+  runtime residue. Native Linux remains experimental; broader containerd-version
+  and cross-driver qualification plus published-artifact compatibility remain
+  open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
