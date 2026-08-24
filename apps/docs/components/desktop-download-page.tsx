@@ -8,10 +8,10 @@ import {
 import {
   desktopChecksumsUrl,
   desktopDownloadContent,
-  desktopLatestReleaseUrl,
   desktopReleaseAssets,
   desktopRepositoryUrl,
 } from '@/components/download/download-content';
+import { DesktopReleaseHistory } from '@/components/download/desktop-release-history-section';
 import { HomeNav } from '@/components/home/home-nav';
 import type { Lang } from '@/components/home/home-content';
 
@@ -70,13 +70,7 @@ export default function DesktopDownloadPage({ lang = 'cn' }: { lang?: Lang }) {
             <p>{tr.previewNote}</p>
             <nav aria-label={lang === 'cn' ? '下载资源' : 'Download resources'}>
               <a href={desktopChecksumsUrl}>{tr.checksumAction}</a>
-              <a
-                href={desktopLatestReleaseUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {tr.releaseNotesAction}
-              </a>
+              <a href="#desktop-release-history">{tr.releaseNotesAction}</a>
               <a
                 href={desktopRepositoryUrl}
                 target="_blank"
@@ -103,6 +97,8 @@ export default function DesktopDownloadPage({ lang = 'cn' }: { lang?: Lang }) {
           </aside>
         </div>
       </section>
+
+      <DesktopReleaseHistory lang={lang} />
     </main>
   );
 }

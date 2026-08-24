@@ -40,6 +40,8 @@ uses a captured preview from that deployed product surface.
 - Every entry exposes a categorical delivery stage and a checked release or
   channel. The site never turns those categories into completion percentages.
 - Public product sites receive a primary link and a separate source link.
+- Desktop downloads lead with the latest platform packages and retain
+  tag-pinned historical packages with checked bilingual release notes.
 - The primary navigation covers the ecosystem, principles, Desktop downloads,
   locale selection, and source access. Product destinations remain in the
   directory and footer rather than becoming top-level product menus.
