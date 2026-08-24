@@ -23,8 +23,9 @@ integration surface.
 
 The Use entry pins the repository once while the verifier derives the exact
 `a3s-use-core` and `a3s-use-extension` package versions from that immutable
-revision. The lock records every protocol-level-4 `PluginHostManager` schema
-consumed by Cloud. It does not create another plugin manager or authorize
+revision. The lock records every current `PluginHostManager` schema consumed
+by Cloud, including protocol-level-6 capabilities and the managed-scope-v2
+mutation fence. It does not create another plugin manager or authorize
 assignment mutation before the shared A3S Use manager saga is complete.
 
 ## Proposing An Update
