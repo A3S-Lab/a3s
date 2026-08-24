@@ -146,8 +146,11 @@ release cadence, and detailed documentation.
 
 - The standalone [`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository
   owns CLI source, CI, tags, releases, and product documentation. This root
-  pins the reviewed 0.12.4 release revision and retains an asset-only relay for
-  legacy 0.11.x clients that briefly used the monorepo release endpoint.
+  pins a reviewed post-v0.12.5 integration revision that adds Runtime Service
+  provider-process rebinding qualification. The gitlink is newer than the
+  v0.12.5 tag and does not represent a newer public release. This root retains
+  an asset-only relay for legacy 0.11.x clients that briefly used the monorepo
+  release endpoint.
 - The pinned [Code](crates/code/) revision includes a capability ledger and
   release qualification for retrieval, code intelligence, context and memory,
   Flow and State Graph projection, persistence, and hermetic S3, browser, and
