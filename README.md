@@ -207,9 +207,15 @@ release cadence, and detailed documentation.
   task, container, bundle, live Runtime record, cgroup, mount, snapshot, shim,
   qualification process, workload process, or prepared operation. That 2.2.3
   regression evidence does not expand the contract-v1 compatibility claim.
-  Native Linux remains experimental; the `ResizePty` forced-cleanup boundary,
-  broader containerd-version and cross-driver qualification, and
-  published-artifact compatibility remain open.
+  The pinned revision also implements the matching post-commit `ResizePty`
+  forced-cleanup gate. It retains pending sequence 1 at 166x52, commits the
+  same exec-scoped `resize-1` operation while the shim is stopped, verifies the
+  live PTY through `TIOCGWINSZ`, and proves DeleteShim does not dispatch a
+  second resize. Unit and cross-platform CI coverage pass, but the destructive
+  three-pass real-host record is intentionally not claimed yet. Native Linux
+  remains experimental; that `ResizePty` qualification record, broader
+  containerd-version and cross-driver qualification, and published-artifact
+  compatibility remain open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
