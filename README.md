@@ -212,10 +212,18 @@ release cadence, and detailed documentation.
   same exec-scoped `resize-1` operation while the shim is stopped, verifies the
   live PTY through `TIOCGWINSZ`, and proves DeleteShim does not dispatch a
   second resize. Unit and cross-platform CI coverage pass, but the destructive
-  three-pass real-host record is intentionally not claimed yet. Native Linux
-  remains experimental; that `ResizePty` qualification record, broader
-  containerd-version and cross-driver qualification, and published-artifact
-  compatibility remain open.
+  three-pass real-host record is intentionally not claimed yet. The revision
+  also descriptor-pins the Utility VM runtime share, bundle, rootfs, and
+  existing bind sources, using descriptor-relative `openat2` resolution to
+  reject traversal, symbolic links, magic links, and directory-entry swaps.
+  Failed Create cleanup kills and drains the owned cgroup before removal and
+  preserves cleanup failures in the typed error. A versioned ten-case Guest
+  path-isolation gate is wired into macOS/HVF and Linux KVM qualification;
+  cross-platform CI and fail-closed cleanup pass, but the updated revision has
+  not yet retained an `available` hardware artifact, so platform readiness is
+  unchanged. Native Linux remains experimental; that `ResizePty` qualification
+  record, broader containerd-version and cross-driver qualification, and
+  published-artifact compatibility remain open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
