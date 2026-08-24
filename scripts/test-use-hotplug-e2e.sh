@@ -39,7 +39,9 @@ test -f "${cli_manifest}" || {
   exit 1
 }
 
-cargo test \
+# The composed CLI fixture builds one large async state machine. Keep the
+# libtest worker stack explicit across Linux, macOS, and Windows.
+RUST_MIN_STACK=8388608 cargo test \
   --manifest-path "${cli_manifest}" \
   --locked \
   --lib \
