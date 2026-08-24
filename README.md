@@ -197,15 +197,17 @@ release cadence, and detailed documentation.
   response-replay gates with zero matching live runtime residue. Three
   additional source-build Ubuntu x86_64/containerd 2.2.3 matrices retained the
   full suite plus exact task Delete response replay and post-commit
-  `WriteStdin` forced cleanup. The new boundary commits the original
-  exec-scoped write while schema-v9 shim metadata still retains the pending
-  bytes, proves one input effect without changing the live init PID or
-  generation, and then removes only that generation after shim `SIGKILL`
-  without redispatching the write. Every pass left zero matching task,
-  container, bundle, live Runtime record, cgroup, mount, shim, agent or Host
-  child, zombie, or prepared operation. That 2.2.3 regression evidence does
-  not expand the contract-v1 compatibility claim. Native Linux remains
-  experimental; the `CloseStdin` and `ResizePty` forced-cleanup boundaries,
+  `WriteStdin` and `CloseStdin` forced cleanup. The close boundary delivers
+  `CloseIO` through the task shim's advertised ttrpc endpoint while schema-v9
+  metadata retains Closing, commits the same exec-scoped `close-stdin-1`
+  operation directly through the public SDK, and observes normal exec exit 29
+  without changing the live init PID or generation. After shim `SIGKILL`,
+  DeleteShim must not redispatch the close and removes only that exact Runtime
+  generation. Every pass and the independent post-run audit left zero matching
+  task, container, bundle, live Runtime record, cgroup, mount, snapshot, shim,
+  qualification process, workload process, or prepared operation. That 2.2.3
+  regression evidence does not expand the contract-v1 compatibility claim.
+  Native Linux remains experimental; the `ResizePty` forced-cleanup boundary,
   broader containerd-version and cross-driver qualification, and
   published-artifact compatibility remain open.
 
