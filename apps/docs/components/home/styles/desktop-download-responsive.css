@@ -1,114 +1,56 @@
-@media (max-width: 1080px) {
-  .a3s-download-hero__inner {
+@media (max-width: 760px) {
+  .a3s-download {
     min-height: auto;
-    padding-top: 92px;
-    padding-bottom: 110px;
-    grid-template-columns: 1fr;
+    align-items: start;
   }
 
-  .a3s-download-hero__copy {
-    max-width: 820px;
+  .a3s-download__inner {
+    padding: 56px 20px 72px;
   }
 
-  .a3s-release-panel {
-    width: min(100%, 820px);
-    justify-self: end;
+  .a3s-download__header {
+    margin-bottom: 34px;
   }
 
-  .a3s-download-trust__inner {
-    grid-template-columns: auto 1fr;
+  .a3s-download__header h1 {
+    font-size: clamp(40px, 12vw, 54px);
+    letter-spacing: -0.035em;
   }
 
-  .a3s-download-trust ul {
+  .a3s-download__header p {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+
+  .a3s-download__platforms > a {
+    min-height: 104px;
+    padding: 18px 20px;
+    gap: 14px;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .a3s-download__platforms b {
+    min-height: auto;
     grid-column: 2;
   }
-}
 
-@media (max-width: 760px) {
-  .a3s-download-hero__inner,
-  .a3s-download-trust__inner,
-  .a3s-download-footer {
-    padding-right: 20px;
-    padding-left: 20px;
-  }
-
-  .a3s-download-hero__inner {
-    padding-top: 70px;
-    padding-bottom: 82px;
-    border-right: 0;
-    border-left: 0;
-    gap: 52px;
-  }
-
-  .a3s-download-hero h1 {
-    margin-top: 28px;
-    font-size: clamp(44px, 13vw, 64px);
-  }
-
-  .a3s-release-panel > header,
-  .a3s-release-panel__platforms > a,
-  .a3s-release-panel > footer {
-    padding-right: 20px;
-    padding-left: 20px;
-  }
-
-  .a3s-release-panel__platforms > a {
-    min-height: 88px;
-  }
-
-  .a3s-release-panel__platforms b {
-    display: none;
-  }
-
-  .a3s-download-setup > header {
-    align-items: start;
-    gap: 24px;
-    grid-template-columns: 1fr;
-  }
-
-  .a3s-download-setup > header p {
-    justify-self: start;
-  }
-
-  .a3s-download-setup ol {
-    margin-top: 48px;
-    grid-template-columns: 1fr;
-  }
-
-  .a3s-download-setup li,
-  .a3s-download-setup li:first-child,
-  .a3s-download-setup li:last-child {
-    min-height: auto;
-    padding: 25px 0 30px;
-    border-right: 0;
-    border-bottom: 1px solid var(--a3s-line);
-  }
-
-  .a3s-download-setup li h3 {
-    margin-top: 32px;
-  }
-
-  .a3s-download-trust__inner {
-    min-height: auto;
-    padding-top: 82px;
-    padding-bottom: 88px;
-    gap: 28px;
-    grid-template-columns: 1fr;
-  }
-
-  .a3s-download-trust ul {
-    grid-column: 1;
-  }
-
-  .a3s-download-footer {
-    min-height: 300px;
-    grid-template-columns: 1fr;
-  }
-
-  .a3s-download-footer nav {
+  .a3s-download__meta,
+  .a3s-download__cli {
     align-items: flex-start;
     flex-direction: column;
-    gap: 15px;
+  }
+
+  .a3s-download__meta {
+    gap: 14px;
+  }
+
+  .a3s-download__meta nav {
+    gap: 12px 18px;
+  }
+
+  .a3s-download__cli {
+    margin-top: 42px;
+    gap: 14px;
   }
 }
 
@@ -117,6 +59,6 @@
   .a3s-download-site *::before,
   .a3s-download-site *::after {
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
   }
 }

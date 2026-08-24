@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
   desktopChecksumsUrl,
+  desktopDownloadContent,
   desktopReleaseAssetBaseUrl,
   desktopReleaseAssets,
   desktopRepositoryUrl,
@@ -26,5 +27,31 @@ describe('Desktop release links', () => {
       desktopChecksumsUrl,
       'https://github.com/A3S-Lab/Desktop/releases/latest/download/SHA256SUMS.txt',
     );
+  });
+
+  test('keeps the download page copy focused on choosing a package', () => {
+    const expectedKeys = [
+      'checksumAction',
+      'cliDescription',
+      'cliTitle',
+      'description',
+      'downloadAction',
+      'installCli',
+      'previewNote',
+      'releaseNotesAction',
+      'skip',
+      'sourceAction',
+      'title',
+    ];
+
+    for (const locale of ['cn', 'en'] as const) {
+      const content = desktopDownloadContent[locale];
+      assert.deepEqual(Object.keys(content).sort(), expectedKeys);
+      assert.ok(content.description.length <= 64);
+      assert.ok(content.cliDescription.length <= 80);
+    }
+
+    assert.equal(desktopDownloadContent.cn.title, '下载 A3S Desktop');
+    assert.equal(desktopDownloadContent.en.title, 'Download A3S Desktop');
   });
 });

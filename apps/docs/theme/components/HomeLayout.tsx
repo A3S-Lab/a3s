@@ -1,5 +1,6 @@
 import HomePage from '@/components/home-page';
 import DesktopDownloadPage from '@/components/desktop-download-page';
+import { desktopDownloadContent } from '@/components/download/download-content';
 import type { Lang } from '@/components/home/home-content';
 import { usePageData } from '@rspress/core/runtime';
 
@@ -23,14 +24,12 @@ function MarkdownHome({ lang }: { lang: Lang }) {
 }
 
 function MarkdownDownload({ lang }: { lang: Lang }) {
+  const tr = desktopDownloadContent[lang];
+
   return (
     <main>
-      <h1>{lang === 'cn' ? '下载 A3S Desktop' : 'Download A3S Desktop'}</h1>
-      <p>
-        {lang === 'cn'
-          ? '获取适用于 macOS、Windows 和 Linux 的原生 A3S Code 工作台。'
-          : 'Get the native A3S Code workbench for macOS, Windows, and Linux.'}
-      </p>
+      <h1>{tr.title}</h1>
+      <p>{tr.description}</p>
     </main>
   );
 }
