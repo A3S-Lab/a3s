@@ -52,6 +52,41 @@
     margin-top: 42px;
     gap: 14px;
   }
+
+  .a3s-download-history__inner {
+    padding: 72px 20px 88px;
+  }
+
+  .a3s-download-history__header {
+    align-items: start;
+    gap: 18px;
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-download-history__header h2 {
+    font-size: clamp(32px, 9.6vw, 42px);
+    letter-spacing: -0.03em;
+  }
+
+  .a3s-release-history-list {
+    margin-top: 38px;
+  }
+
+  .a3s-release-history-list summary {
+    min-height: 76px;
+    padding: 0;
+    gap: 12px;
+  }
+
+  .a3s-release-history-list__version {
+    gap: 8px;
+  }
+
+  .a3s-release-history-list__body {
+    padding: 30px 0 38px;
+    gap: 38px;
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

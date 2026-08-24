@@ -31,14 +31,21 @@ describe('Desktop release links', () => {
 
   test('keeps the download page copy focused on choosing a package', () => {
     const expectedKeys = [
+      'allReleasesAction',
       'checksumAction',
       'cliDescription',
       'cliTitle',
       'description',
       'downloadAction',
+      'historyDescription',
+      'historyTitle',
       'installCli',
+      'latestLabel',
       'previewNote',
+      'releaseChangesTitle',
+      'releaseDownloadsTitle',
       'releaseNotesAction',
+      'releasePageAction',
       'skip',
       'sourceAction',
       'title',

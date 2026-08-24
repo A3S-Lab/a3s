@@ -111,6 +111,14 @@ The terminal is a literal command surface with selectable platform tabs and a
 copy action. It uses the dark navy surface, compact mono labels, and exact
 commands from the repository. It must not imitate an animated agent session.
 
+### Desktop release history
+
+Keep the latest platform downloads in the first task-focused section. Place
+tag-pinned historical releases in a separate linear section below it. Version
+and date remain visible in the disclosure summary; the latest release opens by
+default to show checked bilingual notes, platform packages, checksums, and the
+source release page. Older releases stay collapsed until requested.
+
 ## Motion and depth
 
 Permanent structure uses borders first. Shadows identify sticky navigation,

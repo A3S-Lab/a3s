@@ -79,11 +79,16 @@ assert(
 );
 
 const releaseBase = 'https://github.com/A3S-Lab/Desktop/releases/latest/download';
+const taggedReleaseBase = 'https://github.com/A3S-Lab/Desktop/releases/download/v0.1.0';
 for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDownload, 'English']]) {
   for (const asset of ['A3S-macos.zip', 'A3S-windows.zip', 'A3S-linux.tar.gz', 'SHA256SUMS.txt']) {
     assert(
       downloadPage.includes(`${releaseBase}/${asset}`),
       `${locale} download page is missing ${asset}`,
+    );
+    assert(
+      downloadPage.includes(`${taggedReleaseBase}/${asset}`),
+      `${locale} download page history is missing v0.1.0 ${asset}`,
     );
   }
   assert(
@@ -94,7 +99,14 @@ for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDown
     downloadPage.includes('https://github.com/A3S-Lab/Desktop'),
     `${locale} download page is missing source`,
   );
+  assert(
+    downloadPage.includes('id="desktop-release-history"'),
+    `${locale} download page is missing release history`,
+  );
 }
+
+assert(chineseDownload.includes('历史版本与更新说明'), 'Chinese download page is missing release notes');
+assert(englishDownload.includes('Release history and notes'), 'English download page is missing release notes');
 
 for (const marker of [
   '为AI Native组织构建的AI操作系统生态',
