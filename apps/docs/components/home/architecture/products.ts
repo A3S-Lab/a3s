@@ -135,7 +135,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     role: localized('读取、编辑和生成 Office 文件，支持 CLI、MCP 和 Skill。', 'Reads, edits, and creates Office files through the CLI, MCP, and Skill.'),
     href: getProjectPrimaryHref('office'),
     nodes: [
-      node('host', 'Host Product', 'surface', '由独立 Playground 或自动化宿主提供产品策略。', 'Receives product policy from the standalone Playground or automation hosts.'),
+      node('host', 'Host Product', 'surface', '由产品宿主或自动化宿主提供产品策略。', 'Receives product policy from product or automation hosts.'),
       node('contracts', 'Typed Contracts', 'core', '编辑与自动化平面共享有界内容模型和操作契约。', 'Editing and automation planes share bounded content models and operation contracts.'),
       node('browser', 'Browser Plane', 'contract', '组合编辑器、Worker、WASM 与 PDFium。', 'Combines editors, workers, WebAssembly, and PDFium.'),
       node('native', 'Native Rust Plane', 'runtime', '用独立 Rust 核心处理文件系统与 OOXML package。', 'Handles filesystem and OOXML package concerns in a separate Rust core.'),
