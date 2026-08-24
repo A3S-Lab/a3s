@@ -196,11 +196,18 @@ release cadence, and detailed documentation.
   consecutive same-Host matrices retain all nine earlier replacement and
   response-replay gates with zero matching live runtime residue. Three
   additional source-build Ubuntu x86_64/containerd 2.2.3 matrices retained the
-  full suite plus exact task Delete response replay and also left zero matching
-  task, container, bundle, cgroup, mount, shim, or agent residue. That 2.2.3
-  regression evidence does not expand the contract-v1 compatibility claim.
-  Native Linux remains experimental; broader containerd-version and
-  cross-driver qualification plus published-artifact compatibility remain open.
+  full suite plus exact task Delete response replay and post-commit
+  `WriteStdin` forced cleanup. The new boundary commits the original
+  exec-scoped write while schema-v9 shim metadata still retains the pending
+  bytes, proves one input effect without changing the live init PID or
+  generation, and then removes only that generation after shim `SIGKILL`
+  without redispatching the write. Every pass left zero matching task,
+  container, bundle, live Runtime record, cgroup, mount, shim, agent or Host
+  child, zombie, or prepared operation. That 2.2.3 regression evidence does
+  not expand the contract-v1 compatibility claim. Native Linux remains
+  experimental; the `CloseStdin` and `ResizePty` forced-cleanup boundaries,
+  broader containerd-version and cross-driver qualification, and
+  published-artifact compatibility remain open.
 
 Component READMEs, releases, roadmaps, and the compatibility lock are the
 sources of truth for exact feature flags, platforms, versions, and remaining
