@@ -74,7 +74,7 @@ suite "docs-workflow-playground" {
         }
 
         click "run-template" {
-            target = role("button", "Run this step")
+            target = css("[data-testid='node-inspector'] .a3s-node-inspector__footer .is-primary")
         }
 
         wait "debug-open" {
@@ -94,7 +94,7 @@ suite "docs-workflow-playground" {
         }
 
         click "open-more-actions" {
-            target = role("button", "More workflow actions")
+            target = css(".a3s-workflow-header__menu > summary")
         }
 
         click "reset-example" {
