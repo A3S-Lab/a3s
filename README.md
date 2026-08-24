@@ -146,8 +146,11 @@ release cadence, and detailed documentation.
 
 - The standalone [`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository
   owns CLI source, CI, tags, releases, and product documentation. This root
-  pins the reviewed 0.12.4 release revision and retains an asset-only relay for
-  legacy 0.11.x clients that briefly used the monorepo release endpoint.
+  pins a reviewed post-v0.12.5 integration revision that adds Runtime Service
+  provider-process rebinding qualification. The gitlink is newer than the
+  v0.12.5 tag and does not represent a newer public release. This root retains
+  an asset-only relay for legacy 0.11.x clients that briefly used the monorepo
+  release endpoint.
 - The pinned [Code](crates/code/) revision includes a capability ledger and
   release qualification for retrieval, code intelligence, context and memory,
   Flow and State Graph projection, persistence, and hermetic S3, browser, and
@@ -155,17 +158,19 @@ release cadence, and detailed documentation.
   explicitly out of scope.
 - The Cloud compatibility lock pins exact Cloud, Code, ACL, Boot, Box, Event,
   Flow, Form, Gateway, ORM, Runtime, Sentry, Updater, and Use revisions plus their
-  shared protocol levels. Run `just cloud-stack-check` before publishing a new
-  integration claim.
+  shared protocol levels. Its current Use boundary records plugin-host
+  capabilities v6 and the managed-scope-v2 mutation fence. Run
+  `just cloud-stack-check` before publishing a new integration claim.
 - Workflow Phases 0–2 have verified contract, Form lifecycle, and minimal run
   baselines. Phase 3 has a pinned internal HumanTask decision slice, including
   protected reads, claim/release, native Form submission, expiry, cancellation,
   and Outbox resume; the controlled inbox and full end-to-end exit gate remain
   open. See the [architecture](compat/workflow-platform-architecture.md) and
   [ordered plan](compat/workflow-platform-development-plan.md).
-- Use is a preview, not a supported product release. Its exact accepted schema
-  line and remaining cross-platform gates are owned by the pinned component
-  README and the compatibility lock.
+- Use is a preview, not a supported product release. The pinned integration
+  includes provider-process rebinding recovery and its v6/v2 Cloud host
+  schemas; remaining cross-platform gates are owned by the component README
+  and the compatibility lock.
 - MoE owns model-specific equations and validation; Power owns model-neutral
   execution. Model support evidence does not imply that every optimized kernel,
   accelerator backend, or speculative adapter is complete.

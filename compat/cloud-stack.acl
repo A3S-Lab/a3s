@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "23e00f954f010a01ec752d6feb80c37b561d1ce9"
+  revision = "8f02a9d882c9e77ece0450e516dd5297181da3ed"
   source = "git"
   version = "0.1.0"
 }
@@ -126,7 +126,7 @@ component "use" {
   package = "a3s-use"
   path = "crates/use"
   repository = "git@github.com:A3S-Lab/Use.git"
-  revision = "2b30b2c69055b9c38fc1128c5b3d308ebdc946cc"
+  revision = "0d251dc59f71c3478ff6597d52f47257d780b350"
   source = "git"
   version = "0.3.2"
 }
@@ -221,9 +221,9 @@ protocol "use-plugin-host-apply-result" {
   source = "crates/use/crates/core/src/plugin/host_operation.rs"
 }
 protocol "use-plugin-host-capabilities" {
-  level = 4
+  level = 6
   owner = "A3S-Lab/Use"
-  schema = "a3s.use.plugin-host-capabilities.v4"
+  schema = "a3s.use.plugin-host-capabilities.v6"
   source = "crates/use/crates/core/src/plugin/host.rs"
 }
 protocol "use-plugin-host-enablement-plan-request" {
@@ -239,9 +239,9 @@ protocol "use-plugin-host-enablement-plan-result" {
   source = "crates/use/crates/core/src/plugin/host_enablement_plan.rs"
 }
 protocol "use-plugin-host-managed-scope" {
-  level = 1
+  level = 2
   owner = "A3S-Lab/Use"
-  schema = "a3s.use.plugin-managed-scope.v1"
+  schema = "a3s.use.plugin-managed-scope.v2"
   source = "crates/use/crates/core/src/plugin/host.rs"
 }
 protocol "use-plugin-host-observation-request" {

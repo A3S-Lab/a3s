@@ -185,20 +185,24 @@ test('the lock registers both owner-defined Form evaluation protocols', () => {
   );
 });
 
-test('the lock registers the complete Use protocol-level-4 host boundary', () => {
+test('the lock registers the complete Use protocol-level-6 host boundary', () => {
   const protocols = new Map(
     parseCloudStackLock(LOCK_SOURCE).protocols.map((protocol) => [protocol.id, protocol]),
   );
   assert.equal(
     protocols.get('use-plugin-host-capabilities')?.schema,
-    'a3s.use.plugin-host-capabilities.v4',
+    'a3s.use.plugin-host-capabilities.v6',
   );
+  assert.equal(
+    protocols.get('use-plugin-host-managed-scope')?.schema,
+    'a3s.use.plugin-managed-scope.v2',
+  );
+  assert.equal(protocols.get('use-plugin-host-managed-scope')?.level, 2);
   for (const id of [
     'use-plugin-host-apply-request',
     'use-plugin-host-apply-result',
     'use-plugin-host-enablement-plan-request',
     'use-plugin-host-enablement-plan-result',
-    'use-plugin-host-managed-scope',
     'use-plugin-host-observation-request',
     'use-plugin-host-observation-result',
     'use-plugin-host-plan-request',

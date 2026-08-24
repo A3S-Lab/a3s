@@ -16,10 +16,10 @@ interface DeliveryStageCopy {
 
 // Verified against current project versions, public releases, READMEs, and roadmaps.
 // A released project can still contain explicitly preview or experimental subfeatures.
-export const statusVerifiedAt = '2026-08-24';
+export const statusVerifiedAt = '2026-08-25';
 
 const statusByProject = {
-  cli: { stage: 'preview', release: 'v0.12.4' },
+  cli: { stage: 'preview', release: 'v0.12.5' },
   code: { stage: 'released', release: 'v7.0.2' },
   windhole: { stage: 'preview', release: 'main' },
   box: { stage: 'released', release: 'v3.1.0' },
