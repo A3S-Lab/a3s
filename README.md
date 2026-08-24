@@ -116,12 +116,8 @@ not HCL and must not be processed with an HCL parser.
 
 Workflow authoring components, the React and Vue integrations, CLI, Skill, and
 node documentation are maintained by [A3S Flow](https://a3s-lab.github.io/Flow/).
-The root ecosystem site links to that authoritative product surface and keeps
-a browser-local [Workflow Designer Playground](https://a3s-lab.github.io/a3s/playground/workflow-designer)
-for learning and validating the shared graph model without credentials or a
-control-plane deployment. The Playground exposes all 23 versioned Cloud node
-Profiles with full-canvas editing, inspection, validation, and deterministic
-local simulation.
+The root ecosystem site links to that product surface instead of publishing a
+second workflow editor or duplicating product-specific navigation.
 
 ## Product surfaces
 

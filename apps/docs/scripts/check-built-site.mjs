@@ -44,8 +44,6 @@ async function collectFiles(directory) {
 const routeFiles = [
   'index.html',
   'en/index.html',
-  'playground/workflow-designer.html',
-  'en/playground/workflow-designer.html',
   'download/index.html',
   'en/download/index.html',
 ];
@@ -56,15 +54,11 @@ const routeEntries = await Promise.all(
 const routeHtml = new Map(routeEntries);
 const chineseHome = routeHtml.get('index.html');
 const englishHome = routeHtml.get('en/index.html');
-const chineseWorkflow = routeHtml.get('playground/workflow-designer.html');
-const englishWorkflow = routeHtml.get('en/playground/workflow-designer.html');
 const chineseDownload = routeHtml.get('download/index.html');
 const englishDownload = routeHtml.get('en/download/index.html');
 
 assert(chineseHome, 'Chinese homepage is missing');
 assert(englishHome, 'English homepage is missing');
-assert(chineseWorkflow, 'Chinese Workflow Designer Playground is missing');
-assert(englishWorkflow, 'English Workflow Designer Playground is missing');
 assert(chineseDownload, 'Chinese Desktop download page is missing');
 assert(englishDownload, 'English Desktop download page is missing');
 assert(
@@ -128,32 +122,6 @@ for (const marker of [
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
 
-for (const marker of [
-  '工作流设计器 Playground',
-  '客户支持分流',
-  '本地模拟',
-  '添加节点',
-  '测试运行',
-  'data-canvas-mode="pan"',
-  'aria-label="画布历史"',
-  '查看缓存变量',
-]) {
-  assert(chineseWorkflow.includes(marker), `Chinese Workflow Playground is missing: ${marker}`);
-}
-
-for (const marker of [
-  'Workflow Designer Playground',
-  'Customer support triage',
-  'Local simulation',
-  'Add node',
-  'Test run',
-  'data-canvas-mode="pan"',
-  'aria-label="Canvas history"',
-  'View cached variables',
-]) {
-  assert(englishWorkflow.includes(marker), `English Workflow Playground is missing: ${marker}`);
-}
-
 for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'English']]) {
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
   const flowLinkCount = homepage.split(`href="${flowHref}"`).length - 1;
@@ -162,6 +130,18 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
   assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);
+  const primaryNavigation = homepage.match(
+    /<header class="a3s-home-nav">[\s\S]*?<\/header>/,
+  )?.[0];
+  assert(primaryNavigation, `${locale} homepage is missing its primary navigation`);
+  assert(
+    !primaryNavigation.includes(flowHref),
+    `${locale} primary navigation still contains A3S Flow`,
+  );
+  assert(
+    !/playground/i.test(primaryNavigation),
+    `${locale} primary navigation still contains Playground`,
+  );
   assert(flowLinkCount >= 3, `${locale} homepage does not route A3S Flow entries to its product site`);
   assert(powerLinkCount >= 2, `${locale} homepage does not route both A3S Power entries to its website`);
   assert(!homepage.includes('/form/'), `${locale} homepage still links to the removed Form site`);
@@ -191,45 +171,6 @@ const relativeFiles = files.map((file) => path.relative(output, file).split(path
 const publicTextFiles = files.filter((file) => /\.(?:css|html|js|json)$/i.test(file));
 const publicText = (await Promise.all(publicTextFiles.map((file) => readFile(file, 'utf8')))).join('\n');
 
-for (const profile of [
-  'agent',
-  'answer',
-  'code',
-  'document-extractor',
-  'http-request',
-  'human-input',
-  'if-else',
-  'integration-trigger',
-  'iteration',
-  'knowledge-retrieval',
-  'list-operator',
-  'llm',
-  'loop',
-  'output',
-  'parameter-extractor',
-  'question-classifier',
-  'schedule-trigger',
-  'template',
-  'tool',
-  'user-input',
-  'variable-aggregator',
-  'variable-assigner',
-  'webhook-trigger',
-]) {
-  assert(publicText.includes(profile), `Static build is missing workflow node Profile: ${profile}`);
-}
-
-for (const marker of [
-  'data-node-profile',
-  'is-relationship-focus',
-  'Select and move nodes',
-  'Settings',
-  'Last run',
-  'Tools',
-]) {
-  assert(publicText.includes(marker), `Static build is missing Workflow Designer behavior: ${marker}`);
-}
-
 assert(
   !relativeFiles.some((file) => /(^|\/)blog(\/|$)/.test(file)),
   'Static build still contains a blog route',
@@ -238,6 +179,11 @@ assert(
 assert(
   !relativeFiles.some((file) => file.startsWith('form/')),
   'Static build still contains the removed Form site',
+);
+
+assert(
+  !relativeFiles.some((file) => /(^|\/)playground(\/|$)/.test(file)),
+  'Static build still contains a Playground route',
 );
 
 for (const image of requiredImages) {
@@ -276,12 +222,6 @@ for (const selector of [
   '.a3s-directory-card',
   '.a3s-delivery-guide',
   '.a3s-project-delivery',
-  '.a3s-workflow-playground',
-  '.a3s-workflow-canvas-tools',
-  '.a3s-workflow-cached-variables',
-  '.a3s-workflow-node',
-  '.a3s-node-inspector',
-  '.a3s-debug-panel',
 ]) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
@@ -298,4 +238,4 @@ if (process.env.SITE_URL) {
   assert(englishHome.includes(`href="${canonicalSite}/en/"`), 'English canonical URL is incorrect');
 }
 
-console.log(`Validated 2 homepages, 2 Desktop download pages, 2 Workflow Playgrounds, and ${files.length} exported files.`);
+console.log(`Validated 2 homepages, 2 Desktop download pages, and ${files.length} exported files.`);

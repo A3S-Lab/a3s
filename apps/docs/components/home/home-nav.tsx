@@ -10,16 +10,12 @@ export function HomeNav({ lang, page = 'home' }: { lang: Lang; page?: 'home' | '
   const pagePath = page === 'download' ? 'download/' : '';
   const languageHref = lang === 'cn' ? `${rootHref}en/${pagePath}` : `${rootHref}${pagePath}`;
   const downloadHref = withBase('/download/');
-  const playgroundHref = withBase('/playground/workflow-designer');
-  const flowHref = 'https://a3s-lab.github.io/Flow/';
   const sectionHref = (anchor: string) => page === 'home' ? anchor : `${homeHref}${anchor}`;
 
   const anchorLinks = [
     { label: tr.ecosystem, href: sectionHref('#ecosystem') },
     { label: tr.principles, href: sectionHref('#principles') },
     { label: tr.download, href: downloadHref, current: page === 'download' },
-    { label: tr.playground, href: playgroundHref },
-    { label: tr.flow, href: flowHref },
   ];
 
   return (

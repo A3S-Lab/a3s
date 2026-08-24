@@ -147,7 +147,6 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
             <b>{tr.footer.resources}</b>
             <a href="#ecosystem">{tr.footer.ecosystem}</a>
             <a href="#quickstart">{tr.footer.quickstart}</a>
-            <a href={withBase('/playground/workflow-designer')}>{tr.footer.playground}</a>
             <a href="https://a3s-lab.github.io/Flow/">{tr.footer.flow}</a>
             <a href={withBase('/download/')}>{tr.footer.download}</a>
           </div>
