@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "040bd718bd25dac2dfcf199ce56bc9827024b7c7"
+  revision = "f9b14697d0cc2c8d591092c6819c9087292edefd"
   source = "git"
   version = "0.1.0"
 }
