@@ -104,7 +104,38 @@ test('the Code component describes the Cloud host dependency', () => {
   assert.ok(code);
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
-  assert.equal(code.version, '8.0.0');
+  assert.equal(code.version, '8.0.1');
+});
+
+test('Cloud consumes Code and Flow through exact published releases', () => {
+  const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
+  const cloudLock = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.lock'), 'utf8');
+  const components = new Map(
+    parseCloudStackLock(LOCK_SOURCE).components.map((component) => [component.id, component]),
+  );
+
+  for (const id of ['code', 'flow']) {
+    const component = components.get(id);
+    assert.ok(component);
+    const declaration = tomlDependency(
+      cloudManifest,
+      'workspace.dependencies',
+      component.package,
+      'apps/cloud/Cargo.toml',
+    );
+    assert.ok(declaration.includes(`version = "=${component.version}"`));
+    assert.doesNotMatch(declaration, /\b(?:git|rev|path|registry)\s*=/);
+
+    const lockedPackage = packageFromLock(
+      cloudLock,
+      component.package,
+      component.version,
+      'apps/cloud/Cargo.lock',
+      undefined,
+      'registry+https://github.com/rust-lang/crates.io-index',
+    );
+    assert.match(lockedPackage.checksum, /^[0-9a-f]{64}$/);
+  }
 });
 
 test('the Use component describes the sole shared manager repository', () => {

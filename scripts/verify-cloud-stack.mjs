@@ -12,6 +12,7 @@ const { generate, parse } = require('../crates/acl/sdk/node/src');
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const DEFAULT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
+const CRATES_IO_SOURCE = 'registry+https://github.com/rust-lang/crates.io-index';
 const REQUIRED_COMPONENTS = [
   'acl',
   'boot',
@@ -393,10 +394,15 @@ function bracketDepth(value) {
   return depth;
 }
 
-function dependencyField(declaration, field, label) {
+function optionalDependencyField(declaration, field) {
   const match = new RegExp(`\\b${field}\\s*=\\s*"([^"]+)"`).exec(declaration);
-  invariant(match, `${label} is missing ${field}`);
-  return match[1];
+  return match?.[1];
+}
+
+function dependencyField(declaration, field, label) {
+  const value = optionalDependencyField(declaration, field);
+  invariant(value, `${label} is missing ${field}`);
+  return value;
 }
 
 function exactDependencyVersion(declaration, label) {
@@ -412,6 +418,7 @@ export function packageFromLock(
   expectedVersion,
   label,
   expectedRevision,
+  expectedSource,
 ) {
   const entries = source.split('[[package]]').slice(1);
   const entry = entries.find((candidate) => {
@@ -421,21 +428,24 @@ export function packageFromLock(
     ) {
       return false;
     }
-    if (!expectedRevision) return true;
-    return /^source = "([^"]+)"$/m
-      .exec(candidate)?.[1]
-      ?.endsWith(`#${expectedRevision}`);
+    const packageSource = /^source = "([^"]+)"$/m.exec(candidate)?.[1];
+    if (expectedRevision && !packageSource?.endsWith(`#${expectedRevision}`)) {
+      return false;
+    }
+    return !expectedSource || packageSource === expectedSource;
   });
   const revisionLabel = expectedRevision
     ? ` at revision ${expectedRevision}`
     : '';
+  const sourceLabel = expectedSource ? ` from ${expectedSource}` : '';
   invariant(
     entry,
-    `${label} is missing package ${name} ${expectedVersion}${revisionLabel}`,
+    `${label} is missing package ${name} ${expectedVersion}${revisionLabel}${sourceLabel}`,
   );
   return {
     version: quotedTomlValue(entry, 'version', `${label} package ${name}`),
     source: /^source = "([^"]+)"$/m.exec(entry)?.[1],
+    checksum: /^checksum = "([^"]+)"$/m.exec(entry)?.[1],
   };
 }
 
@@ -457,6 +467,36 @@ function assertLockVersion(lockSource, component, label, expectedRevision) {
       `${label} does not lock ${component.package} revision ${expectedRevision}`,
     );
   }
+}
+
+function assertPublishedLockVersion(lockSource, component, label) {
+  const entry = packageFromLock(
+    lockSource,
+    component.package,
+    component.version,
+    label,
+    undefined,
+    CRATES_IO_SOURCE,
+  );
+  invariant(
+    /^[0-9a-f]{64}$/.test(entry.checksum ?? ''),
+    `${label} package ${component.package} is missing a crates.io checksum`,
+  );
+}
+
+function verifyPublishedDependency(declaration, component, cloudLock) {
+  const label = `Cloud ${component.package}`;
+  invariant(
+    exactDependencyVersion(declaration, label) === component.version,
+    `${label} version does not match the compatibility lock`,
+  );
+  invariant(
+    ['git', 'rev', 'path', 'registry'].every(
+      (field) => optionalDependencyField(declaration, field) === undefined,
+    ),
+    `${label} must resolve from the published registry release`,
+  );
+  assertPublishedLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
 }
 
 function verifyDependencyBindings(root, componentMap) {
@@ -482,7 +522,7 @@ function verifyDependencyBindings(root, componentMap) {
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
   }
 
-  for (const id of ['box', 'code', 'flow', 'form', 'orm']) {
+  for (const id of ['box', 'form', 'orm']) {
     const component = componentMap.get(id);
     const declaration = tomlDependency(
       cloudManifest,
@@ -506,6 +546,17 @@ function verifyDependencyBindings(root, componentMap) {
       );
     }
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock', component.revision);
+  }
+
+  for (const id of ['code', 'flow']) {
+    const component = componentMap.get(id);
+    const declaration = tomlDependency(
+      cloudManifest,
+      'workspace.dependencies',
+      component.package,
+      cloudManifestPath,
+    );
+    verifyPublishedDependency(declaration, component, cloudLock);
   }
 
   const runtime = componentMap.get('runtime');

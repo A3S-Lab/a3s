@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "b087c4c2be705183e29f88baf655c96de487a4ad"
+  revision = "065b7fe60147d96a548570634ce4e6b554089a2b"
   source = "git"
   version = "0.1.0"
 }
@@ -46,9 +46,9 @@ component "code" {
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "44b41131a7509ec06f230f1fbc43da4af0bb2fcd"
+  revision = "85b2dc63bb4636ca8f3502a612f5e88c355ad765"
   source = "git"
-  version = "8.0.0"
+  version = "8.0.1"
 }
 component "event" {
   owner = "A3S-Lab/Event"
@@ -64,9 +64,9 @@ component "flow" {
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "9107165933892c63fac18d447933d03b9299ea4e"
+  revision = "2948ad51a1395177764766c3ddf7e44338f9e374"
   source = "git"
-  version = "1.0.0"
+  version = "1.1.0"
 }
 component "form" {
   manifest = "modules/form/crates/a3s-form-core/Cargo.toml"
