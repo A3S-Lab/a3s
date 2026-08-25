@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "7e7be677a3ec4d19d0f1ea96621488a431462acb"
+  revision = "745e92b9d21335b9dd62dad66db62354b3151d58"
   source = "git"
   version = "0.1.0"
 }
@@ -46,9 +46,9 @@ component "code" {
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "bbdd636b77f50c65a696a572d0f5a9956527744b"
+  revision = "44b41131a7509ec06f230f1fbc43da4af0bb2fcd"
   source = "git"
-  version = "7.0.2"
+  version = "8.0.0"
 }
 component "event" {
   owner = "A3S-Lab/Event"
@@ -64,7 +64,7 @@ component "flow" {
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "e9c77e55dde71c272d74f0224f09b5d5e027a43f"
+  revision = "9107165933892c63fac18d447933d03b9299ea4e"
   source = "git"
   version = "1.0.0"
 }

@@ -104,7 +104,7 @@ test('the Code component describes the Cloud host dependency', () => {
   assert.ok(code);
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
-  assert.equal(code.version, '7.0.2');
+  assert.equal(code.version, '8.0.0');
 });
 
 test('the Use component describes the sole shared manager repository', () => {
