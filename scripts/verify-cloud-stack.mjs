@@ -154,12 +154,15 @@ export function parseCloudStackLock(source) {
     validateAttributes(
       block,
       ['owner', 'path', 'source', 'version'],
-      ['manifest', 'package', 'repository', 'revision'],
+      ['dependency_source', 'manifest', 'package', 'repository', 'revision'],
     );
     const id = block.labels[0];
     const path = attribute(block, 'path', 'String');
     const sourceKind = attribute(block, 'source', 'String');
+    const dependencySource =
+      optionalAttribute(block, 'dependency_source', 'String') ?? sourceKind;
     const component = {
+      dependencySource,
       id,
       manifest: optionalAttribute(block, 'manifest', 'String') ?? 'Cargo.toml',
       owner: attribute(block, 'owner', 'String'),
@@ -193,6 +196,12 @@ export function parseCloudStackLock(source) {
       sourceKind === 'git' || sourceKind === 'workspace',
       `component "${id}" source must be git or workspace`,
     );
+    invariant(
+      dependencySource === 'git' ||
+        dependencySource === 'registry' ||
+        dependencySource === 'workspace',
+      `component "${id}" dependency_source must be git, registry, or workspace`,
+    );
     if (sourceKind === 'git') {
       invariant(
         /^git@github\.com:A3S-Lab\/[A-Za-z0-9._-]+\.git$/.test(component.repository ?? ''),
@@ -202,10 +211,24 @@ export function parseCloudStackLock(source) {
         /^[0-9a-f]{40}$/.test(component.revision ?? ''),
         `component "${id}" requires a full lowercase revision`,
       );
+      invariant(
+        dependencySource === 'git' || dependencySource === 'registry',
+        `Git component "${id}" dependency_source must be git or registry`,
+      );
+      if (dependencySource === 'registry') {
+        invariant(
+          component.package !== undefined,
+          `registry dependency component "${id}" requires a package`,
+        );
+      }
     } else {
       invariant(
         component.repository === undefined && component.revision === undefined,
         `workspace component "${id}" cannot declare repository or revision`,
+      );
+      invariant(
+        dependencySource === 'workspace',
+        `workspace component "${id}" dependency_source must be workspace`,
       );
     }
     return component;
@@ -522,7 +545,7 @@ function verifyDependencyBindings(root, componentMap) {
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
   }
 
-  for (const id of ['box', 'form', 'orm']) {
+  for (const id of ['box', 'code', 'flow', 'form', 'orm']) {
     const component = componentMap.get(id);
     const declaration = tomlDependency(
       cloudManifest,
@@ -530,6 +553,16 @@ function verifyDependencyBindings(root, componentMap) {
       component.package,
       cloudManifestPath,
     );
+    if (component.dependencySource === 'registry') {
+      verifyPublishedDependency(declaration, component, cloudLock);
+      continue;
+    }
+    if (id !== 'orm') {
+      invariant(
+        exactDependencyVersion(declaration, `Cloud ${component.package}`) === component.version,
+        `Cloud ${component.package} version does not match the compatibility lock`,
+      );
+    }
     invariant(
       dependencyField(declaration, 'git', `Cloud ${component.package}`) ===
         component.repository.replace('git@github.com:', 'https://github.com/'),
@@ -539,24 +572,7 @@ function verifyDependencyBindings(root, componentMap) {
       dependencyField(declaration, 'rev', `Cloud ${component.package}`) === component.revision,
       `Cloud ${component.package} revision does not match the compatibility lock`,
     );
-    if (id !== 'orm') {
-      invariant(
-        exactDependencyVersion(declaration, `Cloud ${component.package}`) === component.version,
-        `Cloud ${component.package} version does not match the compatibility lock`,
-      );
-    }
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock', component.revision);
-  }
-
-  for (const id of ['code', 'flow']) {
-    const component = componentMap.get(id);
-    const declaration = tomlDependency(
-      cloudManifest,
-      'workspace.dependencies',
-      component.package,
-      cloudManifestPath,
-    );
-    verifyPublishedDependency(declaration, component, cloudLock);
   }
 
   const runtime = componentMap.get('runtime');

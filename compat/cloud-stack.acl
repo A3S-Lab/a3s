@@ -36,11 +36,12 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "065b7fe60147d96a548570634ce4e6b554089a2b"
+  revision = "64abc453349a67cbef83eda51bd26db42e6faac4"
   source = "git"
   version = "0.1.0"
 }
 component "code" {
+  dependency_source = "registry"
   manifest = "core/Cargo.toml"
   owner = "A3S-Lab/Code"
   package = "a3s-code-core"
@@ -60,6 +61,7 @@ component "event" {
   version = "0.3.0"
 }
 component "flow" {
+  dependency_source = "registry"
   owner = "A3S-Lab/Flow"
   package = "a3s-flow"
   path = "crates/flow"

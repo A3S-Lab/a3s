@@ -10,6 +10,12 @@ Components whose package manifest is below the repository root declare a
 component-relative `manifest` path. Workspace-inherited package versions are
 resolved from the nearest enclosing Rust workspace manifest.
 
+Git components may declare `dependency_source = "registry"` when Cloud consumes
+their published crates.io package. Their `source`, repository, revision, and
+gitlink still pin the exact source tree used for compatibility evidence; the
+separate dependency source makes the verifier require an exact registry
+dependency and crates.io lock entry instead of a Cargo Git binding.
+
 The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,

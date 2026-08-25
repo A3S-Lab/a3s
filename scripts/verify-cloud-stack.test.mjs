@@ -102,9 +102,28 @@ test('the Code component describes the Cloud host dependency', () => {
     (component) => component.id === 'code',
   );
   assert.ok(code);
+  assert.equal(code.dependencySource, 'registry');
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
+  assert.equal(code.source, 'git');
   assert.equal(code.version, '8.0.1');
+});
+
+test('published dependencies retain separate Git provenance', () => {
+  const components = new Map(
+    parseCloudStackLock(LOCK_SOURCE).components.map((component) => [
+      component.id,
+      component,
+    ]),
+  );
+
+  for (const id of ['code', 'flow']) {
+    const component = components.get(id);
+    assert.ok(component);
+    assert.equal(component.dependencySource, 'registry');
+    assert.equal(component.source, 'git');
+    assert.match(component.revision, /^[0-9a-f]{40}$/);
+  }
 });
 
 test('Cloud consumes Code and Flow through exact published releases', () => {
@@ -136,6 +155,26 @@ test('Cloud consumes Code and Flow through exact published releases', () => {
     );
     assert.match(lockedPackage.checksum, /^[0-9a-f]{64}$/);
   }
+});
+
+test('component dependency sources reject unknown and workspace-registry combinations', () => {
+  const unknown = LOCK_SOURCE.replace(
+    '  dependency_source = "registry"\n',
+    '  dependency_source = "mirror"\n',
+  );
+  assert.throws(
+    () => parseCloudStackLock(unknown),
+    /dependency_source must be git, registry, or workspace/,
+  );
+
+  const workspaceRegistry = LOCK_SOURCE.replace(
+    'component "updater" {\n',
+    'component "updater" {\n  dependency_source = "registry"\n',
+  );
+  assert.throws(
+    () => parseCloudStackLock(workspaceRegistry),
+    /workspace component "updater" dependency_source must be workspace/,
+  );
 });
 
 test('the Use component describes the sole shared manager repository', () => {
