@@ -66,7 +66,7 @@ component "flow" {
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "fe5c45b68f219206ab799b83fb8820bd7a18cb44"
+  revision = "3dfcff495a5172df2398e3fc890bd4d243f3dc21"
   source = "git"
   version = "1.1.0"
 }
