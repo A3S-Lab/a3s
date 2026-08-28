@@ -146,9 +146,10 @@ release cadence, and detailed documentation.
 
 - The standalone [`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository
   owns CLI source, CI, tags, releases, and product documentation. This root
-  pins a reviewed post-v0.12.5 integration revision that adds Runtime Service
-  provider-process rebinding qualification. The gitlink is newer than the
-  v0.12.5 tag and does not represent a newer public release. This root retains
+  pins a reviewed v0.12.5 maintenance revision with Runtime Service
+  provider-process rebinding and unambiguous bounded-startup warnings. CLI
+  v0.13.0 is not pinned until its in-process Use dependency and the external
+  Use process share one frozen capability protocol revision. This root retains
   an asset-only relay for legacy 0.11.x clients that briefly used the monorepo
   release endpoint.
 - The pinned [Code](crates/code/) revision includes a capability ledger and
