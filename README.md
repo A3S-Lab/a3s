@@ -174,6 +174,12 @@ release cadence, and detailed documentation.
 - MoE owns model-specific equations and validation; Power owns model-neutral
   execution. Model support evidence does not imply that every optimized kernel,
   accelerator backend, or speculative adapter is complete.
+- The pinned Power and Gateway revisions establish the aggregated distributed
+  inference foundation without adding a second control plane: Power publishes
+  bounded worker observations, while Gateway owns pool admission,
+  filter/score/pick routing, scoped prompt-cache affinity, and same-generation
+  pre-response retry. Cloud snapshot publication, mixed-version qualification,
+  and prefill/decode state transfer remain open.
 - Ash and Parser are early-stage, and Office is pre-1.0.
 - The pinned OCI Runtime revision uses schema-v9 containerd metadata, recovers
   committed init Start, exec Start, live init Kill, terminal init Kill, and

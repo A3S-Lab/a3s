@@ -85,7 +85,7 @@ component "gateway" {
   package = "a3s-gateway"
   path = "crates/gateway"
   repository = "git@github.com:A3S-Lab/Gateway.git"
-  revision = "f12a5ef2e1421098e352c7ab5b50c46a6e847444"
+  revision = "33c25a41afaf5a02bef0bba5f023c2f0aef7ba67"
   source = "git"
   version = "1.1.1"
 }
