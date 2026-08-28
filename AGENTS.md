@@ -18,6 +18,7 @@ a3s/
 │   ├── lane/ memory/ moe/ ocr/ orm/ power/ runtime/ search/ use/
 │   ├── updater/      # Root-owned shared crate
 │   └── common/       # Shared types (local crate)
+├── use-registry/     # Official signed A3S Use Registry deployment (submodule)
 └── homebrew-tap/     # Homebrew tap
 ```
 

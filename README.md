@@ -159,8 +159,9 @@ release cadence, and detailed documentation.
 - The Cloud compatibility lock pins exact Cloud, Code, ACL, Boot, Box, Event,
   Flow, Form, Gateway, ORM, Runtime, Sentry, Updater, and Use revisions plus their
   shared protocol levels. Its current Use boundary records plugin-host
-  capabilities v6 and the managed-scope-v2 mutation fence. Run
-  `just cloud-stack-check` before publishing a new integration claim.
+  capabilities v6, the managed-scope-v2 mutation fence, and A0's
+  exact-generation serializable mutation gate. Run `just cloud-stack-check`
+  before publishing a new integration claim.
 - Workflow Phases 0–2 have verified contract, Form lifecycle, and minimal run
   baselines. Phase 3 has a pinned internal HumanTask decision slice, including
   protected reads, claim/release, native Form submission, expiry, cancellation,
@@ -168,9 +169,11 @@ release cadence, and detailed documentation.
   open. See the [architecture](compat/workflow-platform-architecture.md) and
   [ordered plan](compat/workflow-platform-development-plan.md).
 - Use is a preview, not a supported product release. The pinned integration
-  includes provider-process rebinding recovery and its v6/v2 Cloud host
-  schemas; remaining cross-platform gates are owned by the component README
-  and the compatibility lock.
+  includes provider-process rebinding recovery, its v6/v2 Cloud host schemas,
+  and five-platform A0 mutation qualification. Scoped installation authority,
+  transactional control, portable agent invocation, provider cleanup, the
+  operated production Registry and MHS qualification remain open in the
+  component roadmap.
 - MoE owns model-specific equations and validation; Power owns model-neutral
   execution. Model support evidence does not imply that every optimized kernel,
   accelerator backend, or speculative adapter is complete.
@@ -273,6 +276,7 @@ a3s/
 ├── crates/     product hosts, capabilities, runtimes, services, and SDKs
 ├── compat/     exact cross-project revisions and protocol locks
 ├── assets/     repository-native README visuals
+├── use-registry/ official signed A3S Use Registry deployment
 └── homebrew-tap/
 ```
 
@@ -283,7 +287,13 @@ a3s/
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
 | Interfaces and services | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
-| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Website](apps/docs/), [Homebrew Tap](homebrew-tap/) |
+| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Use Registry](use-registry/), [Website](apps/docs/), [Homebrew Tap](homebrew-tap/) |
+
+The root-level Use Registry is a pinned deployment repository, not a package
+source monorepo. [Use](crates/use/) owns Registry formats and tooling; package
+source and builds remain in each owning repository. GitHub transports reviewed
+Registry state, while clients establish trust from an independently obtained
+bootstrap-root digest.
 
 The [CLI migration record](docs/cli-repository-migration.md) explains the
 temporary 0.11.x root migration and restored standalone ownership. The

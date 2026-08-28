@@ -184,7 +184,7 @@ test('the Use component describes the sole shared manager repository', () => {
   assert.ok(use);
   assert.equal(use.manifest, 'Cargo.toml');
   assert.equal(use.package, 'a3s-use');
-  assert.equal(use.version, '0.3.2');
+  assert.equal(use.version, '0.3.3');
 });
 
 test('Git lock selection ignores a same-version registry package', () => {

@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "869f099bbe582b05f986e8ed4bd157f99bb62e80"
+  revision = "b92d4872ccc5946511fa5af07f896e37c713cdd5"
   source = "git"
   version = "0.1.0"
 }
@@ -128,9 +128,9 @@ component "use" {
   package = "a3s-use"
   path = "crates/use"
   repository = "git@github.com:A3S-Lab/Use.git"
-  revision = "0d251dc59f71c3478ff6597d52f47257d780b350"
+  revision = "4c698b1f145a55e9bca88e5c1f5aea2bf294a669"
   source = "git"
-  version = "0.3.2"
+  version = "0.3.3"
 }
 protocol "cloud-gateway-snapshot" {
   level = 3
