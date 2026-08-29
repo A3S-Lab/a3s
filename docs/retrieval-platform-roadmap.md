@@ -10,9 +10,9 @@ the dependency graph says so.
 
 The current checkout contains three relevant implementations:
 
-- `crates/vec` is an untracked pure-Rust `a3s-vec` prototype with zvec-shaped
-  API, storage, FTS, and vector/index facades. It is not yet an external
-  submodule or a release-qualified crate.
+- `crates/vec` is now the `A3S-Lab/Vec` git submodule. Its zvec-shaped API,
+  storage, FTS, and vector/index facades are still a prototype and are not yet
+  a release-qualified implementation.
 - `a3s-code-core` has a session-local chunk catalog, incremental BM25,
   `a3s-memory` exact-vector partitions, deterministic RRF/MMR, provider ports,
   and source verification. This is the behavioural reference for migration.
@@ -49,8 +49,8 @@ tests.
   adapters, CLI ACL blocks, TUI views, and existing test fixtures.
 - Freeze `ChunkRecordV1`, `EmbeddingDescriptorV1`, `RetrievalStatusV1`, typed
   fallback reasons, and collection/partition identity rules.
-- Decide the temporary path dependency and the eventual external repository
-  name (`A3S-Lab/Vec`) without adding a root workspace.
+- Record the external `A3S-Lab/Vec` repository, submodule pin, and temporary
+  path-development workflow without adding a root workspace.
 
 **Exit gate**
 

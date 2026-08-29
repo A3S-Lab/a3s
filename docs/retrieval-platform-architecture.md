@@ -108,7 +108,7 @@ another row.
 
 | Project | Owns | Public boundary | Must not own |
 | --- | --- | --- | --- |
-| `a3s-vec` (`crates/vec`, eventually an external `A3S-Lab/Vec` repository) | Typed collections, schema, documents, WAL/snapshots, scalar/FTS/vector indexes, query planning, fusion primitives, and collection statistics | `Collection`, `Doc`, schema/index builders, `SearchQuery`, `MultiQuery`, iterator, typed errors, and `EmbeddingProvider`-agnostic vector APIs | Workspace traversal, chunk policy, provider credentials, model downloads, Agent sessions, or UI |
+| `a3s-vec` (`crates/vec`, hosted by the external `A3S-Lab/Vec` repository) | Typed collections, schema, documents, WAL/snapshots, scalar/FTS/vector indexes, query planning, fusion primitives, and collection statistics | `Collection`, `Doc`, schema/index builders, `SearchQuery`, `MultiQuery`, iterator, typed errors, and `EmbeddingProvider`-agnostic vector APIs | Workspace traversal, chunk policy, provider credentials, model downloads, Agent sessions, or UI |
 | `a3s-code-core` (`crates/code/core`) | Workspace admission, one canonical chunk catalog, chunk IDs/ranges/digests, manifest reconciliation, session-scoped collection lifecycle, source verification, Code-specific channel policy, and the model-facing `search`/`vgrep` contract | `WorkspaceServices`, `WorkspaceRetrieval`, `vgrep` request/result/status DTOs, and typed provider ports | A second storage engine, direct provider-specific model code, hidden filesystem access outside the workspace service, or Cloud lifecycle |
 | `a3s-code-core::embedding` | Provider-neutral embedding descriptor, bounded batching, cancellation, timeout/retry, response validation, and redacted errors | `EmbeddingProvider` and `EmbeddingDescriptorV1` | Vector persistence, file discovery, ACL parsing, or model artifact installation |
 | `a3s-code-core::rerank` | Code-aware RRF/MMR policy, range overlap and identifier precedence, bounded scratch accounting, and optional host reranker port | `WorkspaceReranker` plus versioned `WorkspaceRerankStatus` | A mandatory neural model, source egress, or generic database storage |
@@ -122,15 +122,12 @@ another row.
 
 ### 4.1 Repository packaging rule
 
-`crates/vec` is currently a local prototype in this checkout. The repository
-guidance requires a new crate to become an external A3S-Lab repository and a
-git submodule. Therefore the integration must use this order:
-
-1. Stabilize the API and on-disk format in the prototype.
-2. Create `A3S-Lab/Vec`, move the crate history there, and add it as
-   `crates/vec` in `.gitmodules`.
-3. Pin the gitlink and exact Cargo revision together in the compatibility lock.
-4. Only then advertise `a3s-vec` as a supported component.
+`A3S-Lab/Vec` now hosts the crate and the A3S repository consumes it through
+the `crates/vec` git submodule. Future source changes are committed in the Vec
+repository first; the integration repository advances the gitlink only after
+the engine checks and compatibility review pass. The remaining onboarding work
+is to add the exact component revision to the appropriate release/compatibility
+records before advertising a supported release.
 
 No root `Cargo.toml` or root Rust workspace is introduced.
 
