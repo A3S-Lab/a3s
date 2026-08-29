@@ -48,11 +48,11 @@ describe('ecosystem delivery status', () => {
   });
 
   test('records the verified status snapshot', () => {
-    assert.equal(statusVerifiedAt, '2026-08-22');
-    assert.equal(getProjectDeliveryStatus('desktop', 'en').stage, 'building');
-    assert.equal(getProjectDeliveryStatus('cli', 'en').release, 'v0.12.1');
-    assert.equal(getProjectDeliveryStatus('flow', 'en').release, 'v0.11.0');
-    assert.equal(getProjectDeliveryStatus('form', 'en').stage, 'preview');
+    assert.equal(statusVerifiedAt, '2026-08-25');
+    assert.equal(getProjectDeliveryStatus('cli', 'en').release, 'v0.12.5');
+    assert.equal(getProjectDeliveryStatus('flow', 'en').stage, 'released');
+    assert.equal(getProjectDeliveryStatus('flow', 'en').release, 'v1.0.0');
+    assert.equal(getProjectDeliveryStatus('power', 'en').stage, 'preview');
     assert.equal(getProjectDeliveryStatus('windhole', 'en').stage, 'preview');
     assert.equal(getProjectDeliveryStatus('gui', 'en').stage, 'preview');
     assert.equal(getProjectDeliveryStatus('oci-runtime', 'en').stage, 'experimental');

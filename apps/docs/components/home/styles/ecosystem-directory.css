@@ -70,13 +70,23 @@
   grid-column: span 5;
 }
 
-.a3s-site-card[data-site='office'],
-.a3s-site-card[data-site='form'],
+.a3s-site-card[data-site='flow'] {
+  grid-column: span 5;
+}
+
+.a3s-site-card[data-site='office'] {
+  grid-column: span 7;
+}
+
+.a3s-site-card[data-site='power'],
 .a3s-site-card[data-site='box'],
-.a3s-site-card[data-site='use'],
+.a3s-site-card[data-site='use'] {
+  grid-column: span 4;
+}
+
 .a3s-site-card[data-site='ui'],
 .a3s-site-card[data-site='gateway'] {
-  grid-column: span 4;
+  grid-column: span 6;
 }
 
 .a3s-site-preview {

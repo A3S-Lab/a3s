@@ -28,7 +28,7 @@ component "box" {
   package = "a3s-box-runtime"
   path = "crates/box"
   repository = "git@github.com:A3S-Lab/Box.git"
-  revision = "ca9111c827508db62f77670f739bce915a275330"
+  revision = "93ddc2d2db3827e06606da2e368a03b0e29c06f2"
   source = "git"
   version = "3.2.0"
 }
@@ -36,19 +36,20 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "b0a563e24376e125012367597d2787473054f228"
+  revision = "4027ff6e54dba8a7994430571ce15412e08ad701"
   source = "git"
   version = "0.1.0"
 }
 component "code" {
+  dependency_source = "registry"
   manifest = "core/Cargo.toml"
   owner = "A3S-Lab/Code"
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "6b0fa2f9f2716817b93f42a23a3942be6634f1dc"
+  revision = "85b2dc63bb4636ca8f3502a612f5e88c355ad765"
   source = "git"
-  version = "7.0.1"
+  version = "8.0.1"
 }
 component "event" {
   owner = "A3S-Lab/Event"
@@ -60,21 +61,22 @@ component "event" {
   version = "0.3.0"
 }
 component "flow" {
+  dependency_source = "registry"
   owner = "A3S-Lab/Flow"
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "9a4d41d6eb2d08074483ceac349b4727c5874edb"
+  revision = "66d727c439dcd0d361faad4ef04e503efc08c005"
   source = "git"
-  version = "1.0.0"
+  version = "1.1.0"
 }
 component "form" {
-  manifest = "crates/a3s-form-core/Cargo.toml"
-  owner = "A3S-Lab/Form"
+  manifest = "modules/form/crates/a3s-form-core/Cargo.toml"
+  owner = "A3S-Lab/UI"
   package = "a3s-form-core"
-  path = "packages/form"
-  repository = "git@github.com:A3S-Lab/Form.git"
-  revision = "8d73dba5e88ded0de7ae0e1c7b1e599a5d9134de"
+  path = "packages/ui"
+  repository = "git@github.com:A3S-Lab/UI.git"
+  revision = "3c5499cba6dc116230b859fac6a8e32653024a8f"
   source = "git"
   version = "0.1.0"
 }
@@ -83,9 +85,9 @@ component "gateway" {
   package = "a3s-gateway"
   path = "crates/gateway"
   repository = "git@github.com:A3S-Lab/Gateway.git"
-  revision = "e92896769953aee28ef69261f77265e427f9d396"
+  revision = "33c25a41afaf5a02bef0bba5f023c2f0aef7ba67"
   source = "git"
-  version = "1.0.13"
+  version = "1.1.1"
 }
 component "orm" {
   owner = "A3S-Lab/ORM"
@@ -126,9 +128,9 @@ component "use" {
   package = "a3s-use"
   path = "crates/use"
   repository = "git@github.com:A3S-Lab/Use.git"
-  revision = "8d45bd43cb19fe3813b559c8839051406830ce4b"
+  revision = "4c698b1f145a55e9bca88e5c1f5aea2bf294a669"
   source = "git"
-  version = "0.3.2"
+  version = "0.3.3"
 }
 protocol "cloud-gateway-snapshot" {
   level = 3
@@ -162,33 +164,33 @@ protocol "flow-resume-receipt" {
 }
 protocol "form-core-evaluate-request" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-core/evaluate-request/v1alpha1"
-  source = "packages/form/crates/a3s-form-core/src/evaluation/protocol.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/evaluation/protocol.rs"
 }
 protocol "form-core-evaluate-response" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-core/evaluate-response/v1alpha1"
-  source = "packages/form/crates/a3s-form-core/src/evaluation/protocol.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/evaluation/protocol.rs"
 }
 protocol "form-interaction-request" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-interaction-request/v1"
-  source = "packages/form/crates/a3s-form-core/src/interaction_types.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "form-interaction-submission" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-interaction-submission/v1"
-  source = "packages/form/crates/a3s-form-core/src/interaction_types.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "form-release-ref" {
   level = 1
-  owner = "A3S-Lab/Form"
+  owner = "A3S-Lab/UI"
   schema = "a3s.dev/form-release-ref/v1"
-  source = "packages/form/crates/a3s-form-core/src/interaction_types.rs"
+  source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "runtime-capabilities" {
   level = 4
@@ -221,9 +223,9 @@ protocol "use-plugin-host-apply-result" {
   source = "crates/use/crates/core/src/plugin/host_operation.rs"
 }
 protocol "use-plugin-host-capabilities" {
-  level = 4
+  level = 6
   owner = "A3S-Lab/Use"
-  schema = "a3s.use.plugin-host-capabilities.v4"
+  schema = "a3s.use.plugin-host-capabilities.v6"
   source = "crates/use/crates/core/src/plugin/host.rs"
 }
 protocol "use-plugin-host-enablement-plan-request" {
@@ -239,9 +241,9 @@ protocol "use-plugin-host-enablement-plan-result" {
   source = "crates/use/crates/core/src/plugin/host_enablement_plan.rs"
 }
 protocol "use-plugin-host-managed-scope" {
-  level = 1
+  level = 2
   owner = "A3S-Lab/Use"
-  schema = "a3s.use.plugin-managed-scope.v1"
+  schema = "a3s.use.plugin-managed-scope.v2"
   source = "crates/use/crates/core/src/plugin/host.rs"
 }
 protocol "use-plugin-host-observation-request" {

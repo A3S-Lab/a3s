@@ -4,7 +4,11 @@ import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile 
 import { homedir, platform, tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { featuredProjectSites } from '../components/home/project-sites';
+import {
+  featuredProjectSites,
+  type FeaturedProjectSite,
+  type ProjectSiteCaptureLanguage,
+} from '../components/home/project-sites';
 
 const execute = promisify(execFile);
 const root = process.cwd();
@@ -272,6 +276,7 @@ async function captureWithChrome(
   output: string,
   profile: string,
   settleMs: number,
+  captureLanguage?: ProjectSiteCaptureLanguage,
 ) {
   await mkdir(profile, { recursive: true });
   const chromeProcess = spawn(chromeExecutable, [
@@ -314,6 +319,12 @@ async function captureWithChrome(
     await client.send('Runtime.evaluate', {
       awaitPromise: true,
       expression: `(async () => {
+        const requestedLanguage = ${JSON.stringify(captureLanguage ?? null)};
+        if (requestedLanguage && document.documentElement.dataset.language !== requestedLanguage) {
+          document.querySelector('[data-language-toggle]')?.click();
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        }
+
         if (document.fonts?.ready) await document.fonts.ready;
         const images = [...document.images].filter((image) => image.loading !== 'lazy' || image.getBoundingClientRect().top < innerHeight * 1.5);
         await Promise.all(images.map((image) => image.complete ? undefined : new Promise((resolve) => {
@@ -362,6 +373,18 @@ async function captureWithChrome(
       })()`,
       returnByValue: true,
     });
+    if (captureLanguage) {
+      const languageState = await client.send('Runtime.evaluate', {
+        expression: 'document.documentElement.dataset.language',
+        returnByValue: true,
+      });
+      const language = (languageState.result as { value?: unknown } | undefined)?.value;
+      if (language !== captureLanguage) {
+        throw new Error(
+          `preview did not enter the requested ${captureLanguage} language state (${String(language)})`,
+        );
+      }
+    }
     const screenshot = await client.send('Page.captureScreenshot', {
       captureBeyondViewport: false,
       format: 'png',
@@ -376,7 +399,7 @@ async function captureWithChrome(
 }
 
 const requestedSite = process.argv.find((argument) => argument.startsWith('--site='))?.split('=')[1];
-const sites = requestedSite
+const sites: readonly FeaturedProjectSite[] = requestedSite
   ? featuredProjectSites.filter((site) => site.id === requestedSite)
   : [...featuredProjectSites];
 
@@ -396,47 +419,83 @@ await mkdir(outputDirectory, { recursive: true });
 const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'a3s-project-sites-'));
 const failures: string[] = [];
 
-async function capture(site: (typeof featuredProjectSites)[number]) {
-  const output = path.join(outputDirectory, path.basename(site.screenshot));
-  const temporaryOutput = path.join(temporaryDirectory, path.basename(site.screenshot));
-  const profile = path.join(temporaryDirectory, `${site.id}-profile`);
-  const captureUrl = site.id === 'form'
-    ? process.env.A3S_FORM_PREVIEW_URL ?? site.captureUrl
-    : site.captureUrl;
+interface CaptureTarget {
+  captureLanguage?: ProjectSiteCaptureLanguage;
+  captureUrl: string;
+  id: string;
+  screenshot: string;
+  settleMs: number;
+}
+
+function captureTargetsFor(site: FeaturedProjectSite): CaptureTarget[] {
+  const targets: CaptureTarget[] = [{
+    captureLanguage: site.captureLanguage,
+    captureUrl: site.captureUrl,
+    id: site.id,
+    screenshot: site.screenshot,
+    settleMs: site.settleMs,
+  }];
+
+  for (const [language, preview] of Object.entries(site.localizedPreviews ?? {})) {
+    targets.push({
+      captureLanguage: preview.captureLanguage,
+      captureUrl: preview.captureUrl ?? site.captureUrl,
+      id: `${site.id}-${language}`,
+      screenshot: preview.screenshot,
+      settleMs: site.settleMs,
+    });
+  }
+
+  return targets;
+}
+
+const captureTargets = sites.flatMap(captureTargetsFor);
+
+async function capture(target: CaptureTarget) {
+  const output = path.join(outputDirectory, path.basename(target.screenshot));
+  const temporaryOutput = path.join(temporaryDirectory, path.basename(target.screenshot));
+  const profile = path.join(temporaryDirectory, `${target.id}-profile`);
+  const captureUrl = target.captureUrl;
 
   try {
     await assertCaptureUrlIsHealthy(captureUrl);
-    await captureWithChrome(captureUrl, temporaryOutput, profile, site.settleMs);
+    await captureWithChrome(
+      captureUrl,
+      temporaryOutput,
+      profile,
+      target.settleMs,
+      target.captureLanguage,
+    );
 
     if (!await fileIsUsable(temporaryOutput)) {
       throw new Error('Chrome produced no usable screenshot');
     }
 
     await rename(temporaryOutput, output);
-    console.log(`Captured ${site.id}: ${captureUrl}`);
+    console.log(`Captured ${target.id}: ${captureUrl}`);
   } catch (error) {
     if (await fileIsUsable(temporaryOutput)) {
       await rename(temporaryOutput, output);
-      console.warn(`Captured ${site.id}: ${captureUrl} (Chrome reported an error after writing the image)`);
+      console.warn(`Captured ${target.id}: ${captureUrl} (Chrome reported an error after writing the image)`);
       return;
     }
 
     if (await fileIsUsable(output)) {
-      console.warn(`Keeping the committed ${site.id} screenshot: ${String(error)}`);
+      console.warn(`Keeping the committed ${target.id} screenshot: ${String(error)}`);
       return;
     }
 
-    failures.push(`${site.id}: ${String(error)}`);
+    failures.push(`${target.id}: ${String(error)}`);
   }
 }
 
 try {
   let nextIndex = 0;
   async function worker() {
-    while (nextIndex < sites.length) {
-      const site = sites[nextIndex];
+    while (nextIndex < captureTargets.length) {
+      const target = captureTargets[nextIndex];
       nextIndex += 1;
-      await capture(site);
+      await capture(target);
     }
   }
 

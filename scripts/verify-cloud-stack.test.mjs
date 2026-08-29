@@ -15,6 +15,10 @@ import {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LOCK_PATH = resolve(ROOT, 'compat/cloud-stack.acl');
 const LOCK_SOURCE = readFileSync(LOCK_PATH, 'utf8');
+const CLOUD_STACK_WORKFLOW_SOURCE = readFileSync(
+  resolve(ROOT, '.github/workflows/cloud-stack.yml'),
+  'utf8',
+);
 
 function committedFile(repository, path) {
   return execFileSync('git', ['show', `HEAD:${path}`], {
@@ -31,7 +35,7 @@ test('the checked-in Cloud stack is reproducible and clean', () => {
   assert.match(result.formInteractionFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
     result.formInteractionFixture.owner,
-    'packages/form/tests/conformance/interaction-contract-v1.json',
+    'packages/ui/modules/form/tests/conformance/interaction-contract-v1.json',
   );
   assert.equal(
     result.formInteractionFixture.cloud,
@@ -40,7 +44,7 @@ test('the checked-in Cloud stack is reproducible and clean', () => {
   assert.match(result.formValueEvaluationFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
     result.formValueEvaluationFixture.owner,
-    'packages/form/tests/conformance/value-evaluation-v1.json',
+    'packages/ui/modules/form/tests/conformance/value-evaluation-v1.json',
   );
   assert.equal(
     result.formValueEvaluationFixture.cloud,
@@ -85,31 +89,102 @@ test('the Form component resolves the native core package from its nested manife
     (component) => component.id === 'form',
   );
   assert.ok(form);
-  assert.equal(form.manifest, 'crates/a3s-form-core/Cargo.toml');
+  assert.equal(form.manifest, 'modules/form/crates/a3s-form-core/Cargo.toml');
+  assert.equal(form.owner, 'A3S-Lab/UI');
+  assert.equal(form.path, 'packages/ui');
+  assert.equal(form.repository, 'git@github.com:A3S-Lab/UI.git');
   assert.equal(form.package, 'a3s-form-core');
   assert.equal(form.version, '0.1.0');
 });
 
-test('the Code component pins the Cloud host dependency', () => {
+test('the Code component describes the Cloud host dependency', () => {
   const code = parseCloudStackLock(LOCK_SOURCE).components.find(
     (component) => component.id === 'code',
   );
   assert.ok(code);
+  assert.equal(code.dependencySource, 'registry');
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
-  assert.equal(code.version, '7.0.1');
-  assert.equal(code.revision, '6b0fa2f9f2716817b93f42a23a3942be6634f1dc');
+  assert.equal(code.source, 'git');
+  assert.equal(code.version, '8.0.1');
 });
 
-test('the Use component pins the sole shared manager repository', () => {
+test('published dependencies retain separate Git provenance', () => {
+  const components = new Map(
+    parseCloudStackLock(LOCK_SOURCE).components.map((component) => [
+      component.id,
+      component,
+    ]),
+  );
+
+  for (const id of ['code', 'flow']) {
+    const component = components.get(id);
+    assert.ok(component);
+    assert.equal(component.dependencySource, 'registry');
+    assert.equal(component.source, 'git');
+    assert.match(component.revision, /^[0-9a-f]{40}$/);
+  }
+});
+
+test('Cloud consumes Code and Flow through exact published releases', () => {
+  const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
+  const cloudLock = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.lock'), 'utf8');
+  const components = new Map(
+    parseCloudStackLock(LOCK_SOURCE).components.map((component) => [component.id, component]),
+  );
+
+  for (const id of ['code', 'flow']) {
+    const component = components.get(id);
+    assert.ok(component);
+    const declaration = tomlDependency(
+      cloudManifest,
+      'workspace.dependencies',
+      component.package,
+      'apps/cloud/Cargo.toml',
+    );
+    assert.ok(declaration.includes(`version = "=${component.version}"`));
+    assert.doesNotMatch(declaration, /\b(?:git|rev|path|registry)\s*=/);
+
+    const lockedPackage = packageFromLock(
+      cloudLock,
+      component.package,
+      component.version,
+      'apps/cloud/Cargo.lock',
+      undefined,
+      'registry+https://github.com/rust-lang/crates.io-index',
+    );
+    assert.match(lockedPackage.checksum, /^[0-9a-f]{64}$/);
+  }
+});
+
+test('component dependency sources reject unknown and workspace-registry combinations', () => {
+  const unknown = LOCK_SOURCE.replace(
+    '  dependency_source = "registry"\n',
+    '  dependency_source = "mirror"\n',
+  );
+  assert.throws(
+    () => parseCloudStackLock(unknown),
+    /dependency_source must be git, registry, or workspace/,
+  );
+
+  const workspaceRegistry = LOCK_SOURCE.replace(
+    'component "updater" {\n',
+    'component "updater" {\n  dependency_source = "registry"\n',
+  );
+  assert.throws(
+    () => parseCloudStackLock(workspaceRegistry),
+    /workspace component "updater" dependency_source must be workspace/,
+  );
+});
+
+test('the Use component describes the sole shared manager repository', () => {
   const use = parseCloudStackLock(LOCK_SOURCE).components.find(
     (component) => component.id === 'use',
   );
   assert.ok(use);
   assert.equal(use.manifest, 'Cargo.toml');
   assert.equal(use.package, 'a3s-use');
-  assert.equal(use.version, '0.3.2');
-  assert.equal(use.revision, '8d45bd43cb19fe3813b559c8839051406830ce4b');
+  assert.equal(use.version, '0.3.3');
 });
 
 test('Git lock selection ignores a same-version registry package', () => {
@@ -180,20 +255,24 @@ test('the lock registers both owner-defined Form evaluation protocols', () => {
   );
 });
 
-test('the lock registers the complete Use protocol-level-4 host boundary', () => {
+test('the lock registers the complete Use protocol-level-6 host boundary', () => {
   const protocols = new Map(
     parseCloudStackLock(LOCK_SOURCE).protocols.map((protocol) => [protocol.id, protocol]),
   );
   assert.equal(
     protocols.get('use-plugin-host-capabilities')?.schema,
-    'a3s.use.plugin-host-capabilities.v4',
+    'a3s.use.plugin-host-capabilities.v6',
   );
+  assert.equal(
+    protocols.get('use-plugin-host-managed-scope')?.schema,
+    'a3s.use.plugin-managed-scope.v2',
+  );
+  assert.equal(protocols.get('use-plugin-host-managed-scope')?.level, 2);
   for (const id of [
     'use-plugin-host-apply-request',
     'use-plugin-host-apply-result',
     'use-plugin-host-enablement-plan-request',
     'use-plugin-host-enablement-plan-result',
-    'use-plugin-host-managed-scope',
     'use-plugin-host-observation-request',
     'use-plugin-host-observation-result',
     'use-plugin-host-plan-request',
@@ -263,13 +342,40 @@ test('the Cloud Form Core dependency is exact and bound to the locked Git revisi
   );
   assert.ok(declaration.includes(`version = "=${form.version}"`));
   assert.ok(declaration.includes(`rev = "${form.revision}"`));
-  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Form\.git"/);
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/UI\.git"/);
 });
 
-test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
+test('Cloud Stack CI watches and initializes every locked Git component', () => {
+  const watchedPaths = new Set(
+    CLOUD_STACK_WORKFLOW_SOURCE.split(/\r?\n/)
+      .map((line) => /^\s*- "([^"]+)"$/.exec(line)?.[1])
+      .filter(Boolean),
+  );
+  const initializedPaths = new Set(
+    CLOUD_STACK_WORKFLOW_SOURCE.split(/\r?\n/).map((line) => {
+      const value = line.trim();
+      return value.endsWith('\\') ? value.slice(0, -1).trimEnd() : value;
+    }),
+  );
+  const gitComponents = parseCloudStackLock(LOCK_SOURCE).components.filter(
+    (component) => component.source === 'git',
+  );
+  for (const component of gitComponents) {
+    assert.ok(
+      watchedPaths.has(component.path),
+      `${component.path} is not watched by Cloud Stack CI`,
+    );
+    assert.ok(
+      initializedPaths.has(component.path),
+      `${component.path} is not initialized by Cloud Stack CI`,
+    );
+  }
+});
+
+test('Cloud consumes the UI-owned Form interaction fixture byte for byte', () => {
   const owner = committedFile(
-    'packages/form',
-    'tests/conformance/interaction-contract-v1.json',
+    'packages/ui',
+    'modules/form/tests/conformance/interaction-contract-v1.json',
   );
   const cloud = committedFile(
     'apps/cloud',
@@ -278,10 +384,10 @@ test('Cloud consumes the Form-owned interaction fixture byte for byte', () => {
   assert.ok(owner.equals(cloud));
 });
 
-test('Cloud consumes the Form-owned submitted-value evaluation fixture byte for byte', () => {
+test('Cloud consumes the UI-owned Form submitted-value evaluation fixture byte for byte', () => {
   const owner = committedFile(
-    'packages/form',
-    'tests/conformance/value-evaluation-v1.json',
+    'packages/ui',
+    'modules/form/tests/conformance/value-evaluation-v1.json',
   );
   const cloud = committedFile(
     'apps/cloud',

@@ -31,20 +31,6 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     ],
   },
   {
-    id: 'desktop',
-    name: 'Desktop',
-    category: 'products',
-    role: localized('用原生桌面工作台运行本地 A3S Code。', 'Runs local A3S Code through a native desktop workbench.'),
-    href: getProjectPrimaryHref('desktop'),
-    nodes: [
-      node('workbench', 'React Workbench', 'surface', '用 Rsbuild 和 A3S UI 呈现工作区、对话、工具与运行活动。', 'Uses Rsbuild and A3S UI to present workspace, transcript, tools, and run activity.'),
-      node('policy', 'Desktop Policy', 'core', '拥有工作区、模型、模式和工具权限选择。', 'Owns workspace, model, mode, and tool-permission selection.'),
-      node('bridge', 'Loopback Contract', 'contract', '通过带令牌的有界 JSONL 接口连接本机宿主。', 'Connects to the local host through a token-authenticated, bounded JSONL interface.'),
-      node('code', 'A3S Code Process', 'runtime', '用 stdin 和无 shell 参数启动已安装的 A3S Code。', 'Starts the installed A3S Code with stdin and shell-free arguments.'),
-      node('events', 'Run Evidence', 'evidence', '投影有序事件、工具结果、诊断、完成与取消状态。', 'Projects ordered events, tool results, diagnostics, completion, and cancellation state.'),
-    ],
-  },
-  {
     id: 'windhole',
     name: 'Windhole',
     category: 'products',
@@ -149,7 +135,7 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     role: localized('读取、编辑和生成 Office 文件，支持 CLI、MCP 和 Skill。', 'Reads, edits, and creates Office files through the CLI, MCP, and Skill.'),
     href: getProjectPrimaryHref('office'),
     nodes: [
-      node('host', 'Host Product', 'surface', '由独立 Playground 或自动化宿主提供产品策略。', 'Receives product policy from the standalone Playground or automation hosts.'),
+      node('host', 'Host Product', 'surface', '由产品宿主或自动化宿主提供产品策略。', 'Receives product policy from product or automation hosts.'),
       node('contracts', 'Typed Contracts', 'core', '编辑与自动化平面共享有界内容模型和操作契约。', 'Editing and automation planes share bounded content models and operation contracts.'),
       node('browser', 'Browser Plane', 'contract', '组合编辑器、Worker、WASM 与 PDFium。', 'Combines editors, workers, WebAssembly, and PDFium.'),
       node('native', 'Native Rust Plane', 'runtime', '用独立 Rust 核心处理文件系统与 OOXML package。', 'Handles filesystem and OOXML package concerns in a separate Rust core.'),
@@ -183,20 +169,6 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
       node('domain', 'DDD + Durable Core', 'contract', '业务模块通过 ORM、Flow、Event 与 outbox 持久化。', 'Persists business modules through ORM, Flow, Event, and the outbox.'),
       node('agent', 'Node Agent', 'runtime', '用 outbound mTLS lease 接收命令并提交可验证回执。', 'Receives commands over outbound mTLS leases and submits verifiable receipts.'),
       node('execution', 'Box / Gateway / Power', 'evidence', '执行工作负载、边缘路由与推理，并返回运行证据。', 'Executes workloads, edge routing, and inference while returning runtime evidence.'),
-    ],
-  },
-  {
-    id: 'form',
-    name: 'Form',
-    category: 'products',
-    role: localized('用可视化编辑器设计 AI Native 表单，并编译成可嵌入产物。', 'Designs AI Native forms visually and compiles them into embeddable output.'),
-    href: getProjectPrimaryHref('form'),
-    nodes: [
-      node('designer', 'Form Designer', 'surface', '提供字段目录、结构树、布局拖放、实时预览与撤销重做。', 'Provides a field catalog, structure tree, layout drag and drop, live preview, and undo/redo.'),
-      node('document', 'FormDocument', 'core', '用一份版本化文档保存 schema、界面、规则、引用与元数据。', 'Stores schema, UI, rules, references, and metadata in one versioned document.'),
-      node('compiler', 'Deterministic Compiler', 'contract', '验证能力与依赖关系，并生成不可变 FormPlan 和规范摘要。', 'Validates capabilities and dependencies, then produces an immutable FormPlan and canonical digest.'),
-      node('adapters', 'React / Vue / Web Component', 'runtime', '通过受控值、动作回调与宿主注册表嵌入不同产品。', 'Embeds into products through controlled values, action callbacks, and host registries.'),
-      node('evidence', 'Revision + SHA-256', 'evidence', '把 Agent 提交的 FormPatch 绑定到基准版本并保留可核验摘要。', 'Binds agent-authored FormPatch changes to a base revision and verifiable digest.'),
     ],
   },
   {

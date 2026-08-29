@@ -45,8 +45,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Checkout Box submodule
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config submodule.crates/box.url https://github.com/A3S-Lab/Box.git
+          git submodule update --init --recursive crates/box
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

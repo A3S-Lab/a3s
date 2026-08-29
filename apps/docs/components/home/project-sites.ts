@@ -1,11 +1,21 @@
 import type { ProjectId } from './project-links';
 
+export type ProjectSiteCaptureLanguage = 'en' | 'zh';
+
+export interface LocalizedProjectSitePreview {
+  captureLanguage?: ProjectSiteCaptureLanguage;
+  captureUrl?: string;
+  screenshot: string;
+}
+
 export interface FeaturedProjectSite {
   id: ProjectId;
   href: string;
   captureUrl: string;
+  captureLanguage?: ProjectSiteCaptureLanguage;
   displayUrl: string;
   screenshot: string;
+  localizedPreviews?: Partial<Record<'cn' | 'en', LocalizedProjectSitePreview>>;
   settleMs: number;
   mode: 'live' | 'build';
   destination: 'site' | 'repository';
@@ -33,6 +43,22 @@ export const featuredProjectSites = [
     destination: 'site',
   },
   {
+    id: 'flow',
+    href: 'https://a3s-lab.github.io/Flow/',
+    captureUrl: 'https://a3s-lab.github.io/Flow/',
+    displayUrl: 'a3s-lab.github.io/Flow',
+    screenshot: '/ecosystem-sites/flow.png',
+    localizedPreviews: {
+      en: {
+        captureUrl: 'https://a3s-lab.github.io/Flow/en/',
+        screenshot: '/ecosystem-sites/flow-en.png',
+      },
+    },
+    settleMs: 1_800,
+    mode: 'live',
+    destination: 'site',
+  },
+  {
     id: 'office',
     href: 'https://a3s-lab.github.io/Office/',
     captureUrl: 'https://a3s-lab.github.io/Office/',
@@ -43,12 +69,12 @@ export const featuredProjectSites = [
     destination: 'site',
   },
   {
-    id: 'form',
-    href: '/form/',
-    captureUrl: 'https://a3s-lab.github.io/a3s/form/',
-    displayUrl: 'a3s-lab.github.io/a3s/form',
-    screenshot: '/ecosystem-sites/form.png',
-    settleMs: 1_800,
+    id: 'power',
+    href: 'https://a3s-lab.github.io/Power/',
+    captureUrl: 'https://a3s-lab.github.io/Power/',
+    displayUrl: 'a3s-lab.github.io/Power',
+    screenshot: '/ecosystem-sites/power.png',
+    settleMs: 5_000,
     mode: 'live',
     destination: 'site',
   },
@@ -86,8 +112,15 @@ export const featuredProjectSites = [
     id: 'gateway',
     href: 'https://a3s-lab.github.io/Gateway/',
     captureUrl: 'https://a3s-lab.github.io/Gateway/',
+    captureLanguage: 'zh',
     displayUrl: 'a3s-lab.github.io/Gateway',
     screenshot: '/ecosystem-sites/gateway.png',
+    localizedPreviews: {
+      en: {
+        captureLanguage: 'en',
+        screenshot: '/ecosystem-sites/gateway-en.png',
+      },
+    },
     settleMs: 3_500,
     mode: 'live',
     destination: 'site',

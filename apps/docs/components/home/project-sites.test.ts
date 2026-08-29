@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { architectureProjects } from './architecture';
-import { featuredProjectSites } from './project-sites';
+import { featuredProjectSites, type FeaturedProjectSite } from './project-sites';
 
 describe('featured project site previews', () => {
   test('point to known projects and committed screenshots', () => {
     const projectIds = new Set(architectureProjects.map((project) => project.id));
 
-    assert.equal(featuredProjectSites.length, 8);
-    assert.equal(new Set(featuredProjectSites.map((site) => site.id)).size, 8);
+    assert.equal(featuredProjectSites.length, 9);
+    assert.equal(new Set(featuredProjectSites.map((site) => site.id)).size, 9);
 
-    for (const site of featuredProjectSites) {
+    for (const site of featuredProjectSites as readonly FeaturedProjectSite[]) {
       assert.equal(projectIds.has(site.id), true);
       assert.equal(site.captureUrl.startsWith('https://'), true);
       assert.equal(
@@ -24,19 +24,43 @@ describe('featured project site previews', () => {
         true,
         `Missing screenshot for ${site.id}`,
       );
+
+      for (const preview of Object.values(site.localizedPreviews ?? {})) {
+        assert.equal(
+          existsSync(new URL(`../../public/${preview.screenshot.slice(1)}`, import.meta.url)),
+          true,
+          `Missing localized screenshot for ${site.id}`,
+        );
+      }
     }
   });
 
-  test('features the Box site and the published Form playground', () => {
+  test('matches Gateway screenshots to the homepage language', () => {
+    const gateway = featuredProjectSites.find((site) => site.id === 'gateway');
+
+    assert.equal(gateway?.captureLanguage, 'zh');
+    assert.equal(gateway?.screenshot, '/ecosystem-sites/gateway.png');
+    assert.equal(gateway?.localizedPreviews?.en.captureLanguage, 'en');
+    assert.equal(gateway?.localizedPreviews?.en.screenshot, '/ecosystem-sites/gateway-en.png');
+  });
+
+  test('features the Box, Flow, and Power sites', () => {
     const box = featuredProjectSites.find((site) => site.id === 'box');
-    const form = featuredProjectSites.find((site) => site.id === 'form');
+    const flow = featuredProjectSites.find((site) => site.id === 'flow');
+    const power = featuredProjectSites.find((site) => site.id === 'power');
 
     assert.equal(box?.href, 'https://a3s-lab.github.io/Box/');
     assert.equal(box?.mode, 'live');
-    assert.equal(form?.captureUrl, 'https://a3s-lab.github.io/a3s/form/');
-    assert.equal(form?.href, '/form/');
-    assert.equal(form?.mode, 'live');
-    assert.equal(form?.destination, 'site');
+    assert.equal(flow?.captureUrl, 'https://a3s-lab.github.io/Flow/');
+    assert.equal(flow?.href, 'https://a3s-lab.github.io/Flow/');
+    assert.equal(flow?.mode, 'live');
+    assert.equal(flow?.destination, 'site');
+    assert.equal(flow?.localizedPreviews?.en?.captureUrl, 'https://a3s-lab.github.io/Flow/en/');
+    assert.equal(flow?.localizedPreviews?.en?.screenshot, '/ecosystem-sites/flow-en.png');
+    assert.equal(power?.captureUrl, 'https://a3s-lab.github.io/Power/');
+    assert.equal(power?.href, 'https://a3s-lab.github.io/Power/');
+    assert.equal(power?.mode, 'live');
+    assert.equal(power?.destination, 'site');
     assert.equal(featuredProjectSites.map((site) => String(site.id)).includes('site'), false);
   });
 
@@ -45,7 +69,9 @@ describe('featured project site previews', () => {
 
     assert.equal((settleTimes.get('cloud') ?? 0) >= 10_000, true);
     assert.equal((settleTimes.get('code') ?? 0) >= 12_000, true);
+    assert.equal((settleTimes.get('flow') ?? 0) >= 1_500, true);
     assert.equal((settleTimes.get('box') ?? 0) >= 4_000, true);
+    assert.equal((settleTimes.get('power') ?? 0) >= 5_000, true);
   });
 
   test('install Chinese fonts before build-time screenshots are captured', () => {
@@ -61,32 +87,23 @@ describe('featured project site previews', () => {
     assert.equal(fontInstall < screenshotCapture, true, 'CJK fonts must be installed before screenshots are captured');
   });
 
-  test('builds and publishes the pinned Form playground', () => {
+  test('captures public project sites without building a nested product surface', () => {
     const workflow = readFileSync(
       new URL('../../../../.github/workflows/site.yml', import.meta.url),
       'utf8',
     );
-    const formRevision = workflow.indexOf('FORM_REVISION:');
-    const formBase = workflow.indexOf('A3S_FORM_BASE: ./');
-    const formBuild = workflow.indexOf('playground:build');
-    const formPreviewUrl = workflow.indexOf('A3S_FORM_PREVIEW_URL: http://127.0.0.1:4176/');
     const screenshotCapture = workflow.indexOf('bun run capture:sites');
     const siteBuild = workflow.indexOf('run: bun run build');
-    const formPublish = workflow.indexOf('cp -R "$RUNNER_TEMP/a3s-form/playground-dist" apps/docs/out/form');
-    const formValidation = workflow.indexOf("REQUIRE_FORM_PREVIEW: '1'");
 
-    assert.notEqual(formRevision, -1, 'Form preview source must be pinned');
-    assert.notEqual(formBase, -1, 'Form playground assets must use relative paths');
-    assert.notEqual(formBuild, -1, 'Form playground must be built');
-    assert.notEqual(formPreviewUrl, -1, 'Capture must use the local Form build');
-    assert.notEqual(formPublish, -1, 'Form playground must be included in the Pages artifact');
-    assert.notEqual(formValidation, -1, 'Pages validation must require the Form playground');
-    assert.equal(formRevision < formBuild, true);
-    assert.equal(formBase < formBuild, true);
-    assert.equal(formBuild < screenshotCapture, true);
-    assert.equal(formPreviewUrl < screenshotCapture, true);
-    assert.equal(siteBuild < formPublish, true);
-    assert.equal(formPublish < formValidation, true);
+    assert.notEqual(screenshotCapture, -1, 'Pages must refresh project screenshots');
+    assert.notEqual(siteBuild, -1, 'Pages must build the Rspress site');
+    assert.equal(screenshotCapture < siteBuild, true);
+    assert.equal(workflow.includes('UI_REPOSITORY'), false);
+    assert.equal(workflow.includes('UI_REVISION'), false);
+    assert.equal(workflow.includes('A3S_FORM'), false);
+    assert.equal(workflow.includes('form:playground:build'), false);
+    assert.equal(workflow.includes('apps/docs/out/form'), false);
+    assert.equal(workflow.includes('REQUIRE_FORM_PREVIEW'), false);
   });
 
   test('checks preview HTTP status before Chrome can replace a committed screenshot', () => {
@@ -95,7 +112,7 @@ describe('featured project site previews', () => {
       'utf8',
     );
     const healthCheck = captureScript.indexOf('await assertCaptureUrlIsHealthy(captureUrl)');
-    const chromeCapture = captureScript.indexOf('await captureWithChrome(captureUrl');
+    const chromeCapture = captureScript.indexOf('await captureWithChrome(');
 
     assert.notEqual(healthCheck, -1);
     assert.notEqual(chromeCapture, -1);
@@ -106,6 +123,8 @@ describe('featured project site previews', () => {
     assert.equal(captureScript.includes('await waitForPageTarget(port, chromeProcess)'), true);
     assert.equal(captureScript.includes('animation-play-state: paused'), true);
     assert.equal(captureScript.includes("document.querySelectorAll('video')"), true);
+    assert.equal(captureScript.includes("[data-language-toggle]"), true);
+    assert.equal(captureScript.includes('site.captureLanguage'), true);
     assert.equal(captureScript.includes('--virtual-time-budget'), false);
   });
 });

@@ -24,10 +24,10 @@ export const homeContent = {
       lineTwo: 'ecosystem for AI Native',
       accent: 'organizations.',
       description:
-        'A3S brings together 36 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure. Start locally, then add only the components the job needs.',
-      primaryAction: 'Browse 36 projects',
+        'A3S brings together 34 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure. Start locally, then add only the components the job needs.',
+      primaryAction: 'Browse 34 projects',
     },
-    signal: ['36 focused projects', '8 public project sites', '3 system layers', 'Status and source in one place'],
+    signal: ['34 focused projects', '9 public project sites', '3 system layers', 'Status and source in one place'],
     principles: {
       eyebrow: 'SYSTEM RULES / 05',
       title: 'Five rules that keep the parts understandable.',
@@ -41,7 +41,7 @@ export const homeContent = {
       ] satisfies PrincipleCopy[],
     },
     ecosystem: {
-      eyebrow: 'ECOSYSTEM DIRECTORY / 36 PROJECTS',
+      eyebrow: 'ECOSYSTEM DIRECTORY / 34 PROJECTS',
       title: 'Find the project that owns the job.',
       description: 'Search by project or filter by layer. Every entry links to its source and shows its current version or channel and delivery stage.',
     },
@@ -86,6 +86,7 @@ export const homeContent = {
       community: 'Community',
       ecosystem: 'Project directory',
       quickstart: 'Quick start',
+      flow: 'A3S Flow',
       download: 'Desktop download',
       github: 'GitHub',
       discord: 'Discord',
@@ -109,10 +110,10 @@ export const homeContent = {
       lineTwo: '构建的AI操作系统',
       accent: '生态',
       description:
-        'A3S 包含 36 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。先在本地开始，再按任务需要添加组件。',
-      primaryAction: '浏览 36 个项目',
+        'A3S 包含 34 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。先在本地开始，再按任务需要添加组件。',
+      primaryAction: '浏览 34 个项目',
     },
-    signal: ['36 个职责明确的项目', '8 个公开项目页面', '3 个系统层级', '状态与代码统一索引'],
+    signal: ['34 个职责明确的项目', '9 个公开项目页面', '3 个系统层级', '状态与代码统一索引'],
     principles: {
       eyebrow: '系统规则 / 05',
       title: '让各个组件保持清晰的五条规则。',
@@ -126,7 +127,7 @@ export const homeContent = {
       ] satisfies PrincipleCopy[],
     },
     ecosystem: {
-      eyebrow: '生态目录 / 36 个项目',
+      eyebrow: '生态目录 / 34 个项目',
       title: '按职责找到对应项目。',
       description: '按项目搜索或按层级筛选。每个条目都提供代码入口、当前版本或通道和交付阶段。',
     },
@@ -171,6 +172,7 @@ export const homeContent = {
       community: '社区',
       ecosystem: '项目目录',
       quickstart: '快速开始',
+      flow: 'A3S Flow',
       download: '下载桌面端',
       github: 'GitHub',
       discord: 'Discord',

@@ -70,6 +70,9 @@
 [submodule "apps/cloud"]
 	path = apps/cloud
 	url = git@github.com:A3S-Lab/Cloud.git
+[submodule "apps/desktop"]
+	path = apps/desktop
+	url = git@github.com:A3S-Lab/Desktop.git
 [submodule "crates/use"]
 	path = crates/use
 	url = git@github.com:A3S-Lab/Use.git
@@ -100,12 +103,12 @@
 [submodule "packages/ui"]
 	path = packages/ui
 	url = git@github.com:A3S-Lab/UI.git
-[submodule "packages/form"]
-	path = packages/form
-	url = git@github.com:A3S-Lab/Form.git
 [submodule "crates/moe"]
 	path = crates/moe
 	url = git@github.com:A3S-Lab/MoE.git
+[submodule "use-registry"]
+	path = use-registry
+	url = git@github.com:A3S-Lab/Use-Registry.git
 [submodule "crates/vec"]
 	path = crates/vec
 	url = git@github.com:A3S-Lab/Vec.git

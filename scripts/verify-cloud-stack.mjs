@@ -12,6 +12,7 @@ const { generate, parse } = require('../crates/acl/sdk/node/src');
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const DEFAULT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
+const CRATES_IO_SOURCE = 'registry+https://github.com/rust-lang/crates.io-index';
 const REQUIRED_COMPONENTS = [
   'acl',
   'boot',
@@ -153,12 +154,15 @@ export function parseCloudStackLock(source) {
     validateAttributes(
       block,
       ['owner', 'path', 'source', 'version'],
-      ['manifest', 'package', 'repository', 'revision'],
+      ['dependency_source', 'manifest', 'package', 'repository', 'revision'],
     );
     const id = block.labels[0];
     const path = attribute(block, 'path', 'String');
     const sourceKind = attribute(block, 'source', 'String');
+    const dependencySource =
+      optionalAttribute(block, 'dependency_source', 'String') ?? sourceKind;
     const component = {
+      dependencySource,
       id,
       manifest: optionalAttribute(block, 'manifest', 'String') ?? 'Cargo.toml',
       owner: attribute(block, 'owner', 'String'),
@@ -192,6 +196,12 @@ export function parseCloudStackLock(source) {
       sourceKind === 'git' || sourceKind === 'workspace',
       `component "${id}" source must be git or workspace`,
     );
+    invariant(
+      dependencySource === 'git' ||
+        dependencySource === 'registry' ||
+        dependencySource === 'workspace',
+      `component "${id}" dependency_source must be git, registry, or workspace`,
+    );
     if (sourceKind === 'git') {
       invariant(
         /^git@github\.com:A3S-Lab\/[A-Za-z0-9._-]+\.git$/.test(component.repository ?? ''),
@@ -201,10 +211,24 @@ export function parseCloudStackLock(source) {
         /^[0-9a-f]{40}$/.test(component.revision ?? ''),
         `component "${id}" requires a full lowercase revision`,
       );
+      invariant(
+        dependencySource === 'git' || dependencySource === 'registry',
+        `Git component "${id}" dependency_source must be git or registry`,
+      );
+      if (dependencySource === 'registry') {
+        invariant(
+          component.package !== undefined,
+          `registry dependency component "${id}" requires a package`,
+        );
+      }
     } else {
       invariant(
         component.repository === undefined && component.revision === undefined,
         `workspace component "${id}" cannot declare repository or revision`,
+      );
+      invariant(
+        dependencySource === 'workspace',
+        `workspace component "${id}" dependency_source must be workspace`,
       );
     }
     return component;
@@ -393,10 +417,15 @@ function bracketDepth(value) {
   return depth;
 }
 
-function dependencyField(declaration, field, label) {
+function optionalDependencyField(declaration, field) {
   const match = new RegExp(`\\b${field}\\s*=\\s*"([^"]+)"`).exec(declaration);
-  invariant(match, `${label} is missing ${field}`);
-  return match[1];
+  return match?.[1];
+}
+
+function dependencyField(declaration, field, label) {
+  const value = optionalDependencyField(declaration, field);
+  invariant(value, `${label} is missing ${field}`);
+  return value;
 }
 
 function exactDependencyVersion(declaration, label) {
@@ -412,6 +441,7 @@ export function packageFromLock(
   expectedVersion,
   label,
   expectedRevision,
+  expectedSource,
 ) {
   const entries = source.split('[[package]]').slice(1);
   const entry = entries.find((candidate) => {
@@ -421,21 +451,24 @@ export function packageFromLock(
     ) {
       return false;
     }
-    if (!expectedRevision) return true;
-    return /^source = "([^"]+)"$/m
-      .exec(candidate)?.[1]
-      ?.endsWith(`#${expectedRevision}`);
+    const packageSource = /^source = "([^"]+)"$/m.exec(candidate)?.[1];
+    if (expectedRevision && !packageSource?.endsWith(`#${expectedRevision}`)) {
+      return false;
+    }
+    return !expectedSource || packageSource === expectedSource;
   });
   const revisionLabel = expectedRevision
     ? ` at revision ${expectedRevision}`
     : '';
+  const sourceLabel = expectedSource ? ` from ${expectedSource}` : '';
   invariant(
     entry,
-    `${label} is missing package ${name} ${expectedVersion}${revisionLabel}`,
+    `${label} is missing package ${name} ${expectedVersion}${revisionLabel}${sourceLabel}`,
   );
   return {
     version: quotedTomlValue(entry, 'version', `${label} package ${name}`),
     source: /^source = "([^"]+)"$/m.exec(entry)?.[1],
+    checksum: /^checksum = "([^"]+)"$/m.exec(entry)?.[1],
   };
 }
 
@@ -457,6 +490,36 @@ function assertLockVersion(lockSource, component, label, expectedRevision) {
       `${label} does not lock ${component.package} revision ${expectedRevision}`,
     );
   }
+}
+
+function assertPublishedLockVersion(lockSource, component, label) {
+  const entry = packageFromLock(
+    lockSource,
+    component.package,
+    component.version,
+    label,
+    undefined,
+    CRATES_IO_SOURCE,
+  );
+  invariant(
+    /^[0-9a-f]{64}$/.test(entry.checksum ?? ''),
+    `${label} package ${component.package} is missing a crates.io checksum`,
+  );
+}
+
+function verifyPublishedDependency(declaration, component, cloudLock) {
+  const label = `Cloud ${component.package}`;
+  invariant(
+    exactDependencyVersion(declaration, label) === component.version,
+    `${label} version does not match the compatibility lock`,
+  );
+  invariant(
+    ['git', 'rev', 'path', 'registry'].every(
+      (field) => optionalDependencyField(declaration, field) === undefined,
+    ),
+    `${label} must resolve from the published registry release`,
+  );
+  assertPublishedLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
 }
 
 function verifyDependencyBindings(root, componentMap) {
@@ -490,6 +553,16 @@ function verifyDependencyBindings(root, componentMap) {
       component.package,
       cloudManifestPath,
     );
+    if (component.dependencySource === 'registry') {
+      verifyPublishedDependency(declaration, component, cloudLock);
+      continue;
+    }
+    if (id !== 'orm') {
+      invariant(
+        exactDependencyVersion(declaration, `Cloud ${component.package}`) === component.version,
+        `Cloud ${component.package} version does not match the compatibility lock`,
+      );
+    }
     invariant(
       dependencyField(declaration, 'git', `Cloud ${component.package}`) ===
         component.repository.replace('git@github.com:', 'https://github.com/'),
@@ -499,12 +572,6 @@ function verifyDependencyBindings(root, componentMap) {
       dependencyField(declaration, 'rev', `Cloud ${component.package}`) === component.revision,
       `Cloud ${component.package} revision does not match the compatibility lock`,
     );
-    if (id !== 'orm') {
-      invariant(
-        exactDependencyVersion(declaration, `Cloud ${component.package}`) === component.version,
-        `Cloud ${component.package} version does not match the compatibility lock`,
-      );
-    }
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock', component.revision);
   }
 
@@ -630,12 +697,30 @@ function verifyAclConfiguration(root, cloudPath) {
 function verifyFormFixture(
   root,
   cloudPath,
-  formPath,
+  form,
   ownerFileName,
   cloudFileName,
   label,
 ) {
-  const ownerRelativePath = `${formPath}/tests/conformance/${ownerFileName}`;
+  const nestedCratesIndex = form.manifest.lastIndexOf('/crates/');
+  let formModuleRoot = null;
+  if (nestedCratesIndex >= 0) {
+    formModuleRoot = form.manifest.slice(0, nestedCratesIndex);
+  } else if (form.manifest.startsWith('crates/')) {
+    formModuleRoot = '';
+  }
+  invariant(
+    formModuleRoot !== null,
+    `Form manifest must be rooted in a crates directory: ${form.manifest}`,
+  );
+  const ownerRepositoryRelativePath = [
+    formModuleRoot,
+    'tests/conformance',
+    ownerFileName,
+  ]
+    .filter(Boolean)
+    .join('/');
+  const ownerRelativePath = `${form.path}/${ownerRepositoryRelativePath}`;
   const cloudRelativePath = `${cloudPath}/crates/control-plane/tests/fixtures/${cloudFileName}`;
   const ownerPath = join(root, ownerRelativePath);
   const cloudFixturePath = join(root, cloudRelativePath);
@@ -645,8 +730,8 @@ function verifyFormFixture(
     `Cloud ${label.toLowerCase()} fixture is missing: ${cloudRelativePath}`,
   );
   const ownerBytes = readGitBlob(
-    join(root, formPath),
-    `tests/conformance/${ownerFileName}`,
+    join(root, form.path),
+    ownerRepositoryRelativePath,
     `${label} fixture`,
   );
   const cloudBytes = readGitBlob(
@@ -767,7 +852,7 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
   const formInteractionFixture = verifyFormFixture(
     root,
     componentMap.get('cloud').path,
-    componentMap.get('form').path,
+    componentMap.get('form'),
     'interaction-contract-v1.json',
     'form-interaction-contract-v1.json',
     'Form interaction',
@@ -775,7 +860,7 @@ export function verifyCloudStack(root = DEFAULT_ROOT, lockRelativePath = 'compat
   const formValueEvaluationFixture = verifyFormFixture(
     root,
     componentMap.get('cloud').path,
-    componentMap.get('form').path,
+    componentMap.get('form'),
     'value-evaluation-v1.json',
     'form-value-evaluation-v1.json',
     'Form value evaluation',

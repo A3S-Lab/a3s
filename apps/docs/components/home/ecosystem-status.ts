@@ -16,12 +16,11 @@ interface DeliveryStageCopy {
 
 // Verified against current project versions, public releases, READMEs, and roadmaps.
 // A released project can still contain explicitly preview or experimental subfeatures.
-export const statusVerifiedAt = '2026-08-22';
+export const statusVerifiedAt = '2026-08-25';
 
 const statusByProject = {
-  cli: { stage: 'preview', release: 'v0.12.1' },
-  code: { stage: 'released', release: 'v7.0.1' },
-  desktop: { stage: 'building', release: 'main' },
+  cli: { stage: 'preview', release: 'v0.12.5' },
+  code: { stage: 'released', release: 'v7.0.2' },
   windhole: { stage: 'preview', release: 'main' },
   box: { stage: 'released', release: 'v3.1.0' },
   bench: { stage: 'preview', release: 'v0.1.2' },
@@ -32,11 +31,10 @@ const statusByProject = {
   office: { stage: 'preview', release: 'v0.3.0' },
   science: { stage: 'preview', release: 'main' },
   cloud: { stage: 'experimental', release: 'main' },
-  form: { stage: 'preview', release: 'main' },
   site: { stage: 'released', release: 'live' },
   runtime: { stage: 'preview', release: 'v0.3.0' },
   'oci-runtime': { stage: 'experimental', release: 'v0.2.0' },
-  flow: { stage: 'preview', release: 'v0.11.0' },
+  flow: { stage: 'released', release: 'v1.0.0' },
   event: { stage: 'preview', release: 'v0.3.0' },
   lane: { stage: 'preview', release: 'v0.5.1' },
   memory: { stage: 'preview', release: 'v0.1.3' },

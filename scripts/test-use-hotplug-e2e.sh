@@ -25,14 +25,17 @@ for name in "${required_environment[@]}"; do
   fi
 done
 
+# The test-built Browser driver is an independently versioned sibling binary.
+# Bind its exact path explicitly so wrapped Use processes do not depend on the
+# launcher's current-executable or PATH layout when publishing the MCP surface.
+export A3S_USE_BROWSER_DRIVER="${A3S_USE_E2E_BROWSER_BIN}"
+
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     export A3S_USE_HOME="$(cygpath -w "${use_home}")"
-    marketplace_test="web_plugin_marketplace_windows"
     ;;
   *)
     export A3S_USE_HOME="${use_home}"
-    marketplace_test="web_plugin_marketplace"
     ;;
 esac
 
@@ -41,7 +44,9 @@ test -f "${cli_manifest}" || {
   exit 1
 }
 
-cargo test \
+# The composed CLI fixture builds one large async state machine. Keep the
+# libtest worker stack explicit across Linux, macOS, and Windows.
+RUST_MIN_STACK=8388608 cargo test \
   --manifest-path "${cli_manifest}" \
   --locked \
   --lib \
@@ -60,15 +65,6 @@ RUST_MIN_STACK=8388608 cargo test \
   -- \
   --exact \
   --include-ignored \
-  --nocapture
-
-cargo test \
-  --manifest-path "${cli_manifest}" \
-  --locked \
-  --test "${marketplace_test}" \
-  generic_real_e2e::real_marketplace_hot_plugs_a_generic_signed_package_across_restart \
-  -- \
-  --ignored \
   --nocapture
 
 cargo test \

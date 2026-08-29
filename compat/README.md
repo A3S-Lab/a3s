@@ -10,6 +10,12 @@ Components whose package manifest is below the repository root declare a
 component-relative `manifest` path. Workspace-inherited package versions are
 resolved from the nearest enclosing Rust workspace manifest.
 
+Git components may declare `dependency_source = "registry"` when Cloud consumes
+their published crates.io package. Their `source`, repository, revision, and
+gitlink still pin the exact source tree used for compatibility evidence; the
+separate dependency source makes the verifier require an exact registry
+dependency and crates.io lock entry instead of a Cargo Git binding.
+
 The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
@@ -23,8 +29,9 @@ integration surface.
 
 The Use entry pins the repository once while the verifier derives the exact
 `a3s-use-core` and `a3s-use-extension` package versions from that immutable
-revision. The lock records every protocol-level-4 `PluginHostManager` schema
-consumed by Cloud. It does not create another plugin manager or authorize
+revision. The lock records every current `PluginHostManager` schema consumed
+by Cloud, including protocol-level-6 capabilities and the managed-scope-v2
+mutation fence. It does not create another plugin manager or authorize
 assignment mutation before the shared A3S Use manager saga is complete.
 
 ## Proposing An Update

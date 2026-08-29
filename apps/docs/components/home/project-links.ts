@@ -9,7 +9,6 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Code',
     website: 'https://a3s-lab.github.io/Code/',
   },
-  desktop: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/desktop' },
   windhole: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/windhole' },
   box: {
     repository: 'https://github.com/A3S-Lab/Box',
@@ -32,17 +31,16 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Cloud',
     website: 'https://a3s-lab.github.io/Cloud/',
   },
-  form: {
-    repository: 'https://github.com/A3S-Lab/Form',
-    website: '/form/',
-  },
   site: {
     repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/docs',
     website: '/',
   },
   runtime: { repository: 'https://github.com/A3S-Lab/Runtime' },
   'oci-runtime': { repository: 'https://github.com/A3S-Lab/OCI-Runtime' },
-  flow: { repository: 'https://github.com/A3S-Lab/Flow' },
+  flow: {
+    repository: 'https://github.com/A3S-Lab/Flow',
+    website: 'https://a3s-lab.github.io/Flow/',
+  },
   event: { repository: 'https://github.com/A3S-Lab/Event' },
   lane: { repository: 'https://github.com/A3S-Lab/Lane' },
   memory: { repository: 'https://github.com/A3S-Lab/Memory' },
@@ -53,7 +51,10 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Gateway',
     website: 'https://a3s-lab.github.io/Gateway/',
   },
-  power: { repository: 'https://github.com/A3S-Lab/Power' },
+  power: {
+    repository: 'https://github.com/A3S-Lab/Power',
+    website: 'https://a3s-lab.github.io/Power/',
+  },
   ahp: { repository: 'https://github.com/A3S-Lab/AgentHarnessProtocol' },
   acl: { repository: 'https://github.com/A3S-Lab/ACL' },
   tui: { repository: 'https://github.com/A3S-Lab/TUI' },

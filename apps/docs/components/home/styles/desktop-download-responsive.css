@@ -1,28 +1,91 @@
 @media (max-width: 760px) {
-  .a3s-download-main {
-    width: min(100% - 40px, 820px);
-    min-height: calc(100dvh - 64px);
-    padding: 64px 0 52px;
-    gap: 42px;
+  .a3s-download {
+    min-height: auto;
+    align-items: start;
   }
 
-  .a3s-download-intro h1 {
-    margin-top: 30px;
-    font-size: clamp(44px, 14vw, 62px);
+  .a3s-download__inner {
+    padding: 56px 20px 72px;
   }
 
-  .a3s-download-platforms > a {
-    min-height: 82px;
+  .a3s-download__header {
+    margin-bottom: 34px;
   }
 
-  .a3s-download-meta {
+  .a3s-download__header h1 {
+    font-size: clamp(40px, 12vw, 54px);
+    letter-spacing: -0.035em;
+  }
+
+  .a3s-download__header p {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+
+  .a3s-download__platforms > a {
+    min-height: 104px;
+    padding: 18px 20px;
+    gap: 14px;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .a3s-download__platforms b {
+    min-height: auto;
+    grid-column: 2;
+  }
+
+  .a3s-download__meta,
+  .a3s-download__cli {
     align-items: flex-start;
     flex-direction: column;
-    gap: 20px;
   }
 
-  .a3s-download-meta nav {
+  .a3s-download__meta {
+    gap: 14px;
+  }
+
+  .a3s-download__meta nav {
+    gap: 12px 18px;
+  }
+
+  .a3s-download__cli {
+    margin-top: 42px;
+    gap: 14px;
+  }
+
+  .a3s-download-history__inner {
+    padding: 72px 20px 88px;
+  }
+
+  .a3s-download-history__header {
+    align-items: start;
     gap: 18px;
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-download-history__header h2 {
+    font-size: clamp(32px, 9.6vw, 42px);
+    letter-spacing: -0.03em;
+  }
+
+  .a3s-release-history-list {
+    margin-top: 38px;
+  }
+
+  .a3s-release-history-list summary {
+    min-height: 76px;
+    padding: 0;
+    gap: 12px;
+  }
+
+  .a3s-release-history-list__version {
+    gap: 8px;
+  }
+
+  .a3s-release-history-list__body {
+    padding: 30px 0 38px;
+    gap: 38px;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -31,6 +94,6 @@
   .a3s-download-site *::before,
   .a3s-download-site *::after {
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
   }
 }

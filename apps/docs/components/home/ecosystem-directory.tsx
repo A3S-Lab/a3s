@@ -38,15 +38,15 @@ const categoryIcons: Record<ArchitectureCategory, Icon> = {
 
 const copy = {
   cn: {
-    liveEyebrow: '公开项目页面 / 8',
+    liveEyebrow: '公开项目页面 / 9',
     liveTitle: '看看已经可以访问的项目页面。',
-    liveDescription: '这些入口包括产品页面和交互式 Playground。预览截图取自线上页面或当前构建。',
+    liveDescription: '这些入口由各项目自己维护，预览截图取自正式站点或当前构建。',
     live: '在线',
     buildPreview: '构建预览',
     openSite: '打开页面',
     openRepository: '查看代码',
-    directoryEyebrow: '完整项目目录 / 36',
-    directoryTitle: '36 个项目，一处查清。',
+    directoryEyebrow: '完整项目目录 / 34',
+    directoryTitle: '34 个项目，一处查清。',
     directoryDescription: '按名称或职责搜索，也可以按层级筛选。每个条目都列出职责、主要能力、交付阶段、当前版本或通道，以及代码入口。',
     search: '搜索项目名称、职责或能力',
     result: '个项目',
@@ -65,15 +65,15 @@ const copy = {
     },
   },
   en: {
-    liveEyebrow: '8 PROJECT SITES',
+    liveEyebrow: '9 PROJECT SITES',
     liveTitle: 'Open the projects that already have a public page.',
-    liveDescription: 'These links go to product pages and interactive playgrounds. Previews come from the live page or its current build.',
+    liveDescription: 'Each destination is maintained by its product repository. Previews come from the live site or its current build.',
     live: 'ONLINE',
     buildPreview: 'BUILD PREVIEW',
     openSite: 'Open site',
     openRepository: 'View source',
-    directoryEyebrow: 'COMPLETE PROJECT DIRECTORY / 36',
-    directoryTitle: 'One directory for all 36 projects.',
+    directoryEyebrow: 'COMPLETE PROJECT DIRECTORY / 34',
+    directoryTitle: 'One directory for all 34 projects.',
     directoryDescription: 'Search by name or responsibility, or filter by layer. Each entry shows its role, core capabilities, delivery stage, current version or channel, and source.',
     search: 'Search projects, responsibilities, or capabilities',
     result: 'projects',
@@ -134,7 +134,13 @@ function DeliveryStageGuide({ lang }: { lang: Lang }) {
   );
 }
 
-function ProjectSitePreview({ project, site }: { project: ArchitectureProject; site: FeaturedProjectSite }) {
+function ProjectSitePreview({ project, site, lang }: {
+  project: ArchitectureProject;
+  site: FeaturedProjectSite;
+  lang: Lang;
+}) {
+  const screenshot = site.localizedPreviews?.[lang]?.screenshot ?? site.screenshot;
+
   return (
     <div className="a3s-site-preview" data-site={project.id} aria-hidden="true">
       <div className="a3s-site-preview__chrome">
@@ -143,7 +149,7 @@ function ProjectSitePreview({ project, site }: { project: ArchitectureProject; s
         <b />
       </div>
       <div className="a3s-site-preview__image">
-        <img alt="" height="800" loading="lazy" src={withBase(site.screenshot)} width="1280" />
+        <img alt="" height="800" loading="lazy" src={withBase(screenshot)} width="1280" />
       </div>
     </div>
   );
@@ -155,7 +161,7 @@ function FeaturedSiteCard({ project, site, lang }: { project: ArchitectureProjec
 
   return (
     <article className="a3s-site-card" data-preview-mode={site.mode} data-site={project.id}>
-      <ProjectSitePreview project={project} site={site} />
+      <ProjectSitePreview lang={lang} project={project} site={site} />
       <div className="a3s-site-card__body">
         <div className="a3s-site-card__heading">
           <div>
