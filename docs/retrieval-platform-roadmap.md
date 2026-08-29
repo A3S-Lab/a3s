@@ -2,9 +2,19 @@
 
 This roadmap implements the architecture in
 [`retrieval-platform-architecture.md`](retrieval-platform-architecture.md).
+The latest first-principles audit is recorded in
+[`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md),
+with reproducible command evidence in
+[`retrieval-platform-review-evidence.json`](retrieval-platform-review-evidence.json).
 It is gate-based rather than calendar-based: a phase is complete only when its
 exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
+
+**Current review status (2026-08-29):** `a3s-vec` remains a pre-migration
+prototype. The P0/P1 correctness, durability, resource, strict-quality, and
+Intel macOS 12 evidence gates are open. Code's existing workspace BM25 and
+`a3s-memory` vector path remain the golden reference; P7 removal has not
+started.
 
 ## 1. Current baseline and target
 
@@ -34,6 +44,23 @@ Every gate must produce:
 Real DeepSeek or remote-provider runs are supplementary evidence. They cannot
 replace deterministic fake-provider, brute-force, crash-recovery, and privacy
 tests.
+
+### 2.1 Architecture-review gate
+
+Before P4 shadow projection or any semantic `vgrep` exposure, the findings in
+the [architecture review](retrieval-platform-architecture-review.md) must be
+closed on the same pinned component graph. At minimum this means:
+
+| Gate | Required evidence | Current state |
+| --- | --- | --- |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Open** |
+| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open** |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Open** (`fmt` fails; Clippy reports 533 diagnostics) |
+| Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; review host was arm64 macOS 26.3 |
+| Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
+
+An open row blocks the dependent phase. Passing a superficial API or compile
+check cannot substitute for the required runtime evidence.
 
 ## 3. Phased delivery
 
@@ -71,6 +98,8 @@ watcher, chunker, model lifecycle, or persistence authority.
   semantics.
 - FTS tokenizer/postings/BM25 implementation and generic RRF/weighted fusion.
 - A reference brute-force evaluator used by every later index test.
+- Close the P0/P1 findings from the architecture review before handing the
+  engine to a Code adapter.
 
 **Exit gate**
 
@@ -89,6 +118,8 @@ model runtime or native database extension.
 - Schema/DML WAL replay, partial-tail handling, checksum diagnostics, WAL
   pruning, and fault-injection hooks.
 - Recovery and reopen APIs that never publish a mixed revision.
+- Add bounded frame/document recovery budgets and fault-injection evidence for
+  every snapshot, manifest, WAL, lock, and read-only boundary.
 
 **Exit gate**
 
@@ -184,7 +215,12 @@ incompatible descriptors clearly.
 
 ### P7 — Remove duplicate SQLite/BM25 integration
 
-**Dependencies:** P6 and all migration gates.
+**Dependencies:** P6, the architecture-review gate, and every
+migration-benefit gate.
+
+This phase is deliberately **not complete** in the current checkout. It must
+not be started merely because the `a3s-vec` API exists or because a semantic
+provider test passes.
 
 **Deliverables**
 
@@ -221,6 +257,8 @@ available through configuration.
   arm64 CI; verify installer and Homebrew metadata only after artifacts exist.
 - Operator runbook for status, stale indexes, model installation, remote-egress
   consent, and rollback.
+- Publish the architecture-review report and machine-readable evidence for the
+  exact component graph used by the release.
 
 **Release gate**
 
@@ -292,3 +330,9 @@ The program is complete only when all of the following are true:
 - Intel macOS 12 support is backed by actual artifacts and runtime evidence,
   not just a target triple;
 - every release claim links to a reproducible `a3s-test`/benchmark report.
+- the [architecture review](retrieval-platform-architecture-review.md) has no
+  unresolved release-blocking finding, and the migration-benefit report is
+  attached to the release record;
+- removal of the old Code workspace BM25/SQLite/vector path is explicitly
+  recorded as complete only after P7's differential and rollback evidence,
+  never inferred from a successful build.
