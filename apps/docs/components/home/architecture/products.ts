@@ -31,6 +31,20 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     ],
   },
   {
+    id: 'desktop',
+    name: 'Desktop',
+    category: 'products',
+    role: localized('用原生桌面工作台运行本地 A3S Code。', 'Runs local A3S Code through a native desktop workbench.'),
+    href: getProjectPrimaryHref('desktop'),
+    nodes: [
+      node('workbench', 'React Workbench', 'surface', '用 Rsbuild 和 A3S UI 呈现工作区、对话、工具与运行活动。', 'Uses Rsbuild and A3S UI to present workspace, transcript, tools, and run activity.'),
+      node('policy', 'Desktop Policy', 'core', '拥有工作区、模型、模式和工具权限选择。', 'Owns workspace, model, mode, and tool-permission selection.'),
+      node('bridge', 'Loopback Contract', 'contract', '通过带令牌的有界 JSONL 接口连接本机宿主。', 'Connects to the local host through a token-authenticated, bounded JSONL interface.'),
+      node('code', 'A3S Code Process', 'runtime', '用 stdin 和无 shell 参数启动已安装的 A3S Code。', 'Starts the installed A3S Code with stdin and shell-free arguments.'),
+      node('events', 'Run Evidence', 'evidence', '投影有序事件、工具结果、诊断、完成与取消状态。', 'Projects ordered events, tool results, diagnostics, completion, and cancellation state.'),
+    ],
+  },
+  {
     id: 'windhole',
     name: 'Windhole',
     category: 'products',

@@ -1,0 +1,99 @@
+name: Desktop
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/desktop.yml'
+      - 'justfile'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/desktop.yml'
+      - 'justfile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: 1.3.14
+  DENO_VERSION: 2.9.5
+
+jobs:
+  validate:
+    name: Validate React and host
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v${{ env.DENO_VERSION }}
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+
+      - name: Run desktop checks
+        working-directory: apps/desktop
+        run: deno task check
+
+  package:
+    name: Package ${{ matrix.name }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-15
+            artifact: a3s-desktop-macos
+            path: apps/desktop/release/A3S.app
+          - name: Linux x64
+            os: ubuntu-latest
+            artifact: a3s-desktop-linux-x64
+            path: apps/desktop/release/a3s-desktop
+          - name: Windows x64
+            os: windows-latest
+            artifact: a3s-desktop-windows-x64
+            path: apps/desktop/release/a3s-desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v${{ env.DENO_VERSION }}
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+
+      - name: Package native application
+        working-directory: apps/desktop
+        run: deno task package
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error

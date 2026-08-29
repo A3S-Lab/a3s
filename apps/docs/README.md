@@ -1,28 +1,37 @@
 # A3S Site
 
-This application builds the bilingual A3S ecosystem homepage with Rspress. It
-does not publish product documentation, tutorials, or articles.
+This application builds the bilingual A3S ecosystem site with Rspress. It
+publishes the ecosystem homepage and the cross-platform A3S download page, but
+no product documentation, tutorials, articles, or blog.
 
 ## Routes
 
-| Route | Content |
-| --- | --- |
-| `/` | Chinese ecosystem homepage |
-| `/en/` | English ecosystem homepage |
+| Route           | Content                    |
+| --------------- | -------------------------- |
+| `/`             | Chinese ecosystem homepage |
+| `/en/`          | English ecosystem homepage |
+| `/download/`    | Chinese A3S downloads      |
+| `/en/download/` | English A3S downloads      |
 
 The production build runs Rspress once per language and assembles both outputs
 under `out/`. Chinese remains the unprefixed default language.
+
+The download page presents A3S as the product and uses stable
+`releases/latest/download` links from `A3S-Lab/Desktop`. Asset names are owned
+by the Desktop repository release workflow and must change in both repositories
+if packaging names change.
 
 ## Project layout
 
 ```text
 apps/docs/
-├── components/home/          # Homepage UI and ecosystem data
+├── components/home/          # Shared site UI, homepage, and download-page styles
+├── components/download/      # Desktop release links and localized download copy
 ├── public/brand/             # A3S OS brand assets
 ├── public/ecosystem-sites/   # Captured project-site previews
 ├── scripts/                  # Build, validation, and screenshot tasks
-├── site/cn/                  # Chinese homepage entrypoint
-├── site/en/                  # English homepage entrypoint
+├── site/cn/                  # Chinese route entrypoints
+├── site/en/                  # English route entrypoints
 ├── theme/                    # Rspress theme extension
 └── rspress.config.ts
 ```
@@ -82,9 +91,8 @@ Each project defines its own animation settle time in
 images, lets the hero reach that frame, then freezes CSS, SVG, video, and GIF
 motion before writing the PNG.
 
-The Form playground is built from a pinned revision and published with this
-site at `/form/`. Point the capture at a local build when refreshing its
-screenshot:
+The Form playground is built from a pinned revision and published with this site
+at `/form/`. Point the capture at a local build when refreshing its screenshot:
 
 ```bash
 A3S_FORM_PREVIEW_URL=http://127.0.0.1:4173/ \
@@ -102,10 +110,10 @@ temporarily unavailable. Add or change destinations in
 
 ## Ecosystem status data
 
-The project directory keeps its delivery stages and current versions or
-channels in `components/home/ecosystem-status.ts`. Stages describe the current
-usage boundary; they are categories, not feature-completion percentages. The
-homepage renders the definitions directly instead of converting stages into a
-numeric rail. Before changing an entry, check the current project version and
-public release together with its README and roadmap, then update the shared
+The project directory keeps its delivery stages and current versions or channels
+in `components/home/ecosystem-status.ts`. Stages describe the current usage
+boundary; they are categories, not feature-completion percentages. The homepage
+renders the definitions directly instead of converting stages into a numeric
+rail. Before changing an entry, check the current project version and public
+release together with its README and roadmap, then update the shared
 verification date.

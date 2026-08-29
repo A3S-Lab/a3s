@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-08-29",
+  "root_revision": "55ae01ad44ad755711a758a2d33f33cb7a006cf5",
+  "components": {
+    "vec": {
+      "repository": "https://github.com/A3S-Lab/Vec",
+      "revision": "fbb1081d8ccdf926ceef36cbdd51fc1e891e0924"
+    },
+    "code": {
+      "revision": "ad6426fb34a3a401c77d51bbdc5c71f2e3d38eec"
+    },
+    "cli": {
+      "revision": "992fac5701caa2e3bcd77be840e8bad65d10b80a"
+    },
+    "tui": {
+      "revision": "8e896bc5c6584ba79669d70d024f1606bdf812fd"
+    },
+    "test": {
+      "revision": "2876b1cf761b5768291be534b2119114f7769c4e",
+      "expected_gitlink": "00f601b4e095fec28b60d80abec51f49733cae1d",
+      "initialized": true,
+      "working_tree_dirty": true
+    }
+  },
+  "root_composition": {
+    "base_revision": "523c8d5071d001a4241a693a162ccbdc058d41e8",
+    "gitlinks_at_base": {
+      "vec": "fbb1081d8ccdf926ceef36cbdd51fc1e891e0924",
+      "code": "85b2dc63bb4636ca8f3502a612f5e88c355ad765",
+      "cli": "650ccaf9b3f37f1f7e227a12ae269ced29b51d31",
+      "tui": "8e896bc5c6584ba79669d70d024f1606bdf812fd",
+      "test": "13f4cfbb5a3ccde797d74723594b848568b1d109"
+    },
+    "tested_components_checked_out_independently": true,
+    "compatibility_pin_required_before_release": true
+  },
+  "environment": {
+    "os": "macOS 26.3 (25D125)",
+    "architecture": "arm64",
+    "rustc": "1.97.1",
+    "cargo": "1.97.1",
+    "target": "aarch64-apple-darwin",
+    "intel_macos12_evidence": false
+  },
+  "checks": [
+    {
+      "id": "vec-tests-no-default-features",
+      "command": "cargo test --manifest-path crates/vec/Cargo.toml --no-default-features",
+      "status": "pass",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "notes": "Only five current inline unit tests; no feature-complete qualification."
+    },
+    {
+      "id": "vec-tests-default-features",
+      "command": "cargo test --manifest-path crates/vec/Cargo.toml",
+      "status": "pass",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "notes": "Default jieba feature and its native dependency chain build on the arm64 review host; no Intel Monterey evidence."
+    },
+    {
+      "id": "vec-tests-all-features",
+      "command": "cargo test --manifest-path crates/vec/Cargo.toml --all-features",
+      "status": "pass",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "notes": "Async plus jieba feature combination builds on the arm64 review host; no feature-complete qualification."
+    },
+    {
+      "id": "vec-release-check",
+      "command": "cargo check --manifest-path crates/vec/Cargo.toml --release",
+      "status": "pass_with_warnings",
+      "warnings": 49,
+      "notes": "Compiles on arm64 review host; warnings include unused/dead code."
+    },
+    {
+      "id": "vec-format",
+      "command": "cargo fmt --manifest-path crates/vec/Cargo.toml -- --check",
+      "status": "fail",
+      "notes": "Checked-in source is not rustfmt-clean."
+    },
+    {
+      "id": "vec-clippy",
+      "command": "cargo clippy --manifest-path crates/vec/Cargo.toml --all-targets -- -D warnings",
+      "status": "fail",
+      "diagnostics": 533,
+      "notes": "Strict warnings-as-errors gate fails."
+    },
+    {
+      "id": "code-agent-retrieval",
+      "command": "cargo test -p a3s-code-core --lib agent_api::retrieval_tests",
+      "status": "pass",
+      "passed": 12,
+      "failed": 0
+    },
+    {
+      "id": "code-agent-retrieval-qa",
+      "command": "cargo test -p a3s-code-core --lib agent_api::retrieval_qa_tests",
+      "status": "pass_with_ignored",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "id": "code-bm25",
+      "command": "cargo test -p a3s-code-core --lib tools::builtin::bm25",
+      "status": "pass",
+      "passed": 14,
+      "failed": 0
+    },
+    {
+      "id": "code-search",
+      "command": "cargo test -p a3s-code-core --lib tools::builtin::search",
+      "status": "pass",
+      "passed": 8,
+      "failed": 0
+    },
+    {
+      "id": "cli-workspace-retrieval",
+      "command": "cargo test --bin a3s workspace_retrieval",
+      "status": "pass",
+      "passed": 47,
+      "failed": 0,
+      "notes": "Runs the CLI binary's workspace_retrieval module tests."
+    },
+    {
+      "id": "tui-workspace-search-metadata",
+      "command": "cargo test --bin a3s workspace_search_view",
+      "status": "pass",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "id": "tui-library",
+      "command": "cargo test --manifest-path crates/tui/Cargo.toml --lib",
+      "status": "pass",
+      "passed": 1076,
+      "failed": 0
+    },
+    {
+      "id": "a3s-test-capabilities",
+      "command": "a3s-test capabilities --json",
+      "status": "infrastructure_unavailable",
+      "notes": "Installed a3s-test 1.0.0 reports test.driver.web.version_unsupported: Browser 0.1.1; expected >= 0.4.0, < 0.5.0. No Web/GUI/TUI session was started."
+    },
+    {
+      "id": "a3s-test-acl-check",
+      "command": "a3s-test check crates/test/examples/web-smoke.acl --json",
+      "status": "pass",
+      "notes": "ACL syntax/structure check completed without launching a surface; this suite is unrelated to a3s-vec."
+    },
+    {
+      "id": "a3s-test-tui-smoke",
+      "command": "a3s-test run images/runner/smoke/tui.acl --tui-executable $PWD/images/runner/smoke/tui-fixture.sh --tui-working-directory $PWD --tui-columns 100 --tui-rows 30 --json (from crates/test)",
+      "status": "pass",
+      "scenarios": 1,
+      "duration_ms": 62,
+      "notes": "Owned PTY fixture smoke passed, including resize, input, assertion, recording, and cleanup. It does not exercise an a3s-code product session."
+    },
+    {
+      "id": "vec-dependency-tree",
+      "command": "cargo tree --manifest-path crates/vec/Cargo.toml -e normal -i zstd-sys",
+      "status": "observed",
+      "notes": "Default Jieba path resolves jieba-rs -> include-flate -> zstd -> zstd-sys -> cc."
+    },
+    {
+      "id": "zvec-core-provenance",
+      "command": "cargo info zvec-core",
+      "status": "observed",
+      "notes": "Crates.io package 0.1.0 reports repository https://github.com/smarthi/zvec-rust."
+    }
+  ],
+  "dependency_observations": [
+    {
+      "package": "zvec-core",
+      "version": "0.1.0",
+      "repository": "https://github.com/smarthi/zvec-rust",
+      "source": "crates.io"
+    },
+    {
+      "default_feature_chain": [
+        "jieba-rs",
+        "include-flate",
+        "zstd",
+        "zstd-sys",
+        "cc"
+      ],
+      "portable_no_default_features": true
+    }
+  ],
+  "findings": {
+    "p0": [
+      "VEC-P0-01",
+      "VEC-P0-02",
+      "VEC-P0-03",
+      "VEC-P0-04",
+      "VEC-P0-05",
+      "VEC-P0-06",
+      "VEC-P0-07"
+    ],
+    "p1": [
+      "VEC-P1-01",
+      "VEC-P1-02",
+      "VEC-P1-03",
+      "VEC-P1-04",
+      "VEC-P1-05",
+      "VEC-P1-06",
+      "VEC-P1-07"
+    ],
+    "p2": [
+      "strict-format-and-clippy",
+      "insufficient-integration-coverage",
+      "missing-migration-performance-evidence"
+    ]
+  },
+  "decision": {
+    "vec_release_qualified": false,
+    "code_migration_started": false,
+    "remove_code_bm25_or_sqlite": false,
+    "intel_macos12_supported": false,
+    "migration_requires_benefit_gate": true
+  }
+}

@@ -58,6 +58,22 @@ cloud:
     cd apps/cloud && just cloud
 
 # ============================================================================
+# A3S Desktop
+# ============================================================================
+
+# Start the React development server, Deno host, and native desktop window
+desktop:
+    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' deno task dev
+
+# Start the React development server and Deno host without a native window
+desktop-web:
+    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' deno task dev:web
+
+# Validate the desktop host, React application, protocol, and Rsbuild output
+desktop-check:
+    cd apps/desktop && deno task check
+
+# ============================================================================
 # A3S GUI
 # ============================================================================
 

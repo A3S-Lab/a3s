@@ -122,6 +122,7 @@ release cadence, and detailed documentation.
 | Surface | Start here | Boundary |
 | --- | --- | --- |
 | **Code** | `a3s code` | Bundled agent engine and terminal host |
+| **Desktop** | [`apps/desktop`](apps/desktop/) | Native React workbench built by Rsbuild and Deno Desktop, with real A3S Code execution, sessions, schedules, local capability inventory, versioned knowledge-base services, and bounded local-memory inspection |
 | **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI surfaces |
 | **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
 | **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, verified artifact provisioning, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
@@ -197,7 +198,7 @@ root-owned.
 
 ```text
 a3s/
-├── apps/       cloud control plane, docs, and Windhole
+├── apps/       Cloud, Desktop, docs, and Windhole applications
 ├── packages/   Form, Office, Science, and UI
 ├── crates/     product hosts, capabilities, runtimes, services, and SDKs
 ├── compat/     exact cross-project revisions and protocol locks
@@ -207,7 +208,8 @@ a3s/
 
 | Group | Projects |
 | --- | --- |
-| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
+| Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Desktop](apps/desktop/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
+| Retrieval and workspace intelligence | [Vec](crates/vec/), [Code workspace retrieval](crates/code/manual/WORKSPACE_RETRIEVAL_OPERATIONS.md) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Form](packages/form/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
@@ -247,7 +249,8 @@ The root `justfile` orchestrates integration workflows:
 
 ```bash
 just code
-just web
+just desktop
+just desktop-check
 just docs
 just windhole
 just use-hotplug-e2e
@@ -264,6 +267,10 @@ its owning repository before advancing its gitlink here, and read
 - [CLI reference](docs/cli-reference.md)
 - [Workflow platform architecture](compat/workflow-platform-architecture.md)
 - [Workflow development plan](compat/workflow-platform-development-plan.md)
+- [Local retrieval platform architecture](docs/retrieval-platform-architecture.md)
+- [Local retrieval platform architecture review](docs/retrieval-platform-architecture-review.md)
+- [Local retrieval platform roadmap](docs/retrieval-platform-roadmap.md)
+- [Local retrieval platform review evidence](docs/retrieval-platform-review-evidence.json)
 - [Cloud compatibility lock](compat/cloud-stack.acl)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)

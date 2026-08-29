@@ -11,8 +11,12 @@ export const homeContent = {
     nav: {
       ecosystem: 'Ecosystem',
       principles: 'Principles',
+      download: 'Desktop',
       language: '中文',
       menu: 'Open navigation',
+      primaryNavigation: 'Primary navigation',
+      homeLabel: 'A3S home',
+      githubLabel: 'A3S on GitHub',
     },
     hero: {
       eyebrow: 'OPEN AGENT TOOLING',
@@ -82,6 +86,7 @@ export const homeContent = {
       community: 'Community',
       ecosystem: 'Project directory',
       quickstart: 'Quick start',
+      download: 'Desktop download',
       github: 'GitHub',
       discord: 'Discord',
       license: 'MIT licensed · Source available on GitHub',
@@ -91,8 +96,12 @@ export const homeContent = {
     nav: {
       ecosystem: '生态',
       principles: '原则',
+      download: '桌面端',
       language: 'EN',
       menu: '打开导航',
+      primaryNavigation: '主导航',
+      homeLabel: 'A3S 首页',
+      githubLabel: 'A3S GitHub',
     },
     hero: {
       eyebrow: '开放的 Agent 工具链',
@@ -162,6 +171,7 @@ export const homeContent = {
       community: '社区',
       ecosystem: '项目目录',
       quickstart: '快速开始',
+      download: '下载桌面端',
       github: 'GitHub',
       discord: 'Discord',
       license: 'MIT 协议 · 代码公开在 GitHub',

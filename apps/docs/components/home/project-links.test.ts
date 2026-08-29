@@ -12,4 +12,11 @@ describe('project links', () => {
     assert.equal(getProjectPrimaryHref('site'), '/');
     assert.equal(getProjectRepositoryHref('site'), 'https://github.com/A3S-Lab/a3s/tree/main/apps/docs');
   });
+
+  test('opens Desktop at its root-owned application source', () => {
+    assert.equal(
+      getProjectPrimaryHref('desktop'),
+      'https://github.com/A3S-Lab/a3s/tree/main/apps/desktop',
+    );
+  });
 });

@@ -1,0 +1,154 @@
+.a3s-home-nav__links a[aria-current='page'] {
+  background: var(--a3s-blue-soft);
+  color: var(--a3s-blue);
+}
+
+.a3s-download-site {
+  min-height: 100dvh;
+  background: #f7f9fc;
+}
+
+.a3s-download-main {
+  display: grid;
+  width: min(100% - 48px, 820px);
+  min-height: calc(100dvh - 72px);
+  margin: 0 auto;
+  padding: clamp(72px, 10vw, 124px) 0;
+  align-content: center;
+  gap: 52px;
+}
+
+.a3s-download-intro {
+  max-width: 700px;
+}
+
+.a3s-download-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--a3s-text);
+  font-size: 18px;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+}
+
+.a3s-download-brand svg {
+  width: 36px;
+  height: 36px;
+  color: var(--a3s-blue);
+}
+
+.a3s-download-intro h1 {
+  max-width: 700px;
+  margin: 38px 0 18px;
+  color: var(--a3s-text);
+  font-size: clamp(48px, 7vw, 78px);
+  font-weight: 760;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.a3s-download-intro p {
+  max-width: 65ch;
+  margin: 0;
+  color: var(--a3s-muted);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.a3s-download-platforms {
+  border-top: 1px solid var(--a3s-line-strong);
+  border-bottom: 1px solid var(--a3s-line-strong);
+}
+
+.a3s-download-platforms > a {
+  display: grid;
+  min-height: 88px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--a3s-line);
+  align-items: center;
+  gap: 18px;
+  grid-template-columns: 32px 1fr 20px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.a3s-download-platforms > a:last-child {
+  border-bottom: 0;
+}
+
+.a3s-download-platforms > a:hover {
+  background: var(--a3s-paper-blue);
+  color: var(--a3s-blue);
+}
+
+.a3s-download-platforms > a:focus-visible {
+  outline: 3px solid rgba(18, 100, 255, 0.28);
+  outline-offset: 4px;
+}
+
+.a3s-download-platforms > a > svg:first-child {
+  width: 28px;
+  height: 28px;
+  color: var(--a3s-blue);
+}
+
+.a3s-download-platforms > a > svg:last-child {
+  width: 18px;
+  height: 18px;
+}
+
+.a3s-download-platforms span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.a3s-download-platforms strong {
+  color: var(--a3s-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.a3s-download-platforms small {
+  color: var(--a3s-muted);
+  font-family: var(--a3s-mono);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.a3s-download-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.a3s-download-meta p {
+  margin: 0;
+  color: var(--a3s-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.a3s-download-meta nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px;
+  color: var(--a3s-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.a3s-download-meta nav a:hover {
+  color: var(--a3s-blue);
+}
+
+.a3s-download-meta nav a:focus-visible {
+  border-radius: 3px;
+  outline: 3px solid rgba(18, 100, 255, 0.28);
+  outline-offset: 3px;
+}

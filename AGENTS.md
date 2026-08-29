@@ -10,6 +10,7 @@ This file provides repository guidance for Codex and other coding agents working
 a3s/
 ├── apps/
 │   ├── cloud/        # Cloud control plane and node agent (submodule)
+│   ├── desktop/      # Native A3S Code workbench built with React, Rsbuild, and Deno Desktop
 │   └── docs/         # Documentation site
 ├── packages/
 │   └── science/      # Scientific Skills and research tooling (submodule)
