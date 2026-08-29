@@ -4,6 +4,9 @@ Status: proposed cross-project architecture. The engine-level details for
 `a3s-vec` live in [`crates/vec/ARCHITECTURE.md`](../crates/vec/ARCHITECTURE.md);
 the delivery gates live in
 [`retrieval-platform-roadmap.md`](retrieval-platform-roadmap.md).
+The first-principles implementation audit and open release blockers are
+recorded in
+[`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md).
 
 This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. It describes
