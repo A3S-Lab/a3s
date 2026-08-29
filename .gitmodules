@@ -109,3 +109,7 @@
 [submodule "use-registry"]
 	path = use-registry
 	url = git@github.com:A3S-Lab/Use-Registry.git
+[submodule "crates/vec"]
+	path = crates/vec
+	url = git@github.com:A3S-Lab/Vec.git
+	branch = main
