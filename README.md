@@ -284,6 +284,7 @@ a3s/
 | Group | Projects |
 | --- | --- |
 | Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Desktop](apps/desktop/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
+| Retrieval and workspace intelligence | [Vec](crates/vec/), [Code workspace retrieval](crates/code/manual/WORKSPACE_RETRIEVAL_OPERATIONS.md) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
@@ -346,6 +347,8 @@ its owning repository before advancing its gitlink here, and read
 - [CLI reference](docs/cli-reference.md)
 - [Workflow platform architecture](compat/workflow-platform-architecture.md)
 - [Workflow development plan](compat/workflow-platform-development-plan.md)
+- [Local retrieval platform architecture](docs/retrieval-platform-architecture.md)
+- [Local retrieval platform roadmap](docs/retrieval-platform-roadmap.md)
 - [Cloud compatibility lock](compat/cloud-stack.acl)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)
