@@ -672,6 +672,138 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "native_vector_encoding_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "fb5bf8dd5b18314e2d4d74304d67e25d9b21a799",
+    "vec_revision": "8e2544de8f30d33ae36545c8106411ad42e84628",
+    "vec_feature_revision": "351fbe9367912abc551958006fd8f3d623d7935a",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "stable_rustc": "1.98.0",
+      "stable_cargo": "1.98.0",
+      "declared_msrv_rustc": "1.75.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_default_suite_tested": true,
+      "declared_msrv_all_features_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "tdd_evidence": {
+      "initial_command": "cargo test --test vector_codecs",
+      "initial_result": "fail: 3 of 5 tests reproduced cross-type write acceptance, unrepresentable INT4/FP16 acceptance, and unchecked binary chunk widths",
+      "expanded_result": "fail: sparse L2 expected -6 but the prior executor returned dot-product score 2",
+      "final_result": "pass: 9 vector codec tests plus exhaustive finite-FP16 unit coverage"
+    },
+    "checks": [
+      {
+        "id": "vec-format-native-vector-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-native-vector-follow-up",
+        "command": "cargo clippy --all-targets --locked -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-native-vector-follow-up",
+        "command": "cargo clippy --all-targets --all-features --locked -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-native-vector-follow-up",
+        "command": "cargo test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 48,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-native-vector-follow-up",
+        "command": "cargo test --no-default-features --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 48,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-native-vector-follow-up",
+        "command": "cargo test --all-features --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 48,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-msrv-default-native-vector-follow-up",
+        "command": "cargo +1.75.0 test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 48,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-msrv-all-features-native-vector-follow-up",
+        "command": "cargo +1.75.0 test --all-features --locked",
+        "status": "dependency_floor",
+        "reason": "include-flate-codegen 0.3.4 uses a Rust 2024-edition manifest that Cargo 1.75 cannot parse"
+      },
+      {
+        "id": "vec-rustdoc-native-vector-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features --locked",
+        "status": "pass"
+      }
+    ],
+    "storage_format": {
+      "manifest_version": 3,
+      "snapshot_version": 3,
+      "wal_frame_version": 3,
+      "format_2_open_result": "NotSupported before payload decode"
+    },
+    "native_vector_contract": {
+      "strict_schema_payload_type": true,
+      "fp16_representation": "raw IEEE 754 half-precision bits",
+      "int4_range": "-8..=7",
+      "int4_packed_quantizer": false,
+      "binary_dimensions": "bits aligned to complete 32- or 64-bit chunks",
+      "dense_metrics": [
+        "L2",
+        "IP",
+        "cosine",
+        "MIPS-L2"
+      ],
+      "sparse_metrics": [
+        "L2",
+        "IP",
+        "cosine",
+        "MIPS-L2"
+      ],
+      "score_intermediate": "f64",
+      "binary_query_execution": "NotSupported",
+      "scale_bearing_index_quantization": "NotSupported"
+    },
+    "finding_status": {
+      "VEC-P1-04": "closed_native_encoding_or_explicit_future_index_semantics",
+      "strict-format-and-clippy": "closed_vec_8e2544d",
+      "declared-default-msrv": "closed_rust_1_75",
+      "insufficient-integration-coverage": "improved_open"
+    },
+    "remaining_contract_findings": [],
+    "remaining_release_gates": [
+      "differential FTS/vector fixtures",
+      "coherent-reader and serialized-writer concurrency evidence",
+      "supported-platform matrix",
+      "durability fault injection and fuzzing",
+      "real ANN and indexed FTS",
+      "migration benefit"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,

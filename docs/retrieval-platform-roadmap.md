@@ -11,27 +11,29 @@ exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
 **Current review status (2026-08-30):** `a3s-vec` remains a pre-migration
-prototype, but Vec `630f36414b6e3b304c4d11f041c7222dc0b775d7` adds typed
-query/write contracts and a genuinely portable default dependency graph to the
-first P2 durability baseline. VEC-P1-02/03 are closed for the current exact
-surface and VEC-P1-07 is closed by keeping the external algorithm kernel
-private. VEC-P1-05 is closed: retained runtime controls have execution owners,
-and future index/query/schema controls now fail explicitly before mutation.
-VEC-P0-07 is partially closed pending explicit-Jieba packaging and Intel macOS
-12 evidence. Monotonic DML/schema replay and read-only lifecycle remain closed
-for format 2; generation publication and recovery byte budgets remain partial
-pending the full fault/fuzz matrix. Strict rustfmt, Clippy, 37-test feature-
-matrix runs plus four compile-fail doctests, and rustdoc are green. Real ANN/
-indexed FTS, VEC-P1-04, cross-platform evidence, and migration benefit remain
-open. Code's existing workspace BM25 and `a3s-memory` vector path remain the
-golden reference; P7 removal has not started.
+prototype, but Vec `8e2544de8f30d33ae36545c8106411ad42e84628` closes the
+numbered P1 contract findings for the current exact surface. Native dense and
+sparse FP16, INT4, INT8, INT16, and binary payloads now have strict physical-
+type, range/chunk, typed-access, and lossless storage contracts. Every numeric
+native form executes exact L2/IP/cosine/MIPS-L2 with `f64` intermediates;
+binary search and scale-bearing index quantization remain explicit future work
+rather than implied behavior. Format 3 prevents the new sparse-FP16 bit layout
+from being reinterpreted by an older reader. Retained runtime controls have
+execution owners, future index/query/schema controls fail before mutation, and
+the external algorithm kernel remains private. Strict rustfmt, Clippy, three
+48-test feature-matrix runs plus four compile-fail doctests, rustdoc, and the
+default suite on the declared Rust 1.75 MSRV are green. Real ANN/indexed FTS,
+differential and concurrency evidence, the durability fault/fuzz matrix,
+cross-platform evidence, and migration benefit remain open. Code's existing
+workspace BM25 and `a3s-memory` vector path remain the golden reference; P7
+removal has not started.
 
 ## 1. Current baseline and target
 
 The current checkout contains three relevant implementations:
 
 - `crates/vec` is the `A3S-Lab/Vec` git submodule. Its zvec-shaped API and
-  format-2 storage/recovery core are still a prototype. Queries use the exact
+  format-3 storage/recovery core are still a prototype. Queries use the exact
   oracle; ANN and indexed FTS are not implemented or release-qualified.
 - `a3s-code-core` has a session-local chunk catalog, incremental BM25,
   `a3s-memory` exact-vector partitions, deterministic RRF/MMR, provider ports,
@@ -63,9 +65,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `630f364`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
-| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open**: VEC-P1-01/02/03/05/06/07 closed; VEC-P1-04 open |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `630f364`; all-feature Clippy, three 37-test feature-matrix runs, four compile-fail API doctests, and rustdoc also pass |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `8e2544d`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
+| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Finding set closed for the exact surface**: VEC-P1-01..07 closed at Vec `8e2544d`; the broader P1 exit still needs differential, concurrency, and supported-platform evidence |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `8e2544d`; all-feature Clippy, three 48-test feature-matrix runs, four compile-fail API doctests, rustdoc, and the default Rust 1.75 suite also pass |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; latest review host was arm64 macOS 26.6.2 |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
 
@@ -117,7 +119,7 @@ CRUD, type/dimension/nullability errors, filters, FTS golden cases, hybrid
 fusion, and deterministic tie-breaking pass on Linux and macOS Intel with no
 model runtime or native database extension.
 
-**Progress at Vec `630f364` (2026-08-30)**
+**Progress at Vec `8e2544d` (2026-08-30)**
 
 - Added a centralized schema-derived query contract for route/type/dimension,
   sparse-index, metric, radius, top-k, and tokenizer validation. Every current
@@ -139,9 +141,23 @@ model runtime or native database extension.
   operator/filter/extra controls, segment sizing, schema concurrency, and
   physical optimize return typed errors without mutation. Exact fusion is no
   longer counted as ANN, and scan FTS is not reported as a built index.
-- Remaining before P1 exit: VEC-P1-04 quantized/binary semantics,
-  differential FTS/vector fixtures, concurrency evidence, and supported-
-  platform runs.
+- Closed VEC-P1-04 by separating native storage encodings from future index
+  quantization. Dense/sparse FP16 preserve raw half bits, INT4 enforces
+  `-8..=7`, INT8/INT16 preserve integer coordinates, and Binary32/Binary64
+  enforce chunk-aligned bit dimensions. Strict schema-type writes, typed
+  getters, storage round trips, exhaustive finite-FP16 bit round trips,
+  conversion error bounds, all four dense/sparse metrics, and non-narrowing
+  FP64 accumulation have deterministic fixtures. Binary queries and
+  scale-bearing/packed index quantizers remain `NotSupported` until their
+  later-phase executors and exact re-score evidence exist.
+- Advanced manifest, snapshot, and WAL framing to format 3 because sparse FP16
+  now persists raw half bits; format 2 fails closed before payload decode.
+- Made the declared Rust 1.75 default-feature MSRV executable by constraining
+  `zvec-core`'s broad Rayon dependency and the test-only tempfile dependency to
+  compatible versions. The current Jieba feature still requires newer Cargo
+  because its dependency chain contains Rust 2024 manifests.
+- Remaining before P1 exit: differential FTS/vector fixtures, concurrency
+  evidence, and supported-platform runs.
 
 ### P2 — Durability and crash correctness
 
@@ -164,14 +180,17 @@ checkpoint, rename, lock contention, and corrupted earlier frames fail or
 recover deterministically. Manifest metadata is durable after every acknowledged
 WAL append.
 
-**Progress at Vec `78840ce` (2026-08-30)**
+**Progress through Vec `8e2544d` (2026-08-30)**
 
-- Landed format-2 generation snapshots, manifest-committed WAL byte boundaries,
+- Landed generation snapshots, manifest-committed WAL byte boundaries,
   monotonic DML/schema identities, manual-flush synchronization, and bounded
-  recovery reads.
-- Added 18 deterministic tests covering restart sequences, read-only lifecycle,
+  recovery reads. The original format-2 durability layout advanced to format 3
+  when sparse FP16 persistence became raw-bit authoritative; the manifest,
+  snapshot, and WAL versions advance together and format 2 is rejected.
+- Added deterministic tests covering restart sequences, read-only lifecycle,
   partial/uncommitted tails, committed truncation/checksum failure, orphan
-  generations, and oversized snapshots.
+  generations, oversized snapshots, aligned format markers, and failure-closed
+  format compatibility.
 - Remaining before P2 exit: deterministic hooks at every write/fsync/rename/
   prune boundary, explicit prune-crash and lock-contention matrices,
   per-document/field budgets, recovery fuzzing, and supported-platform runs.
