@@ -7,6 +7,67 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec contract validation and portable default (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`10412b38c6d530a25960af89517e2cc74e551055` (contract feature commit
+`40f83db36e3b200b211e44eafa9204a7082e614e`, nullability evidence commit
+`56be158f6a2e1a4993e6d58e9044c344504f0bce`). The A3S composition update that
+contains this note pins that gitlink. This follow-up extends the durability
+baseline below; it is not a release qualification or permission to begin Code
+shadow migration.
+
+The exact query path now resolves its schema field and validates one route,
+field type, dense dimension, sparse indices, top-k, radius, metric, and
+tokenizer before scoring. The dimension fixtures cover FP16/FP32/FP64 and
+INT4/INT8/INT16 fields with L2, IP, cosine, and MIPS-L2. Binary vector scoring
+and sparse source-ID queries return explicit `NotSupported` errors instead of
+empty results or implicit behavior.
+
+`FieldValue::Json` is now an adapter input rather than an untyped stored value.
+Writes canonicalize compatible values into every supported scalar and
+non-binary array variant before validation and WAL append; incompatible,
+out-of-range, nullability-breaking, and binary JSON values are rejected.
+Recovery uses the same normalization and full-document validation. Typed
+schema defaults and replacement upserts are also validated against the
+resulting complete document.
+
+The default Cargo feature set is now empty. Its normal/build dependency graph
+contains no Jieba, `zstd-sys`, or `cc`; Jieba is explicit and retains its
+native dictionary build chain. Requesting a Jieba tokenizer without that
+feature returns `NotSupported` rather than silently changing tokenization.
+
+Validation was repeated from `crates/vec` on arm64 macOS 26.6.2 with Rust
+1.98.0:
+
+| Command | Follow-up result |
+| --- | --- |
+| `cargo fmt --all -- --check` | **Passed** |
+| `cargo clippy --all-targets -- -D warnings` | **Passed** |
+| `cargo clippy --all-targets --all-features -- -D warnings` | **Passed** |
+| `cargo test` | **26 passed**, 0 failed |
+| `cargo test --no-default-features` | **26 passed**, 0 failed |
+| `cargo test --all-features` | **26 passed**, 0 failed |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features` | **Passed** |
+| `cargo tree -e normal,build` | **Passed**; default graph has no Jieba/`zstd-sys`/`cc` |
+| `cargo tree -e all --all-features -i cc` | **Observed** only through explicit Jieba → `include-flate` → `zstd-sys` |
+
+The 26 tests comprise 11 unit/storage tests, eight query/write contract tests,
+and seven public durability tests. Finding disposition added by this revision:
+
+| Finding | Follow-up state | Remaining evidence |
+| --- | --- | --- |
+| VEC-P0-07 | **Partially closed** | The default build is portable by dependency inspection and arm64 execution. The explicit Jieba feature still needs native-toolchain packaging evidence, and both configurations still need x86_64 macOS 12 build/runtime qualification. |
+| VEC-P1-02 | **Closed for the current exact query surface** | Every current numeric dense schema type and metric has negative dimension evidence; dense/sparse/FTS type routing and explicit binary/sparse unsupported paths are covered. Future index implementations must reuse this contract and add differential evidence. |
+| VEC-P1-03 | **Closed** | JSON has a documented schema-aware adapter policy, all supported scalar/non-binary array variants have canonicalization evidence, and incompatible/overflow/binary cases fail before persistence. |
+| Strict format/Clippy debt | **Closed at `10412b3`** | Both strict Clippy variants, rustfmt, rustdoc, and all three feature-matrix test runs pass. |
+| Insufficient integration coverage | **Improved, open** | Contract and durability suites now provide 15 public integration tests; concurrency, differential FTS/vector, fault injection, index recall, and platform suites remain open. |
+
+VEC-P1-04/05/07, real ANN/indexed FTS, the full durability fault matrix,
+concurrency, migration benefit, and supported-platform evidence remain open.
+Code's current retrieval implementation remains the golden reference and no
+old path is removed.
+
 ## Follow-up: Vec durability baseline (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to

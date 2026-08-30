@@ -300,6 +300,101 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "contract_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "38c44b674a668bc8c5fe305020fdd3d2f26e891e",
+    "vec_revision": "10412b38c6d530a25960af89517e2cc74e551055",
+    "vec_feature_revision": "40f83db36e3b200b211e44eafa9204a7082e614e",
+    "vec_nullability_evidence_revision": "56be158f6a2e1a4993e6d58e9044c344504f0bce",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "rustc": "1.98.0",
+      "cargo": "1.98.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "checks": [
+      {
+        "id": "vec-format-contract-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-contract-follow-up",
+        "command": "cargo clippy --all-targets -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-contract-follow-up",
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-contract-follow-up",
+        "command": "cargo test",
+        "status": "pass",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-contract-follow-up",
+        "command": "cargo test --no-default-features",
+        "status": "pass",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-contract-follow-up",
+        "command": "cargo test --all-features",
+        "status": "pass",
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-contract-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features",
+        "status": "pass"
+      },
+      {
+        "id": "vec-default-dependency-contract-follow-up",
+        "command": "cargo tree -e normal,build",
+        "status": "pass",
+        "notes": "The default feature graph contains no jieba-rs, zstd-sys, or cc package."
+      },
+      {
+        "id": "vec-jieba-dependency-contract-follow-up",
+        "command": "cargo tree -e all --all-features -i cc",
+        "status": "observed_optional_native_dependency",
+        "notes": "The explicit jieba feature reaches jieba-rs -> include-flate -> zstd -> zstd-sys -> cc."
+      }
+    ],
+    "test_inventory": {
+      "unit_and_storage": 11,
+      "public_contract": 8,
+      "public_durability": 7,
+      "total": 26
+    },
+    "finding_status": {
+      "VEC-P0-07": "partially_closed_portable_default",
+      "VEC-P1-02": "closed_current_exact_query_surface",
+      "VEC-P1-03": "closed_write_boundary",
+      "strict-format-and-clippy": "closed_vec_10412b3",
+      "insufficient-integration-coverage": "improved_open",
+      "missing-migration-performance-evidence": "open"
+    },
+    "remaining_contract_findings": [
+      "VEC-P1-04",
+      "VEC-P1-05",
+      "VEC-P1-07"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,
