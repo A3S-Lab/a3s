@@ -11,21 +11,20 @@ exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
 **Current review status (2026-08-30):** `a3s-vec` remains a pre-migration
-prototype, but Vec `ead2801ef5a6672654451455285aac3056c23be2` adds typed
+prototype, but Vec `630f36414b6e3b304c4d11f041c7222dc0b775d7` adds typed
 query/write contracts and a genuinely portable default dependency graph to the
 first P2 durability baseline. VEC-P1-02/03 are closed for the current exact
 surface and VEC-P1-07 is closed by keeping the external algorithm kernel
-private. VEC-P1-05 is partially closed after removing inert runtime controls
-and wiring the retained durability/WAL settings; index/query/schema tuning
-remains. VEC-P0-07 is partially closed pending explicit-Jieba packaging and
-Intel macOS 12 evidence. Monotonic DML/schema replay and read-only lifecycle
-remain closed for format 2; generation publication and recovery byte budgets
-remain partial pending the full fault/fuzz matrix. Strict rustfmt, Clippy,
-29-test feature-matrix runs plus four compile-fail doctests, and rustdoc are
-green. Real ANN/indexed FTS, VEC-P1-04 and remaining VEC-P1-05 work, cross-
-platform evidence, and migration benefit remain open. Code's existing
-workspace BM25 and `a3s-memory` vector path remain the golden reference; P7
-removal has not started.
+private. VEC-P1-05 is closed: retained runtime controls have execution owners,
+and future index/query/schema controls now fail explicitly before mutation.
+VEC-P0-07 is partially closed pending explicit-Jieba packaging and Intel macOS
+12 evidence. Monotonic DML/schema replay and read-only lifecycle remain closed
+for format 2; generation publication and recovery byte budgets remain partial
+pending the full fault/fuzz matrix. Strict rustfmt, Clippy, 37-test feature-
+matrix runs plus four compile-fail doctests, and rustdoc are green. Real ANN/
+indexed FTS, VEC-P1-04, cross-platform evidence, and migration benefit remain
+open. Code's existing workspace BM25 and `a3s-memory` vector path remain the
+golden reference; P7 removal has not started.
 
 ## 1. Current baseline and target
 
@@ -64,10 +63,10 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `ead2801`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
-| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open**: VEC-P1-01/02/03/06/07 closed; VEC-P1-05 partial; VEC-P1-04 open |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `ead2801`; all-feature Clippy, three 29-test feature-matrix runs, four compile-fail API doctests, and rustdoc also pass |
-| Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; review host was arm64 macOS 26.3 |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `630f364`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
+| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open**: VEC-P1-01/02/03/05/06/07 closed; VEC-P1-04 open |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `630f364`; all-feature Clippy, three 37-test feature-matrix runs, four compile-fail API doctests, and rustdoc also pass |
+| Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; latest review host was arm64 macOS 26.6.2 |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
 
 An open row blocks the dependent phase. Passing a superficial API or compile
@@ -118,7 +117,7 @@ CRUD, type/dimension/nullability errors, filters, FTS golden cases, hybrid
 fusion, and deterministic tie-breaking pass on Linux and macOS Intel with no
 model runtime or native database extension.
 
-**Progress at Vec `ead2801` (2026-08-30)**
+**Progress at Vec `630f364` (2026-08-30)**
 
 - Added a centralized schema-derived query contract for route/type/dimension,
   sparse-index, metric, radius, top-k, and tokenizer validation. Every current
@@ -135,9 +134,14 @@ model runtime or native database extension.
 - Removed inert process/collection runtime knobs and orphaned log/backend types;
   wired process-default inheritance, collection durability overrides, and WAL
   checkpoint thresholds with execution tests.
-- Remaining before P1 exit: VEC-P1-04 quantized/binary semantics, VEC-P1-05
-  index/query/schema tuning truthfulness, differential FTS/vector fixtures,
-  concurrency evidence, and supported-platform runs.
+- Closed VEC-P1-05 by allowing only Flat metric/radius and scan-FTS tokenizer
+  controls with execution consumers. Future index builds, query tuning, FTS
+  operator/filter/extra controls, segment sizing, schema concurrency, and
+  physical optimize return typed errors without mutation. Exact fusion is no
+  longer counted as ANN, and scan FTS is not reported as a built index.
+- Remaining before P1 exit: VEC-P1-04 quantized/binary semantics,
+  differential FTS/vector fixtures, concurrency evidence, and supported-
+  platform runs.
 
 ### P2 — Durability and crash correctness
 

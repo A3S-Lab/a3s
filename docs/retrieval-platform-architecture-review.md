@@ -7,6 +7,38 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec truthful index and query configuration (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`630f36414b6e3b304c4d11f041c7222dc0b775d7` (feature commit
+`55fcf229bf2f070439d20252f1faa43e45755cfe`). The exact executor now owns a
+small explicit configuration allowlist: Flat schema metrics and query
+`metric`/`radius`; scan FTS owns only tokenizer selection. Only Flat is
+reported as a ready index, with its revision and document count derived from
+the authoritative collection state. Scan FTS is not reported as built, exact
+multi-query fusion does not increment ANN telemetry, and the ANN count remains
+zero while no ANN executor exists.
+
+HNSW, IVF, RaBitQ, DiskANN/Vamana, inverted index, quantization, refinement,
+FTS operator/filter/extra, and physical optimize requests now return
+`NotSupported` before mutation. Their typed descriptors remain constructible
+for adapter compatibility, but cannot enter a collection schema. Future query
+setters do not mutate their payloads, and the execution boundary independently
+rejects deserialized future parameters; unknown keys return `InvalidArgument`.
+Non-zero segment sizing and add/alter concurrency also return `NotSupported`.
+Persisted schemas are revalidated on open.
+
+Six public tests first failed against the prior behavior, reproducing silent
+acceptance and false telemetry. The final matrix contains eight option-
+contract tests. On arm64 macOS 26.6.2 with Rust 1.98.0, each default/no-default/
+all-feature run has 37 passing unit/integration tests plus four compile-fail
+doctests; rustfmt, both strict Clippy variants, and rustdoc pass.
+
+VEC-P1-05 is **closed** at this revision. VEC-P1-04 quantized/binary semantics,
+real ANN/indexed FTS, differential/concurrency evidence, the durability fault
+matrix, migration benefit, and the supported-platform matrix remain open. This
+is still a pre-migration prototype.
+
 ## Follow-up: Vec executable runtime configuration (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to

@@ -570,6 +570,108 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "truthful_index_configuration_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "ccb266048c308d74aeb01c50140965342c2326cd",
+    "vec_revision": "630f36414b6e3b304c4d11f041c7222dc0b775d7",
+    "vec_feature_revision": "55fcf229bf2f070439d20252f1faa43e45755cfe",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "rustc": "1.98.0",
+      "cargo": "1.98.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "tdd_evidence": {
+      "command": "cargo test --test execution_contracts",
+      "before": "fail: all 6 initial tests reproduced silent option acceptance, false ready state, or false ANN/index telemetry",
+      "after": "pass: all 8 final execution-contract tests cover the complete supported and rejected option matrix"
+    },
+    "checks": [
+      {
+        "id": "vec-format-truthful-index-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-truthful-index-follow-up",
+        "command": "cargo clippy --all-targets -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-truthful-index-follow-up",
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-truthful-index-follow-up",
+        "command": "cargo test",
+        "status": "pass",
+        "unit_and_integration_passed": 37,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-truthful-index-follow-up",
+        "command": "cargo test --no-default-features",
+        "status": "pass",
+        "unit_and_integration_passed": 37,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-truthful-index-follow-up",
+        "command": "cargo test --all-features",
+        "status": "pass",
+        "unit_and_integration_passed": 37,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-truthful-index-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features",
+        "status": "pass"
+      }
+    ],
+    "executable_controls": [
+      "Flat schema metric",
+      "exact query metric",
+      "exact query radius",
+      "scan FTS tokenizer"
+    ],
+    "explicitly_rejected_controls": [
+      "future physical index builds",
+      "future ANN and refinement query parameters",
+      "FTS operator, filters, and extra parameters",
+      "Flat quantization and unknown build parameters",
+      "physical index optimization",
+      "non-zero schema segment sizing",
+      "non-zero add/alter schema concurrency"
+    ],
+    "telemetry_contract": {
+      "ready_index_types": [
+        "Flat"
+      ],
+      "scan_fts_reported_as_built": false,
+      "exact_fusion_reported_as_ann": false,
+      "ann_query_count_without_ann_executor": 0
+    },
+    "finding_status": {
+      "VEC-P1-05": "closed_executable_or_explicit_configuration",
+      "strict-format-and-clippy": "closed_vec_630f364",
+      "insufficient-integration-coverage": "improved_open"
+    },
+    "remaining_contract_findings": [
+      "VEC-P1-04"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,
