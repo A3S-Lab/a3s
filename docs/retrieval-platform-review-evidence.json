@@ -395,6 +395,86 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "kernel_encapsulation_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "afe4d5fe9e52295372aa0ed94299c737fa19985d",
+    "vec_revision": "d965cbb8d6e4446fc1aff794d4a4f845f8c714d5",
+    "vec_feature_revision": "26545aac41c05761bccd25e5e0341c2186d71085",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "rustc": "1.98.0",
+      "cargo": "1.98.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "tdd_evidence": {
+      "command": "cargo test --doc",
+      "before": "fail: the compile-fail import of a3s_vec::core compiled successfully",
+      "after": "pass: the compile-fail import is rejected after removing the public re-export"
+    },
+    "checks": [
+      {
+        "id": "vec-format-kernel-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-kernel-follow-up",
+        "command": "cargo clippy --all-targets -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-kernel-follow-up",
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-kernel-follow-up",
+        "command": "cargo test",
+        "status": "pass",
+        "unit_and_integration_passed": 26,
+        "compile_fail_doctests_passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-kernel-follow-up",
+        "command": "cargo test --no-default-features",
+        "status": "pass",
+        "unit_and_integration_passed": 26,
+        "compile_fail_doctests_passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-kernel-follow-up",
+        "command": "cargo test --all-features",
+        "status": "pass",
+        "unit_and_integration_passed": 26,
+        "compile_fail_doctests_passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-kernel-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features",
+        "status": "pass"
+      }
+    ],
+    "finding_status": {
+      "VEC-P1-07": "closed_private_kernel_boundary",
+      "strict-format-and-clippy": "closed_vec_d965cbb",
+      "insufficient-integration-coverage": "improved_open"
+    },
+    "remaining_contract_findings": [
+      "VEC-P1-04",
+      "VEC-P1-05"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,

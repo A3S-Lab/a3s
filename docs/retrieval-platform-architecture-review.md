@@ -7,6 +7,27 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec kernel encapsulation (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`d965cbb8d6e4446fc1aff794d4a4f845f8c714d5` (feature commit
+`26545aac41c05761bccd25e5e0341c2186d71085`). The public `a3s_vec::core`
+re-export was removed after repository-wide consumer search found no callers.
+`zvec-core` remains an internal filtering/tokenization/document-conversion
+dependency, so replacing it no longer exposes dependency types as an A3S API
+break.
+
+A compile-fail doctest now guards that `use a3s_vec::core` does not compile. It
+was first run against the old surface and failed because the import still
+compiled, then passed after encapsulation. The full default/no-default/all-
+feature matrix was repeated: each configuration has 26 passing unit/integration
+tests plus the compile-fail doctest; rustfmt, both strict Clippy variants, and
+rustdoc also pass on the same arm64 macOS 26.6.2 / Rust 1.98.0 host.
+
+VEC-P1-07 is **closed** at this revision. VEC-P1-04/05, real ANN/indexed FTS,
+the durability fault matrix, concurrency, migration benefit, and the supported-
+platform matrix remain open. This remains a pre-migration prototype.
+
 ## Follow-up: Vec contract validation and portable default (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to

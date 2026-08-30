@@ -11,17 +11,18 @@ exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
 **Current review status (2026-08-30):** `a3s-vec` remains a pre-migration
-prototype, but Vec `10412b38c6d530a25960af89517e2cc74e551055` adds typed
+prototype, but Vec `d965cbb8d6e4446fc1aff794d4a4f845f8c714d5` adds typed
 query/write contracts and a genuinely portable default dependency graph to the
 first P2 durability baseline. VEC-P1-02/03 are closed for the current exact
-surface; VEC-P0-07 is partially closed pending explicit-Jieba packaging and
+surface and VEC-P1-07 is closed by keeping the external algorithm kernel
+private; VEC-P0-07 is partially closed pending explicit-Jieba packaging and
 Intel macOS 12 evidence. Monotonic DML/schema replay and read-only lifecycle
 remain closed for format 2; generation publication and recovery byte budgets
 remain partial pending the full fault/fuzz matrix. Strict rustfmt, Clippy,
-26-test feature-matrix runs, and rustdoc are green. Real ANN/indexed FTS,
-remaining P1 contracts, cross-platform evidence, and migration benefit remain
-open. Code's existing workspace BM25 and `a3s-memory` vector path remain the
-golden reference; P7 removal has not started.
+26-test feature-matrix runs plus the API compile-fail doctest, and rustdoc are
+green. Real ANN/indexed FTS, VEC-P1-04/05, cross-platform evidence, and
+migration benefit remain open. Code's existing workspace BM25 and `a3s-memory`
+vector path remain the golden reference; P7 removal has not started.
 
 ## 1. Current baseline and target
 
@@ -60,9 +61,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `10412b3`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
-| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open**: VEC-P1-01/02/03 and documentation-drift finding VEC-P1-06 closed; VEC-P1-04/05/07 remain open |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `10412b3`; all-feature Clippy, three 26-test feature-matrix runs, and rustdoc also pass |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `d965cbb`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
+| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open**: VEC-P1-01/02/03/06/07 closed; VEC-P1-04/05 remain open |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `d965cbb`; all-feature Clippy, three 26-test feature-matrix runs, the compile-fail API doctest, and rustdoc also pass |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; review host was arm64 macOS 26.3 |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
 
@@ -114,7 +115,7 @@ CRUD, type/dimension/nullability errors, filters, FTS golden cases, hybrid
 fusion, and deterministic tie-breaking pass on Linux and macOS Intel with no
 model runtime or native database extension.
 
-**Progress at Vec `10412b3` (2026-08-30)**
+**Progress at Vec `d965cbb` (2026-08-30)**
 
 - Added a centralized schema-derived query contract for route/type/dimension,
   sparse-index, metric, radius, top-k, and tokenizer validation. Every current
@@ -126,9 +127,11 @@ model runtime or native database extension.
   upsert fixtures.
 - Made the default feature graph independent of Jieba, `zstd-sys`, and `cc`;
   Jieba remains an explicit feature and never silently falls back when absent.
+- Removed the public `zvec-core` escape hatch and added a compile-fail doctest
+  that keeps dependency types outside the A3S public contract.
 - Remaining before P1 exit: VEC-P1-04 quantized/binary semantics, VEC-P1-05
-  configuration wiring, VEC-P1-07 kernel encapsulation, differential FTS/
-  vector fixtures, concurrency evidence, and supported-platform runs.
+  configuration wiring, differential FTS/vector fixtures, concurrency
+  evidence, and supported-platform runs.
 
 ### P2 — Durability and crash correctness
 
