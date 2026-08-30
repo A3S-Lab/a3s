@@ -930,6 +930,117 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "snapshot_concurrency_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "d5a9851e26025baed4c2c61e134ef2c161f2b20d",
+    "vec_revision": "0236e0d0cd9d4c203a689567e52a0591697260a2",
+    "vec_feature_revision": "2a1346a6ab0ec801414b241177f15408470fa16f",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "stable_rustc": "1.98.0",
+      "stable_cargo": "1.98.0",
+      "declared_msrv_rustc": "1.75.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_default_suite_tested": true,
+      "declared_msrv_all_features_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "audit": {
+      "writer_order": "per-collection writer mutex, state write lock, storage commit",
+      "reader_snapshot": "schema, documents, and revision copied under one state read lock",
+      "production_change_required": false
+    },
+    "focused_evidence": {
+      "command": "cargo test --test concurrency --locked",
+      "initial_result": "pass: 3 concurrency contract tests",
+      "consecutive_runs": 20,
+      "consecutive_run_failures": 0,
+      "durability": "manual, to isolate synchronization from fsync latency",
+      "batch_race_rounds": 64,
+      "synchronized_readers": 2
+    },
+    "checks": [
+      {
+        "id": "vec-format-snapshot-concurrency-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-snapshot-concurrency-follow-up",
+        "command": "cargo clippy --all-targets --locked -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-snapshot-concurrency-follow-up",
+        "command": "cargo clippy --all-targets --all-features --locked -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-snapshot-concurrency-follow-up",
+        "command": "cargo test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 60,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-snapshot-concurrency-follow-up",
+        "command": "cargo test --no-default-features --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 60,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-snapshot-concurrency-follow-up",
+        "command": "cargo test --all-features --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 60,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-msrv-default-snapshot-concurrency-follow-up",
+        "command": "cargo +1.75.0 test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 60,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-snapshot-concurrency-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features --locked",
+        "status": "pass"
+      }
+    ],
+    "concurrency_contract": {
+      "collection_handle": "Send + Sync through cloned public handles",
+      "concurrent_disjoint_updates": "both patches retained at separate monotonic revisions",
+      "iterator_snapshot": "captured revision and documents remain stable across a later write",
+      "multi_document_publication": "readers observe a complete previous or complete next batch"
+    },
+    "finding_status": {
+      "coherent-reader-serialized-writer": "closed_current_in_process_surface",
+      "strict-format-and-clippy": "closed_vec_0236e0d",
+      "declared-default-msrv": "closed_rust_1_75",
+      "insufficient-integration-coverage": "improved_open"
+    },
+    "remaining_release_gates": [
+      "larger generated vector and FTS-filter golden corpora",
+      "multi-process contention and stale-lock diagnostics",
+      "supported-platform matrix",
+      "durability fault injection and fuzzing",
+      "real ANN and indexed FTS",
+      "migration benefit"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,
