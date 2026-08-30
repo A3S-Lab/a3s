@@ -106,7 +106,7 @@ test('the Code component describes the Cloud host dependency', () => {
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
   assert.equal(code.source, 'git');
-  assert.equal(code.version, '8.0.1');
+  assert.equal(code.version, '8.0.3');
 });
 
 test('published dependencies retain separate Git provenance', () => {
