@@ -3,10 +3,6 @@
 </p>
 
 <p align="center">
-  <strong>Build locally. Add capabilities, isolation, workflows, and fleet control only when the job needs them.</strong>
-</p>
-
-<p align="center">
   <a href="https://github.com/A3S-Lab/a3s/actions/workflows/installers.yml"><img alt="Installer tests" src="https://img.shields.io/github/actions/workflow/status/A3S-Lab/a3s/installers.yml?branch=main&amp;style=flat-square&amp;label=installers"></a>
   <a href="https://github.com/A3S-Lab/CLI/releases/latest"><img alt="Latest A3S CLI release" src="https://img.shields.io/github/v/release/A3S-Lab/CLI?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;color=171717"></a>
   <a href="https://crates.io/crates/a3s"><img alt="a3s on crates.io" src="https://img.shields.io/crates/v/a3s?style=flat-square&amp;color=0d74ce"></a>
@@ -15,32 +11,32 @@
 </p>
 
 <p align="center">
-  <a href="#start-in-60-seconds">Quick start</a> ·
-  <a href="#one-owner-per-concern">Architecture</a> ·
-  <a href="#product-surfaces">Products</a> ·
-  <a href="#repository-map">Repository map</a> ·
-  <a href="https://a3s-lab.github.io/a3s/">Website</a> ·
-  <a href="https://a3s-lab.github.io/a3s/download/">Desktop download</a>
+  <a href="#start-local">Start local</a> ·
+  <a href="#how-a3s-fits-together">System model</a> ·
+  <a href="#choose-a-surface">Products</a> ·
+  <a href="#installation">Install</a> ·
+  <a href="#repository-map">Repository</a> ·
+  <a href="https://a3s-lab.github.io/a3s/">Website</a>
 </p>
 
----
+A3S is an open-source, local-first runtime platform for building, running, and
+operating agent work. One interface connects sessions, models, tools,
+permissions, durable workflows, isolated execution, and Cloud operations while
+keeping authority boundaries and external dependencies explicit.
 
-A3S treats an agent as a unit that can be **built, run, and operated**, not as
-a chat box attached to another system. One interface connects sessions,
-models, tools, permissions, durable workflows, isolated execution, and Cloud
-operations while keeping every authority boundary and external dependency
-visible.
+Start with one local Code session. Add capabilities, orchestration, isolation,
+inference, or fleet control only when the work requires them.
 
-This repository is the reviewed integration snapshot for independently
-versioned A3S products. The canonical [`a3s` CLI](crates/cli/) and most
-components live in their own repositories and are pinned here as submodules.
-The root owns installers, orchestration, compatibility locks, documentation,
-and directly tracked applications; it is not a second Rust package.
+> [!IMPORTANT]
+> This repository is the reviewed integration snapshot for independently
+> versioned A3S products. Most components are pinned here as git submodules;
+> the root owns installers, orchestration, compatibility locks, and shared
+> documentation. It is not a Rust workspace or a second copy of each product.
 
-## Start in 60 seconds
+## Start local
 
-Install the stable CLI on macOS or glibc Linux, enter a project, and start a
-local Code session:
+Install the stable CLI on macOS or glibc Linux, enter a project, and launch an
+interactive local session:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -51,8 +47,7 @@ a3s code
 ```
 
 A model-backed session needs a configured provider or compatible local
-account. Configuration inspection, component discovery, and local-only
-research do not require an A3S OS login.
+account. Inspect and select the model explicitly:
 
 ```bash
 a3s config init
@@ -61,8 +56,8 @@ a3s model list
 a3s model use <provider>/<model>
 ```
 
-The same command surface scales from one interactive session to automation,
-browser work, research, isolation, and evaluation:
+The same CLI grows from an interactive session into bounded automation,
+research, isolation, and operations:
 
 | Intent | First command |
 | --- | --- |
@@ -73,176 +68,84 @@ browser work, research, isolation, and evaluation:
 | Inspect installed products | `a3s list --installed` |
 
 See [Installation](#installation) for Windows, Homebrew, Cargo, offline use,
-and release-channel details. The complete command reference lives with the
-[pinned CLI](crates/cli/docs/cli-reference.md).
+and release-channel details. The complete command surface lives in the
+[CLI reference](docs/cli-reference.md).
 
-## One owner per concern
+## How A3S fits together
 
 <p align="center">
-  <img src="assets/readme/architecture.svg" width="100%" alt="A3S architecture: product hosts set policy, agent and workflow contracts compose work, Runtime and Power execute through replaceable providers, and evidence returns to the owning authority">
+  <img src="assets/readme/architecture.svg" width="100%" alt="A3S architecture: product hosts set policy, agent and workflow contracts compose work, replaceable providers execute it, and evidence returns to the owning authority">
 </p>
 
-A3S grows progressively. A local session does not require the whole platform,
-and installing a package does not silently grant it authority or activate an
-infrastructure dependency.
+A3S grows progressively. Installing a component does not silently activate an
+infrastructure dependency or grant it authority.
 
-| Layer | Contract | Owners |
+| Layer | Responsibility | Owners |
 | --- | --- | --- |
 | **Host** | Invocation, policy, models, tools, permissions | [CLI](crates/cli/), [Code](crates/code/), [Cloud](apps/cloud/) |
 | **Extend** | Signed capabilities and typed content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
-| **Coordinate** | Replay-safe workflows, events, queues, tests | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
-| **Execute** | Tasks, Services, isolation, model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Boot](crates/boot/) |
-| **Scale** | Traffic, desired state, placement, reconciliation | [Gateway](crates/gateway/), [Cloud](apps/cloud/), [ORM](crates/orm/) |
-| **Govern** | Observation, enforcement decisions, signed updates | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
+| **Coordinate** | Replay-safe workflows, events, queues, and evaluation | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
+| **Execute** | Tasks, Services, isolation, and model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/) |
+| **Scale** | Traffic, desired state, placement, and reconciliation | [Gateway](crates/gateway/), [Cloud](apps/cloud/), [ORM](crates/orm/) |
+| **Govern** | Observation, enforcement decisions, and signed updates | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
 
-The architecture follows five invariants:
+Four rules keep the system composable:
 
 1. **Hosts own policy.** Product hosts choose models, tools, providers, and
-   permissions; execution backends do not invent authority.
-2. **One authority owns each concern.** Cloud owns tenant and desired state,
-   Flow owns durable orchestration, Runtime owns provider-neutral Task and
-   Service lifecycles, and concrete providers own enforcement mechanics.
-3. **Contracts are replaceable.** Local processes, containers, MicroVMs, model
+   permissions; backends do not invent authority.
+2. **One concern has one owner.** Cloud owns desired state, Flow owns durable
+   orchestration, Runtime owns provider-neutral lifecycles, and concrete
+   providers own enforcement mechanics.
+3. **Contracts stay replaceable.** Processes, containers, MicroVMs, model
    servers, and remote providers meet typed boundaries instead of becoming
    hidden defaults.
-4. **State has identity.** Sessions, runs, tasks, artifacts, receipts, and
-   operations retain stable identities, revisions, and digests across restart
-   and replay.
-5. **Evidence closes the loop.** Installation, authorization, activation,
-   execution, health, and publication are distinct states with distinct proof.
+4. **Evidence closes the loop.** Identity, revisions, digests, health, and
+   receipts distinguish installation, authorization, activation, execution,
+   and publication.
 
-Configuration is ACL parsed and generated by [`a3s-acl`](crates/acl/). ACL is
-not HCL and must not be processed with an HCL parser.
+Configuration uses [A3S ACL](crates/acl/), the Agent Configuration Language.
+ACL is not HCL and must be parsed and generated with `a3s-acl`.
 
-Workflow authoring components, the React and Vue integrations, CLI, Skill, and
-node documentation are maintained by [A3S Flow](https://a3s-lab.github.io/Flow/).
-The root ecosystem site links to that product surface instead of publishing a
-second workflow editor or duplicating product-specific navigation.
-
-## Product surfaces
+## Choose a surface
 
 The umbrella CLI owns invocation context, shared configuration, credentials,
-discovery, and output policy. Each product continues to own its behavior,
-release cadence, and detailed documentation.
+discovery, and output policy. Each product owns its behavior, release cadence,
+and detailed support contract.
 
-| Surface | Start here | Boundary |
+| Surface | Start here | Owns |
 | --- | --- | --- |
-| **Code** | `a3s code` | Bundled agent engine and terminal host |
-| **Desktop** | [Download](https://a3s-lab.github.io/a3s/download/) · [Source](apps/desktop/) | Native React workbench powered by the local A3S Code kernel; Office is available while Code and Design keep explicit preview boundaries |
-| **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI surfaces |
+| **Code** | `a3s code` | Local agent engine and terminal host |
+| **Desktop** | [Download](https://a3s-lab.github.io/a3s/download/) · [Source](apps/desktop/) | Native workbench powered by the local Code kernel |
+| **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI capabilities |
 | **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
-| **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Power owns model-neutral serving, residency, verified artifact provisioning, admission, and speculative execution; model crates own architecture equations and checkpoint packing |
-| **Flow + Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Durable orchestration composed by a self-hosted control plane under an exact compatibility lock |
+| **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Model-neutral serving and residency plus model-specific equations and validation |
+| **Flow + Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | Durable orchestration and the self-hosted control plane under an exact compatibility lock |
 | **Search** | `a3s search …` | Browser-first search with quality-gated fallbacks |
-| **Bench** | `a3s bench …` | Evaluation runs and evidence; artifact availability remains platform-specific |
-| **Top** | `a3s top` | Local view of agents, containers, sessions, and events |
+| **Bench** | `a3s bench …` | Evaluation runs and evidence |
+| **Top** | `a3s top` | A local view of agents, containers, sessions, and events |
 
 > [!NOTE]
 > Discovery is not availability. A catalog record can describe installation
 > policy without proving that every platform or release channel contains a
 > compatible artifact.
 
-## What is verified today
+## Release posture
 
-- The standalone [`A3S-Lab/CLI`](https://github.com/A3S-Lab/CLI) repository
-  owns CLI source, CI, tags, releases, and product documentation. This root
-  pins a reviewed v0.12.5 maintenance revision with Runtime Service
-  provider-process rebinding and unambiguous bounded-startup warnings. CLI
-  v0.13.0 is not pinned until its in-process Use dependency and the external
-  Use process share one frozen capability protocol revision. This root retains
-  an asset-only relay for legacy 0.11.x clients that briefly used the monorepo
-  release endpoint.
-- The pinned [Code](crates/code/) revision includes a capability ledger and
-  release qualification for retrieval, code intelligence, context and memory,
-  Flow and State Graph projection, persistence, and hermetic S3, browser, and
-  OpenTelemetry boundaries. Remote-provider and public-network latency remain
-  explicitly out of scope.
-- The Cloud compatibility lock pins exact Cloud, Code, ACL, Boot, Box, Event,
-  Flow, Form, Gateway, ORM, Runtime, Sentry, Updater, and Use revisions plus their
-  shared protocol levels. Its current Use boundary records plugin-host
-  capabilities v6, the managed-scope-v2 mutation fence, and A0's
-  exact-generation serializable mutation gate. Run `just cloud-stack-check`
-  before publishing a new integration claim.
-- Workflow Phases 0–2 have verified contract, Form lifecycle, and minimal run
-  baselines. Phase 3 has a pinned internal HumanTask decision slice, including
-  protected reads, claim/release, native Form submission, expiry, cancellation,
-  and Outbox resume; the controlled inbox and full end-to-end exit gate remain
-  open. See the [architecture](compat/workflow-platform-architecture.md) and
-  [ordered plan](compat/workflow-platform-development-plan.md).
-- Use is a preview, not a supported product release. The pinned integration
-  includes provider-process rebinding recovery, its v6/v2 Cloud host schemas,
-  and five-platform A0 mutation qualification. Scoped installation authority,
-  transactional control, portable agent invocation, provider cleanup, the
-  operated production Registry and MHS qualification remain open in the
-  component roadmap.
-- MoE owns model-specific equations and validation; Power owns model-neutral
-  execution. Model support evidence does not imply that every optimized kernel,
-  accelerator backend, or speculative adapter is complete.
-- The pinned Power and Gateway revisions establish the aggregated distributed
-  inference foundation without adding a second control plane: Power publishes
-  bounded worker observations, while Gateway owns pool admission,
-  filter/score/pick routing, scoped prompt-cache affinity, and same-generation
-  pre-response retry. Cloud snapshot publication, mixed-version qualification,
-  and prefill/decode state transfer remain open.
-- Ash and Parser are early-stage, and Office is pre-1.0.
-- The pinned OCI Runtime revision uses schema-v9 containerd metadata, recovers
-  committed init Start, exec Start, live init Kill, terminal init Kill, and
-  terminal exec SignalProcess effects from the Runtime's exact-generation
-  state after shim replacement, and replays pending Pause, Resume, and
-  body-complete Update controls with their original operation identities. Exec
-  Start adopts the one existing process and PID without redispatch. Live init
-  Kill preserves init and exec PIDs and proves `all=true` fanout plus
-  `all=false` isolation; terminal init Kill imports the Runtime's durable exit
-  with one bounded Wait before signal replay and therefore avoids a second Kill
-  dispatch. Terminal exec SignalProcess performs an exact zero-timeout
-  WaitProcess before replay, settles an already durable exit without a second
-  signal, and preserves the existing replay path when the exec remains live.
-  DeleteProcess stores a separate task-identity- and generation-bound receipt
-  before removing an exec from main metadata, so a replacement shim can replay
-  the exact PID, status, and nanosecond exit time; a durable new incarnation of
-  the same exec ID consumes the old receipt. Task Delete stores a separate
-  namespace-, task-incarnation-, generation-, and bundle-bound receipt before
-  dispatch; after committed metadata removal, a replacement validates the
-  serving task, reproduces the exact PID, status, and nanosecond exit time, and
-  exits after serving. Restoration publishes validated task state before
-  starting output pumps, while partial pump-start rollback stops every pump
-  already created.
-  Contract v1 continues to advertise only Ubuntu arm64/containerd 2.2.2; three
-  consecutive same-Host matrices retain all nine earlier replacement and
-  response-replay gates with zero matching live runtime residue. Three
-  additional source-build Ubuntu x86_64/containerd 2.2.3 matrices retained the
-  full suite plus exact task Delete response replay and post-commit
-  `WriteStdin` and `CloseStdin` forced cleanup. The close boundary delivers
-  `CloseIO` through the task shim's advertised ttrpc endpoint while schema-v9
-  metadata retains Closing, commits the same exec-scoped `close-stdin-1`
-  operation directly through the public SDK, and observes normal exec exit 29
-  without changing the live init PID or generation. After shim `SIGKILL`,
-  DeleteShim must not redispatch the close and removes only that exact Runtime
-  generation. Every pass and the independent post-run audit left zero matching
-  task, container, bundle, live Runtime record, cgroup, mount, snapshot, shim,
-  qualification process, workload process, or prepared operation. That 2.2.3
-  regression evidence does not expand the contract-v1 compatibility claim.
-  The pinned revision also implements the matching post-commit `ResizePty`
-  forced-cleanup gate. It retains pending sequence 1 at 166x52, commits the
-  same exec-scoped `resize-1` operation while the shim is stopped, verifies the
-  live PTY through `TIOCGWINSZ`, and proves DeleteShim does not dispatch a
-  second resize. Unit and cross-platform CI coverage pass, but the destructive
-  three-pass real-host record is intentionally not claimed yet. The revision
-  also descriptor-pins the Utility VM runtime share, bundle, rootfs, and
-  existing bind sources, using descriptor-relative `openat2` resolution to
-  reject traversal, symbolic links, magic links, and directory-entry swaps.
-  Failed Create cleanup kills and drains the owned cgroup before removal and
-  preserves cleanup failures in the typed error. A versioned ten-case Guest
-  path-isolation gate is wired into macOS/HVF and Linux KVM qualification;
-  cross-platform CI and fail-closed cleanup pass, but the updated revision has
-  not yet retained an `available` hardware artifact, so platform readiness is
-  unchanged. Native Linux remains experimental; that `ResizePty` qualification
-  record, broader containerd-version and cross-driver qualification, and
-  published-artifact compatibility remain open.
+A3S is a composed system, so it does not have one blanket maturity label.
+Support claims live with the component that owns the behavior:
 
-Component READMEs, releases, roadmaps, and the compatibility lock are the
-sources of truth for exact feature flags, platforms, versions, and remaining
-gates. This page describes the composition, not a merged changelog.
+| Area | Current posture | Source of truth |
+| --- | --- | --- |
+| CLI and installers | The standalone CLI repository owns source, CI, releases, and detailed product documentation; this root pins a reviewed revision and relays only the required integration assets. | [CLI](https://github.com/A3S-Lab/CLI) · [installer CI](.github/workflows/installers.yml) |
+| Local agent work | Code owns session, workspace, retrieval, context, memory, and provider qualification. Provider and public-network behavior is qualified separately from the local core. | [Code](crates/code/) · [retrieval roadmap](docs/retrieval-platform-roadmap.md) |
+| Cloud and workflows | Exact component revisions, package versions, and protocol levels are locked together before an integration claim is published. | [Cloud stack lock](compat/cloud-stack.acl) · [workflow plan](compat/workflow-platform-development-plan.md) |
+| Capabilities | Use is a preview. Discovery does not imply installation authority, activation, or operated Registry readiness. | [Use](crates/use/) · [Use Registry](use-registry/) |
+| Isolation and inference | Platform, driver, accelerator, and artifact evidence is explicit. Model support does not imply that every optimized kernel or backend is complete. | [OCI Runtime](crates/oci-runtime/) · [Runtime](crates/runtime/) · [Power](crates/power/) · [MoE](crates/moe/) |
+| Early-stage surfaces | Ash and Parser remain early-stage; Office remains pre-1.0. | [Ash](crates/ash/) · [Parser](crates/parser/) · [Office](packages/office/) |
+
+Component READMEs, releases, roadmaps, and compatibility locks carry exact
+versions, platforms, fixtures, and remaining gates. This page explains how the
+parts compose; it is not a merged changelog.
 
 ## Installation
 
@@ -254,9 +157,9 @@ gates. This page describes the composition, not a merged changelog.
 | Cargo | `cargo install a3s` | Builds the CLI only; install the optional WebView helper separately |
 
 Release installers resolve one stable version, require an exact artifact for
-the detected platform, verify its SHA-256 release digest and staged binary
-version, reject unsafe archive entries, and preserve the previous installation
-if activation fails.
+the detected platform, verify its SHA-256 digest and staged binary version,
+reject unsafe archive entries, and preserve the previous installation if
+activation fails.
 
 Set `A3S_OFFLINE=1` and `A3S_NO_AUTO_INSTALL=1` when setup must perform zero
 network access and zero component mutation. Standalone macOS and Linux installs
@@ -265,21 +168,24 @@ Homebrew. Windows upgrades currently rerun the installer.
 
 ## Repository map
 
-The root is a monorepo integration point, not a Rust workspace. Most components
-are external repositories tracked as git submodules; directly tracked
-applications, integration assets, `crates/common`, and `crates/updater` remain
-root-owned.
+The root is a monorepo integration point, not a Rust workspace. Most
+components are external repositories tracked as git submodules; directly
+tracked applications, integration assets, `crates/common`, and
+`crates/updater` remain root-owned.
 
 ```text
 a3s/
-├── apps/       Cloud, Desktop, docs, and Windhole applications
-├── packages/   Office, Science, and UI
-├── crates/     product hosts, capabilities, runtimes, services, and SDKs
-├── compat/     exact cross-project revisions and protocol locks
-├── assets/     repository-native README visuals
-├── use-registry/ official signed A3S Use Registry deployment
-└── homebrew-tap/
+├── apps/          Cloud, Desktop, docs, and Windhole applications
+├── packages/      Office, Science, and UI
+├── crates/        product hosts, capabilities, runtimes, services, and SDKs
+├── compat/        exact cross-project revisions and protocol locks
+├── assets/        repository-native README visuals
+├── use-registry/  official signed A3S Use Registry deployment
+└── homebrew-tap/  release formulae
 ```
+
+<details>
+<summary><strong>Browse components by concern</strong></summary>
 
 | Group | Projects |
 | --- | --- |
@@ -288,19 +194,18 @@ a3s/
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
-| Interfaces and services | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [Common](crates/common/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/) |
-| Operations and distribution | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/), [Use Registry](use-registry/), [Website](apps/docs/), [Homebrew Tap](homebrew-tap/) |
+| Interfaces and operations | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/), [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
+
+</details>
 
 The root-level Use Registry is a pinned deployment repository, not a package
 source monorepo. [Use](crates/use/) owns Registry formats and tooling; package
-source and builds remain in each owning repository. GitHub transports reviewed
-Registry state, while clients establish trust from an independently obtained
-bootstrap-root digest.
+source and builds remain with each owning repository.
 
 The [CLI migration record](docs/cli-repository-migration.md) explains the
 temporary 0.11.x root migration and restored standalone ownership. The
 interactive [project directory](https://a3s-lab.github.io/a3s/#ecosystem)
-shows each project's role, stage, version or channel, website, and source.
+shows each project's role, stage, release channel, website, and source.
 
 ## Development
 
@@ -344,14 +249,14 @@ its owning repository before advancing its gitlink here, and read
 ## Documentation and community
 
 - [A3S website](https://a3s-lab.github.io/a3s/)
+- [Desktop download](https://a3s-lab.github.io/a3s/download/)
 - [CLI reference](docs/cli-reference.md)
-- [Workflow platform architecture](compat/workflow-platform-architecture.md)
-- [Workflow development plan](compat/workflow-platform-development-plan.md)
-- [Local retrieval platform architecture](docs/retrieval-platform-architecture.md)
-- [Local retrieval platform architecture review](docs/retrieval-platform-architecture-review.md)
-- [Local retrieval platform roadmap](docs/retrieval-platform-roadmap.md)
-- [Local retrieval platform review evidence](docs/retrieval-platform-review-evidence.json)
 - [Cloud compatibility lock](compat/cloud-stack.acl)
+- [Workflow architecture](compat/workflow-platform-architecture.md) and
+  [ordered development plan](compat/workflow-platform-development-plan.md)
+- [Local retrieval architecture](docs/retrieval-platform-architecture.md),
+  [review](docs/retrieval-platform-architecture-review.md), and
+  [roadmap](docs/retrieval-platform-roadmap.md)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)
 
