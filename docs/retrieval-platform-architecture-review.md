@@ -5,7 +5,64 @@ revisions below were tested from their owning repositories and are not implied
 to be the root repository's current gitlinks. This is an engineering review
 and a migration decision record; it is not a release qualification.
 
-Review date: 2026-08-29
+Initial review date: 2026-08-29
+
+## Follow-up: Vec durability baseline (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`78840cea784cd29052536519ffecc9217c654091` (feature commit
+`0eb6915dec188b418c82f4e2074b9f5a943820b3`). The A3S composition update that
+contains this note pins that gitlink. This follow-up is incremental evidence,
+not a new release qualification and not permission to start Code shadow
+migration.
+
+The new Vec revision makes format version 2's manifest the single commit point,
+uses immutable generation-specific snapshots, commits WAL byte boundaries and
+monotonic operation revisions, replays schema/backfill state, and makes
+read-only close side-effect-free. Recovery reads now have manifest, snapshot,
+frame, and total-WAL byte limits. The unused private HNSW/IVF/DiskANN exact
+wrappers were removed; the documentation now states that the live collection
+path is an exact oracle and that ANN/indexed FTS are not implemented.
+
+Validation was repeated from `crates/vec` on arm64 macOS 26.6.2 with Rust
+1.98.0:
+
+| Command | Follow-up result |
+| --- | --- |
+| `cargo fmt --all -- --check` | **Passed** |
+| `cargo clippy --all-targets -- -D warnings` | **Passed** |
+| `cargo clippy --all-targets --all-features -- -D warnings` | **Passed** |
+| `cargo test` | **18 passed**, 0 failed |
+| `cargo test --no-default-features` | **18 passed**, 0 failed |
+| `cargo test --all-features` | **18 passed**, 0 failed |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features` | **Passed** |
+
+The 18 tests include restart coverage for insert/update/upsert/delete and
+schema add/backfill/rename/drop, plus committed checksum/truncation failures,
+partial uncommitted tails, orphan snapshot generations, oversized snapshots,
+read-only create/open/close behavior, and checkpoint generation publication.
+
+Finding disposition at this revision:
+
+| Finding | Follow-up state | Remaining evidence |
+| --- | --- | --- |
+| VEC-P0-01 | **Mitigated, open** | False private ANN facades are gone, but real ANN plus recall/latency/parameter-sensitivity evidence remains P3 work. |
+| VEC-P0-02 | **Open** | FTS remains an explicitly documented exact corpus scan; generation-tagged postings and golden parity evidence are absent. |
+| VEC-P0-03 | **Partially closed** | Immutable generations and orphan-publication recovery are tested; every fsync/rename/prune boundary still needs deterministic fault injection. |
+| VEC-P0-04 | **Closed for format 2** | WAL revisions/operation identities replay monotonically across every DML and schema sequence in the current suite. |
+| VEC-P0-05 | **Closed on the review host** | Read-only create, missing-lock open, normal open, and close behavior have integration coverage. Cross-platform lock evidence remains in the platform gate. |
+| VEC-P0-06 | **Partially closed** | Byte budgets and oversized/corrupt input tests exist; per-document/field budgets and recovery fuzzing remain open. |
+| VEC-P0-07 | **Open** | The default Jieba dependency chain and Intel macOS 12 qualification are unchanged. |
+| VEC-P1-01 | **Closed for format 2** | Schema plus backfilled documents replay and checkpoint at one revision. A compact schema-delta encoding is optional future work, not current authority. |
+| VEC-P1-06 | **Closed as documentation drift** | Vec architecture now describes the checked-in modules/tests and labels future index/planner modules as gated work. Broader API/query/concurrency coverage remains a release gate. |
+| Strict format/Clippy debt | **Closed at `78840ce`** | The two strict Clippy variants and rustfmt pass. Three noisy API-annotation lints are explicitly deferred in Cargo lint policy while the prototype API changes; substantive `all`/`pedantic` lints remain enabled. |
+
+All other findings remain open. In particular, this revision does not validate
+query dimension errors, the JSON type escape hatch, quantization semantics,
+configuration wiring, the public `zvec_core` escape hatch, real ANN/indexed
+FTS, concurrency, migration benefit, or Intel macOS 12. Code's current
+retrieval implementation remains the golden reference and no old path is
+removed.
 
 ## Executive decision
 

@@ -10,19 +10,23 @@ It is gate-based rather than calendar-based: a phase is complete only when its
 exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
-**Current review status (2026-08-29):** `a3s-vec` remains a pre-migration
-prototype. The P0/P1 correctness, durability, resource, strict-quality, and
-Intel macOS 12 evidence gates are open. Code's existing workspace BM25 and
-`a3s-memory` vector path remain the golden reference; P7 removal has not
-started.
+**Current review status (2026-08-30):** `a3s-vec` remains a pre-migration
+prototype, but Vec `78840cea784cd29052536519ffecc9217c654091` lands the first
+P2 durability baseline. Monotonic DML/schema replay and read-only lifecycle are
+closed for format 2; generation publication and recovery byte budgets are
+partially closed pending the full fault/fuzz matrix. Strict rustfmt, Clippy,
+feature-matrix tests, and rustdoc are green. Real ANN/indexed FTS, remaining
+P1 contracts, cross-platform evidence, and migration benefit remain open.
+Code's existing workspace BM25 and `a3s-memory` vector path remain the golden
+reference; P7 removal has not started.
 
 ## 1. Current baseline and target
 
 The current checkout contains three relevant implementations:
 
-- `crates/vec` is now the `A3S-Lab/Vec` git submodule. Its zvec-shaped API,
-  storage, FTS, and vector/index facades are still a prototype and are not yet
-  a release-qualified implementation.
+- `crates/vec` is the `A3S-Lab/Vec` git submodule. Its zvec-shaped API and
+  format-2 storage/recovery core are still a prototype. Queries use the exact
+  oracle; ANN and indexed FTS are not implemented or release-qualified.
 - `a3s-code-core` has a session-local chunk catalog, incremental BM25,
   `a3s-memory` exact-vector partitions, deterministic RRF/MMR, provider ports,
   and source verification. This is the behavioural reference for migration.
@@ -53,9 +57,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Open** |
-| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open** |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Open** (`fmt` fails; Clippy reports 533 diagnostics) |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `78840ce`: VEC-P0-04/05 closed; VEC-P0-03/06 partial; VEC-P0-01/02/07 open |
+| P1 contract | Schema WAL replay, typed dimension/type errors, quantizer semantics, wired configuration, private kernel boundary, and promised integration tests | **Open**: VEC-P1-01 and documentation-drift finding VEC-P1-06 closed; remaining findings open |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `78840ce`; all-feature Clippy, three feature-matrix test runs, and rustdoc also pass |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; review host was arm64 macOS 26.3 |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
 
@@ -127,6 +131,18 @@ Restart tests cover every DML and schema operation; interrupted append,
 checkpoint, rename, lock contention, and corrupted earlier frames fail or
 recover deterministically. Manifest metadata is durable after every acknowledged
 WAL append.
+
+**Progress at Vec `78840ce` (2026-08-30)**
+
+- Landed format-2 generation snapshots, manifest-committed WAL byte boundaries,
+  monotonic DML/schema identities, manual-flush synchronization, and bounded
+  recovery reads.
+- Added 18 deterministic tests covering restart sequences, read-only lifecycle,
+  partial/uncommitted tails, committed truncation/checksum failure, orphan
+  generations, and oversized snapshots.
+- Remaining before P2 exit: deterministic hooks at every write/fsync/rename/
+  prune boundary, explicit prune-crash and lock-contention matrices,
+  per-document/field budgets, recovery fuzzing, and supported-platform runs.
 
 ### P3 — Index implementations and resource bounds
 
