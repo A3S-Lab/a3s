@@ -475,6 +475,101 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "runtime_configuration_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "cc28e85cd66bbd862c94ba6de46853a82b513bcb",
+    "vec_revision": "ead2801ef5a6672654451455285aac3056c23be2",
+    "vec_feature_revision": "8d36d95afb16b5b11a62a5af3f99a43a3b8e2b40",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "rustc": "1.98.0",
+      "cargo": "1.98.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "tdd_evidence": {
+      "command": "cargo test --doc",
+      "before": "fail: three compile-fail examples compiled because inert process/collection controls and types were public",
+      "after": "pass: all four API-boundary compile-fail doctests reject the unsupported surface"
+    },
+    "checks": [
+      {
+        "id": "vec-format-runtime-config-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-runtime-config-follow-up",
+        "command": "cargo clippy --all-targets -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-runtime-config-follow-up",
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-runtime-config-follow-up",
+        "command": "cargo test",
+        "status": "pass",
+        "unit_and_integration_passed": 29,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-runtime-config-follow-up",
+        "command": "cargo test --no-default-features",
+        "status": "pass",
+        "unit_and_integration_passed": 29,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-runtime-config-follow-up",
+        "command": "cargo test --all-features",
+        "status": "pass",
+        "unit_and_integration_passed": 29,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-runtime-config-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features",
+        "status": "pass"
+      }
+    ],
+    "removed_inert_controls": [
+      "memory_limit",
+      "num_threads",
+      "enable_console_log",
+      "fts_brute_force_by_keys_ratio",
+      "io_backend",
+      "enable_mmap",
+      "max_buffer_size",
+      "segment_num",
+      "IoBackend",
+      "LogLevel",
+      "LogType"
+    ],
+    "finding_status": {
+      "VEC-P1-05": "partially_closed_runtime_configuration",
+      "strict-format-and-clippy": "closed_vec_ead2801",
+      "insufficient-integration-coverage": "improved_open"
+    },
+    "remaining_configuration_work": [
+      "future index build parameters",
+      "future index query parameters",
+      "schema segment sizing",
+      "schema evolution concurrency options"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,

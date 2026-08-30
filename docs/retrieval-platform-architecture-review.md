@@ -7,6 +7,35 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec executable runtime configuration (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`ead2801ef5a6672654451455285aac3056c23be2` (feature commit
+`8d36d95afb16b5b11a62a5af3f99a43a3b8e2b40`). Inert process and collection
+controls were removed from the public surface: memory/thread/logging controls,
+selectable I/O backends, mmap, buffer, segment, and the orphaned log/backend
+types no longer imply implementations that do not exist.
+
+The retained configuration has an execution owner. `ConfigBuilder` supplies
+the process durability default and WAL operation/byte checkpoint thresholds;
+`CollectionOptions` supplies read-only mode and an optional durability
+override. Defaults are resolved and captured when a collection is created or
+opened, so reinitializing the process cannot change an active handle's
+acknowledgement policy. Storage tests prove both checkpoint thresholds are
+consumed, and unit tests prove inheritance and explicit override precedence.
+
+Three new compile-fail fixtures first reproduced the old misleading surface,
+then passed after its removal. The full matrix was repeated on arm64 macOS
+26.6.2 with Rust 1.98.0: each default/no-default/all-feature run has 29 passing
+unit/integration tests plus four compile-fail doctests; rustfmt, both strict
+Clippy variants, and rustdoc pass.
+
+VEC-P1-05 is **partially closed**. Process and collection runtime configuration
+is now truthful; future index/query parameters, schema segment sizing, and
+schema-evolution concurrency controls still need explicit `NotSupported`
+behavior or implemented consumers. VEC-P1-04 and that remaining P1-05 work are
+the open engine-contract findings.
+
 ## Follow-up: Vec kernel encapsulation (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to
