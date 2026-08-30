@@ -7,6 +7,37 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec in-process snapshot concurrency (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`0236e0d0cd9d4c203a689567e52a0591697260a2` (feature commit
+`2a1346a6ab0ec801414b241177f15408470fa16f`). The collection lock and snapshot
+boundaries were audited and exercised through cloned public `Collection`
+handles. Every mutation takes the per-collection writer mutex before the state
+write lock, while a reader copies schema, documents, and revision under one
+state read lock. No production-code correction was needed for this slice.
+
+Three deterministic fixtures now cover the in-process contract. Simultaneous
+disjoint updates to one document retain both patches and advance two separate
+revisions. An iterator captured at revision 1 remains unchanged while another
+handle publishes a complete replacement batch at revision 2. Two synchronized
+readers racing 64 repeated two-document upserts observe equal epochs for both
+documents in every round, never a partially published batch. Manual durability
+is selected explicitly in these fixtures to isolate logical synchronization
+from fsync latency; the same WAL/manifest commit path still executes.
+
+The concurrency-only suite passed 20 consecutive runs. On arm64 macOS 26.6.2
+with Rust 1.98.0, the default, no-default, and all-feature suites each contain
+60 passing unit/integration tests plus four compile-fail doctests. Rustfmt, both
+strict Clippy variants, and all-feature rustdoc pass; the complete default suite
+also passes on Rust 1.75.
+
+The coherent-reader/serialized-writer gate is **closed for the current
+in-process exact surface**. Multi-process contention/stale-lock diagnostics,
+the supported-platform matrix, larger generated differential corpora,
+durability fault injection, real ANN/indexed FTS, migration benefit, and Code
+shadow migration remain open.
+
 ## Follow-up: Vec differential exact-search oracle (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to
