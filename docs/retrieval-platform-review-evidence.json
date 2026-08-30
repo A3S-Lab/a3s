@@ -804,6 +804,132 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "differential_oracle_follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "48e3a8a99a45359af79257c31ff5415635fb2e78",
+    "vec_revision": "fd8aecf972ed611eb39f88c20f4ccd6fd5aa319d",
+    "vec_feature_revision": "90459f971e9f9e607464c32d4f4d8587bc41fd8a",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "stable_rustc": "1.98.0",
+      "stable_cargo": "1.98.0",
+      "declared_msrv_rustc": "1.75.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_default_suite_tested": true,
+      "declared_msrv_all_features_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "tdd_evidence": {
+      "initial_command": "cargo test --test differential_oracle --test differential_fts --locked",
+      "initial_result": "fail: FP64 close scores were narrowed before ordering, nullable missing text changed BM25 corpus statistics, advanced FTS syntax was approximated, and negative L2 radius was accepted",
+      "expanded_result": "fail: BM25 clamped a valid subunit average document length and additional query-string operators were accepted",
+      "final_result": "pass: 5 vector and 4 FTS differential contract tests"
+    },
+    "checks": [
+      {
+        "id": "vec-format-differential-oracle-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-differential-oracle-follow-up",
+        "command": "cargo clippy --all-targets --locked -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-differential-oracle-follow-up",
+        "command": "cargo clippy --all-targets --all-features --locked -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-differential-oracle-follow-up",
+        "command": "cargo test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 57,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-differential-oracle-follow-up",
+        "command": "cargo test --no-default-features --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 57,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-differential-oracle-follow-up",
+        "command": "cargo test --all-features --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 57,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-msrv-default-differential-oracle-follow-up",
+        "command": "cargo +1.75.0 test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 57,
+        "compile_fail_doctests_passed": 4,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-differential-oracle-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features --locked",
+        "status": "pass"
+      }
+    ],
+    "differential_contract": {
+      "dense_metrics": [
+        "L2",
+        "IP",
+        "cosine",
+        "MIPS-L2"
+      ],
+      "sparse_metrics": [
+        "L2",
+        "IP",
+        "cosine",
+        "MIPS-L2"
+      ],
+      "vector_controls": [
+        "scalar filter",
+        "L2 distance radius",
+        "similarity radius",
+        "top-k",
+        "primary-key tie-break"
+      ],
+      "score_ordering": "finite f64 before top-k and checked public f32 narrowing",
+      "negative_l2_radius": "InvalidArgument",
+      "bm25_corpus": "documents containing the queried text field, including empty text",
+      "bm25_subunit_average_length_preserved": true,
+      "simple_query_string": "whitespace-separated terms",
+      "advanced_query_string": "NotSupported",
+      "ambiguous_fts_expression_forms": "InvalidArgument"
+    },
+    "finding_status": {
+      "deterministic-vector-differential": "closed_current_exact_surface",
+      "deterministic-scan-bm25-differential": "closed_current_simple_surface",
+      "strict-format-and-clippy": "closed_vec_fd8aecf",
+      "declared-default-msrv": "closed_rust_1_75",
+      "insufficient-integration-coverage": "improved_open"
+    },
+    "remaining_release_gates": [
+      "coherent-reader and serialized-writer concurrency evidence",
+      "larger generated vector and FTS-filter golden corpora",
+      "supported-platform matrix",
+      "durability fault injection and fuzzing",
+      "real ANN and indexed FTS",
+      "migration benefit"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,

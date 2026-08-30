@@ -7,6 +7,46 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec differential exact-search oracle (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`fd8aecf972ed611eb39f88c20f4ccd6fd5aa319d` (feature commit
+`90459f971e9f9e607464c32d4f4d8587bc41fd8a`). Two independent reference
+fixtures now compute dense/sparse scores and scan-BM25 rankings without calling
+the Vec scoring implementation. The vector fixture covers all four exact
+metrics, scalar filters, L2 and similarity radius semantics, top-k, and
+primary-key tie-breaking. FP64 candidates remain ordered by their exact `f64`
+score; only selected results cross the checked public `f32` boundary.
+
+The FTS fixture defines the BM25 corpus as documents that contain the queried
+text field, including explicit nullable and empty-text cases. It preserves
+valid average document lengths below one. Plain whitespace-separated
+`query_string` terms execute, while boolean, phrase, wildcard, fielded, boost,
+range, and related unimplemented syntax returns `NotSupported` rather than
+being approximated as bag-of-words. Supplying both FTS expression forms is an
+invalid ambiguous request.
+
+The initial differential run reproduced four semantic failures: FP64 close
+scores were narrowed before ordering, missing nullable text fields changed
+BM25 corpus statistics, advanced FTS syntax was silently approximated, and a
+negative L2 radius was squared and accepted. Expanded fixtures then reproduced
+the subunit-average-length clamp and additional query syntax acceptance. The
+implementation now ranks on finite `f64` scores before top-k/public narrowing,
+uses precomputed text-bearing corpus statistics, preserves the real positive
+average length, rejects negative L2 radius, and fails closed on unsupported FTS
+syntax.
+
+On arm64 macOS 26.6.2 with Rust 1.98.0, the default, no-default, and all-feature
+suites each contain 57 passing unit/integration tests plus four compile-fail
+doctests. Rustfmt, both strict Clippy variants, and all-feature rustdoc pass;
+the complete default suite also passes on Rust 1.75.
+
+The deterministic differential gate is **closed for the current exact
+vector/scan-BM25 surface**. The broader P1 exit remains open for coherent-reader
+and serialized-writer concurrency evidence, larger generated and FTS-filter
+golden corpora, and supported-platform runs. Real ANN/indexed FTS, durability
+fault injection, migration benefit, and Code shadow migration remain open.
+
 ## Follow-up: Vec native vector encoding contract (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to
