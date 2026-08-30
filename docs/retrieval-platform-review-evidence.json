@@ -218,6 +218,88 @@
       "missing-migration-performance-evidence"
     ]
   },
+  "follow_up": {
+    "date": "2026-08-30",
+    "root_base_revision": "8b6bc272ea95522f54a76ffb21fa29a2b5846b1d",
+    "vec_revision": "78840cea784cd29052536519ffecc9217c654091",
+    "vec_feature_revision": "0eb6915dec188b418c82f4e2074b9f5a943820b3",
+    "environment": {
+      "os": "macOS 26.6.2 (25G83)",
+      "architecture": "arm64",
+      "rustc": "1.98.0",
+      "cargo": "1.98.0",
+      "target": "aarch64-apple-darwin",
+      "declared_msrv_tested": false,
+      "intel_macos12_evidence": false
+    },
+    "checks": [
+      {
+        "id": "vec-format-follow-up",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-default-follow-up",
+        "command": "cargo clippy --all-targets -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-all-features-follow-up",
+        "command": "cargo clippy --all-targets --all-features -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-default-follow-up",
+        "command": "cargo test",
+        "status": "pass",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-no-default-follow-up",
+        "command": "cargo test --no-default-features",
+        "status": "pass",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-tests-all-features-follow-up",
+        "command": "cargo test --all-features",
+        "status": "pass",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "vec-rustdoc-follow-up",
+        "command": "RUSTDOCFLAGS=-D warnings cargo doc --no-deps --all-features",
+        "status": "pass"
+      }
+    ],
+    "finding_status": {
+      "VEC-P0-01": "mitigated_open",
+      "VEC-P0-02": "open",
+      "VEC-P0-03": "partially_closed",
+      "VEC-P0-04": "closed_format_2",
+      "VEC-P0-05": "closed_review_host",
+      "VEC-P0-06": "partially_closed",
+      "VEC-P0-07": "open",
+      "VEC-P1-01": "closed_format_2",
+      "VEC-P1-06": "closed_documentation_drift",
+      "strict-format-and-clippy": "closed_vec_78840ce",
+      "insufficient-integration-coverage": "improved_open",
+      "missing-migration-performance-evidence": "open"
+    },
+    "explicit_clippy_deferrals": [
+      "missing_errors_doc",
+      "must_use_candidate",
+      "return_self_not_must_use"
+    ],
+    "release_qualified": false,
+    "code_migration_started": false
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,
