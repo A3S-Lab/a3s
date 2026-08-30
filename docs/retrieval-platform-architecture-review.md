@@ -7,6 +7,55 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec native vector encoding contract (2026-08-30)
+
+`A3S-Lab/Vec` `main` advanced to
+`8e2544de8f30d33ae36545c8106411ad42e84628` (feature commit
+`351fbe9367912abc551958006fd8f3d623d7935a`). The schema is now the sole
+authority for a vector's physical representation: a write must use the exact
+dense/sparse variant declared by the field instead of being accepted merely
+because both variants are numeric.
+
+Dense and sparse FP16 persist raw IEEE 754 half-precision bits. The f32 adapter
+uses round-to-nearest-even, rejects non-finite and out-of-range inputs, and an
+exhaustive unit fixture round-trips every finite FP16 bit pattern. Native INT4
+accepts only `-8..=7`; INT8 and INT16 preserve their integer coordinates.
+Binary32/Binary64 accept only complete 32-/64-bit chunks and schema dimensions
+expressed in aligned bits. INT4 remains one signed coordinate per stored
+element: it is not advertised as packed, scale-bearing ANN quantization.
+
+The exact oracle now evaluates L2, inner product, cosine, and MIPS-L2 for every
+native numeric dense type and both sparse types. Accumulation is in `f64`, so a
+stored FP64 source is not narrowed before scoring; the public `f32` score is
+the only checked narrowing boundary. Sparse scoring no longer treats every
+metric as a dot product. Binary queries, packed/scaled INT4 or INT8 index
+quantization, and refinement remain `NotSupported` until later index phases
+provide real consumers and exact re-score evidence.
+
+Changing sparse FP16 from misleading numeric `f32` values to raw bits required
+an explicit compatibility boundary. Manifest, snapshot, and WAL markers now
+advance together to format 3; format 2 is rejected before vector payloads can
+be decoded or reinterpreted. Vector conversion/access code was split from the
+document module, reducing `doc.rs` from 934 to 629 lines.
+
+The initial five-test codec fixture reproduced three failures: cross-type
+writes were accepted, INT4/FP16 invalid values were accepted, and binary chunk
+widths were unchecked. After those passed, the expanded sparse metric fixture
+reproduced L2 being evaluated as inner product. The final matrix contains 48
+passing unit/integration tests plus four compile-fail doctests in each of the
+default, no-default, and all-feature configurations on arm64 macOS 26.6.2 with
+Rust 1.98.0. Rustfmt, both strict Clippy variants, and all-feature rustdoc pass.
+The complete default suite also passes on the declared Rust 1.75 MSRV after
+pinning `zvec-core`'s broad Rayon range and the test-only tempfile dependency to
+compatible releases. The current optional Jieba chain uses Rust 2024 manifests
+and therefore still needs newer Cargo.
+
+VEC-P1-04 is **closed for the current exact surface**. All numbered P1 review
+findings are now closed, but the P1 delivery exit remains open for differential
+FTS/vector fixtures, coherent-reader/concurrent-writer evidence, and supported-
+platform runs. Real ANN/indexed FTS, the full durability fault matrix,
+migration benefit, and Code shadow migration also remain open.
+
 ## Follow-up: Vec truthful index and query configuration (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to
