@@ -11,7 +11,7 @@ exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
 **Current review status (2026-08-30):** `a3s-vec` remains a pre-migration
-prototype, but Vec `8e2544de8f30d33ae36545c8106411ad42e84628` closes the
+prototype, but Vec `fd8aecf972ed611eb39f88c20f4ccd6fd5aa319d` closes the
 numbered P1 contract findings for the current exact surface. Native dense and
 sparse FP16, INT4, INT8, INT16, and binary payloads now have strict physical-
 type, range/chunk, typed-access, and lossless storage contracts. Every numeric
@@ -20,13 +20,15 @@ binary search and scale-bearing index quantization remain explicit future work
 rather than implied behavior. Format 3 prevents the new sparse-FP16 bit layout
 from being reinterpreted by an older reader. Retained runtime controls have
 execution owners, future index/query/schema controls fail before mutation, and
-the external algorithm kernel remains private. Strict rustfmt, Clippy, three
-48-test feature-matrix runs plus four compile-fail doctests, rustdoc, and the
-default suite on the declared Rust 1.75 MSRV are green. Real ANN/indexed FTS,
-differential and concurrency evidence, the durability fault/fuzz matrix,
-cross-platform evidence, and migration benefit remain open. Code's existing
-workspace BM25 and `a3s-memory` vector path remain the golden reference; P7
-removal has not started.
+the external algorithm kernel remains private. Independent references now
+cover current dense/sparse exact scoring, filters, radius/top-k ordering, and
+scan-BM25 corpus statistics; unsupported advanced FTS syntax fails closed.
+Strict rustfmt, Clippy, three 57-test feature-matrix runs plus four compile-fail
+doctests, rustdoc, and the default suite on the declared Rust 1.75 MSRV are
+green. Real ANN/indexed FTS, concurrency and broader FTS/filter evidence, the
+durability fault/fuzz matrix, cross-platform evidence, and migration benefit
+remain open. Code's existing workspace BM25 and `a3s-memory` vector path remain
+the golden reference; P7 removal has not started.
 
 ## 1. Current baseline and target
 
@@ -65,9 +67,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `8e2544d`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
-| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Finding set closed for the exact surface**: VEC-P1-01..07 closed at Vec `8e2544d`; the broader P1 exit still needs differential, concurrency, and supported-platform evidence |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `8e2544d`; all-feature Clippy, three 48-test feature-matrix runs, four compile-fail API doctests, rustdoc, and the default Rust 1.75 suite also pass |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Partially closed** at Vec `fd8aecf`: VEC-P0-04/05 closed; VEC-P0-03/06/07 partial; VEC-P0-01/02 open |
+| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Finding set closed for the exact surface**: VEC-P1-01..07 remain closed at Vec `fd8aecf`; deterministic vector/scan-BM25 differential evidence has landed, while concurrency, broader FTS/filter goldens, and supported-platform evidence remain |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `fd8aecf`; all-feature Clippy, three 57-test feature-matrix runs, four compile-fail API doctests, rustdoc, and the default Rust 1.75 suite also pass |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; latest review host was arm64 macOS 26.6.2 |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
 
@@ -119,7 +121,7 @@ CRUD, type/dimension/nullability errors, filters, FTS golden cases, hybrid
 fusion, and deterministic tie-breaking pass on Linux and macOS Intel with no
 model runtime or native database extension.
 
-**Progress at Vec `8e2544d` (2026-08-30)**
+**Progress at Vec `fd8aecf` (2026-08-30)**
 
 - Added a centralized schema-derived query contract for route/type/dimension,
   sparse-index, metric, radius, top-k, and tokenizer validation. Every current
@@ -156,8 +158,13 @@ model runtime or native database extension.
   `zvec-core`'s broad Rayon dependency and the test-only tempfile dependency to
   compatible versions. The current Jieba feature still requires newer Cargo
   because its dependency chain contains Rust 2024 manifests.
-- Remaining before P1 exit: differential FTS/vector fixtures, concurrency
-  evidence, and supported-platform runs.
+- Added independent dense/sparse reference scans across all exact metrics,
+  filters, radius/top-k semantics, exact FP64 ordering, and primary-key ties.
+  Added independent scan-BM25 reference cases for nullable/missing and empty
+  text fields. Negative L2 radius and unimplemented advanced FTS syntax now
+  fail explicitly instead of changing query meaning.
+- Remaining before P1 exit: coherent-reader/serialized-writer concurrency,
+  broader generated and FTS-filter golden corpora, and supported-platform runs.
 
 ### P2 — Durability and crash correctness
 
@@ -180,7 +187,7 @@ checkpoint, rename, lock contention, and corrupted earlier frames fail or
 recover deterministically. Manifest metadata is durable after every acknowledged
 WAL append.
 
-**Progress through Vec `8e2544d` (2026-08-30)**
+**Progress through Vec `fd8aecf` (2026-08-30)**
 
 - Landed generation snapshots, manifest-committed WAL byte boundaries,
   monotonic DML/schema identities, manual-flush synchronization, and bounded
