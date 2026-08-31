@@ -102,11 +102,11 @@ test('the Code component describes the Cloud host dependency', () => {
     (component) => component.id === 'code',
   );
   assert.ok(code);
-  assert.equal(code.dependencySource, 'registry');
+  assert.equal(code.dependencySource, 'git');
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
   assert.equal(code.source, 'git');
-  assert.equal(code.version, '8.0.3');
+  assert.equal(code.version, '8.0.4');
 });
 
 test('published dependencies retain separate Git provenance', () => {
@@ -117,7 +117,7 @@ test('published dependencies retain separate Git provenance', () => {
     ]),
   );
 
-  for (const id of ['code', 'flow']) {
+  for (const id of ['flow']) {
     const component = components.get(id);
     assert.ok(component);
     assert.equal(component.dependencySource, 'registry');
@@ -126,14 +126,14 @@ test('published dependencies retain separate Git provenance', () => {
   }
 });
 
-test('Cloud consumes Code and Flow through exact published releases', () => {
+test('Cloud consumes Flow through an exact published release', () => {
   const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
   const cloudLock = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.lock'), 'utf8');
   const components = new Map(
     parseCloudStackLock(LOCK_SOURCE).components.map((component) => [component.id, component]),
   );
 
-  for (const id of ['code', 'flow']) {
+  for (const id of ['flow']) {
     const component = components.get(id);
     assert.ok(component);
     const declaration = tomlDependency(
@@ -155,6 +155,23 @@ test('Cloud consumes Code and Flow through exact published releases', () => {
     );
     assert.match(lockedPackage.checksum, /^[0-9a-f]{64}$/);
   }
+});
+
+test('the Cloud Code dependency is bound to the locked Git revision', () => {
+  const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
+  const code = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'code',
+  );
+  assert.ok(code);
+  const declaration = tomlDependency(
+    cloudManifest,
+    'workspace.dependencies',
+    code.package,
+    'apps/cloud/Cargo.toml',
+  );
+  assert.ok(declaration.includes(`version = "=${code.version}"`));
+  assert.ok(declaration.includes(`rev = "${code.revision}"`));
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Code\.git"/);
 });
 
 test('component dependency sources reject unknown and workspace-registry combinations', () => {
@@ -280,6 +297,24 @@ test('the lock registers the complete Use protocol-level-6 host boundary', () =>
   ]) {
     assert.equal(protocols.get(id)?.level, 1, `${id} must remain protocol level 1`);
   }
+});
+
+test('the lock registers the Runtime lifecycle contract boundary', () => {
+  const protocols = new Map(
+    parseCloudStackLock(LOCK_SOURCE).protocols.map((protocol) => [protocol.id, protocol]),
+  );
+  assert.equal(
+    protocols.get('runtime-capabilities')?.schema,
+    'a3s.runtime.capabilities.v6',
+  );
+  assert.equal(protocols.get('runtime-capabilities')?.level, 6);
+  assert.equal(
+    protocols.get('runtime-observation')?.schema,
+    'a3s.runtime.observation.v4',
+  );
+  assert.equal(protocols.get('runtime-observation')?.level, 4);
+  assert.equal(protocols.get('runtime-unit-spec')?.schema, 'a3s.runtime.unit-spec.v4');
+  assert.equal(protocols.get('runtime-unit-spec')?.level, 4);
 });
 
 test('multiline Cargo dependency declarations are read as one binding', () => {
