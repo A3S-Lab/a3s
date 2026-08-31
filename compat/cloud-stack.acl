@@ -28,7 +28,7 @@ component "box" {
   package = "a3s-box-runtime"
   path = "crates/box"
   repository = "git@github.com:A3S-Lab/Box.git"
-  revision = "93ddc2d2db3827e06606da2e368a03b0e29c06f2"
+  revision = "36086bd1b8ddafa6d1228251cefa55dacbbaee5c"
   source = "git"
   version = "3.2.0"
 }
@@ -36,20 +36,20 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "78f3c3736225c4434161ff5f3095d98bbf9f8599"
+  revision = "f9e6e135b391d5a1abc86209a5d071d2d589305b"
   source = "git"
   version = "0.1.0"
 }
 component "code" {
-  dependency_source = "registry"
+  dependency_source = "git"
   manifest = "core/Cargo.toml"
   owner = "A3S-Lab/Code"
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "92cec32561448a01b00be00bcffdd4340a70fd41"
+  revision = "97942a959a6c96b5616daf0f8c09692ec959e013"
   source = "git"
-  version = "8.0.3"
+  version = "8.0.4"
 }
 component "event" {
   owner = "A3S-Lab/Event"
@@ -76,7 +76,7 @@ component "form" {
   package = "a3s-form-core"
   path = "packages/ui"
   repository = "git@github.com:A3S-Lab/UI.git"
-  revision = "231211878eadda95c8ce2579527a9766ee19c42e"
+  revision = "3c5499cba6dc116230b859fac6a8e32653024a8f"
   source = "git"
   version = "0.1.0"
 }
@@ -103,9 +103,9 @@ component "runtime" {
   package = "a3s-runtime"
   path = "crates/runtime"
   repository = "git@github.com:A3S-Lab/Runtime.git"
-  revision = "061cde95e16eb4cbd9f58724e6cbb60de6ace77e"
+  revision = "4c5fbd56bedd84d1007a7d9cd046a9f7083bbdcd"
   source = "git"
-  version = "0.2.0"
+  version = "0.5.0"
 }
 component "sentry" {
   owner = "A3S-Lab/Sentry"
@@ -193,21 +193,21 @@ protocol "form-release-ref" {
   source = "packages/ui/modules/form/crates/a3s-form-core/src/interaction_types.rs"
 }
 protocol "runtime-capabilities" {
-  level = 4
+  level = 6
   owner = "A3S-Lab/Runtime"
-  schema = "a3s.runtime.capabilities.v4"
+  schema = "a3s.runtime.capabilities.v6"
   source = "crates/runtime/src/contract/capabilities.rs"
 }
 protocol "runtime-observation" {
-  level = 2
+  level = 4
   owner = "A3S-Lab/Runtime"
-  schema = "a3s.runtime.observation.v2"
+  schema = "a3s.runtime.observation.v4"
   source = "crates/runtime/src/contract/observation.rs"
 }
 protocol "runtime-unit-spec" {
-  level = 2
+  level = 4
   owner = "A3S-Lab/Runtime"
-  schema = "a3s.runtime.unit-spec.v2"
+  schema = "a3s.runtime.unit-spec.v4"
   source = "crates/runtime/src/contract/unit.rs"
 }
 protocol "use-plugin-host-apply-request" {
