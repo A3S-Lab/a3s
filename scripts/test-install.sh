@@ -171,6 +171,7 @@ make_fixture() {
     local target=$2
     local include_webview=${3:-1}
     local release_repository=${4:-A3S-Lab/CLI}
+    local include_legacy_payload=${5:-0}
     local release_repo_slug=${release_repository##*/}
     local payload="$fixture_root/payload"
     local archive="$fixture_root/a3s-v${version}-${target}.tar.gz"
@@ -187,6 +188,12 @@ make_fixture() {
             "$version" >"$payload/a3s-webview"
         chmod +x "$payload/a3s-webview"
         archive_members+=(a3s-webview)
+    fi
+    if [ "$include_legacy_payload" -eq 1 ]; then
+        mkdir -p "$payload/support" "$payload/release-compat"
+        printf 'legacy runtime payload\n' >"$payload/support/legacy-runtime.txt"
+        printf 'legacy release marker\n' >"$payload/release-compat/README.md"
+        archive_members+=(support release-compat)
     fi
     tar -czf "$archive" -C "$payload" "${archive_members[@]}"
     digest=$(sha256_file "$archive")
@@ -221,6 +228,20 @@ assert_file "$legacy_root/bin/a3s"
 [[ ! -e "$legacy_root/bin/a3s-webview" ]] \
     || fail 'legacy release unexpectedly installed a WebView companion'
 assert_no_generated_paths "$legacy_root"
+
+# Historical CLI archives may contain runtime payloads that are no longer
+# supported. The installer validates their paths, extracts only the binaries,
+# and never copies the legacy payload into the installation directory.
+make_fixture 1.2.9 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 1
+legacy_payload_root="$test_root/legacy-runtime-payload"
+run_install 1.2.9 "$legacy_payload_root/bin"
+assert_file "$legacy_payload_root/bin/a3s"
+assert_file "$legacy_payload_root/bin/a3s-webview"
+[[ ! -e "$legacy_payload_root/bin/support" ]] \
+    || fail 'legacy runtime payload was installed'
+[[ ! -e "$legacy_payload_root/bin/release-compat" ]] \
+    || fail 'legacy release marker was installed'
+assert_no_generated_paths "$legacy_payload_root"
 
 # `latest` ignores unrelated product tags and prereleases in the release feed.
 make_fixture 1.2.2 x86_64-unknown-linux-gnu 0

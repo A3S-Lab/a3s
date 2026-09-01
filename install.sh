@@ -484,6 +484,14 @@ has_bundled_webview=0
 if [ "$webview_entry_count" -eq 1 ]; then
     has_bundled_webview=1
 fi
+legacy_payload_entry_count=$(awk '
+    $0 == "support" || index($0, "support/") == 1 ||
+    $0 == "release-compat" || index($0, "release-compat/") == 1 { count += 1 }
+    END { print count + 0 }
+' "$archive_list")
+if [ "$legacy_payload_entry_count" -gt 0 ]; then
+    warn "release archive contains a legacy runtime payload; ignoring it"
+fi
 duplicate_entries=$(awk '{ sub(/\/$/, ""); print }' "$archive_list" | LC_ALL=C sort | uniq -d)
 [ -z "$duplicate_entries" ] \
     || die "release archive contains duplicate paths: $duplicate_entries"
@@ -494,7 +502,7 @@ tar -tvzf "$archive" | awk '
 
 while IFS= read -r entry; do
     case "$entry" in
-        a3s|a3s-webview) ;;
+        a3s|a3s-webview|support|support/*|release-compat|release-compat/*) ;;
         *) die "release archive contains an unexpected path: $entry" ;;
     esac
     case "/$entry/" in

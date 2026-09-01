@@ -214,6 +214,7 @@ function Set-ReleaseFixture {
         [string]$Version,
         [switch]$UnsafeMember,
         [switch]$WithoutWebview,
+        [switch]$WithLegacyPayload,
         [string]$Repository = 'A3S-Lab/CLI'
     )
 
@@ -225,6 +226,14 @@ function Set-ReleaseFixture {
     New-FixtureExecutable -Version $Version -Destination (Join-Path $payload 'a3s.exe')
     if (-not $WithoutWebview) {
         New-FixtureExecutable -Version $Version -Destination (Join-Path $payload 'a3s-webview.exe') -Product webview
+    }
+    if ($WithLegacyPayload) {
+        [IO.Directory]::CreateDirectory((Join-Path $payload 'support')) | Out-Null
+        [IO.Directory]::CreateDirectory((Join-Path $payload 'release-compat')) | Out-Null
+        Set-Content -LiteralPath (Join-Path $payload 'support/legacy-runtime.txt') `
+            -Value 'legacy runtime payload' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $payload 'release-compat/README.md') `
+            -Value 'legacy release marker' -Encoding UTF8
     }
     if ($UnsafeMember) {
         Set-Content -LiteralPath (Join-Path $payload 'escape.txt') -Value 'unexpected' -Encoding UTF8
@@ -303,6 +312,22 @@ try {
         Fail-Test 'legacy release unexpectedly installed a WebView companion'
     }
     Assert-NoGeneratedPaths -Root $legacyRoot
+
+    # Historical CLI archives may contain runtime payloads that are no longer
+    # supported. The installer validates their paths, extracts only binaries,
+    # and never copies the legacy payload into the installation directory.
+    $legacyPayloadRoot = Join-Path $testRoot 'legacy-runtime-payload'
+    Set-ReleaseFixture -Version '1.2.9' -WithLegacyPayload
+    Invoke-TestInstall -Version '1.2.9' -InstallDir (Join-Path $legacyPayloadRoot 'bin')
+    Assert-File (Join-Path $legacyPayloadRoot 'bin\a3s.exe')
+    Assert-File (Join-Path $legacyPayloadRoot 'bin\a3s-webview.exe')
+    if (Test-Path -LiteralPath (Join-Path $legacyPayloadRoot 'bin\support')) {
+        Fail-Test 'legacy runtime payload was installed'
+    }
+    if (Test-Path -LiteralPath (Join-Path $legacyPayloadRoot 'bin\release-compat')) {
+        Fail-Test 'legacy release marker was installed'
+    }
+    Assert-NoGeneratedPaths -Root $legacyPayloadRoot
 
     # `latest` ignores other product tags and prereleases in the monorepo.
     Set-ReleaseFixture -Version '1.2.2' -WithoutWebview

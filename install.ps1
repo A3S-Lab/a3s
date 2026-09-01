@@ -365,6 +365,13 @@ param(
                 throw 'release archive must contain exactly one a3s.exe and at most one a3s-webview.exe'
             }
             $hasBundledWebview = $webviewEntryCount -eq 1
+            $legacyPayloadEntryCount = @($entryNames | Where-Object {
+                $_ -ceq 'support' -or $_.StartsWith('support/', [StringComparison]::Ordinal) -or
+                $_ -ceq 'release-compat' -or $_.StartsWith('release-compat/', [StringComparison]::Ordinal)
+            }).Count
+            if ($legacyPayloadEntryCount -gt 0) {
+                Write-InstallerWarning 'release archive contains a legacy runtime payload; ignoring it'
+            }
             $entryKeys = @($entryNames | ForEach-Object { $_.TrimEnd('/') })
             if (@($entryKeys | Group-Object | Where-Object { $_.Count -ne 1 }).Count -ne 0) {
                 throw 'release archive contains duplicate paths'
@@ -372,7 +379,12 @@ param(
             foreach ($entry in $entries) {
                 $entryName = $entry.FullName.Replace('\', '/')
                 $unixFileType = (($entry.ExternalAttributes -shr 16) -band 0xF000)
-                if ($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe)$' -or
+                $isLegacyPayloadEntry = $entryName -ceq 'support' -or
+                    $entryName.StartsWith('support/', [StringComparison]::Ordinal) -or
+                    $entryName -ceq 'release-compat' -or
+                    $entryName.StartsWith('release-compat/', [StringComparison]::Ordinal)
+                if (($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe)$' -and
+                    -not $isLegacyPayloadEntry) -or
                     ('/' + $entryName + '/') -match '/(\.|\.\.)/' -or
                     $unixFileType -notin @(0, 0x4000, 0x8000) -or
                     ($entry.ExternalAttributes -band [int][IO.FileAttributes]::ReparsePoint) -ne 0) {
