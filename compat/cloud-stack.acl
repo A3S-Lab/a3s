@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "2d469af6fcda06507f92d7596eeb7462fe05d444"
+  revision = "11dd888ff5ec96153f3a80b740a27633ba86f3f5"
   source = "git"
   version = "0.1.0"
 }
@@ -47,7 +47,7 @@ component "code" {
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "7d235727e3ca0167f0cd23256ac5bf5b2210269f"
+  revision = "b90be88b5b10f7a9565680903646bef7a3b05d4f"
   source = "git"
   version = "8.0.4"
 }
@@ -112,7 +112,7 @@ component "sandbox" {
   package = "a3s-sandbox"
   path = "crates/sandbox"
   repository = "git@github.com:A3S-Lab/Sandbox.git"
-  revision = "52ce66212cbdf7e83ba97e127f618720eec07355"
+  revision = "f0e74531b34b9ecab40e98ab25feb2f61b0031da"
   source = "git"
   version = "0.1.0"
 }
