@@ -22,21 +22,10 @@ function Assert-File {
     }
 }
 
-function Assert-Content {
-    param(
-        [string]$Expected,
-        [string]$Path
-    )
-    $actual = (Get-Content -LiteralPath $Path -Raw).TrimEnd("`r", "`n")
-    if ($actual -cne $Expected) {
-        Fail-Test "unexpected content in $Path"
-    }
-}
-
 function Assert-NoGeneratedPaths {
     param([string]$Root)
     $leftovers = @(Get-ChildItem -LiteralPath $Root -Recurse -Force |
-        Where-Object { $_.Name -match '^\.a3s(?:-webview|-support)?\.(new|backup|failed)\.' })
+        Where-Object { $_.Name -match '^\.a3s(?:-webview)?\.(new|backup|failed)\.' })
     if ($leftovers.Count -ne 0) {
         Fail-Test "installer left temporary path $($leftovers[0].FullName)"
     }
@@ -57,6 +46,9 @@ function Expect-Failure {
 
 $global:A3sInstallerMockRelease = $null
 $global:A3sInstallerMockReleaseList = $null
+$global:A3sInstallerMockLegacyRelease = $null
+$global:A3sInstallerMockLegacyReleaseList = $null
+$global:A3sInstallerMockPrimaryNotFound = $false
 $global:A3sInstallerMockArchive = ''
 $global:A3sInstallerMoveFault = ''
 $global:A3sInstallerMoveFaultVersion = ''
@@ -76,8 +68,23 @@ function Invoke-RestMethod {
         $global:A3sInstallerRestFailures--
         throw 'injected transient release lookup failure'
     }
-    if ($null -eq $global:A3sInstallerMockRelease) {
+    if ($null -eq $global:A3sInstallerMockRelease -and
+        $null -eq $global:A3sInstallerMockLegacyRelease) {
         throw 'mock release was not configured'
+    }
+    $isLegacyRepository = [string]$Uri -like '*repos/A3S-Lab/a3s/*'
+    if (-not $isLegacyRepository -and
+        [string]$Uri -notlike '*releases?per_page=100' -and
+        $global:A3sInstallerMockPrimaryNotFound) {
+        throw 'injected missing canonical release'
+    }
+    if ($isLegacyRepository -and
+        [string]$Uri -like '*releases?per_page=100' -and
+        $null -ne $global:A3sInstallerMockLegacyReleaseList) {
+        return $global:A3sInstallerMockLegacyReleaseList
+    }
+    if ($isLegacyRepository -and $null -ne $global:A3sInstallerMockLegacyRelease) {
+        return $global:A3sInstallerMockLegacyRelease
     }
     if ([string]$Uri -like '*releases?per_page=100' -and
         $null -ne $global:A3sInstallerMockReleaseList) {
@@ -133,11 +140,6 @@ function Move-Item {
         'webview-activate' {
             $sourceLeaf -match '^\.a3s-webview\.new\.[0-9a-f-]+\.exe$' -and
                 $destinationLeaf -ceq 'a3s-webview.exe'
-            break
-        }
-        'support-activate' {
-            $sourceLeaf -match '^\.a3s-support\.new\.[0-9a-f-]+$' -and
-                $destinationLeaf -ceq 'support'
             break
         }
         default { $false }
@@ -212,9 +214,7 @@ function Set-ReleaseFixture {
         [string]$Version,
         [switch]$UnsafeMember,
         [switch]$WithoutWebview,
-        [switch]$WithoutSupport,
-        [switch]$WithReleaseCompat,
-        [switch]$UnsafeReleaseCompat
+        [string]$Repository = 'A3S-Lab/CLI'
     )
 
     $payload = Join-Path $fixtureRoot 'payload'
@@ -225,28 +225,6 @@ function Set-ReleaseFixture {
     New-FixtureExecutable -Version $Version -Destination (Join-Path $payload 'a3s.exe')
     if (-not $WithoutWebview) {
         New-FixtureExecutable -Version $Version -Destination (Join-Path $payload 'a3s-webview.exe') -Product webview
-    }
-    if (-not $WithoutSupport) {
-        $supportRoot = Join-Path $payload 'support\managed-srt'
-        $supportDist = Join-Path $supportRoot 'node_modules\@anthropic-ai\sandbox-runtime\dist'
-        [IO.Directory]::CreateDirectory($supportDist) | Out-Null
-        Set-Content -LiteralPath (Join-Path $supportRoot 'package.json') `
-            -Value "{`"name`":`"a3s-managed-srt-fixture`",`"version`":`"$Version`"}" -Encoding UTF8
-        Set-Content -LiteralPath (Join-Path $supportRoot 'package-lock.json') `
-            -Value '{"name":"a3s-managed-srt-fixture","lockfileVersion":3}' -Encoding UTF8
-        Set-Content -LiteralPath (Join-Path $supportDist 'cli.js') `
-            -Value "managed-srt $Version" -Encoding UTF8
-        Set-Content -LiteralPath (Join-Path $payload 'support\managed-srt.tree-sha256') `
-            -Value "fixture-tree-sha256-$Version" -Encoding UTF8
-    }
-    if ($WithReleaseCompat) {
-        $releaseCompatRoot = Join-Path $payload 'release-compat'
-        Copy-Item -LiteralPath (Join-Path $repoRoot 'crates/cli/release-compat') `
-            -Destination $releaseCompatRoot -Recurse
-        if ($UnsafeReleaseCompat) {
-            Set-Content -LiteralPath (Join-Path $releaseCompatRoot 'unexpected.txt') `
-                -Value 'unexpected compatibility marker content' -Encoding UTF8
-        }
     }
     if ($UnsafeMember) {
         Set-Content -LiteralPath (Join-Path $payload 'escape.txt') -Value 'unexpected' -Encoding UTF8
@@ -263,7 +241,7 @@ function Set-ReleaseFixture {
         name = $assetName
         state = 'uploaded'
         digest = "sha256:$digest"
-        browser_download_url = "https://github.com/A3S-Lab/CLI/releases/download/v$Version/$assetName"
+        browser_download_url = "https://github.com/$Repository/releases/download/v$Version/$assetName"
     }
     $global:A3sInstallerMockRelease = [pscustomobject]@{
         tag_name = "v$Version"
@@ -302,7 +280,7 @@ try {
     # Transient API and archive transport failures are retried without leaving
     # a partial download or requiring the user to restart the installer.
     $retryRoot = Join-Path $testRoot 'transient-network-retry'
-    Set-ReleaseFixture -Version '1.2.1' -WithoutWebview -WithoutSupport
+    Set-ReleaseFixture -Version '1.2.1' -WithoutWebview
     $global:A3sInstallerRestFailures = 1
     $global:A3sInstallerWebFailures = 1
     $global:A3sInstallerRetryDelays = 0
@@ -318,50 +296,16 @@ try {
     # Stable archives published before the companion bundle remain installable;
     # Code owns their verified WebView first-use setup.
     $legacyRoot = Join-Path $testRoot 'legacy-without-webview'
-    Set-ReleaseFixture -Version '1.2.2' -WithoutWebview -WithoutSupport
+    Set-ReleaseFixture -Version '1.2.2' -WithoutWebview
     Invoke-TestInstall -Version '1.2.2' -InstallDir (Join-Path $legacyRoot 'bin')
     Assert-File (Join-Path $legacyRoot 'bin\a3s.exe')
     if (Test-Path -LiteralPath (Join-Path $legacyRoot 'bin\a3s-webview.exe')) {
         Fail-Test 'legacy release unexpectedly installed a WebView companion'
     }
-    if (Test-Path -LiteralPath (Join-Path $legacyRoot 'bin\support')) {
-        Fail-Test 'legacy release unexpectedly installed a support payload'
-    }
     Assert-NoGeneratedPaths -Root $legacyRoot
 
-    # Current releases retain an inert marker for legacy self-updaters. The
-    # current installer validates it but never installs it as runtime support.
-    $releaseCompatRoot = Join-Path $testRoot 'release-compat'
-    $releaseCompatInstallDir = Join-Path $releaseCompatRoot 'bin'
-    Set-ReleaseFixture -Version '1.2.9' -WithoutSupport -WithReleaseCompat
-    Invoke-TestInstall -Version '1.2.9' -InstallDir $releaseCompatInstallDir
-    Assert-File (Join-Path $releaseCompatInstallDir 'a3s.exe')
-    Assert-File (Join-Path $releaseCompatInstallDir 'a3s-webview.exe')
-    if (Test-Path -LiteralPath (Join-Path $releaseCompatInstallDir 'support')) {
-        Fail-Test 'release compatibility marker was installed as runtime support'
-    }
-    if (Test-Path -LiteralPath (Join-Path $releaseCompatInstallDir 'release-compat')) {
-        Fail-Test 'release compatibility marker was copied into the install directory'
-    }
-    Assert-NoGeneratedPaths -Root $releaseCompatRoot
-
-    # Extra compatibility marker content is rejected before activation.
-    Set-ReleaseFixture -Version '1.2.10' -WithoutSupport -WithReleaseCompat -UnsafeReleaseCompat
-    Expect-Failure 'unexpected release compatibility marker member' {
-        Invoke-TestInstall -Version '1.2.10' -InstallDir $releaseCompatInstallDir
-    }
-    $releaseCompatVersion = (& (Join-Path $releaseCompatInstallDir 'a3s.exe') --version | Out-String).Trim()
-    if ($releaseCompatVersion -cne 'a3s 1.2.9') {
-        Fail-Test 'malformed compatibility marker changed the installed binary'
-    }
-    $releaseCompatWebviewVersion = (& (Join-Path $releaseCompatInstallDir 'a3s-webview.exe') | Out-String).Trim()
-    if ($releaseCompatWebviewVersion -cne 'a3s-webview 1.2.9') {
-        Fail-Test 'malformed compatibility marker changed the WebView companion'
-    }
-    Assert-NoGeneratedPaths -Root $releaseCompatRoot
-
     # `latest` ignores other product tags and prereleases in the monorepo.
-    Set-ReleaseFixture -Version '1.2.2' -WithoutWebview -WithoutSupport
+    Set-ReleaseFixture -Version '1.2.2' -WithoutWebview
     $global:A3sInstallerMockReleaseList = @(
         [pscustomobject]@{
             tag_name = 'a3s-code-v9.0.0'
@@ -381,6 +325,40 @@ try {
     Assert-NoGeneratedPaths -Root $latestRoot
     $global:A3sInstallerMockReleaseList = $null
 
+    # During the release transition, latest selects the higher stable version
+    # from the canonical CLI repository and the former monorepo source.
+    Set-ReleaseFixture -Version '1.3.0' -WithoutWebview `
+        -Repository 'A3S-Lab/a3s'
+    $global:A3sInstallerMockLegacyRelease = $global:A3sInstallerMockRelease
+    $global:A3sInstallerMockLegacyReleaseList = @($global:A3sInstallerMockLegacyRelease)
+    $global:A3sInstallerMockReleaseList = @(
+        [pscustomobject]@{
+            tag_name = 'v1.2.2'
+            draft = $false
+            prerelease = $false
+        }
+    )
+    $transitionRoot = Join-Path $testRoot 'release-transition'
+    Invoke-TestInstall -Version 'latest' -InstallDir (Join-Path $transitionRoot 'bin')
+    $transitionVersion = (& (Join-Path $transitionRoot 'bin\a3s.exe') --version | Out-String).Trim()
+    if ($transitionVersion -cne 'a3s 1.3.0') {
+        Fail-Test 'latest did not select the newer former-monorepo stable release'
+    }
+    Assert-NoGeneratedPaths -Root $transitionRoot
+
+    $global:A3sInstallerMockPrimaryNotFound = $true
+    $explicitTransitionRoot = Join-Path $testRoot 'explicit-release-transition'
+    Invoke-TestInstall -Version '1.3.0' -InstallDir (Join-Path $explicitTransitionRoot 'bin')
+    $explicitTransitionVersion = (& (Join-Path $explicitTransitionRoot 'bin\a3s.exe') --version | Out-String).Trim()
+    if ($explicitTransitionVersion -cne 'a3s 1.3.0') {
+        Fail-Test 'an explicit version did not fall back to the former-monorepo release'
+    }
+    Assert-NoGeneratedPaths -Root $explicitTransitionRoot
+    $global:A3sInstallerMockPrimaryNotFound = $false
+    $global:A3sInstallerMockReleaseList = $null
+    $global:A3sInstallerMockLegacyRelease = $null
+    $global:A3sInstallerMockLegacyReleaseList = $null
+
     # Initial installation and upgrade replace the binary and companion payloads.
     $upgradeRoot = Join-Path $testRoot 'upgrade path 用户'
     $installDir = Join-Path $upgradeRoot 'bin'
@@ -388,8 +366,6 @@ try {
     Invoke-TestInstall -Version '1.2.3' -InstallDir $installDir
     Assert-File (Join-Path $installDir 'a3s.exe')
     Assert-File (Join-Path $installDir 'a3s-webview.exe')
-    $supportCli = Join-Path $installDir 'support\managed-srt\node_modules\@anthropic-ai\sandbox-runtime\dist\cli.js'
-    Assert-File $supportCli
     $installedVersion = (& (Join-Path $installDir 'a3s.exe') --version | Out-String).Trim()
     if ($installedVersion -cne 'a3s 1.2.3') {
         Fail-Test "initial binary reported $installedVersion"
@@ -398,7 +374,6 @@ try {
     if ($installedWebviewVersion -cne 'a3s-webview 1.2.3') {
         Fail-Test "initial WebView companion reported $installedWebviewVersion"
     }
-    Assert-Content -Expected 'managed-srt 1.2.3' -Path $supportCli
 
     Set-ReleaseFixture -Version '1.2.4'
     Invoke-TestInstall -Version '1.2.4' -InstallDir $installDir
@@ -410,7 +385,6 @@ try {
     if ($installedWebviewVersion -cne 'a3s-webview 1.2.4') {
         Fail-Test "upgraded WebView companion reported $installedWebviewVersion"
     }
-    Assert-Content -Expected 'managed-srt 1.2.4' -Path $supportCli
     Assert-NoGeneratedPaths -Root $upgradeRoot
 
     # Digest errors fail before activation and preserve the old installation.
@@ -427,7 +401,6 @@ try {
     if ($installedWebviewVersion -cne 'a3s-webview 1.2.4') {
         Fail-Test 'digest failure changed the installed WebView companion'
     }
-    Assert-Content -Expected 'managed-srt 1.2.4' -Path $supportCli
 
     # Missing digest metadata fails closed.
     Set-ReleaseFixture -Version '1.2.6'
@@ -449,7 +422,6 @@ try {
     if ($installedWebviewVersion -cne 'a3s-webview 1.2.4') {
         Fail-Test 'unsafe archive changed the installed WebView companion'
     }
-    Assert-Content -Expected 'managed-srt 1.2.4' -Path $supportCli
 
     # A locked executable forces rollback without losing the old installation.
     $lockedRoot = Join-Path $testRoot 'locked'
@@ -474,8 +446,6 @@ try {
     if ($installedWebviewVersion -cne 'a3s-webview 2.0.0') {
         Fail-Test 'locked upgrade did not restore the old WebView companion'
     }
-    Assert-Content -Expected 'managed-srt 2.0.0' -Path `
-        (Join-Path $lockedInstallDir 'support\managed-srt\node_modules\@anthropic-ai\sandbox-runtime\dist\cli.js')
     Assert-NoGeneratedPaths -Root $lockedRoot
 
     # Faults raised after successful filesystem mutations but before the next
@@ -484,24 +454,6 @@ try {
     $faultInstallDir = Join-Path $faultRoot 'bin'
     Set-ReleaseFixture -Version '4.0.0'
     Invoke-TestInstall -Version '4.0.0' -InstallDir $faultInstallDir
-    $faultSupportCli = Join-Path $faultInstallDir 'support\managed-srt\node_modules\@anthropic-ai\sandbox-runtime\dist\cli.js'
-    Set-Content -LiteralPath $faultSupportCli -Value 'old support sentinel' -Encoding UTF8
-
-    $global:A3sInstallerMoveFault = 'support-activate'
-    $global:A3sInstallerMoveFaultTriggered = $false
-    Expect-Failure 'interruption after support payload activation' {
-        Invoke-TestInstall -Version '4.0.0' -InstallDir $faultInstallDir
-    }
-    if (-not $global:A3sInstallerMoveFaultTriggered) {
-        Fail-Test 'support payload fault was not injected'
-    }
-    Assert-Content -Expected 'old support sentinel' -Path $faultSupportCli
-    $installedVersion = (& (Join-Path $faultInstallDir 'a3s.exe') --version | Out-String).Trim()
-    if ($installedVersion -cne 'a3s 4.0.0') {
-        Fail-Test 'support activation interruption changed the installed binary'
-    }
-    Assert-NoGeneratedPaths -Root $faultRoot
-
     $initialWebviewFaultRoot = Join-Path $testRoot 'initial-webview-fault'
     $global:A3sInstallerMoveFault = 'webview-activate'
     $global:A3sInstallerMoveFaultVersion = '4.0.1'
@@ -518,9 +470,6 @@ try {
     }
     if (Test-Path -LiteralPath (Join-Path $initialWebviewFaultRoot 'bin\a3s.exe')) {
         Fail-Test 'WebView activation interruption left the new binary active'
-    }
-    if (Test-Path -LiteralPath (Join-Path $initialWebviewFaultRoot 'bin\support')) {
-        Fail-Test 'WebView activation interruption left the new support payload active'
     }
     Assert-NoGeneratedPaths -Root $initialWebviewFaultRoot
 
@@ -540,9 +489,6 @@ try {
     }
     if (Test-Path -LiteralPath (Join-Path $initialFaultRoot 'bin\a3s-webview.exe')) {
         Fail-Test 'binary activation interruption left the new WebView companion active'
-    }
-    if (Test-Path -LiteralPath (Join-Path $initialFaultRoot 'bin\support')) {
-        Fail-Test 'binary activation interruption left the new support payload active'
     }
     Assert-NoGeneratedPaths -Root $initialFaultRoot
     $global:A3sInstallerMoveFault = ''
@@ -575,6 +521,9 @@ try {
     }
     Remove-Variable -Name A3sInstallerMockRelease -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMockReleaseList -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable -Name A3sInstallerMockLegacyRelease -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable -Name A3sInstallerMockLegacyReleaseList -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable -Name A3sInstallerMockPrimaryNotFound -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMockArchive -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMoveFault -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMoveFaultVersion -Scope Global -ErrorAction SilentlyContinue

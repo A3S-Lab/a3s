@@ -1,5 +1,4 @@
 #!/bin/sh
-
 # Install the latest stable A3S CLI release on macOS or GNU/Linux.
 #
 # Environment overrides:
@@ -7,36 +6,30 @@
 #   A3S_INSTALL_DIR      Binary directory; defaults to $HOME/.local/bin.
 #   A3S_MODIFY_PATH      Set to 1 to add the default directory to a shell profile.
 #   A3S_GITHUB_TOKEN     Optional GitHub token for release API rate limits.
-
 set -eu
-
-REPOSITORY="A3S-Lab/CLI"
+PRIMARY_REPOSITORY="A3S-Lab/CLI"
+LEGACY_REPOSITORY="A3S-Lab/a3s"
+REPOSITORY=""
 DEFAULT_INSTALL_DIR="${HOME:+$HOME/.local/bin}"
-
 version="${A3S_VERSION:-latest}"
 install_dir="${A3S_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 modify_path=0
-
 case "${A3S_MODIFY_PATH:-}" in
     1|true|TRUE|yes|YES) modify_path=1 ;;
 esac
-
 info() {
     printf 'a3s installer: %s\n' "$*"
 }
-
 warn() {
     printf 'a3s installer: warning: %s\n' "$*" >&2
 }
-
 die() {
     printf 'a3s installer: error: %s\n' "$*" >&2
     exit 1
 }
-
 usage() {
     cat <<'EOF'
-Install the A3S CLI from its official GitHub release.
+Install the A3S CLI from an official GitHub release.
 
 Usage: install.sh [options]
 
@@ -50,9 +43,12 @@ Options:
 The same settings are available through A3S_VERSION, A3S_INSTALL_DIR, and
 A3S_MODIFY_PATH. A3S_GITHUB_TOKEN can raise GitHub API rate limits. Shell
 profiles are not changed unless explicitly requested.
+
+During the repository release transition, latest compares published stable
+releases from A3S-Lab/CLI and A3S-Lab/a3s and selects the newer version. An
+explicit --version prefers A3S-Lab/CLI and falls back to A3S-Lab/a3s.
 EOF
 }
-
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --version)
@@ -82,7 +78,6 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
-
 [ -n "$install_dir" ] || die "HOME or A3S_INSTALL_DIR is required"
 case "$install_dir" in
     *'
@@ -98,7 +93,6 @@ requested_default_install=0
 if [ -n "$DEFAULT_INSTALL_DIR" ] && [ "$install_dir" = "$DEFAULT_INSTALL_DIR" ]; then
     requested_default_install=1
 fi
-
 case "$version" in
     ""|latest) version=latest ;;
     [0-9]*) version="v$version" ;;
@@ -106,11 +100,9 @@ esac
 if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
     die "invalid stable release tag '$version' (expected vX.Y.Z)"
 fi
-
-for command_name in uname mktemp tar awk grep tr mkdir mv cp chmod rm rmdir sort uniq find curl; do
+for command_name in uname mktemp tar awk grep tr mkdir mv cp chmod rm rmdir sort uniq curl; do
     command -v "$command_name" >/dev/null 2>&1 || die "required command '$command_name' was not found"
 done
-
 case "$(uname -s)" in
     Darwin) os=apple-darwin ;;
     Linux)
@@ -131,20 +123,16 @@ case "$(uname -s)" in
         ;;
     *) die "unsupported operating system: $(uname -s)" ;;
 esac
-
 case "$(uname -m)" in
     x86_64|amd64) arch=x86_64 ;;
     arm64|aarch64) arch=aarch64 ;;
     *) die "unsupported CPU architecture: $(uname -m)" ;;
 esac
-
 target="$arch-$os"
-
 mkdir -p "$install_dir" || die "failed to create $install_dir"
 install_dir=$(CDPATH= cd -P "$install_dir" && pwd -P) \
     || die "failed to resolve the install directory"
 [ "$install_dir" != / ] || die "refusing to install directly into /"
-
 lock_dir="$install_dir/.a3s-installer.lock"
 lock_acquired=0
 release_install_lock() {
@@ -196,12 +184,9 @@ download_asset() {
         -o "$destination" "$download_url"
 }
 
-if [ "$version" = latest ]; then
-    releases_api="https://api.github.com/repos/$REPOSITORY/releases?per_page=100"
-    info "resolving latest stable CLI release for $target"
-    releases_json=$(fetch_release "$releases_api") || die "failed to query $releases_api"
-    compact_releases=$(printf '%s' "$releases_json" | tr -d '\r\n')
-    release_tag=$(printf '%s' "$compact_releases" | awk -F'"tag_name":"' '
+stable_tag_from_releases() {
+    compact_releases=$1
+    printf '%s' "$compact_releases" | awk -F'"tag_name":"' '
         {
             for (field = 2; field <= NF; field++) {
                 split($field, value, "\"")
@@ -213,15 +198,72 @@ if [ "$version" = latest ]; then
                 }
             }
         }
-    ')
-    [ -n "$release_tag" ] || die "GitHub returned no published stable CLI release"
+    '
+}
+
+version_is_newer() {
+    candidate=${1#v}
+    baseline=${2#v}
+    awk -v candidate="$candidate" -v baseline="$baseline" 'BEGIN {
+        split(candidate, left, ".")
+        split(baseline, right, ".")
+        for (part = 1; part <= 3; part++) {
+            if ((left[part] + 0) > (right[part] + 0)) exit 0
+            if ((left[part] + 0) < (right[part] + 0)) exit 1
+        }
+        exit 1
+    }'
+}
+
+release_json=""
+if [ "$version" = latest ]; then
+    primary_tag=""
+    legacy_tag=""
+    info "resolving latest stable CLI release for $target"
+
+    primary_releases_api="https://api.github.com/repos/$PRIMARY_REPOSITORY/releases?per_page=100"
+    if primary_releases_json=$(fetch_release "$primary_releases_api"); then
+        primary_tag=$(stable_tag_from_releases "$(printf '%s' "$primary_releases_json" | tr -d '\r\n')")
+    else
+        warn "failed to query $primary_releases_api"
+    fi
+
+    legacy_releases_api="https://api.github.com/repos/$LEGACY_REPOSITORY/releases?per_page=100"
+    if legacy_releases_json=$(fetch_release "$legacy_releases_api"); then
+        legacy_tag=$(stable_tag_from_releases "$(printf '%s' "$legacy_releases_json" | tr -d '\r\n')")
+    else
+        warn "failed to query $legacy_releases_api"
+    fi
+
+    if [ -n "$primary_tag" ]; then
+        REPOSITORY=$PRIMARY_REPOSITORY
+        release_tag=$primary_tag
+    elif [ -n "$legacy_tag" ]; then
+        REPOSITORY=$LEGACY_REPOSITORY
+        release_tag=$legacy_tag
+    else
+        die "GitHub returned no published stable CLI release from either official repository"
+    fi
+    if [ -n "$legacy_tag" ] && version_is_newer "$legacy_tag" "$release_tag"; then
+        REPOSITORY=$LEGACY_REPOSITORY
+        release_tag=$legacy_tag
+    fi
+
     release_api="https://api.github.com/repos/$REPOSITORY/releases/tags/$release_tag"
+    release_json=$(fetch_release "$release_api") || die "failed to query $release_api"
 else
-    release_api="https://api.github.com/repos/$REPOSITORY/releases/tags/$version"
+    for candidate_repository in "$PRIMARY_REPOSITORY" "$LEGACY_REPOSITORY"; do
+        release_api="https://api.github.com/repos/$candidate_repository/releases/tags/$version"
+        if release_json=$(fetch_release "$release_api" 2>/dev/null); then
+            REPOSITORY=$candidate_repository
+            break
+        fi
+    done
+    [ -n "$REPOSITORY" ] \
+        || die "release $version was not found in either official repository"
 fi
 
-info "resolving ${version} release for $target"
-release_json=$(fetch_release "$release_api") || die "failed to query $release_api"
+info "using $REPOSITORY release ${release_tag:-$version} for $target"
 compact_json=$(printf '%s' "$release_json" | tr -d '\r\n')
 resolved_release_tag=$(printf '%s' "$compact_json" | awk -F'"tag_name":"' 'NF > 1 { split($2, value, "\""); print value[1]; exit }')
 if [ "$version" != latest ]; then
@@ -291,29 +333,13 @@ failed_binary=""
 staged_webview=""
 backup_webview=""
 failed_webview=""
-support_dir=""
-staged_support=""
-backup_support=""
-failed_support=""
 binary_active=0
 old_binary_saved=0
 webview_active=0
 old_webview_saved=0
-support_active=0
-old_support_saved=0
 binary_activation_started=0
 webview_activation_started=0
-support_activation_started=0
 committed=0
-
-remove_generated_support_tree() {
-    generated_path=${1:-}
-    [ -n "$generated_path" ] || return 0
-    case "$generated_path" in
-        "$install_dir"/.a3s-support.*) rm -rf -- "$generated_path" ;;
-        *) warn "refusing to remove unexpected support directory $generated_path" ;;
-    esac
-}
 
 remove_generated_binary() {
     generated_path=${1:-}
@@ -397,42 +423,6 @@ rollback_activation() {
         fi
     fi
 
-    if [ "$support_activation_started" -eq 1 ]; then
-        if [ ! -e "$staged_support" ] && [ ! -L "$staged_support" ]; then
-            if [ -e "$support_dir" ] || [ -L "$support_dir" ]; then
-                if mv "$support_dir" "$failed_support"; then
-                    support_active=0
-                else
-                    support_active=1
-                    warn "could not move the failed support payload; the previous payload is preserved at $backup_support"
-                fi
-            else
-                support_active=0
-            fi
-        else
-            support_active=0
-        fi
-
-        if [ -e "$backup_support" ] || [ -L "$backup_support" ]; then
-            if [ ! -e "$support_dir" ] && [ ! -L "$support_dir" ]; then
-                if mv "$backup_support" "$support_dir"; then
-                    old_support_saved=0
-                else
-                    old_support_saved=1
-                    warn "could not restore the previous support payload; its backup is preserved at $backup_support"
-                fi
-            elif [ -e "$staged_support" ] || [ -L "$staged_support" ]; then
-                # Activation did not consume the staged payload; the original is still active.
-                old_support_saved=0
-            else
-                old_support_saved=1
-                warn "could not restore the previous support payload; its backup is preserved at $backup_support"
-            fi
-        else
-            old_support_saved=0
-        fi
-    fi
-
 }
 
 cleanup() {
@@ -456,17 +446,7 @@ cleanup() {
         warn "preserved the previous WebView helper at $backup_webview"
     fi
     remove_generated_binary "$failed_webview"
-    remove_generated_support_tree "$staged_support"
-    if [ "$old_support_saved" -eq 0 ]; then
-        remove_generated_support_tree "$backup_support"
-    elif [ -e "$backup_support" ] || [ -L "$backup_support" ]; then
-        warn "preserved the previous support payload at $backup_support"
-    fi
-    remove_generated_support_tree "$failed_support"
     rm -f -- "$archive" "$archive_list" "$temp_dir/a3s" "$temp_dir/a3s-webview"
-    if [ -d "$temp_dir/support" ]; then
-        rm -rf -- "$temp_dir/support"
-    fi
     rmdir "$temp_dir" 2>/dev/null
     release_install_lock
     exit "$exit_status"
@@ -504,33 +484,6 @@ has_bundled_webview=0
 if [ "$webview_entry_count" -eq 1 ]; then
     has_bundled_webview=1
 fi
-support_entry_count=$(awk '$0 == "support" || index($0, "support/") == 1 { count += 1 } END { print count + 0 }' "$archive_list")
-has_bundled_support=0
-if [ "$support_entry_count" -gt 0 ]; then
-    for required_support_entry in \
-        support/managed-srt/package.json \
-        support/managed-srt/package-lock.json \
-        support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js \
-        support/managed-srt.tree-sha256; do
-        [ "$(grep -Fxc "$required_support_entry" "$archive_list")" -eq 1 ] \
-            || die "release support payload must contain exactly one $required_support_entry"
-    done
-    has_bundled_support=1
-fi
-release_compat_required_entries='
-release-compat/README.md
-release-compat/support/managed-srt/package.json
-release-compat/support/managed-srt/package-lock.json
-release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/package.json
-release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js
-'
-release_compat_entry_count=$(awk '$0 == "release-compat" || index($0, "release-compat/") == 1 { count += 1 } END { print count + 0 }' "$archive_list")
-if [ "$release_compat_entry_count" -gt 0 ]; then
-    for required_release_compat_entry in $release_compat_required_entries; do
-        [ "$(grep -Fxc "$required_release_compat_entry" "$archive_list")" -eq 1 ] \
-            || die "release compatibility marker must contain exactly one $required_release_compat_entry"
-    done
-fi
 duplicate_entries=$(awk '{ sub(/\/$/, ""); print }' "$archive_list" | LC_ALL=C sort | uniq -d)
 [ -z "$duplicate_entries" ] \
     || die "release archive contains duplicate paths: $duplicate_entries"
@@ -539,36 +492,9 @@ tar -tvzf "$archive" | awk '
     END { exit unsafe }
 ' || die "release archive contains a link or special file"
 
-is_release_compat_file() {
-    release_compat_candidate=$1
-    for release_compat_file in $release_compat_required_entries; do
-        [ "$release_compat_candidate" = "$release_compat_file" ] && return 0
-    done
-    return 1
-}
-
-is_release_compat_directory() {
-    case "$1" in
-        release-compat|release-compat/|\
-        release-compat/support|release-compat/support/|\
-        release-compat/support/managed-srt|release-compat/support/managed-srt/|\
-        release-compat/support/managed-srt/node_modules|release-compat/support/managed-srt/node_modules/|\
-        release-compat/support/managed-srt/node_modules/@anthropic-ai|release-compat/support/managed-srt/node_modules/@anthropic-ai/|\
-        release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime|release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/|\
-        release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist|release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/)
-            return 0
-            ;;
-    esac
-    return 1
-}
-
 while IFS= read -r entry; do
     case "$entry" in
-        a3s|a3s-webview|support|support/|support/*) ;;
-        release-compat|release-compat/*)
-            is_release_compat_file "$entry" || is_release_compat_directory "$entry" \
-                || die "release archive contains an unexpected compatibility marker path: $entry"
-            ;;
+        a3s|a3s-webview) ;;
         *) die "release archive contains an unexpected path: $entry" ;;
     esac
     case "/$entry/" in
@@ -580,9 +506,6 @@ archive_members="a3s"
 if [ "$has_bundled_webview" -eq 1 ]; then
     archive_members="$archive_members a3s-webview"
 fi
-if [ "$has_bundled_support" -eq 1 ]; then
-    archive_members="$archive_members support"
-fi
 # The validated archive member names never contain whitespace.
 # shellcheck disable=SC2086
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$temp_dir" $archive_members \
@@ -592,16 +515,6 @@ tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$temp_dir" $archiv
 if [ "$has_bundled_webview" -eq 1 ]; then
     [ -f "$temp_dir/a3s-webview" ] && [ ! -L "$temp_dir/a3s-webview" ] \
         || die "the extracted a3s-webview companion is not a regular file"
-fi
-if [ "$has_bundled_support" -eq 1 ]; then
-    [ -f "$temp_dir/support/managed-srt/package.json" ] \
-        && [ -f "$temp_dir/support/managed-srt/package-lock.json" ] \
-        && [ -f "$temp_dir/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js" ] \
-        && [ -f "$temp_dir/support/managed-srt.tree-sha256" ] \
-        || die "the extracted managed sandbox support payload is invalid"
-    unsafe_support=$(find "$temp_dir/support" ! -type d ! -type f -print)
-    [ -z "$unsafe_support" ] \
-        || die "the extracted support payload contains a link or special file: $unsafe_support"
 fi
 chmod 755 "$temp_dir/a3s" || die "failed to make the staged a3s binary executable"
 if [ "$has_bundled_webview" -eq 1 ]; then
@@ -627,16 +540,8 @@ if [ "$has_bundled_webview" -eq 1 ]; then
     backup_webview="$install_dir/.a3s-webview.backup.$activation_id"
     failed_webview="$install_dir/.a3s-webview.failed.$activation_id"
 fi
-if [ "$has_bundled_support" -eq 1 ]; then
-    support_dir="$install_dir/support"
-    staged_support="$install_dir/.a3s-support.new.$activation_id"
-    backup_support="$install_dir/.a3s-support.backup.$activation_id"
-    failed_support="$install_dir/.a3s-support.failed.$activation_id"
-fi
-
 for generated_path in "$staged_binary" "$backup_binary" "$failed_binary" \
-    "$staged_webview" "$backup_webview" "$failed_webview" \
-    "$staged_support" "$backup_support" "$failed_support"; do
+    "$staged_webview" "$backup_webview" "$failed_webview"; do
     [ ! -e "$generated_path" ] && [ ! -L "$generated_path" ] \
         || die "temporary activation path already exists: $generated_path"
 done
@@ -649,34 +554,8 @@ if [ "$has_bundled_webview" -eq 1 ]; then
     chmod 755 "$staged_webview" \
         || die "failed to make the a3s-webview companion executable"
 fi
-if [ "$has_bundled_support" -eq 1 ]; then
-    mv "$temp_dir/support" "$staged_support" \
-        || die "failed to stage the managed sandbox support payload"
-fi
 verify_binary_version "$staged_binary" \
     || die "the staged a3s binary failed its version check"
-
-if [ "$has_bundled_support" -eq 1 ]; then
-    support_activation_started=1
-    if [ -L "$support_dir" ]; then
-        die "refusing to replace symlink $support_dir"
-    fi
-    if [ -e "$support_dir" ]; then
-        [ -d "$support_dir" ] || die "$support_dir is not a directory"
-        [ -f "$support_dir/managed-srt/package.json" ] \
-            || die "$support_dir is not an installer-managed support directory"
-        unsafe_existing_support=$(find "$support_dir" ! -type d ! -type f -print)
-        [ -z "$unsafe_existing_support" ] \
-            || die "refusing to replace support assets containing a link or special file: $unsafe_existing_support"
-        mv "$support_dir" "$backup_support" \
-            || die "failed to back up the existing support payload"
-        old_support_saved=1
-    fi
-    mv "$staged_support" "$support_dir" \
-        || die "failed to activate the managed sandbox support payload"
-    support_active=1
-    staged_support=""
-fi
 
 if [ "$has_bundled_webview" -eq 1 ]; then
     webview_activation_started=1
@@ -728,13 +607,6 @@ if remove_generated_binary "$backup_webview"; then
 else
     warn "could not remove the old WebView helper backup at $backup_webview"
 fi
-if remove_generated_support_tree "$backup_support"; then
-    old_support_saved=0
-    backup_support=""
-else
-    warn "could not remove the old support payload backup at $backup_support"
-fi
-
 path_is_ready=0
 case ":${PATH:-}:" in
     *":$install_dir:"*) path_is_ready=1 ;;
@@ -794,7 +666,4 @@ if [ "$has_bundled_webview" -eq 1 ]; then
     info "installed a3s-webview to $install_dir/a3s-webview"
 else
     info "release $release_tag has no bundled a3s-webview; a3s code will install the verified component on first use"
-fi
-if [ "$has_bundled_support" -eq 1 ]; then
-    info "installed managed sandbox support to $support_dir"
 fi

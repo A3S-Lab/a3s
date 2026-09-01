@@ -134,44 +134,6 @@ jobs:
             done
           done
 
-          bridge_root='release-compat/support/managed-srt/'
-          printf '%s\n' \
-            'node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js' \
-            'node_modules/@anthropic-ai/sandbox-runtime/package.json' \
-            'package-lock.json' \
-            'package.json' > expected-bridge-files.txt
-
-          verify_bridge() {
-            local archive="$1"
-            local kind="$2"
-            local entries
-            local actual
-            actual="$(mktemp)"
-            if [[ "$kind" == "tar" ]]; then
-              entries="$(tar -tzf "$archive")"
-            else
-              entries="$(unzip -Z1 "$archive")"
-            fi
-            awk -v root="$bridge_root" '
-              {
-                offset = index($0, root)
-                if (offset > 0 && substr($0, length($0), 1) != "/") {
-                  print substr($0, offset + length(root))
-                }
-              }
-            ' <<<"$entries" | sort > "$actual"
-            if ! diff -u expected-bridge-files.txt "$actual"; then
-              echo "::error::${archive} lacks the exact inert legacy update marker"
-              exit 1
-            fi
-          }
-
-          for archive in source-assets/*.tar.gz; do
-            verify_bridge "$archive" tar
-          done
-          verify_bridge \
-            "source-assets/a3s-${tag}-x86_64-pc-windows-msvc.zip" zip
-
           echo "source_sha=${source_sha}" >> "$GITHUB_OUTPUT"
           echo "source_release_id=${source_release_id}" >> "$GITHUB_OUTPUT"
 

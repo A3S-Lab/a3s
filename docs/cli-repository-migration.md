@@ -14,8 +14,7 @@ documentation, tags, and releases span two ownership models.
 
 The standalone repository is canonical again. It owns:
 
-- `Cargo.toml`, `Cargo.lock`, `build.rs`, `src/`, `tests/`, `skills/`, and
-  `release-compat/`;
+- `Cargo.toml`, `Cargo.lock`, `build.rs`, `src/`, `tests/`, and `skills/`;
 - CLI pull requests and CI;
 - stable `vMAJOR.MINOR.PATCH` tags and GitHub releases;
 - the `a3s` crates.io package and Homebrew formula updates; and
@@ -31,8 +30,8 @@ its gitlink.
 Current installers and CLI self-update resolve releases from `A3S-Lab/CLI`.
 Versions 0.11.0 and 0.11.1 still query `A3S-Lab/a3s`, so the monorepo retains a
 manual `relay-cli-release.yml` workflow. It accepts only a published stable CLI
-tag, verifies the exact platform asset set, GitHub digests, checksum manifests,
-and inert legacy update marker, then publishes byte-identical GitHub assets.
+tag, verifies the exact platform asset set, GitHub digests, and checksum
+manifests, then publishes byte-identical GitHub assets.
 
 The relay does not build the CLI, publish crates.io, or update Homebrew. Its
 release notes record the canonical source tag, commit, and release identity so

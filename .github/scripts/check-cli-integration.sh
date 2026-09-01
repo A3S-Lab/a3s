@@ -17,7 +17,6 @@ for forbidden in \
   src \
   tests \
   skills \
-  release-compat \
   bin/a3s \
   CHANGELOG.md; do
   test ! -e "${forbidden}" || fail "repository root must not own ${forbidden}"
@@ -45,9 +44,9 @@ test "${checkout}" = "${gitlink}" \
 
 grep -Fqx 'repository = "https://github.com/A3S-Lab/CLI"' crates/cli/Cargo.toml \
   || fail "CLI Cargo metadata does not point at A3S-Lab/CLI"
-grep -Fqx 'REPOSITORY="A3S-Lab/CLI"' install.sh \
-  || fail "Unix installer does not resolve A3S-Lab/CLI releases"
-grep -Fq "\$repository = 'A3S-Lab/CLI'" install.ps1 \
-  || fail "Windows installer does not resolve A3S-Lab/CLI releases"
+grep -Fqx 'PRIMARY_REPOSITORY="A3S-Lab/CLI"' install.sh \
+  || fail "Unix installer does not resolve the canonical A3S-Lab/CLI releases"
+grep -Fq "\$repositories = @('A3S-Lab/CLI', 'A3S-Lab/a3s')" install.ps1 \
+  || fail "Windows installer does not resolve the canonical A3S-Lab/CLI releases"
 
 echo "standalone CLI integration verified at ${gitlink}"

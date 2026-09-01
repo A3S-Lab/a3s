@@ -192,13 +192,6 @@ jobs:
           }
           $versionText = $Matches[1]
           $installedVersion = [version]$versionText
-          $supportManifest = Join-Path $installDir 'support\managed-srt\package.json'
-          if (Test-Path -LiteralPath $supportManifest -PathType Leaf) {
-            $supportCli = Join-Path $installDir 'support\managed-srt\node_modules\@anthropic-ai\sandbox-runtime\dist\cli.js'
-            if (-not (Test-Path -LiteralPath $supportCli -PathType Leaf)) {
-              throw "managed sandbox support is incomplete: $supportCli"
-            }
-          }
           $env:A3S_STATE_HOME = Join-Path $env:RUNNER_TEMP 'a3s-smoke\state'
           $env:A3S_CACHE_HOME = Join-Path $env:RUNNER_TEMP 'a3s-smoke\cache'
           $env:A3S_RUNTIME_HOME = Join-Path $env:RUNNER_TEMP 'a3s-smoke\runtime'
