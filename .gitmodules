@@ -113,3 +113,6 @@
 	path = crates/vec
 	url = git@github.com:A3S-Lab/Vec.git
 	branch = main
+[submodule "crates/sandbox"]
+	path = crates/sandbox
+	url = git@github.com:A3S-Lab/Sandbox.git

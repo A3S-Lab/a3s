@@ -30,7 +30,7 @@ function committedFile(repository, path) {
 test('the checked-in Cloud stack is reproducible and clean', () => {
   const result = verifyCloudStack(ROOT);
   assert.match(result.digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(result.components.length, 14);
+  assert.equal(result.components.length, 15);
   assert.deepEqual(result.aclFiles, ['config/cloud.acl', 'config/node.example.acl']);
   assert.match(result.formInteractionFixture.digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(
@@ -107,6 +107,28 @@ test('the Code component describes the Cloud host dependency', () => {
   assert.equal(code.package, 'a3s-code-core');
   assert.equal(code.source, 'git');
   assert.equal(code.version, '8.0.4');
+});
+
+test('the Sandbox component is bound through the exact Code dependency', () => {
+  const components = new Map(
+    parseCloudStackLock(LOCK_SOURCE).components.map((component) => [component.id, component]),
+  );
+  const sandbox = components.get('sandbox');
+  assert.ok(sandbox);
+  assert.equal(sandbox.manifest, 'Cargo.toml');
+  assert.equal(sandbox.package, 'a3s-sandbox');
+  assert.equal(sandbox.version, '0.1.0');
+
+  const codeManifest = readFileSync(resolve(ROOT, 'crates/code/core/Cargo.toml'), 'utf8');
+  const declaration = tomlDependency(
+    codeManifest,
+    'dependencies',
+    sandbox.package,
+    'crates/code/core/Cargo.toml',
+  );
+  assert.ok(declaration.includes(`version = "=${sandbox.version}"`));
+  assert.ok(declaration.includes(`rev = "${sandbox.revision}"`));
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Sandbox\.git"/);
 });
 
 test('published dependencies retain separate Git provenance', () => {

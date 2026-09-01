@@ -85,7 +85,7 @@ infrastructure dependency or grant it authority.
 | **Host** | Invocation, policy, models, tools, permissions | [CLI](crates/cli/), [Code](crates/code/), [Cloud](apps/cloud/) |
 | **Extend** | Signed capabilities and typed content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
 | **Coordinate** | Replay-safe workflows, events, queues, and evaluation | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Bench](crates/bench/), [Test](crates/test/) |
-| **Execute** | Tasks, Services, isolation, and model serving | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/) |
+| **Execute** | Tasks, Services, isolation, and model serving | [Runtime](crates/runtime/), [Sandbox](crates/sandbox/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/) |
 | **Scale** | Traffic, desired state, placement, and reconciliation | [Gateway](crates/gateway/), [Cloud](apps/cloud/), [ORM](crates/orm/) |
 | **Govern** | Observation, enforcement decisions, and signed updates | [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
 
@@ -138,6 +138,7 @@ Support claims live with the component that owns the behavior:
 | --- | --- | --- |
 | CLI and installers | The standalone CLI repository owns source, CI, releases, and detailed product documentation; this root pins a reviewed revision and relays only the required integration assets. | [CLI](https://github.com/A3S-Lab/CLI) · [installer CI](.github/workflows/installers.yml) |
 | Local agent work | Code owns session, workspace, retrieval, context, memory, and provider qualification. Provider and public-network behavior is qualified separately from the local core. | [Code](crates/code/) · [retrieval roadmap](docs/retrieval-platform-roadmap.md) |
+| Native command isolation | Sandbox owns the fail-closed macOS, Linux, and Windows command boundary. Code consumes its small Rust contract without Node.js or an SRT compatibility layer. | [Sandbox](crates/sandbox/) · [security model](crates/sandbox/SECURITY.md) |
 | Cloud and workflows | Exact component revisions, package versions, and protocol levels are locked together before an integration claim is published. | [Cloud stack lock](compat/cloud-stack.acl) · [workflow plan](compat/workflow-platform-development-plan.md) |
 | Capabilities | Use is a preview. Discovery does not imply installation authority, activation, or operated Registry readiness. | [Use](crates/use/) · [Use Registry](use-registry/) |
 | Isolation and inference | Platform, driver, accelerator, and artifact evidence is explicit. Model support does not imply that every optimized kernel or backend is complete. | [OCI Runtime](crates/oci-runtime/) · [Runtime](crates/runtime/) · [Power](crates/power/) · [MoE](crates/moe/) |
@@ -192,7 +193,7 @@ a3s/
 | Product hosts | [CLI](crates/cli/), [Code](crates/code/), [Desktop](apps/desktop/), [Ash](crates/ash/), [Windhole](apps/windhole/), [Cloud](apps/cloud/) |
 | Retrieval and workspace intelligence | [Vec](crates/vec/), [Code workspace retrieval](crates/code/manual/WORKSPACE_RETRIEVAL_OPERATIONS.md) |
 | Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
-| Runtime, inference, and coordination | [Runtime](crates/runtime/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
+| Runtime, inference, and coordination | [Runtime](crates/runtime/), [Sandbox](crates/sandbox/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/), [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/) |
 | Verification | [Bench](crates/bench/), [Test](crates/test/) |
 | Interfaces and operations | [Boot](crates/boot/), [Gateway](crates/gateway/), [AHP](crates/ahp/), [ACL](crates/acl/), [TUI](crates/tui/), [GUI](crates/gui/), [UI](packages/ui/), [WebView](crates/webview/), [Observer](crates/observer/), [Sentry](crates/sentry/), [Updater](crates/updater/) |
 

@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "023aacabdbe3a722846bf8f41a2a49b8cee64162"
+  revision = "2d469af6fcda06507f92d7596eeb7462fe05d444"
   source = "git"
   version = "0.1.0"
 }
@@ -47,7 +47,7 @@ component "code" {
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "97942a959a6c96b5616daf0f8c09692ec959e013"
+  revision = "7d235727e3ca0167f0cd23256ac5bf5b2210269f"
   source = "git"
   version = "8.0.4"
 }
@@ -106,6 +106,15 @@ component "runtime" {
   revision = "4c5fbd56bedd84d1007a7d9cd046a9f7083bbdcd"
   source = "git"
   version = "0.5.0"
+}
+component "sandbox" {
+  owner = "A3S-Lab/Sandbox"
+  package = "a3s-sandbox"
+  path = "crates/sandbox"
+  repository = "git@github.com:A3S-Lab/Sandbox.git"
+  revision = "52ce66212cbdf7e83ba97e127f618720eec07355"
+  source = "git"
+  version = "0.1.0"
 }
 component "sentry" {
   owner = "A3S-Lab/Sentry"

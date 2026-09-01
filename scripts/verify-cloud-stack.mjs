@@ -25,6 +25,7 @@ const REQUIRED_COMPONENTS = [
   'gateway',
   'orm',
   'runtime',
+  'sandbox',
   'sentry',
   'updater',
   'use',
@@ -574,6 +575,34 @@ function verifyDependencyBindings(root, componentMap) {
     );
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock', component.revision);
   }
+
+  const code = componentMap.get('code');
+  const sandbox = componentMap.get('sandbox');
+  const codeManifestPath = join(root, code.path, code.manifest);
+  const codeManifest = readFileSync(codeManifestPath, 'utf8');
+  const codeLockPath = join(root, code.path, 'Cargo.lock');
+  const codeLock = readFileSync(codeLockPath, 'utf8');
+  const sandboxDeclaration = tomlDependency(
+    codeManifest,
+    'dependencies',
+    sandbox.package,
+    codeManifestPath,
+  );
+  invariant(
+    exactDependencyVersion(sandboxDeclaration, 'Code a3s-sandbox') === sandbox.version,
+    'Code a3s-sandbox version does not match the compatibility lock',
+  );
+  invariant(
+    dependencyField(sandboxDeclaration, 'git', 'Code a3s-sandbox') ===
+      sandbox.repository.replace('git@github.com:', 'https://github.com/'),
+    'Code a3s-sandbox repository does not match the compatibility lock',
+  );
+  invariant(
+    dependencyField(sandboxDeclaration, 'rev', 'Code a3s-sandbox') === sandbox.revision,
+    'Code a3s-sandbox revision does not match the compatibility lock',
+  );
+  assertLockVersion(codeLock, sandbox, 'crates/code/Cargo.lock', sandbox.revision);
+  assertLockVersion(cloudLock, sandbox, 'apps/cloud/Cargo.lock', sandbox.revision);
 
   const runtime = componentMap.get('runtime');
   const runtimeDeclaration = tomlDependency(
