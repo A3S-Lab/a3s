@@ -10,9 +10,10 @@ Initial review date: 2026-08-29
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 
 The owning `A3S-Lab/Vec` repository now has implementation revision
-`9031943b53577e14f805692a3bfb3a3237b5072f`. This revision adds the asserted
-16-row lifecycle/resource/maintenance performance matrix; the earlier hosted
-run below covers the preceding implementation/docs revisions. This is a later evidence record;
+`c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`. This revision adds the asserted
+16-row lifecycle/resource/maintenance performance matrix; hosted CI run
+[`33679131820`](https://github.com/A3S-Lab/Vec/actions/runs/33679131820) passed
+all ten jobs for this revision. This is a later evidence record;
 the findings and command counts in the historical sections below describe the
 older review snapshots and must not be read as the current test count.
 
