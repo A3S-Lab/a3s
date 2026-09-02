@@ -1041,6 +1041,122 @@
     "release_qualified": false,
     "code_migration_started": false
   },
+  "performance_kernel_follow_up": {
+    "date": "2026-09-03",
+    "root_candidate_revision": "d9d65158",
+    "vec_revision": "e27524dc318b6acbd293192bef8a684321c0ad9e",
+    "environment": {
+      "os": "Windows 11",
+      "architecture": "x86_64",
+      "cpu": "Intel Xeon w5-2445",
+      "memory": "128 GiB",
+      "rustc": "1.97.1",
+      "python": "3.13",
+      "rayon_threads": 1,
+      "zvec_version": "0.7.0"
+    },
+    "checks": [
+      {
+        "id": "vec-format-performance-kernel",
+        "command": "cargo fmt --all -- --check",
+        "status": "pass"
+      },
+      {
+        "id": "vec-clippy-performance-kernel",
+        "command": "cargo clippy --locked --all-targets --all-features -- -D warnings",
+        "status": "pass"
+      },
+      {
+        "id": "vec-tests-performance-kernel",
+        "command": "cargo test --locked --all-features",
+        "status": "pass",
+        "unit_and_integration_passed": 266,
+        "doctests_passed": 4,
+        "failed": 0
+      },
+      {
+        "id": "vec-tests-no-default-performance-kernel",
+        "command": "cargo test --locked --no-default-features",
+        "status": "pass",
+        "unit_and_integration_passed": 263,
+        "doctests_passed": 4,
+        "failed": 0
+      },
+      {
+        "id": "vec-tests-msrv-performance-kernel",
+        "command": "cargo +1.75.0 test --locked",
+        "status": "pass",
+        "unit_and_integration_passed": 263,
+        "doctests_passed": 4,
+        "failed": 0
+      },
+      {
+        "id": "vec-package-performance-kernel",
+        "command": "cargo package --locked --offline && cargo publish --dry-run --locked",
+        "status": "pass",
+        "notes": "The dry run packaged and verified a3s-vec 0.1.0 and intentionally performed no upload."
+      },
+      {
+        "id": "vec-scale-smoke-performance-kernel",
+        "command": "A3S_VEC_BENCH_SCALE=smoke cargo bench --locked --bench scale_compare --quiet",
+        "status": "pass",
+        "validator": ".github/check_scale_compare.awk"
+      }
+    ],
+    "scale_medians": {
+      "fixture": "100000 documents x 128 dimensions; 32 queries; 3 rounds; batch 512; cosine; one worker; HNSW m=16 ef_construction=96 ef=64",
+      "a3s_vec_flat": {
+        "insert_ms": 2767.024,
+        "p50_us": 34581.5,
+        "p95_us": 36223.0,
+        "p99_us": 37494.6,
+        "qps": 28.94,
+        "recall_at_10": 1.0
+      },
+      "a3s_vec_hnsw": {
+        "insert_ms": 2767.024,
+        "index_build_ms": 185429.317,
+        "total_build_ms": 188288.828,
+        "p50_us": 1725.4,
+        "p95_us": 2499.6,
+        "p99_us": 2666.6,
+        "qps": 550.8,
+        "recall_at_10": 0.6
+      },
+      "zvec_0_7_flat": {
+        "insert_ms": 2720.001,
+        "p50_us": 6206.5,
+        "p95_us": 6769.2,
+        "p99_us": 9067.3,
+        "qps": 159.96,
+        "recall_at_10": 1.0
+      },
+      "zvec_0_7_hnsw": {
+        "insert_ms": 2720.001,
+        "index_build_ms": 82119.333,
+        "total_build_ms": 86154.84,
+        "p50_us": 340.3,
+        "p95_us": 464.4,
+        "p99_us": 571.1,
+        "qps": 2722.18,
+        "recall_at_10": 0.5719
+      }
+    },
+    "hosted_ci": {
+      "run_id": 33695231554,
+      "url": "https://github.com/A3S-Lab/Vec/actions/runs/33695231554",
+      "head_sha": "e27524dc318b6acbd293192bef8a684321c0ad9e",
+      "status_when_recorded": "queued",
+      "conclusion_when_recorded": null
+    },
+    "release_qualified": false,
+    "remaining_gates": [
+      "hosted CI for e27524d",
+      "actual macOS 12 Intel runtime evidence",
+      "formal tagged artifact and registry publication",
+      "Code dependency promotion and RSS/external resource evidence"
+    ]
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": false,
