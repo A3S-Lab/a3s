@@ -148,6 +148,11 @@ Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
 
+The current Code retrieval pin includes a Memory-authoritative A3S Vec shadow
+for differential qualification. Its ownership boundary, status contract, and
+promotion gates are recorded in the
+[Vec migration note](crates/code/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
+
 ## Installation
 
 | Method | Command | Notes |

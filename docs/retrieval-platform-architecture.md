@@ -9,9 +9,10 @@ recorded in
 [`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md).
 
 This document is the ownership and dependency contract for the local retrieval
-capability used by A3S Code and the future built-in `vgrep` tool. It describes
-how the existing Code retrieval implementation is migrated to `a3s-vec`; it
-does not claim that the migration is complete.
+capability used by A3S Code and the future built-in `vgrep` tool. The
+Memory-authoritative A3S Vec shadow projection is implemented in Code
+`96be2ce` and recorded below; the full serving migration and removal of the
+legacy workspace paths are not complete.
 
 ## 1. Problem and outcome
 
@@ -112,7 +113,7 @@ another row.
 | Project | Owns | Public boundary | Must not own |
 | --- | --- | --- | --- |
 | `a3s-vec` (`crates/vec`, hosted by the external `A3S-Lab/Vec` repository) | Typed collections, schema, documents, WAL/snapshots, scalar/FTS/vector indexes, query planning, fusion primitives, and collection statistics | `Collection`, `Doc`, schema/index builders, `SearchQuery`, `MultiQuery`, iterator, typed errors, and `EmbeddingProvider`-agnostic vector APIs | Workspace traversal, chunk policy, provider credentials, model downloads, Agent sessions, or UI |
-| `a3s-code-core` (`crates/code/core`) | Workspace admission, one canonical chunk catalog, chunk IDs/ranges/digests, manifest reconciliation, session-scoped collection lifecycle, source verification, Code-specific channel policy, and the model-facing `search`/`vgrep` contract | `WorkspaceServices`, `WorkspaceRetrieval`, `vgrep` request/result/status DTOs, and typed provider ports | A second storage engine, direct provider-specific model code, hidden filesystem access outside the workspace service, or Cloud lifecycle |
+| `a3s-code-core` (`crates/code/core`) | Workspace admission, one canonical chunk catalog, chunk IDs/ranges/digests, manifest reconciliation, session-scoped collection lifecycle, the Memory-authoritative Vec shadow projection, source verification, Code-specific channel policy, and the model-facing `search`/`vgrep` contract | `WorkspaceServices`, `WorkspaceRetrieval`, `vgrep` request/result/status DTOs, typed provider ports, and shadow diagnostics | A second serving authority, direct provider-specific model code, hidden filesystem access outside the workspace service, or Cloud lifecycle |
 | `a3s-code-core::embedding` | Provider-neutral embedding descriptor, bounded batching, cancellation, timeout/retry, response validation, and redacted errors | `EmbeddingProvider` and `EmbeddingDescriptorV1` | Vector persistence, file discovery, ACL parsing, or model artifact installation |
 | `a3s-code-core::rerank` | Code-aware RRF/MMR policy, range overlap and identifier precedence, bounded scratch accounting, and optional host reranker port | `WorkspaceReranker` plus versioned `WorkspaceRerankStatus` | A mandatory neural model, source egress, or generic database storage |
 | `a3s-memory` | Long-term/episodic memory stores and their memory semantics | `MemoryStore`, `MemoryItem`, memory search | Workspace chunks, BM25 policy, model runtime, or the authoritative Code index. Its current `VectorIndex` is a migration reference and is removed from Code after parity |
@@ -125,12 +126,13 @@ another row.
 
 ### 4.1 Repository packaging rule
 
-`A3S-Lab/Vec` now hosts the crate and the A3S repository consumes it through
-the `crates/vec` git submodule. Future source changes are committed in the Vec
-repository first; the integration repository advances the gitlink only after
-the engine checks and compatibility review pass. The remaining onboarding work
-is to add the exact component revision to the appropriate release/compatibility
-records before advertising a supported release.
+`A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
+`crates/vec` git submodule. The current root pin is Vec `618a7d5`; Code's
+dependency remains intentionally pinned to the tested implementation revision
+Vec `019fdb9` until a dependency refresh is qualified. Source changes are
+committed in the Vec repository first; the integration repository advances the
+gitlink only after engine checks and compatibility review pass. Cloud's exact
+Code pin, Cargo lock entry, and root compatibility lock are advanced together.
 
 No root `Cargo.toml` or root Rust workspace is introduced.
 
@@ -223,6 +225,17 @@ memory-resident. Persistent workspace caches are deferred until locking,
 encryption, stale-generation, and multi-process ownership are specified in a
 separate ADR.
 
+The delivered integration is a differential shadow, not an authority switch.
+One validated embedding batch is published to the existing Memory index and
+mirrored into the Vec collection under a shared publication gate. Memory owns
+hits, ordering, scores, searched-record counts, truncation, fallbacks, and
+errors; Vec contributes only comparison counters and bounded diagnostics. A
+shadow failure or mismatch therefore cannot change serving results. The
+schema-4 `workspace-retrieval-v3` qualification on 2026-09-02 matched 120/120
+queries in both hybrid arms, retained 25,000 records per arm, and released both
+engines on close. Promotion still requires the later cross-platform, RSS/disk,
+recovery, privacy, and rollback gates.
+
 ### 6.2 Routes and guarantees
 
 | Route | Index use | Model use | Guarantee/fallback |
@@ -284,6 +297,10 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
 ## 8. Migration safety
 
 The migration is a staged replacement, not a flag flip:
+
+The first dual-projection stage is now implemented as the Code developer
+shadow described in section 6.1. The arrows after that stage remain planned
+gates; they are not implied by a successful shadow build.
 
 ```text
 current Code catalog + BM25 + a3s-memory VectorIndex

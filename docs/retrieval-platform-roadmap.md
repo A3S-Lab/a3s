@@ -10,7 +10,22 @@ It is gate-based rather than calendar-based: a phase is complete only when its
 exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
-**Current review status (2026-08-30):** `a3s-vec` remains a pre-migration
+**Current integration status (2026-09-02):** Code `96be2ce34695341f477644bd3c36cf4aa6c39d4f`
+now contains the Code-owned A3S Vec shadow adapter. It mirrors the already
+validated Memory embedding batch into a session-scoped temporary Vec
+collection, keeps Memory authoritative, and exposes bounded status and
+differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
+The adapter's implementation pin is Vec `019fdb929a57dee1803691e6def60df3946d9561`;
+the root submodule is advanced to Vec `618a7d582440705944b29c54825ce7a4bfe03963`
+for the corresponding release documentation. The Windows x86-64 schema-4
+qualification compared 120/120 queries with zero mismatch or failure in both
+hybrid arms, retained 25,000 records per arm, and released both engines on
+close. Exact, RRF-only, and deterministic-rerank p95 were 6.7343, 50.7850, and
+49.7348 ms. This closes the developer-shadow P4 implementation evidence; Vec
+promotion, old-path removal, Intel macOS 12 runtime evidence, and the broader
+release gates remain open.
+
+**Engine review baseline (2026-08-30):** `a3s-vec` remains a pre-migration
 prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
 numbered P1 contract findings for the current exact surface. Native dense and
 sparse FP16, INT4, INT8, INT16, and binary payloads now have strict physical-
@@ -36,12 +51,15 @@ the golden reference; P7 removal has not started.
 
 The current checkout contains three relevant implementations:
 
-- `crates/vec` is the `A3S-Lab/Vec` git submodule. Its zvec-shaped API and
-  format-3 storage/recovery core are still a prototype. Queries use the exact
-  oracle; ANN and indexed FTS are not implemented or release-qualified.
+- `crates/vec` is the `A3S-Lab/Vec` git submodule at `618a7d5`. Its zvec-shaped
+  API and format-3 storage/recovery core are still a prototype. Queries use
+  the exact oracle; ANN and indexed FTS are not implemented or
+  release-qualified.
 - `a3s-code-core` has a session-local chunk catalog, incremental BM25,
   `a3s-memory` exact-vector partitions, deterministic RRF/MMR, provider ports,
-  and source verification. This is the behavioural reference for migration.
+  source verification, and a Memory-authoritative Vec shadow adapter. The
+  [Code migration note](../crates/code/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md)
+  records the adapter contract and evidence.
 - `a3s-memory` remains the long-term Agent memory project. Its workspace-vector
   capability is a temporary integration reference, not the target owner.
 
@@ -63,8 +81,9 @@ tests.
 
 ### 2.1 Architecture-review gate
 
-Before P4 shadow projection or any semantic `vgrep` exposure, the findings in
-the [architecture review](retrieval-platform-architecture-review.md) must be
+Before promoting the P4 shadow projection or exposing semantic `vgrep` as a
+serving path, the findings in the
+[architecture review](retrieval-platform-architecture-review.md) must be
 closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
@@ -73,7 +92,7 @@ closed on the same pinned component graph. At minimum this means:
 | P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Finding set closed for the exact surface**: VEC-P1-01..07 remain closed at Vec `0236e0d`; deterministic vector/scan-BM25 differential and in-process concurrency evidence have landed, while broader FTS/filter goldens and supported-platform evidence remain |
 | Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed** at Vec `0236e0d`; all-feature Clippy, three 60-test feature-matrix runs, four compile-fail API doctests, rustdoc, and the default Rust 1.75 suite also pass |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Open**; latest review host was arm64 macOS 26.6.2 |
-| Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Not run** |
+| Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Shadow differential passed** for 120 queries and lifecycle/resource checks; RSS, recovery, cross-platform, and serving-promotion evidence remain open |
 
 An open row blocks the dependent phase. Passing a superficial API or compile
 check cannot substitute for the required runtime evidence.
@@ -247,6 +266,27 @@ macOS 12 Intel; no optimization is required for correctness.
 Dual reads agree on eligible IDs and source ranges across create/change/delete/
 rename/lag races; no duplicate file read or Embedding request occurs; session
 close leaves zero vectors, tasks, handles, or sockets.
+
+**Progress through Code `96be2ce` (2026-09-02)**
+
+- Delivered the Code-owned adapter and shared publication gate. One validated
+  provider batch is published to Memory and mirrored to Vec; Vec failures and
+  mismatches degrade only shadow diagnostics and never change serving results.
+- Added deterministic partition/key mapping, revision and digest fencing,
+  bounded filter construction, cancellation-safe blocking operations, rollback
+  isolation, and zero-state close checks.
+- Added backward-compatible status fields and Rust/Node.js/Python/Go mapping
+  tests. The release benchmark schema 4 (`workspace-retrieval-v3`) retained
+  25,000 records in each hybrid arm, matched 120/120 comparisons, and reported
+  zero mismatch/failure with 54,500,008 Vec-accounted bytes per arm.
+- Focused adapter tests, the replacement soak, workspace checks, strict
+  Clippy, SDK checks, and the Windows release benchmark passed. The hosted Vec
+  matrix is green; actual macOS 12 Intel runtime evidence is still external.
+
+The P4 developer-shadow implementation is delivered. The exit gate for
+serving promotion remains tied to the later cross-platform, RSS/disk,
+recovery, privacy, and rollback evidence; P7 must still remove the duplicate
+workspace backends only after that review.
 
 ### P5 — Model plane and policy
 
