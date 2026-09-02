@@ -128,7 +128,7 @@ another row.
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
 `crates/vec` git submodule. The current root pin is Vec
-`b9eb67545ac5c2ef9e41317b1891328022c6b320`; Code's
+`daf69cd7cd794d9d6f25d9f2ba2ed465f4adee2b`; Code's
 dependency remains intentionally pinned to the tested implementation revision
 Vec `019fdb9` until a dependency refresh is qualified. Source changes are
 committed in the Vec repository first; the integration repository advances the
@@ -138,7 +138,7 @@ Code pin, Cargo lock entry, and root compatibility lock are advanced together.
 Vec main CI builds a revision-bound `0.1.0` release-candidate crate, checksum,
 machine-readable manifest, and 53-row performance CSV only after its hosted
 quality, MSRV, fuzz, and platform jobs pass. The latest green run is
-`33621839761`. That artifact is not a formal release: tagging or registry
+`33628336581`. That artifact is not a formal release: tagging or registry
 publication remains blocked until an actual macOS 12 Intel runtime report is
 attached for the same revision.
 
@@ -302,7 +302,7 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
 
-Vec `b9eb675` provides the exact-revision workflow for item 1. It runs only on
+Vec `daf69cd` provides the exact-revision workflow for item 1. It runs only on
 a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
 executes the locked engine suites offline, and uploads a checksummed crate plus
 machine-readable host evidence. No such runner is currently registered, so the
