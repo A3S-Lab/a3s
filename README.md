@@ -156,8 +156,9 @@ Vec's public API review, reproducible candidate package, and remaining external
 release gate are recorded in
 [Vec release qualification](crates/vec/RELEASE.md).
 The pinned Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
-the complete public feature matrix, and a revision-bound 53-row smoke
-performance CSV gate; see
+the complete public feature matrix, a revision-bound 53-row smoke performance
+CSV gate, four platform smoke CSVs, and a configurable larger-corpus
+a3s-vec/zvec comparison harness; see
 [Vec benchmark evidence](crates/vec/BENCHMARKS.md).
 
 ## Installation

@@ -7,6 +7,34 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
+
+The owning `A3S-Lab/Vec` repository now has implementation revision
+`dbd4a75df4de5e02b4ddb106700617e686186a56` with documentation follow-up
+`1fbe74c8b84236c332c6f58c4e243cadb29f290e`. This is a later evidence record;
+the findings and command counts in the historical sections below describe the
+older review snapshots and must not be read as the current test count.
+
+The current engine validation includes 266 passing unit/integration tests plus
+four doctests with all features (263 unit/integration tests plus four doctests
+with the default and no-default feature sets), a release-mode suite, Rust 1.75
+MSRV checks, strict rustfmt/Clippy, rustdoc, locked packaging, and an audit with
+no vulnerability or unsoundness advisory. Recovery fault boundaries and a
+256-run libFuzzer smoke pass. Hosted CI run
+[`33670661773`](https://github.com/A3S-Lab/Vec/actions/runs/33670661773) passed
+all ten jobs, including Linux x86_64/arm64, Windows x86_64, macOS arm64 and
+hosted Intel, the public/per-platform performance CSV gates, MSRV, recovery
+fuzz, and the versioned release candidate.
+
+The scale harness now emits a shared 20-column CSV for a3s-vec and an opt-in
+zvec companion. On one Windows x86_64 host at 100,000 x 128, zvec measured
+lower flat and HNSW p50 latency while a3s-vec retained slightly higher HNSW
+Recall@10; the full table, controls, and lifecycle caveat are in
+[`crates/vec/BENCHMARKS.md`](../crates/vec/BENCHMARKS.md). This is capacity
+evidence, not a universal ranking or a migration approval. The separate
+macOS 12 Intel runtime and formal publication gates remain open because no
+qualifying self-hosted runner is currently registered.
+
 ## Follow-up: Vec in-process snapshot concurrency (2026-08-30)
 
 `A3S-Lab/Vec` `main` advanced to
