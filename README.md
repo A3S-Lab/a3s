@@ -155,8 +155,9 @@ promotion gates are recorded in the
 Vec's public API review, reproducible candidate package, and remaining external
 release gate are recorded in
 [Vec release qualification](crates/vec/RELEASE.md).
-The pinned Vec revision also carries the complete public feature matrix and
-revision-bound smoke performance CSV gate; see
+The pinned Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
+the complete public feature matrix, and a revision-bound 44-row smoke
+performance CSV gate; see
 [Vec benchmark evidence](crates/vec/BENCHMARKS.md).
 
 ## Installation
