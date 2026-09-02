@@ -36,7 +36,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "f443173122ac3f2bfd8078992bc6359c2fd1c324"
+  revision = "abb8063ae813f8525c518a51e7244666de4cd297"
   source = "git"
   version = "0.1.0"
 }
@@ -47,7 +47,7 @@ component "code" {
   package = "a3s-code-core"
   path = "crates/code"
   repository = "git@github.com:A3S-Lab/Code.git"
-  revision = "9096093b9e2cc709f1e752650432350d9207b187"
+  revision = "b7777c80d630caf5fd16542646ec45bf8922ac5e"
   source = "git"
   version = "8.0.4"
 }
