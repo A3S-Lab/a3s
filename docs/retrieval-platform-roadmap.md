@@ -23,9 +23,10 @@ exact L2/Hamming queries, complete feature matrix, query-builder/ordinal
 contracts, compact schema-only WAL revisions, the locally verified dependency
 audit, the 53-row feature-matrix plus concurrent-reader/mixed-workload/scale
 performance artifact gates, and the paired a3s-vec/zvec scale harness. The
-revision-bound CI run `33670661773` passed all hosted quality,
+implementation's revision-bound CI run `33670661773` passed all hosted quality,
 MSRV, recovery, cross-platform,
-performance, and package jobs. The Windows x86-64 schema-4
+performance, and package jobs; the docs-only follow-up run `33672258276` also
+passed all ten jobs. The Windows x86-64 schema-4
 qualification compared 120/120 queries with zero mismatch or failure in both
 hybrid arms, retained 25,000 records per arm, and released both engines on
 close. Exact, RRF-only, and deterministic-rerank p95 were 6.7343, 50.7850, and

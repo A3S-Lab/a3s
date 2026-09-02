@@ -140,8 +140,10 @@ Vec main CI builds a revision-bound `0.1.0` release-candidate crate, checksum,
 machine-readable manifest, feature-matrix, concurrent-reader, mixed-workload,
 and scale-comparison CSVs, plus one copy of all four smoke CSVs for each hosted
 platform, only after its
-quality, MSRV, fuzz, and platform jobs pass. The latest green run is
-`33670661773`. That artifact is not a formal release: tagging or registry
+quality, MSRV, fuzz, and platform jobs pass. The implementation run
+`33670661773` and the docs-only follow-up run `33672258276` are both green;
+the latter is the latest complete run for the pinned submodule. These
+artifacts are not a formal release: tagging or registry
 publication remains blocked until an actual macOS 12 Intel runtime report is
 attached for the same revision.
 
