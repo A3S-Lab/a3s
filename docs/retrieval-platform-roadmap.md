@@ -16,7 +16,7 @@ validated Memory embedding batch into a session-scoped temporary Vec
 collection, keeps Memory authoritative, and exposes bounded status and
 differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
 The adapter's implementation pin is Vec `019fdb929a57dee1803691e6def60df3946d9561`;
-the root submodule is advanced to Vec `1a2d15fcf65d9fd791be2a1b04d04439e524c46e`
+the root submodule is advanced to Vec `1b4727f833a809242c0b77c05d1f397903ebb49c`
 for the corresponding release review, public API contract, gated
 release-candidate artifact workflow, IVF SOAR execution, complete feature
 matrix, and performance artifact gate. The Windows x86-64 schema-4
@@ -27,8 +27,8 @@ close. Exact, RRF-only, and deterministic-rerank p95 were 6.7343, 50.7850, and
 promotion, old-path removal, Intel macOS 12 runtime evidence, and the broader
 release gates remain open.
 
-**Engine review baseline (2026-08-30):** `a3s-vec` remains a pre-migration
-prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
+**Historical engine review baseline (2026-08-30):** `a3s-vec` was then a
+pre-migration prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
 numbered P1 contract findings for the current exact surface. Native dense and
 sparse FP16, INT4, INT8, INT16, and binary payloads now have strict physical-
 type, range/chunk, typed-access, and lossless storage contracts. Every numeric
@@ -53,10 +53,11 @@ the golden reference; P7 removal has not started.
 
 The current checkout contains three relevant implementations:
 
-- `crates/vec` is the `A3S-Lab/Vec` git submodule at `1a2d15f`. Format-4
+- `crates/vec` is the `A3S-Lab/Vec` git submodule at `1b4727f`. Format-4
   storage/recovery, exact dense/sparse search, scalar and FTS indexes,
-  HNSW, IVF with optional SOAR dual assignment, HNSW/IVF RaBitQ, and L2
-  Vamana/PQ DiskANN are implemented behind exact fallbacks and revisioned
+  HNSW, IVF with optional SOAR dual assignment, HNSW/IVF RaBitQ, and
+  metric-aware Vamana/PQ DiskANN (L2, inner product, cosine, and MIPS-L2) are
+  implemented behind exact fallbacks and revisioned
   generations. Namespace-only upstream CRUD, vector-search, and schema-builder
   fixtures run as executable gates. The crate remains a release candidate: its
   hosted matrix and package gate do not substitute for an actual macOS 12 Intel
@@ -73,10 +74,11 @@ The target is one optional `vgrep` capability in Code backed by `a3s-vec`, with
 exact and lexical behavior available when no Embedding model is installed.
 
 The Vec pin now carries a three-test public feature matrix and an asserted
-performance matrix. The all-feature suite currently passes 241 unit/integration
-tests plus four doctests (238 unit/integration tests on the default feature
-set). The integration tests compare every public query route,
-all six ANN families, lifecycle/cache/sidecar behavior, and the explicit
+performance matrix. The all-feature suite currently passes 247 unit/integration
+tests plus four doctests (244 unit/integration tests on both the default and
+no-default feature sets). The integration tests compare every public query
+route, all six ANN families across their supported metrics, lifecycle/cache/
+sidecar behavior, and the explicit
 binary-query boundary; the benchmark records p50/p95/p99 latency and
 throughput for synchronous, ANN, mutation, sidecar, and Tokio paths. CI runs
 the smoke scale and retains the CSV as a revision-bound artifact. The detailed
@@ -105,9 +107,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `019fdb9` and carried by root pin `1a2d15f`: format-4 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
-| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `1a2d15f`: generated vector/FTS/filter oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, and the complete feature matrix are tested |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and in [Vec main CI run `33592919084`](https://github.com/A3S-Lab/Vec/actions/runs/33592919084)** for `1a2d15f`; the run passed the feature-matrix smoke, all hosted platforms, MSRV, recovery fuzz, and release-candidate package gates, while the exact-revision macOS 12 Intel qualification workflow remains available |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `019fdb9` and carried by root pin `1b4727f`: format-4 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
+| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `1b4727f`: generated vector/FTS/filter oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, metric-aware Vamana/DiskANN contracts, and the complete feature matrix are tested |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and in [Vec main CI run `33598142052`](https://github.com/A3S-Lab/Vec/actions/runs/33598142052)** for `1b4727f`; the run passed the feature-matrix smoke, all hosted platforms, MSRV, recovery fuzz, and versioned release-candidate package gates. The exact-revision macOS 12 Intel qualification workflow remains available |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Partially closed**: hosted Linux x86-64/ARM64, Windows x86-64, and macOS ARM64/Intel pass, and Intel builds target 12.0; an actual macOS 12 Intel runtime remains open |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Shadow differential passed** for 120 queries and lifecycle/resource checks; RSS, recovery, cross-platform, and serving-promotion evidence remain open |
 
