@@ -157,8 +157,9 @@ release gate are recorded in
 [Vec release qualification](crates/vec/RELEASE.md).
 The pinned Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
 the complete public feature matrix, a revision-bound 53-row smoke performance
-CSV gate, four platform smoke CSVs, and a configurable larger-corpus
-a3s-vec/zvec comparison harness; see
+CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
+metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness;
+see
 [Vec benchmark evidence](crates/vec/BENCHMARKS.md).
 
 ## Installation

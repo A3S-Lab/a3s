@@ -10,8 +10,9 @@ Initial review date: 2026-08-29
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 
 The owning `A3S-Lab/Vec` repository now has implementation revision
-`dbd4a75df4de5e02b4ddb106700617e686186a56` with documentation follow-up
-`1fbe74c8b84236c332c6f58c4e243cadb29f290e`. This is a later evidence record;
+`9031943b53577e14f805692a3bfb3a3237b5072f`. This revision adds the asserted
+16-row lifecycle/resource/maintenance performance matrix; the earlier hosted
+run below covers the preceding implementation/docs revisions. This is a later evidence record;
 the findings and command counts in the historical sections below describe the
 older review snapshots and must not be read as the current test count.
 
@@ -27,7 +28,8 @@ hosted Intel, the public/per-platform performance CSV gates, MSRV, recovery
 fuzz, and the versioned release candidate.
 
 The scale harness now emits a shared 20-column CSV for a3s-vec and an opt-in
-zvec companion. On one Windows x86_64 host at 100,000 x 128, zvec measured
+zvec companion, while the lifecycle harness emits 16 management-plane rows.
+On one Windows x86_64 host at 100,000 x 128, zvec measured
 lower flat and HNSW p50 latency while a3s-vec retained slightly higher HNSW
 Recall@10; the full table, controls, and lifecycle caveat are in
 [`crates/vec/BENCHMARKS.md`](../crates/vec/BENCHMARKS.md). This is capacity
