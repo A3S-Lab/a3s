@@ -16,10 +16,10 @@ validated Memory embedding batch into a session-scoped temporary Vec
 collection, keeps Memory authoritative, and exposes bounded status and
 differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
 The adapter's implementation pin is Vec `019fdb929a57dee1803691e6def60df3946d9561`;
-the root submodule is advanced to Vec `5a308b4884be988ab96c38c44a6bc3c284535b8d`
+the root submodule is advanced to Vec `557ed7f520478949761c60bc03de23ae14e1aa6d`
 for the corresponding release review, public API contract, gated
-release-candidate artifact workflow, IVF SOAR execution, and additional
-namespace-only upstream compatibility examples. The Windows x86-64 schema-4
+release-candidate artifact workflow, IVF SOAR execution, complete feature
+matrix, and performance artifact gate. The Windows x86-64 schema-4
 qualification compared 120/120 queries with zero mismatch or failure in both
 hybrid arms, retained 25,000 records per arm, and released both engines on
 close. Exact, RRF-only, and deterministic-rerank p95 were 6.7343, 50.7850, and
@@ -53,7 +53,7 @@ the golden reference; P7 removal has not started.
 
 The current checkout contains three relevant implementations:
 
-- `crates/vec` is the `A3S-Lab/Vec` git submodule at `5a308b4`. Format-4
+- `crates/vec` is the `A3S-Lab/Vec` git submodule at `557ed7f`. Format-4
   storage/recovery, exact dense/sparse search, scalar and FTS indexes,
   HNSW, IVF with optional SOAR dual assignment, HNSW/IVF RaBitQ, and L2
   Vamana/PQ DiskANN are implemented behind exact fallbacks and revisioned
@@ -71,6 +71,15 @@ The current checkout contains three relevant implementations:
 
 The target is one optional `vgrep` capability in Code backed by `a3s-vec`, with
 exact and lexical behavior available when no Embedding model is installed.
+
+The Vec pin now carries a three-test public feature matrix and an asserted
+performance matrix. The integration tests compare every public query route,
+all six ANN families, lifecycle/cache/sidecar behavior, and the explicit
+binary-query boundary; the benchmark records p50/p95/p99 latency and
+throughput for synchronous, ANN, mutation, sidecar, and Tokio paths. CI runs
+the smoke scale and retains the CSV as a revision-bound artifact. The detailed
+fixture and same-host baseline are in
+[`crates/vec/BENCHMARKS.md`](../crates/vec/BENCHMARKS.md).
 
 ## 2. Gates and evidence policy
 
@@ -94,9 +103,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `019fdb9` and carried by root pin `5a308b4`: format-4 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
-| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `5a308b4`: generated vector/FTS/filter oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, and public `Send + Sync` contracts are tested |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and in Vec main CI run `33586883951`**; root pin `5a308b4` produced the verified `0.1.0` candidate with SHA-256 `c93b83445faf9306c7fec75dcad11cf738f918cbba2733bee951e63d814c329e` and carries the exact-revision macOS 12 Intel qualification workflow |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `019fdb9` and carried by root pin `557ed7f`: format-4 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
+| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `557ed7f`: generated vector/FTS/filter oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, and the complete feature matrix are tested |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally; Vec main CI is running for `557ed7f`**; the root pin carries the feature-matrix smoke artifact gate and exact-revision macOS 12 Intel qualification workflow |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Partially closed**: hosted Linux x86-64/ARM64, Windows x86-64, and macOS ARM64/Intel pass, and Intel builds target 12.0; an actual macOS 12 Intel runtime remains open |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Shadow differential passed** for 120 queries and lifecycle/resource checks; RSS, recovery, cross-platform, and serving-promotion evidence remain open |
 
