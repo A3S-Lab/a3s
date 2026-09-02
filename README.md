@@ -160,12 +160,15 @@ the complete public feature matrix, a revision-bound 53-row smoke performance
 CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
 metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness;
 the recorded same-host 100k x 128 directional comparison shows zvec 0.7.0 at
-about 7.0x lower flat p50, 6.4x lower HNSW p50, and 2.8x shorter total HNSW
-build under the pinned one-worker controls. The baseline uses Cargo's portable
-a3s-vec build against zvec's native wheel; a3s-vec also exact-reranks HNSW
-candidates while the zvec optional refiner is disabled, so these are not
-universal or compiler-level apples-to-apples ratios. Both recall values require
-a higher `ef` for a production target. See
+about 5.6x lower flat p50, 5.1x lower HNSW p50, and 2.2x shorter total HNSW
+build under the pinned one-worker controls. The newer Vec revision removes a
+per-candidate dense conversion and repeats each cosine query norm only once;
+that reduced the a3s-vec flat p50 by 20.4% and HNSW p50 by 21.3% on the same
+fixture. The baseline uses Cargo's portable a3s-vec build against zvec's native
+wheel; a3s-vec also exact-reranks HNSW candidates while the zvec optional
+refiner is disabled, so these are not universal or compiler-level apples-to-
+apples ratios. Both recall values require a higher `ef` for a production
+target. See
 [Vec benchmark evidence](crates/vec/BENCHMARKS.md).
 
 ## Installation

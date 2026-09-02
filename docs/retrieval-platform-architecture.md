@@ -128,7 +128,9 @@ another row.
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
 `crates/vec` git submodule. The current root pin is Vec
-`d6b83458e0a1042a59e877d5df1511297b60f2fa` (comparison-methodology
+`e27524dc318b6acbd293192bef8a684321c0ad9e` (borrowed exact-score and
+one-query-norm performance kernel over methodology revision
+`d6b83458e0a1042a59e877d5df1511297b60f2fa`, comparison-methodology
 documentation over hosted benchmark pin `7f3e2a9`, CI hardening over the
 scale-control revision `9a9c0850cf09ec90f54a9f7e9d8be3ca12af95f1`,
 documentation follow-up `c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`,
@@ -150,7 +152,11 @@ quality, MSRV, fuzz, and platform jobs pass. The lifecycle/performance revision
 is covered by [Vec CI run `33690839419`](https://github.com/A3S-Lab/Vec/actions/runs/33690839419),
 whose ten jobs are green, including the rounded-total scale gate, Python
 companion syntax check, and comparison-methodology documentation. The
-underlying engine gate is [Vec CI run `33686399240`](https://github.com/A3S-Lab/Vec/actions/runs/33686399240).
+new performance-kernel revision is validated locally and its revision-bound
+hosted run is [Vec CI run `33695231554`](https://github.com/A3S-Lab/Vec/actions/runs/33695231554);
+that run must complete green before this root pin is used as a release
+qualification claim. The underlying engine gate is [Vec CI run
+`33686399240`](https://github.com/A3S-Lab/Vec/actions/runs/33686399240).
 These
 artifacts are not a formal release: tagging or registry
 publication remains blocked until an actual macOS 12 Intel runtime report is
@@ -316,7 +322,7 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
 
-Vec `d6b8345` provides the exact-revision workflow for item 1. It runs only on
+Vec `e27524d` provides the exact-revision workflow for item 1. It runs only on
 a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
 executes the locked engine suites offline, and uploads a checksummed crate plus
 machine-readable host evidence. No such runner is currently registered, so the

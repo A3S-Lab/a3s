@@ -7,6 +7,25 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: borrowed exact-score performance kernel (2026-09-03)
+
+Vec `e27524dc318b6acbd293192bef8a684321c0ad9e` is now the root candidate.
+The exact dense executor traverses borrowed native vector storage instead of
+allocating a converted `f64` buffer for every candidate, and cosine query
+norms are computed once per query across Flat, HNSW, Vamana, and DiskANN
+full-vector traversal. The authoritative `f64` ranking contract and exact
+re-ranking invariant are unchanged; focused vector-score equivalence tests,
+the all-feature/no-default suites, Rust 1.75 tests, Clippy, rustdoc, package,
+and audit pass locally. On the same 100,000 x 128 Windows one-worker fixture,
+three-process medians moved from 43.42 to 34.58 ms Flat p50 and from 2.19 to
+1.73 ms HNSW p50; HNSW total build moved from 240.74 to 188.29 s and Recall@10
+remained 0.6000. zvec remains faster at this large scale (about 5.6x Flat and
+5.1x HNSW p50) because its comparison side is a native C++ wheel; the ratio is
+directional, not a universal or same-refiner claim. The revision-bound hosted
+run is [Vec CI `33695231554`](https://github.com/A3S-Lab/Vec/actions/runs/33695231554)
+and was queued when this record was updated; it must be green before a release
+qualification claim.
+
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 
 The owning `A3S-Lab/Vec` repository now has methodology/documentation revision
@@ -46,10 +65,9 @@ native-wheel and exact-refinement asymmetries in the cross-project comparison.
 
 The scale harness now emits a shared 20-column CSV for a3s-vec and an opt-in
 zvec companion, while the lifecycle harness emits 16 management-plane rows.
-After pinning zvec index creation to one worker, three-process medians on one
-Windows x86_64 host at 100,000 x 128 showed zvec at about 7.0x lower flat
-query p50, 6.4x lower HNSW query p50, and 2.8x shorter total HNSW build. The
-recorded a3s-vec side is Cargo's portable baseline against zvec's native
+The pre-kernel table (superseded by the `e27524d` follow-up above) showed zvec
+at about 7.0x lower flat query p50, 6.4x lower HNSW query p50, and 2.8x shorter
+total HNSW build. The recorded a3s-vec side is Cargo's portable baseline against zvec's native
 wheel, and a3s-vec exact-reranks authoritative HNSW candidates while the
 zvec optional refiner is disabled; the HNSW ratio is therefore directional,
 not a compiler-level or same-refiner claim;
