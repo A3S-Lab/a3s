@@ -9,11 +9,17 @@ Initial review date: 2026-08-29
 
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 
-The owning `A3S-Lab/Vec` repository now has implementation revision
-`c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`. This revision adds the asserted
-16-row lifecycle/resource/maintenance performance matrix; hosted CI run
-[`33679131820`](https://github.com/A3S-Lab/Vec/actions/runs/33679131820) passed
-all ten jobs for this revision. This is a later evidence record;
+The owning `A3S-Lab/Vec` repository now has CI-hardening revision
+`9ed701ae72e45f7b8f7be9c7db943ed4b64f93f4` over scale-control revision
+`9a9c0850cf09ec90f54a9f7e9d8be3ca12af95f1`, documentation follow-up revision
+`c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`, lifecycle/performance revision
+`9031943b53577e14f805692a3bfb3a3237b5072f`, and implementation revision
+`dbd4a75df4de5e02b4ddb106700617e686186a56`. The lifecycle/performance
+revision adds the asserted 16-row lifecycle/resource/maintenance performance
+matrix. Hosted CI run
+[`33686399240`](https://github.com/A3S-Lab/Vec/actions/runs/33686399240) passed
+all ten jobs for the latest revision, including the corrected rounded-total
+scale gate and zvec companion syntax check. This is a later evidence record;
 the findings and command counts in the historical sections below describe the
 older review snapshots and must not be read as the current test count.
 
@@ -26,13 +32,19 @@ no vulnerability or unsoundness advisory. Recovery fault boundaries and a
 [`33670661773`](https://github.com/A3S-Lab/Vec/actions/runs/33670661773) passed
 all ten jobs, including Linux x86_64/arm64, Windows x86_64, macOS arm64 and
 hosted Intel, the public/per-platform performance CSV gates, MSRV, recovery
-fuzz, and the versioned release candidate.
+fuzz, and the versioned release candidate. The later lifecycle follow-up run
+[`33679131820`](https://github.com/A3S-Lab/Vec/actions/runs/33679131820) reran
+the same hosted gates for the documentation-pinned revision; the subsequent
+run `33685402239` exposed a three-decimal build-total tolerance edge case, which
+`9ed701a` corrected and re-ran as `33686399240`.
 
 The scale harness now emits a shared 20-column CSV for a3s-vec and an opt-in
 zvec companion, while the lifecycle harness emits 16 management-plane rows.
-On one Windows x86_64 host at 100,000 x 128, zvec measured
-lower flat and HNSW p50 latency while a3s-vec retained slightly higher HNSW
-Recall@10; the full table, controls, and lifecycle caveat are in
+After pinning zvec index creation to one worker, three-process medians on one
+Windows x86_64 host at 100,000 x 128 showed zvec at about 7.0x lower flat
+query p50, 6.4x lower HNSW query p50, and 2.8x shorter total HNSW build;
+a3s-vec's HNSW Recall@10 was 0.6000 versus zvec's 0.5719 median (range
+0.5625-0.5781). The full table, controls, and lifecycle caveat are in
 [`crates/vec/BENCHMARKS.md`](../crates/vec/BENCHMARKS.md). This is capacity
 evidence, not a universal ranking or a migration approval. The separate
 macOS 12 Intel runtime and formal publication gates remain open because no
