@@ -20,8 +20,9 @@ the root submodule is advanced to Vec `747560eb692443b0910014c6b835944afa30d45b`
 for the corresponding release review, public API contract, gated
 release-candidate artifact workflow, IVF SOAR execution, Binary32/Binary64
 exact L2/Hamming queries, complete feature matrix, query-builder/ordinal
-contracts, the locally verified dependency audit, and 53-row performance
-artifact gate. The revision-bound CI run `33640031692` passed all hosted quality,
+contracts, the locally verified dependency audit, and the 53-row feature-matrix
+plus concurrent-reader performance artifact gate. The revision-bound CI run
+`33640031692` passed all hosted quality,
 MSRV, recovery, cross-platform,
 performance, and package jobs. The Windows x86-64 schema-4
 qualification compared 120/120 queries with zero mismatch or failure in both
