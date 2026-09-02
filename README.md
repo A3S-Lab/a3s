@@ -152,6 +152,9 @@ The current Code retrieval pin includes a Memory-authoritative A3S Vec shadow
 for differential qualification. Its ownership boundary, status contract, and
 promotion gates are recorded in the
 [Vec migration note](crates/code/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
+Vec's public API review, reproducible candidate package, and remaining external
+release gate are recorded in
+[Vec release qualification](crates/vec/RELEASE.md).
 
 ## Installation
 

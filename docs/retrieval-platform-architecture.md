@@ -127,12 +127,18 @@ another row.
 ### 4.1 Repository packaging rule
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
-`crates/vec` git submodule. The current root pin is Vec `618a7d5`; Code's
+`crates/vec` git submodule. The current root pin is Vec `5a308b4`; Code's
 dependency remains intentionally pinned to the tested implementation revision
 Vec `019fdb9` until a dependency refresh is qualified. Source changes are
 committed in the Vec repository first; the integration repository advances the
 gitlink only after engine checks and compatibility review pass. Cloud's exact
 Code pin, Cargo lock entry, and root compatibility lock are advanced together.
+
+Vec main CI builds a revision-bound `0.1.0` release-candidate crate, checksum,
+and machine-readable manifest only after its hosted quality, MSRV, fuzz, and
+platform jobs pass. That artifact is not a formal release: tagging or registry
+publication remains blocked until an actual macOS 12 Intel runtime report is
+attached for the same revision.
 
 No root `Cargo.toml` or root Rust workspace is introduced.
 
@@ -148,7 +154,7 @@ a3s-vec/
 ├── schema/       fields, dimensions, metrics, index parameters
 ├── document/     typed values, nulls, vectors, projections
 ├── storage/      manifest, WAL, snapshots, locks, recovery
-├── index/        flat, scalar, FTS/BM25, HNSW, IVF, DiskANN, quantizers
+├── index/        flat, scalar, FTS/BM25, HNSW, IVF/SOAR, DiskANN, quantizers
 ├── planner/      filters, route execution, fusion, group/radius semantics
 ├── codec/        versioned serialization and checksums
 └── testkit/      reference scan, generators, corruption/fault injection
@@ -293,6 +299,12 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    be used; otherwise semantic mode reports unavailable while exact/FTS remain
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
+
+Vec `5a308b4` provides the exact-revision workflow for item 1. It runs only on
+a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
+executes the locked engine suites offline, and uploads a checksummed crate plus
+machine-readable host evidence. No such runner is currently registered, so the
+workflow makes the gate executable but does not mark it passed.
 
 ## 8. Migration safety
 
