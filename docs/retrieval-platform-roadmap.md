@@ -78,9 +78,10 @@ The target is one optional `vgrep` capability in Code backed by `a3s-vec`, with
 exact and lexical behavior available when no Embedding model is installed.
 
 The Vec pin now carries a three-test public feature matrix and an asserted
-performance matrix. The all-feature suite currently passes 257 unit/integration
-tests plus four doctests (254 unit/integration tests on both the default and
-no-default feature sets). The integration tests compare every public query
+performance matrix. The all-feature suite currently passes 254 unit/integration
+tests plus four doctests (252 unit/integration tests on both the default and
+no-default feature sets, plus four doctests). The integration tests compare
+every public query
 route, all six ANN families across their supported metrics, lifecycle/cache/
 sidecar behavior, Binary32/Binary64 exact L2/Hamming execution, and explicit
 binary-ANN boundaries; the 53-row benchmark records p50/p95/p99 latency and
