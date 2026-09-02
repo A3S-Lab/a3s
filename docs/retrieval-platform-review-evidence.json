@@ -1043,8 +1043,8 @@
   },
   "performance_kernel_follow_up": {
     "date": "2026-09-03",
-    "root_candidate_revision": "d9d65158",
-    "vec_revision": "e27524dc318b6acbd293192bef8a684321c0ad9e",
+    "root_candidate_revision": "0083016175ce29b48dde051523faa96407cbc928",
+    "vec_revision": "80c6e26511361c43efb1a06cb05d831a2df941a2",
     "environment": {
       "os": "Windows 11",
       "architecture": "x86_64",
@@ -1143,15 +1143,15 @@
       }
     },
     "hosted_ci": {
-      "run_id": 33695231554,
-      "url": "https://github.com/A3S-Lab/Vec/actions/runs/33695231554",
-      "head_sha": "e27524dc318b6acbd293192bef8a684321c0ad9e",
+      "run_id": 33696717206,
+      "url": "https://github.com/A3S-Lab/Vec/actions/runs/33696717206",
+      "head_sha": "80c6e26511361c43efb1a06cb05d831a2df941a2",
       "status_when_recorded": "queued",
       "conclusion_when_recorded": null
     },
     "release_qualified": false,
     "remaining_gates": [
-      "hosted CI for e27524d",
+      "hosted CI for Vec documentation revision 80c6e26",
       "actual macOS 12 Intel runtime evidence",
       "formal tagged artifact and registry publication",
       "Code dependency promotion and RSS/external resource evidence"

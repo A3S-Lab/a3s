@@ -9,7 +9,8 @@ Initial review date: 2026-08-29
 
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
-Vec `e27524dc318b6acbd293192bef8a684321c0ad9e` is now the root candidate.
+Vec `80c6e26511361c43efb1a06cb05d831a2df941a2` is now the root candidate;
+the borrowed exact-score implementation is unchanged from parent `e27524d`.
 The exact dense executor traverses borrowed native vector storage instead of
 allocating a converted `f64` buffer for every candidate, and cosine query
 norms are computed once per query across Flat, HNSW, Vamana, and DiskANN
@@ -22,7 +23,7 @@ three-process medians moved from 43.42 to 34.58 ms Flat p50 and from 2.19 to
 remained 0.6000. zvec remains faster at this large scale (about 5.6x Flat and
 5.1x HNSW p50) because its comparison side is a native C++ wheel; the ratio is
 directional, not a universal or same-refiner claim. The revision-bound hosted
-run is [Vec CI `33695231554`](https://github.com/A3S-Lab/Vec/actions/runs/33695231554)
+run is [Vec CI `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206)
 and was queued when this record was updated; it must be green before a release
 qualification claim.
 
