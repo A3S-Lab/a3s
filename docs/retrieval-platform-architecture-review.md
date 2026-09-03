@@ -27,10 +27,9 @@ directional, not a universal or same-refiner claim. The revision-bound hosted
 run is [Vec CI `33698899258`](https://github.com/A3S-Lab/Vec/actions/runs/33698899258)
 and is the revision-bound hosted validation for this test-count correction;
 the preceding documentation run `33698297563` and implementation run
-`33696717206` completed successfully with the platform CSVs and versioned
-release-candidate artifacts. The new run must finish green before this latest
-documentation pin is treated as fully hosted,
-and neither run substitutes for the actual macOS 12 Intel runtime or formal
+`33696717206` also completed successfully with the platform CSVs and versioned
+release-candidate artifacts. Neither hosted run substitutes for the actual
+macOS 12 Intel runtime or formal
 publication gates.
 
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)

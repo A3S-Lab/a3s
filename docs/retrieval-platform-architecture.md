@@ -153,9 +153,9 @@ quality, MSRV, fuzz, and platform jobs pass. The lifecycle/performance revision
 is covered by [Vec CI run `33690839419`](https://github.com/A3S-Lab/Vec/actions/runs/33690839419),
 whose ten jobs are green, including the rounded-total scale gate, Python
 companion syntax check, and comparison-methodology documentation. The
-new performance-kernel revision is validated locally and its documentation-
+new performance-kernel revision is validated locally and its test-count-
 bound hosted run [Vec CI run `33698899258`](https://github.com/A3S-Lab/Vec/actions/runs/33698899258)
-is pending; the preceding documentation-bound run [Vec CI
+completed successfully; the preceding documentation-bound run [Vec CI
 `33698297563`](https://github.com/A3S-Lab/Vec/actions/runs/33698297563) and
 implementation-bound run [Vec CI run
 `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206) completed

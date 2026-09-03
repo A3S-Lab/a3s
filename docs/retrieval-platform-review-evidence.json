@@ -1154,14 +1154,15 @@
       "run_id": 33698899258,
       "url": "https://github.com/A3S-Lab/Vec/actions/runs/33698899258",
       "head_sha": "a5786794db53a8dec40049a5a646e5dc64ccdc0c",
-      "status_when_recorded": "in_progress",
-      "conclusion_when_recorded": null,
+      "status_when_recorded": "completed",
+      "conclusion_when_recorded": "success",
+      "artifact_count": 7,
+      "release_candidate_artifact": "a3s-vec-0.1.0-a5786794db53a8dec40049a5a646e5dc64ccdc0c",
       "predecessor_run_id": 33698297563,
       "predecessor_conclusion": "success"
     },
     "release_qualified": false,
     "remaining_gates": [
-      "hosted CI for Vec test-count revision a578679",
       "actual macOS 12 Intel runtime evidence",
       "formal tagged artifact and registry publication",
       "Code dependency promotion and RSS/external resource evidence"
