@@ -148,25 +148,28 @@ Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
 
-The latest independently qualified Code dependency commit `708a85e3` pins Vec
-`13585ccd` behind a Memory-authoritative differential shadow. Its ownership
+The latest independently qualified Code dependency candidate updates the
+`a3s-vec` dependency to version `0.1.1` at Vec commit `416140ec`, behind a
+Memory-authoritative differential shadow. Its ownership
 boundary, status contract, and promotion gates are recorded in the
-[Vec migration note](https://github.com/A3S-Lab/Code/blob/0e9ed3774ae6cb214555137231c0372df8ff4ee6/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
+[Vec migration note](https://github.com/A3S-Lab/Code/blob/main/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
 The root Cloud compatibility lock and Code gitlink remain a separate component
 graph until their exact revisions are promoted together. Vec's public API
 review, reproducible candidate package, and remaining external release gate are
-recorded in [Vec release qualification](https://github.com/A3S-Lab/Vec/blob/2cde16c5b94f3903eeb90a7cd10721110f697fd9/RELEASE.md).
+recorded in [Vec release qualification](https://github.com/A3S-Lab/Vec/blob/416140ec5f9bd6fc8030f9f17735c0b10d099c99/RELEASE.md).
 
-The dependency pin passed [Code CI run 33773373773](https://github.com/A3S-Lab/Code/actions/runs/33773373773)
+The preceding dependency pin passed [Code CI run 33773373773](https://github.com/A3S-Lab/Code/actions/runs/33773373773)
 after the failed Windows job passed on attempt 2, and its release profiles passed
 [performance run 33773373522](https://github.com/A3S-Lab/Code/actions/runs/33773373522).
+The `0.1.1` pin is being requalified by the Code workflow after the Vec version
+commit is available remotely.
 On the hosted 4-CPU Linux profile, Memory/Vec-primary exact p95 was
 9.7993/9.6626 ms, RRF-only p95 was 55.6142/58.6252 ms, and deterministic-rerank
 p95 was 58.2083/56.6000 ms. Both arms matched 120/120 differential queries with
 zero failures and released all records and bytes. This is a product-integration
 and SLO gate, not an HNSW-versus-zvec throughput comparison.
 
-The pinned Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
+The preceding qualified Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
 the complete public feature matrix, a revision-bound 53-row smoke performance
 CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
 metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness. On
@@ -183,7 +186,7 @@ The comparison remains directional, not a revision-bound release gate: the
 baseline uses Cargo's portable a3s-vec build against zvec's native wheel, and
 a3s-vec exact-reranks HNSW candidates while the zvec optional refiner is
 disabled. Both recall values require a higher `ef` for a production target.
-See [Vec benchmark evidence](https://github.com/A3S-Lab/Vec/blob/2cde16c5b94f3903eeb90a7cd10721110f697fd9/BENCHMARKS.md).
+See [Vec benchmark evidence](https://github.com/A3S-Lab/Vec/blob/416140ec5f9bd6fc8030f9f17735c0b10d099c99/BENCHMARKS.md).
 
 ## Installation
 

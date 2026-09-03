@@ -11,7 +11,7 @@ recorded in
 This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. The
 Memory-authoritative A3S Vec shadow projection is implemented in the Code main
-qualification candidate `32a70cd7` (documentation follow-up `549ff70d`),
+qualification candidate `3be2d1bc`,
 including the Code-owned vector contract and revision-CAS adapter, and recorded
 below;
 the full serving migration and removal of the
@@ -133,7 +133,8 @@ another row.
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
 `crates/vec` git submodule. The current root pin is Vec
-`7e3b083e36ab5aeb300b2c45d6d59280971087da` (current Vec qualification over the
+`416140ec5f9bd6fc8030f9f17735c0b10d099c99` (`a3s-vec` 0.1.1), carrying the
+current Vec qualification over the
 borrowed exact-score and
 one-query-norm performance kernel over methodology revision
 `d6b83458e0a1042a59e877d5df1511297b60f2fa`, comparison-methodology
@@ -142,14 +143,14 @@ scale-control revision `9a9c0850cf09ec90f54a9f7e9d8be3ca12af95f1`,
 documentation follow-up `c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`,
 lifecycle/performance revision `9031943b53577e14f805692a3bfb3a3237b5072f`,
 and implementation `7e3b083e36ab5aeb300b2c45d6d59280971087da`);
-Code's current candidate dependency is pinned to Vec `7e3b083e`; the root
+Code's current candidate dependency is pinned to Vec `416140ec`; the root
 Cloud compatibility graph remains on its reviewed Code 8.0.4 pin until the
 manifest, Cargo lock, and root compatibility lock are advanced together.
 Source changes are committed in the Vec repository first; the integration
 repository advances the gitlink only after engine checks and compatibility
 review pass.
 
-Vec main CI builds a revision-bound `0.1.0` release-candidate crate, checksum,
+Vec main CI builds a revision-bound `0.1.1` release-candidate crate, checksum,
 machine-readable manifest, feature-matrix, concurrent-reader, mixed-workload,
 scale-comparison, and lifecycle-matrix CSVs, plus one copy of all five smoke
 CSVs for each hosted
@@ -326,7 +327,7 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
 
-Vec `7e3b083e` provides the exact-revision workflow for item 1. It runs only on
+Vec `416140ec` provides the exact-revision workflow for item 1. It runs only on
 a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
 executes the locked engine suites offline, and uploads a checksummed crate plus
 machine-readable host evidence. No such runner is currently registered, so the
