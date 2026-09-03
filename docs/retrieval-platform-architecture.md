@@ -11,7 +11,7 @@ recorded in
 This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. The
 Memory-authoritative A3S Vec shadow projection is implemented in the Code main
-qualification candidate `1c117f87` (documented by follow-up `3986489e`),
+qualification candidate `32a70cd7` (documentation follow-up `549ff70d`),
 including the Code-owned vector contract and revision-CAS adapter, and recorded
 below;
 the full serving migration and removal of the
@@ -133,7 +133,7 @@ another row.
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
 `crates/vec` git submodule. The current root pin is Vec
-`41283f6315906a2737b5a8e8612ac876a8dc9c04` (current Vec qualification over the
+`7e3b083e36ab5aeb300b2c45d6d59280971087da` (current Vec qualification over the
 borrowed exact-score and
 one-query-norm performance kernel over methodology revision
 `d6b83458e0a1042a59e877d5df1511297b60f2fa`, comparison-methodology
@@ -141,8 +141,8 @@ documentation over hosted benchmark pin `7f3e2a9`, CI hardening over the
 scale-control revision `9a9c0850cf09ec90f54a9f7e9d8be3ca12af95f1`,
 documentation follow-up `c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`,
 lifecycle/performance revision `9031943b53577e14f805692a3bfb3a3237b5072f`,
-and implementation `dbd4a75df4de5e02b4ddb106700617e686186a56`);
-Code's current candidate dependency is pinned to Vec `41283f631`; the root
+and implementation `7e3b083e36ab5aeb300b2c45d6d59280971087da`);
+Code's current candidate dependency is pinned to Vec `7e3b083e`; the root
 Cloud compatibility graph remains on its reviewed Code 8.0.4 pin until the
 manifest, Cargo lock, and root compatibility lock are advanced together.
 Source changes are committed in the Vec repository first; the integration
@@ -155,12 +155,12 @@ scale-comparison, and lifecycle-matrix CSVs, plus one copy of all five smoke
 CSVs for each hosted
 platform, only after its
 quality, MSRV, fuzz, and platform jobs pass. The current ten-job hosted gate is
-[Vec CI run `33705867979`](https://github.com/A3S-Lab/Vec/actions/runs/33705867979),
+[Vec CI run `33763187419`](https://github.com/A3S-Lab/Vec/actions/runs/33763187419),
 including the rounded-total scale gate, Python companion syntax check, and
 versioned release-candidate artifact. The Code candidate's full CI and
-release-profile qualification are recorded in the current runs
-`33747647083` and `33747646942`; the preceding same-code qualification passed
-in runs `33744598683` and `33744912868`.
+release-profile qualification are recorded in runs `33763816993` and
+`33763816547` for Code `32a70cd7`; the documentation-only follow-up is
+`549ff70d`.
 These
 artifacts are not a formal release: tagging or registry
 publication remains blocked until an actual macOS 12 Intel runtime report is
@@ -326,7 +326,7 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
 
-Vec `41283f631` provides the exact-revision workflow for item 1. It runs only on
+Vec `7e3b083e` provides the exact-revision workflow for item 1. It runs only on
 a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
 executes the locked engine suites offline, and uploads a checksummed crate plus
 machine-readable host evidence. No such runner is currently registered, so the

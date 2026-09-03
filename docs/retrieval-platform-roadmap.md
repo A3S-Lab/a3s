@@ -10,41 +10,27 @@ It is gate-based rather than calendar-based: a phase is complete only when its
 exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
-**Current integration status (2026-09-03):** The Code qualification candidate
-`1c117f87` (documented by follow-up `3986489e`) contains the Code-owned A3S Vec
-shadow adapter and the isolated `WorkspaceVectorIndex` contract. It mirrors the
+**Current integration status (2026-09-03):** Code's qualification source
+`32a70cd7` (documentation follow-up `549ff70d`) contains the Code-owned A3S
+Vec shadow adapter and isolated `WorkspaceVectorIndex` contract. It mirrors the
 already validated Memory embedding batch into a session-scoped temporary Vec
-collection, keeps Memory authoritative by default, and exposes bounded status and
-differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
-The candidate's implementation pin is Vec
-`41283f6315906a2737b5a8e8612ac876a8dc9c04`;
-the root submodule is advanced to Vec `41283f6315906a2737b5a8e8612ac876a8dc9c04`
-for the corresponding release review, public API contract, gated
-release-candidate artifact workflow, IVF SOAR execution, Binary32/Binary64
-exact L2/Hamming queries, complete feature matrix, query-builder/ordinal
-contracts, compact schema-only WAL revisions, the locally verified dependency
-audit, the 53-row feature-matrix plus concurrent-reader/mixed-workload/scale/lifecycle
-performance artifact gates, Vamana RobustPrune controls and standalone scalar
-quantization, and the paired a3s-vec/zvec scale harness. The
-Vec's revision-bound CI run `33705867979` passed all hosted quality,
-MSRV, recovery, cross-platform,
-performance, and package jobs, including the lifecycle matrix. The
-Windows x86-64 schema-4
-qualification compared 120/120 queries with zero mismatch or failure in both
-hybrid arms, retained 25,000 records per arm, and released both engines on
-close. The current Linux x86-64 Code release-profile refresh reports
-Memory-primary exact/RRF/deterministic p95 of 9.5296/52.4909/53.0744 ms and
-Vec-primary 9.5806/55.6923/52.8478 ms, all within the same 30/100/100 ms
-budgets. Vec-primary construction took 2,188.8 ms versus 2,167.3 ms for
-Memory-primary and accounted 54,500,008 versus 40,177,548 logical vector
-bytes; these are directional measurements, not RSS limits. Code's architecture
-CI and performance qualification passed in runs
-[`33747647083`](https://github.com/A3S-Lab/Code/actions/runs/33747647083) and
-[`33747646942`](https://github.com/A3S-Lab/Code/actions/runs/33747646942).
-This closes the developer-shadow P4 implementation evidence; the root Cloud
+collection, keeps Memory authoritative by default, and exposes bounded status
+and differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
+The current Code dependency and root submodule pin Vec
+`7e3b083e36ab5aeb300b2c45d6d59280971087da`. This revision adds bounded,
+deterministic parallel schema backfills and candidate-schema validation while
+retaining atomic publication. Vec's revision-bound CI run
+`33763187419` passed all hosted quality, MSRV, recovery, cross-platform,
+performance, and package jobs, including the lifecycle matrix. A hosted Linux
+x86-64 release qualification compared 120/120 queries with zero mismatch or
+failure in both hybrid arms; Vec-primary exact/RRF/deterministic p95 was
+8.1448/63.3172/58.7085 ms versus Memory-primary 8.1480/57.8928/57.5917 ms,
+all within the 30/100/100 ms budgets. These figures are directional rather than
+RSS or cross-platform SLOs. Code validation runs are `33763816993` and
+`33763816547`. The root Cloud
 compatibility lock still points at the older Code 8.0.4 graph, and Vec
-promotion, old-path removal, Intel macOS 12 runtime evidence, and the broader
-release gates remain open.
+promotion, old-path removal, actual Intel macOS 12 runtime evidence, and the
+broader release gates remain open.
 
 **Historical engine review baseline (2026-08-30):** `a3s-vec` was then a
 pre-migration prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
@@ -72,7 +58,7 @@ the golden reference; P7 removal has not started.
 
 The current checkout contains three relevant implementations:
 
-- `crates/vec` is the `A3S-Lab/Vec` git submodule at `41283f6` (complete
+- `crates/vec` is the `A3S-Lab/Vec` git submodule at `7e3b083e` (complete
   FP16/INT8/INT4 Vamana reopen coverage over Vamana control execution and the
   hosted-evidence/test-count refresh over the borrowed
   exact-score and one-query-norm performance kernel over comparison-methodology
@@ -81,8 +67,9 @@ The current checkout contains three relevant implementations:
   commit `dbd4a75`). Format-10
   storage/recovery, exact dense/sparse/binary search, scalar and FTS indexes,
   HNSW, IVF with optional SOAR dual assignment, HNSW/IVF RaBitQ, and
-  metric-aware Vamana/PQ DiskANN (L2, inner product, cosine, and MIPS-L2) are
-  implemented behind exact fallbacks and revisioned
+  metric-aware Vamana/PQ DiskANN (L2, inner product, cosine, and MIPS-L2), and
+  bounded parallel schema backfills/validation are implemented behind exact
+  fallbacks and revisioned
   generations. Namespace-only upstream CRUD, vector-search, and schema-builder
   fixtures run as executable gates. The crate remains a release candidate: its
   hosted matrix and package gate do not substitute for an actual macOS 12 Intel
@@ -135,9 +122,9 @@ closed on the same pinned component graph. At minimum this means:
 
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
-| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `41283f6`: format-10 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
-| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `41283f6` (complete FP16/INT8/INT4 Vamana reopen coverage over Vamana controls/scalar quantization, the test-count correction, and performance kernel): generated vector/FTS/filter and Binary32/Binary64 Hamming oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, metric-aware Vamana/DiskANN contracts, dense/binary/FTS query-builder execution, include-doc-id persistence checks, schema-only WAL compaction, the complete feature matrix plus concurrent-reader/mixed-workload/scale tail-latency gates, and the 16-row lifecycle/resource/maintenance matrix are tested |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and hosted for test-coverage pin `41283f6` in [Vec CI run `33705867979`](https://github.com/A3S-Lab/Vec/actions/runs/33705867979)** (all ten jobs succeeded: quality, performance, MSRV, recovery fuzz, Linux x86-64/ARM64, Windows x86-64, macOS ARM64/Intel, and versioned release candidate); the exact-revision macOS 12 Intel qualification workflow remains available |
+| P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `7e3b083e`: format-10 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
+| P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `7e3b083e` (complete FP16/INT8/INT4 Vamana reopen coverage over Vamana controls/scalar quantization, bounded parallel schema evolution and worker-cap validation, and the performance kernel): generated vector/FTS/filter and Binary32/Binary64 Hamming oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, metric-aware Vamana/DiskANN contracts, dense/binary/FTS query-builder execution, include-doc-id persistence checks, schema-only WAL compaction, the complete feature matrix plus concurrent-reader/mixed-workload/scale tail-latency gates, and the 16-row lifecycle/resource/maintenance matrix are tested |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and hosted for pin `7e3b083e` in [Vec CI run `33763187419`](https://github.com/A3S-Lab/Vec/actions/runs/33763187419)** (all ten jobs succeeded: quality, performance, MSRV, recovery fuzz, Linux x86-64/ARM64, Windows x86-64, macOS ARM64/Intel, and versioned release candidate); the exact-revision macOS 12 Intel qualification workflow remains available |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Partially closed**: hosted Linux x86-64/ARM64, Windows x86-64, and macOS ARM64/Intel pass, and Intel builds target 12.0; an actual macOS 12 Intel runtime remains open |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Shadow differential passed** for 120 queries and lifecycle/resource checks; RSS, recovery, cross-platform, and serving-promotion evidence remain open |
 
@@ -314,7 +301,7 @@ Dual reads agree on eligible IDs and source ranges across create/change/delete/
 rename/lag races; no duplicate file read or Embedding request occurs; session
 close leaves zero vectors, tasks, handles, or sockets.
 
-**Progress through Code qualification candidate `1c117f87` (2026-09-03)**
+**Progress through Code qualification candidate `32a70cd7` (2026-09-03)**
 
 - Delivered the Code-owned adapter and shared publication gate. One validated
   provider batch is published to Memory and mirrored to Vec; Vec failures and
@@ -330,8 +317,8 @@ close leaves zero vectors, tasks, handles, or sockets.
 - Focused adapter tests (including stale and concurrent CAS writers), the
   replacement soak, workspace checks, strict Clippy, SDK checks, full Code CI,
   and the revision-bound Linux release benchmark passed in runs
-  [`33747647083`](https://github.com/A3S-Lab/Code/actions/runs/33747647083) and
-  [`33747646942`](https://github.com/A3S-Lab/Code/actions/runs/33747646942).
+  [`33763816993`](https://github.com/A3S-Lab/Code/actions/runs/33763816993) and
+  [`33763816547`](https://github.com/A3S-Lab/Code/actions/runs/33763816547).
   The hosted Vec matrix is green; actual macOS 12 Intel runtime evidence is
   still external. The root Cloud compatibility lock is intentionally not
   advanced until its Code manifest, lock entry, and component gitlink move as

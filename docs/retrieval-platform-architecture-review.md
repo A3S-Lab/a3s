@@ -31,6 +31,32 @@ compatibility lock still records Code 8.0.4, P7 has not removed the duplicate
 workspace BM25/SQLite/vector paths, and actual macOS 12 Intel runtime, RSS/disk,
 formal tag/registry, and rollback evidence remain release gates.
 
+## Follow-up: Vec worker-pool cap and candidate refresh (2026-09-03)
+
+Vec `7e3b083e36ab5aeb300b2c45d6d59280971087da` adds a collection-local,
+bounded Rayon executor for `AddColumnOption::concurrency` and
+`AlterColumnOption::concurrency`. Backfills and candidate-schema validation
+reduce results in primary-key order, and invalid nullable-to-required changes
+are rejected before WAL publication. The execution-contract test covers
+parallel backfill, successful alteration, atomic rejection, and an oversized
+worker request; the lifecycle matrix records the parallel schema path as a
+measured management operation;
+the worker pool is capped by work size, host parallelism, and 256 workers.
+The revision-bound Vec CI run
+[`33763187419`](https://github.com/A3S-Lab/Vec/actions/runs/33763187419) passed
+all ten quality, performance, MSRV, recovery-fuzz, platform, and release-
+candidate jobs. The hosted Code release profile for Code `32a70cd7` and this
+Vec pin reports Memory/Vec-primary exact p95 8.1480/8.1448 ms, RRF-only
+57.8928/63.3172 ms, and deterministic 57.5917/58.7085 ms. Both arms compare
+120/120 queries with zero mismatches or failures; Vec-primary construction is
+3,128.9 ms versus 2,693.0 ms for Memory-primary, and logical Vec bytes are
+54,500,008 versus 40,177,548. These are directional logical measurements, not
+RSS or a cross-platform SLO.
+
+The external macOS 12 Intel runtime, process RSS/temp-disk limits, formal
+release tag/registry publication, and removal of the Memory compatibility path
+remain open gates.
+
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
 Vec `41283f6315906a2737b5a8e8612ac876a8dc9c04` is now the root candidate;

@@ -159,15 +159,16 @@ The pinned Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
 the complete public feature matrix, a revision-bound 53-row smoke performance
 CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
 metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness;
-the recorded same-host 100k x 128 directional comparison at Vec revision
-`41283f6` shows zvec 0.7.0 at
+the recorded same-host 100k x 128 directional comparison (measured at the
+preceding `c758521c` vector-kernel revision; worker-cap-only `7e3b083e` does not
+change that path) shows zvec 0.7.0 at
 about 5.6x lower flat p50, 5.1x lower HNSW p50, and 2.2x shorter total HNSW
 build under the pinned one-worker controls. The newer Vec revision removes a
 per-candidate dense conversion and repeats each cosine query norm only once;
 that reduced the a3s-vec flat p50 by 20.4% and HNSW p50 by 21.3% on the same
 fixture. The current Code dependency is advanced to Vec revision
-`c758521c`; the comparison table remains the separately recorded `41283f6`
-measurement. The baseline uses Cargo's portable a3s-vec build against zvec's native
+`7e3b083e`; the comparison table remains a directional measurement, not a
+revision-bound release gate. The baseline uses Cargo's portable a3s-vec build against zvec's native
 wheel; a3s-vec also exact-reranks HNSW candidates while the zvec optional
 refiner is disabled, so these are not universal or compiler-level apples-to-
 apples ratios. Both recall values require a higher `ef` for a production
