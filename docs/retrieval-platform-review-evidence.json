@@ -1043,7 +1043,7 @@
   },
   "performance_kernel_follow_up": {
     "date": "2026-09-03",
-    "root_candidate_revision": "fd3cd9888350fe51d4705f30fff9cbb9c1fec64e",
+    "root_candidate_revision": "e23cd571f46c395f49ca0ceb2111aa3e2cc83fe8",
     "vec_revision": "80c6e26511361c43efb1a06cb05d831a2df941a2",
     "environment": {
       "os": "Windows 11",
