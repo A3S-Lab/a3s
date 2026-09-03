@@ -11,8 +11,11 @@ recorded in
 This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. The
 Memory-authoritative A3S Vec shadow projection is implemented in the Code main
-candidate `17113af` and recorded below; the full serving migration and removal
-of the legacy workspace paths are not complete. The root Cloud lock still
+qualification candidate `1c117f87` (documented by follow-up `3986489e`),
+including the Code-owned vector contract and revision-CAS adapter, and recorded
+below;
+the full serving migration and removal of the
+legacy workspace paths are not complete. The root Cloud lock still
 records the prior Code 8.0.4 component graph until a coordinated update is
 verified.
 
@@ -155,8 +158,9 @@ quality, MSRV, fuzz, and platform jobs pass. The current ten-job hosted gate is
 [Vec CI run `33705867979`](https://github.com/A3S-Lab/Vec/actions/runs/33705867979),
 including the rounded-total scale gate, Python companion syntax check, and
 versioned release-candidate artifact. The Code candidate's full CI and
-release-profile qualification are recorded in runs `33712033250` and
-`33712033140`.
+release-profile qualification are recorded in the current runs
+`33747647083` and `33747646942`; the preceding same-code qualification passed
+in runs `33744598683` and `33744912868`.
 These
 artifacts are not a formal release: tagging or registry
 publication remains blocked until an actual macOS 12 Intel runtime report is

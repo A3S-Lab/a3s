@@ -9,18 +9,19 @@ Initial review date: 2026-08-29
 
 ## Follow-up: Code Vec shadow promotion candidate (2026-09-03)
 
-Code candidate `1b7c80d2` advances the workspace-retrieval shadow dependency and
+Code candidate `1c117f87` (the qualification source revision, documented by
+follow-up `3986489e`) advances the workspace-retrieval shadow dependency and
 Code-owned vector contract to
 Vec `41283f6315906a2737b5a8e8612ac876a8dc9c04` while retaining A3S Memory as
 the serving oracle. The candidate's focused shadow tests, full Code CI matrix,
 and release-profile qualification passed; the hosted records are
-[CI `33744598683`](https://github.com/A3S-Lab/Code/actions/runs/33744598683)
-and [performance `33742847140`](https://github.com/A3S-Lab/Code/actions/runs/33742847140).
+[CI `33747647083`](https://github.com/A3S-Lab/Code/actions/runs/33747647083)
+and [performance `33747646942`](https://github.com/A3S-Lab/Code/actions/runs/33747646942).
 The 25,000 x 384 Linux x86-64 release profile reports Memory-primary exact /
-RRF-only / deterministic p95 7.7799 / 50.2334 / 52.2498 ms and Vec-primary
-7.8582 / 55.4365 / 54.3475 ms. Both profiles produced 120/120 comparisons
+RRF-only / deterministic p95 9.5296 / 52.4909 / 53.0744 ms and Vec-primary
+9.5806 / 55.6923 / 52.8478 ms. Both profiles produced 120/120 comparisons
 with zero mismatch or failure; Vec-primary construction and logical bytes were
-6,684.3 ms and 54,500,008 versus 3,851.9 ms and 40,177,548 for
+2,188.8 ms and 54,500,008 versus 2,167.3 ms and 40,177,548 for
 Memory-primary. These are directional logical measurements, not RSS or a
 cross-platform SLO. The full Code workspace strict rustdoc command also passes
 on this candidate.

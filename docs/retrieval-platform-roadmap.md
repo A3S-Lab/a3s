@@ -10,9 +10,9 @@ It is gate-based rather than calendar-based: a phase is complete only when its
 exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
-**Current integration status (2026-09-03):** The Code main candidate
-`1b7c80d2` contains the Code-owned A3S Vec shadow adapter and the isolated
-`WorkspaceVectorIndex` contract. It mirrors the
+**Current integration status (2026-09-03):** The Code qualification candidate
+`1c117f87` (documented by follow-up `3986489e`) contains the Code-owned A3S Vec
+shadow adapter and the isolated `WorkspaceVectorIndex` contract. It mirrors the
 already validated Memory embedding batch into a session-scoped temporary Vec
 collection, keeps Memory authoritative by default, and exposes bounded status and
 differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
@@ -33,14 +33,14 @@ Windows x86-64 schema-4
 qualification compared 120/120 queries with zero mismatch or failure in both
 hybrid arms, retained 25,000 records per arm, and released both engines on
 close. The current Linux x86-64 Code release-profile refresh reports
-Memory-primary exact/RRF/deterministic p95 of 7.7799/50.2334/52.2498 ms and
-Vec-primary 7.8582/55.4365/54.3475 ms, all within the same 30/100/100 ms
-budgets. Vec-primary construction took 6,684.3 ms versus 3,851.9 ms for
+Memory-primary exact/RRF/deterministic p95 of 9.5296/52.4909/53.0744 ms and
+Vec-primary 9.5806/55.6923/52.8478 ms, all within the same 30/100/100 ms
+budgets. Vec-primary construction took 2,188.8 ms versus 2,167.3 ms for
 Memory-primary and accounted 54,500,008 versus 40,177,548 logical vector
 bytes; these are directional measurements, not RSS limits. Code's architecture
 CI and performance qualification passed in runs
-[`33744598683`](https://github.com/A3S-Lab/Code/actions/runs/33744598683) and
-[`33742847140`](https://github.com/A3S-Lab/Code/actions/runs/33742847140).
+[`33747647083`](https://github.com/A3S-Lab/Code/actions/runs/33747647083) and
+[`33747646942`](https://github.com/A3S-Lab/Code/actions/runs/33747646942).
 This closes the developer-shadow P4 implementation evidence; the root Cloud
 compatibility lock still points at the older Code 8.0.4 graph, and Vec
 promotion, old-path removal, Intel macOS 12 runtime evidence, and the broader
@@ -314,20 +314,24 @@ Dual reads agree on eligible IDs and source ranges across create/change/delete/
 rename/lag races; no duplicate file read or Embedding request occurs; session
 close leaves zero vectors, tasks, handles, or sockets.
 
-**Progress through Code candidate `17113af` (2026-09-03)**
+**Progress through Code qualification candidate `1c117f87` (2026-09-03)**
 
 - Delivered the Code-owned adapter and shared publication gate. One validated
   provider batch is published to Memory and mirrored to Vec; Vec failures and
   mismatches degrade only shadow diagnostics and never change serving results.
 - Added deterministic partition/key mapping, revision and digest fencing,
   bounded filter construction, cancellation-safe blocking operations, rollback
-  isolation, and zero-state close checks.
+  isolation, zero-state close checks, and a real global revision-CAS adapter
+  with one logical revision per partition publication.
 - Added backward-compatible status fields and Rust/Node.js/Python/Go mapping
   tests. The release benchmark schema 4 (`workspace-retrieval-v3`) retained
   25,000 records in each hybrid arm, matched 120/120 comparisons, and reported
   zero mismatch/failure with 54,500,008 Vec-accounted bytes per arm.
-- Focused adapter tests, the replacement soak, workspace checks, strict
-  Clippy, SDK checks, full Code CI, and the Windows release benchmark passed.
+- Focused adapter tests (including stale and concurrent CAS writers), the
+  replacement soak, workspace checks, strict Clippy, SDK checks, full Code CI,
+  and the revision-bound Linux release benchmark passed in runs
+  [`33747647083`](https://github.com/A3S-Lab/Code/actions/runs/33747647083) and
+  [`33747646942`](https://github.com/A3S-Lab/Code/actions/runs/33747646942).
   The hosted Vec matrix is green; actual macOS 12 Intel runtime evidence is
   still external. The root Cloud compatibility lock is intentionally not
   advanced until its Code manifest, lock entry, and component gitlink move as

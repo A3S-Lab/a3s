@@ -1228,7 +1228,7 @@
   },
   "code_contract_follow_up": {
     "date": "2026-09-03",
-    "code_revision": "1b7c80d2f1534b9d82bc72f8ff5ff57e7fff67da",
+    "code_revision": "1c117f87b2c42568f1eedce94188c6780fe3af6a",
     "vec_revision": "41283f6315906a2737b5a8e8612ac876a8dc9c04",
     "architecture": {
       "contract": "Code-owned WorkspaceVectorIndex",
@@ -1239,15 +1239,15 @@
     },
     "hosted_validation": [
       {
-        "run_id": 33744598683,
-        "url": "https://github.com/A3S-Lab/Code/actions/runs/33744598683",
+        "run_id": 33747647083,
+        "url": "https://github.com/A3S-Lab/Code/actions/runs/33747647083",
         "workflow": "CI",
         "status": "completed",
         "conclusion": "success"
       },
       {
-        "run_id": 33742847140,
-        "url": "https://github.com/A3S-Lab/Code/actions/runs/33742847140",
+        "run_id": 33747646942,
+        "url": "https://github.com/A3S-Lab/Code/actions/runs/33747646942",
         "workflow": "Performance Qualification",
         "status": "completed",
         "conclusion": "success"
@@ -1262,17 +1262,17 @@
       "measured_queries": 100,
       "warmups": 20,
       "memory_primary": {
-        "exact_p95_ms": 7.77989,
-        "hybrid_rrf_only_p95_ms": 50.233357,
-        "hybrid_deterministic_rerank_p95_ms": 52.249757,
-        "workspace_build_ms": 3851.887744,
+        "exact_p95_ms": 9.529633,
+        "hybrid_rrf_only_p95_ms": 52.490927,
+        "hybrid_deterministic_rerank_p95_ms": 53.074408,
+        "workspace_build_ms": 2167.339525,
         "vector_bytes": 40177548
       },
       "vec_primary": {
-        "exact_p95_ms": 7.85824,
-        "hybrid_rrf_only_p95_ms": 55.436508,
-        "hybrid_deterministic_rerank_p95_ms": 54.347528,
-        "workspace_build_ms": 6684.326336,
+        "exact_p95_ms": 9.580618,
+        "hybrid_rrf_only_p95_ms": 55.692281,
+        "hybrid_deterministic_rerank_p95_ms": 52.847831,
+        "workspace_build_ms": 2188.842741,
         "vector_bytes": 54500008
       },
       "comparisons": 120,
