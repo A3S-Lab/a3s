@@ -36,9 +36,9 @@ close. Exact, RRF-only, and deterministic-rerank p95 were 6.7343, 50.7850, and
 reports 7.9257, 67.9645, and 70.2005 ms respectively, all within the same
 30/100/100 ms budgets. Code's same-graph release-profile refresh and full CI matrix also
 passed in runs `33712033140` and `33712033250`. This closes the developer-shadow
-P4 implementation evidence; the root Cloud compatibility lock still points
-at the older Code 8.0.4 graph, and Vec promotion, old-path removal, Intel
-macOS 12 runtime evidence, and the broader release gates remain open.
+P4 implementation evidence; the coordinated root Cloud compatibility graph now
+records Code Core 8.1.0 and Search 3.1.0. Vec promotion, old-path removal,
+Intel macOS 12 runtime evidence, and the broader release gates remain open.
 
 **Historical engine review baseline (2026-08-30):** `a3s-vec` was then a
 pre-migration prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
@@ -323,9 +323,8 @@ close leaves zero vectors, tasks, handles, or sockets.
 - Focused adapter tests, the replacement soak, workspace checks, strict
   Clippy, SDK checks, full Code CI, and the Windows release benchmark passed.
   The hosted Vec matrix is green; actual macOS 12 Intel runtime evidence is
-  still external. The root Cloud compatibility lock is intentionally not
-  advanced until its Code manifest, lock entry, and component gitlink move as
-  one verified graph.
+  still external. The root Cloud compatibility lock is advanced together with
+  the Code manifest, lock entry, and component gitlink as one verified graph.
 
 The P4 developer-shadow implementation is delivered. The exit gate for
 serving promotion remains tied to the later cross-platform, RSS/disk,

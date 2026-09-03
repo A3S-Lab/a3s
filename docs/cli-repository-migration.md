@@ -37,6 +37,12 @@ The relay does not build the CLI, publish crates.io, or update Homebrew. Its
 release notes record the canonical source tag, commit, and release identity so
 an existing relay can be verified and resumed safely.
 
+The current coordinated release is `v0.14.0`. Its five target archives carry
+the matching Moli 1.1.1 headless-browser sidecar, while source and Cargo
+installs use the same digest-verified per-user cache with cross-process locking.
+This keeps Code Core 8.1.0 and Search 3.1.0 on one release graph and avoids a
+separate browser download for each CLI installation.
+
 ## Documentation
 
 Use the [pinned CLI reference](../crates/cli/docs/cli-reference.md) when

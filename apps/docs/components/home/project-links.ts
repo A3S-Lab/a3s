@@ -71,13 +71,16 @@ export const projectLinks = {
 } as const satisfies Record<string, ProjectLink>;
 
 export type ProjectId = keyof typeof projectLinks;
+export type ProjectLinkId = ProjectId | 'desktop';
 
-export function getProjectPrimaryHref(projectId: ProjectId): string {
+export function getProjectPrimaryHref(projectId: ProjectLinkId): string {
+  if (projectId === 'desktop') return 'https://github.com/A3S-Lab/a3s/tree/main/apps/desktop';
   const project = projectLinks[projectId];
   return 'website' in project ? project.website : project.repository;
 }
 
 export function getProjectRepositoryHref(projectId: string): string {
+  if (projectId === 'desktop') return 'https://github.com/A3S-Lab/a3s/tree/main/apps/desktop';
   const project = projectLinks[projectId as ProjectId];
   if (!project) throw new Error(`Project link is missing for ecosystem project: ${projectId}`);
   return project.repository;
