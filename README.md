@@ -160,7 +160,7 @@ the complete public feature matrix, a revision-bound 53-row smoke performance
 CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
 metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness;
 the recorded same-host 100k x 128 directional comparison at Vec revision
-`dd7e2a1` shows zvec 0.7.0 at
+`a578679` shows zvec 0.7.0 at
 about 5.6x lower flat p50, 5.1x lower HNSW p50, and 2.2x shorter total HNSW
 build under the pinned one-worker controls. The newer Vec revision removes a
 per-candidate dense conversion and repeats each cosine query norm only once;

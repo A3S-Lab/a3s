@@ -9,7 +9,7 @@ Initial review date: 2026-08-29
 
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
-Vec `dd7e2a144b34704e4abf0b9df0cc54e8d13e1cce` is now the root candidate;
+Vec `a5786794db53a8dec40049a5a646e5dc64ccdc0c` is now the root candidate;
 the borrowed exact-score implementation is unchanged from parent `e27524d`,
 with only the latest evidence pointers refreshed.
 The exact dense executor traverses borrowed native vector storage instead of
@@ -24,11 +24,12 @@ three-process medians moved from 43.42 to 34.58 ms Flat p50 and from 2.19 to
 remained 0.6000. zvec remains faster at this large scale (about 5.6x Flat and
 5.1x HNSW p50) because its comparison side is a native C++ wheel; the ratio is
 directional, not a universal or same-refiner claim. The revision-bound hosted
-run is [Vec CI `33698297563`](https://github.com/A3S-Lab/Vec/actions/runs/33698297563)
-and is the revision-bound hosted validation for this evidence-only refresh;
-the preceding implementation run `33696717206` completed successfully with
-the platform CSVs and versioned release-candidate artifact. The new run must
-finish green before this latest documentation pin is treated as fully hosted,
+run is [Vec CI `33698899258`](https://github.com/A3S-Lab/Vec/actions/runs/33698899258)
+and is the revision-bound hosted validation for this test-count correction;
+the preceding documentation run `33698297563` and implementation run
+`33696717206` completed successfully with the platform CSVs and versioned
+release-candidate artifacts. The new run must finish green before this latest
+documentation pin is treated as fully hosted,
 and neither run substitutes for the actual macOS 12 Intel runtime or formal
 publication gates.
 
@@ -53,7 +54,7 @@ the CI-hardening revision. This is a later evidence record;
 the findings and command counts in the historical sections below describe the
 older review snapshots and must not be read as the current test count.
 
-The current engine validation includes 266 passing unit/integration tests plus
+The current engine validation includes 268 passing unit/integration tests plus
 four doctests with all features (263 unit/integration tests plus four doctests
 with the default and no-default feature sets), a release-mode suite, Rust 1.75
 MSRV checks, strict rustfmt/Clippy, rustdoc, locked packaging, and an audit with

@@ -128,7 +128,7 @@ another row.
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
 `crates/vec` git submodule. The current root pin is Vec
-`dd7e2a144b34704e4abf0b9df0cc54e8d13e1cce` (latest documentation refresh over the
+`a5786794db53a8dec40049a5a646e5dc64ccdc0c` (test-count correction over the
 borrowed exact-score and
 one-query-norm performance kernel over methodology revision
 `d6b83458e0a1042a59e877d5df1511297b60f2fa`, comparison-methodology
@@ -154,8 +154,10 @@ is covered by [Vec CI run `33690839419`](https://github.com/A3S-Lab/Vec/actions/
 whose ten jobs are green, including the rounded-total scale gate, Python
 companion syntax check, and comparison-methodology documentation. The
 new performance-kernel revision is validated locally and its documentation-
-bound hosted run [Vec CI run `33698297563`](https://github.com/A3S-Lab/Vec/actions/runs/33698297563)
-is pending; the preceding implementation-bound run [Vec CI run
+bound hosted run [Vec CI run `33698899258`](https://github.com/A3S-Lab/Vec/actions/runs/33698899258)
+is pending; the preceding documentation-bound run [Vec CI
+`33698297563`](https://github.com/A3S-Lab/Vec/actions/runs/33698297563) and
+implementation-bound run [Vec CI run
 `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206) completed
 green, including the platform CSVs and versioned release-candidate artifact.
 The underlying engine gate is [Vec CI run
@@ -325,7 +327,7 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
 
-Vec `dd7e2a1` provides the exact-revision workflow for item 1. It runs only on
+Vec `a578679` provides the exact-revision workflow for item 1. It runs only on
 a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
 executes the locked engine suites offline, and uploads a checksummed crate plus
 machine-readable host evidence. No such runner is currently registered, so the
