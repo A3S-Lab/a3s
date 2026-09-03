@@ -7,6 +7,24 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Follow-up: Code Vec shadow promotion candidate (2026-09-03)
+
+Code candidate `17113af4` advances the workspace-retrieval shadow dependency to
+Vec `41283f6315906a2737b5a8e8612ac876a8dc9c04` while retaining A3S Memory as
+the serving oracle. The candidate's focused shadow tests, full Code CI matrix,
+and release-profile qualification passed; the hosted records are
+[CI `33712033250`](https://github.com/A3S-Lab/Code/actions/runs/33712033250)
+and [performance `33712033140`](https://github.com/A3S-Lab/Code/actions/runs/33712033140).
+The 25,000 x 384 Windows release profile reports exact p95 7.9257 ms,
+hybrid RRF-only p95 67.9645 ms, deterministic-rerank p95 70.2005 ms, and
+120/120 Vec comparisons with zero mismatch or failure. The full Code workspace
+strict rustdoc command also passes on this candidate.
+
+This is developer-shadow evidence, not serving promotion: the root Cloud
+compatibility lock still records Code 8.0.4, P7 has not removed the duplicate
+workspace BM25/SQLite/vector paths, and actual macOS 12 Intel runtime, RSS/disk,
+formal tag/registry, and rollback evidence remain release gates.
+
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
 Vec `41283f6315906a2737b5a8e8612ac876a8dc9c04` is now the root candidate;

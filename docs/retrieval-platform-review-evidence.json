@@ -1045,6 +1045,49 @@
     "date": "2026-09-03",
     "root_candidate_revision": "8700e830942ca86f394806df2c2266f0bd0b9c84",
     "vec_revision": "41283f6315906a2737b5a8e8612ac876a8dc9c04",
+    "code_candidate": {
+      "implementation_revision": "93dbb5f337da832149bfd94e5989a7530bf6b9db",
+      "documentation_revision": "17113af4",
+      "vec_dependency_revision": "41283f6315906a2737b5a8e8612ac876a8dc9c04",
+      "local_release_profile": {
+        "profile": "workspace-retrieval-v3",
+        "records": 25000,
+        "dimension": 384,
+        "top_k": 20,
+        "measured_queries": 100,
+        "warmups": 20,
+        "exact_p95_ms": 7.9257,
+        "hybrid_rrf_only_p95_ms": 67.9645,
+        "hybrid_deterministic_rerank_p95_ms": 70.2005,
+        "reranker_p95_delta_ms": 2.236,
+        "vec_compared_queries": 120,
+        "vec_matching_queries": 120,
+        "vec_mismatched_queries": 0,
+        "vec_failed_queries": 0,
+        "vec_failed_mutations": 0,
+        "vec_accounted_bytes": 54500008,
+        "close_records": 0,
+        "close_bytes": 0,
+        "status": "pass"
+      },
+      "hosted_validation": [
+        {
+          "run_id": 33712033250,
+          "url": "https://github.com/A3S-Lab/Code/actions/runs/33712033250",
+          "head_sha": "93dbb5f337da832149bfd94e5989a7530bf6b9db",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "run_id": 33712033140,
+          "url": "https://github.com/A3S-Lab/Code/actions/runs/33712033140",
+          "head_sha": "93dbb5f337da832149bfd94e5989a7530bf6b9db",
+          "status": "completed",
+          "conclusion": "success",
+          "workflow": "Performance Qualification"
+        }
+      ]
+    },
     "environment": {
       "os": "Windows 11",
       "architecture": "x86_64",
@@ -1177,7 +1220,7 @@
   },
   "decision": {
     "vec_release_qualified": false,
-    "code_migration_started": false,
+    "code_migration_started": true,
     "remove_code_bm25_or_sqlite": false,
     "intel_macos12_supported": false,
     "migration_requires_benefit_gate": true
