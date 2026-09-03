@@ -12,9 +12,9 @@ This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. The
 Memory-authoritative A3S Vec shadow projection is implemented in the Code main
 candidate `17113af` and recorded below; the full serving migration and removal
-of the legacy workspace paths are not complete. The root Cloud lock still
-records the prior Code 8.0.4 component graph until a coordinated update is
-verified.
+of the legacy workspace paths are not complete. The coordinated Cloud lock now
+records Code Core 8.1.0 and Search 3.1.0; the lock, Cloud manifest, and gitlinks
+are verified together by the release integration gate.
 
 ## 1. Problem and outcome
 
@@ -140,8 +140,8 @@ documentation follow-up `c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`,
 lifecycle/performance revision `9031943b53577e14f805692a3bfb3a3237b5072f`,
 and implementation `dbd4a75df4de5e02b4ddb106700617e686186a56`);
 Code's current candidate dependency is pinned to Vec `41283f631`; the root
-Cloud compatibility graph remains on its reviewed Code 8.0.4 pin until the
-manifest, Cargo lock, and root compatibility lock are advanced together.
+Cloud compatibility graph is coordinated with Code Core 8.1.0 and Search 3.1.0
+through the manifest, Cargo lock, and root compatibility lock.
 Source changes are committed in the Vec repository first; the integration
 repository advances the gitlink only after engine checks and compatibility
 review pass.

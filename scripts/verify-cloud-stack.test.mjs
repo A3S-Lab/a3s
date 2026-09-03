@@ -81,7 +81,7 @@ test('the Box component resolves its package from the nested Rust workspace', ()
   assert.ok(box);
   assert.equal(box.manifest, 'src/runtime/Cargo.toml');
   assert.equal(box.package, 'a3s-box-runtime');
-  assert.equal(box.version, '3.2.2');
+  assert.equal(box.version, '3.2.3');
 });
 
 test('the Form component resolves the native core package from its nested manifest', () => {
@@ -106,7 +106,7 @@ test('the Code component describes the Cloud host dependency', () => {
   assert.equal(code.manifest, 'core/Cargo.toml');
   assert.equal(code.package, 'a3s-code-core');
   assert.equal(code.source, 'git');
-  assert.equal(code.version, '8.0.4');
+  assert.equal(code.version, '8.1.0');
 });
 
 test('the Sandbox component is bound through the exact Code dependency', () => {

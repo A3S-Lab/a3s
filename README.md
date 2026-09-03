@@ -148,6 +148,10 @@ Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
 
+The current coordinated CLI release is
+[`v0.14.0`](https://github.com/A3S-Lab/CLI/releases/tag/v0.14.0), built against
+Code Core 8.1.0 and Search 3.1.0.
+
 The current Code retrieval pin includes a Memory-authoritative A3S Vec shadow
 for differential qualification. Its ownership boundary, status contract, and
 promotion gates are recorded in the
@@ -185,6 +189,13 @@ Release installers resolve one stable version, require an exact artifact for
 the detected platform, verify its SHA-256 digest and staged binary version,
 reject unsafe archive entries, and preserve the previous installation if
 activation fails.
+
+The stable `a3s` release archives also include the matching native Moli
+headless-browser runtime under `moli/`. Web search uses that bundled runtime
+first and falls back to the shared per-user cache only when an archive was
+installed without the optional sidecar. The installer and self-update path
+admit a verified runtime atomically, so multiple A3S CLI installations reuse
+one cache entry instead of downloading duplicate copies.
 
 Set `A3S_OFFLINE=1` and `A3S_NO_AUTO_INSTALL=1` when setup must perform zero
 network access and zero component mutation. Standalone macOS and Linux installs

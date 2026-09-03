@@ -6,7 +6,10 @@ export const productArchitectureProjects: readonly ArchitectureProject[] = [
     id: 'cli',
     name: 'CLI',
     category: 'products',
-    role: localized('安装和管理 A3S 组件，并提供 Code 终端。', 'Installs and manages A3S components and provides the Code terminal.'),
+    role: localized(
+      '安装和管理 A3S 组件，提供 Code 终端，并随发行包提供平台匹配的 Moli 网页搜索运行时。',
+      'Installs and manages A3S components, provides the Code terminal, and ships the platform-matched Moli web-search runtime.',
+    ),
     href: getProjectPrimaryHref('cli'),
     nodes: [
       node('entry', 'a3s CLI', 'surface', '解析统一命令，并把产品选择留在用户可见的入口。', 'Parses the umbrella command while keeping product selection visible at the entrypoint.'),

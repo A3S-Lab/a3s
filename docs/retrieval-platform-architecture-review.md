@@ -20,8 +20,8 @@ hybrid RRF-only p95 67.9645 ms, deterministic-rerank p95 70.2005 ms, and
 120/120 Vec comparisons with zero mismatch or failure. The full Code workspace
 strict rustdoc command also passes on this candidate.
 
-This is developer-shadow evidence, not serving promotion: the root Cloud
-compatibility lock still records Code 8.0.4, P7 has not removed the duplicate
+This is developer-shadow evidence, not serving promotion: the coordinated root
+Cloud compatibility lock now records Code 8.1.0, while P7 has not removed the duplicate
 workspace BM25/SQLite/vector paths, and actual macOS 12 Intel runtime, RSS/disk,
 formal tag/registry, and rollback evidence remain release gates.
 
