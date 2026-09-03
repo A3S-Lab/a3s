@@ -11,7 +11,7 @@ recorded in
 This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. The
 Memory-authoritative A3S Vec shadow projection is implemented in the Code main
-qualification candidate `3be2d1bc`,
+merge `1cd4423e`,
 including the Code-owned vector contract and revision-CAS adapter, and recorded
 below;
 the full serving migration and removal of the
@@ -156,12 +156,13 @@ scale-comparison, and lifecycle-matrix CSVs, plus one copy of all five smoke
 CSVs for each hosted
 platform, only after its
 quality, MSRV, fuzz, and platform jobs pass. The current ten-job hosted gate is
-[Vec CI run `33763187419`](https://github.com/A3S-Lab/Vec/actions/runs/33763187419),
+[Vec CI run `33810337678`](https://github.com/A3S-Lab/Vec/actions/runs/33810337678),
 including the rounded-total scale gate, Python companion syntax check, and
-versioned release-candidate artifact. The Code candidate's full CI and
-release-profile qualification are recorded in runs `33763816993` and
-`33763816547` for Code `32a70cd7`; the documentation-only follow-up is
-`549ff70d`.
+versioned release-candidate artifact. The Code candidate's release-profile
+qualification passed in [run `33811229333`](https://github.com/A3S-Lab/Code/actions/runs/33811229333);
+the full CI run is [33811229434](https://github.com/A3S-Lab/Code/actions/runs/33811229434)
+with a dependency-tool rustdoc failure in its semver job. The exact-revision
+macOS 12 Intel runtime qualification is queued in [run `33811715564`](https://github.com/A3S-Lab/Vec/actions/runs/33811715564).
 These
 artifacts are not a formal release: tagging or registry
 publication remains blocked until an actual macOS 12 Intel runtime report is

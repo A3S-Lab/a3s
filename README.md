@@ -148,21 +148,23 @@ Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
 
-The latest independently qualified Code dependency candidate updates the
-`a3s-vec` dependency to version `0.1.1` at Vec commit `416140ec`, behind a
-Memory-authoritative differential shadow. Its ownership
-boundary, status contract, and promotion gates are recorded in the
+The latest Code `main` merge (`1cd4423e`) updates the `a3s-vec` dependency to
+version `0.1.1` at Vec commit `416140ec`, behind a Memory-authoritative
+differential shadow. Its ownership boundary, status contract, and promotion
+gates are recorded in the
 [Vec migration note](https://github.com/A3S-Lab/Code/blob/main/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
 The root Cloud compatibility lock and Code gitlink remain a separate component
 graph until their exact revisions are promoted together. Vec's public API
 review, reproducible candidate package, and remaining external release gate are
 recorded in [Vec release qualification](https://github.com/A3S-Lab/Vec/blob/416140ec5f9bd6fc8030f9f17735c0b10d099c99/RELEASE.md).
 
-The preceding dependency pin passed [Code CI run 33773373773](https://github.com/A3S-Lab/Code/actions/runs/33773373773)
-after the failed Windows job passed on attempt 2, and its release profiles passed
-[performance run 33773373522](https://github.com/A3S-Lab/Code/actions/runs/33773373522).
-The `0.1.1` pin is being requalified by the Code workflow after the Vec version
-commit is available remotely.
+The Code release-profile qualification passed [run 33811229333](https://github.com/A3S-Lab/Code/actions/runs/33811229333).
+The corresponding [CI run 33811229434](https://github.com/A3S-Lab/Code/actions/runs/33811229434)
+completed with one non-code semver-check job failure while rustdoc resolved the
+transient `tinyvec 1.13.0` dependency; its other completed jobs passed. The Vec
+candidate itself passed the ten-job [CI run 33810337678](https://github.com/A3S-Lab/Vec/actions/runs/33810337678)
+and produced the revision-bound package and performance artifacts. The exact
+macOS 12 Intel runtime gate remains queued in [run 33811715564](https://github.com/A3S-Lab/Vec/actions/runs/33811715564).
 On the hosted 4-CPU Linux profile, Memory/Vec-primary exact p95 was
 9.7993/9.6626 ms, RRF-only p95 was 55.6142/58.6252 ms, and deterministic-rerank
 p95 was 58.2083/56.6000 ms. Both arms matched 120/120 differential queries with

@@ -10,8 +10,8 @@ It is gate-based rather than calendar-based: a phase is complete only when its
 exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
-**Current integration status (2026-09-04):** Code's release candidate
-`3be2d1bc` contains the Code-owned A3S
+**Current integration status (2026-09-04):** Code's `main` merge
+`1cd4423e` contains the Code-owned A3S
 Vec shadow adapter and isolated `WorkspaceVectorIndex` contract. It mirrors the
 already validated Memory embedding batch into a session-scoped temporary Vec
 collection, keeps Memory authoritative by default, and exposes bounded status
@@ -19,10 +19,11 @@ and differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
 The current Code dependency and root submodule pin Vec
 `416140ec5f9bd6fc8030f9f17735c0b10d099c99` (`a3s-vec` 0.1.1). The candidate
 retains bounded, deterministic parallel schema backfills and candidate-schema
-validation while retaining atomic publication. The preceding Vec revision
+validation while retaining atomic publication. The versioned Vec candidate
 passed all hosted quality, MSRV, recovery, cross-platform, performance, and
-package jobs; the new versioned candidate is being requalified on the same
-matrix. These figures are directional rather than RSS or cross-platform SLOs.
+package jobs in CI run `33810337678`; the exact-revision macOS 12 Intel runtime
+run `33811715564` is queued. These figures are directional rather than RSS or
+cross-platform SLOs.
 The root Cloud
 compatibility lock still points at the older Code 8.0.4 graph, and Vec
 promotion, old-path removal, actual Intel macOS 12 runtime evidence, and the
@@ -121,7 +122,7 @@ closed on the same pinned component graph. At minimum this means:
 | --- | --- | --- |
 | P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `416140ec`: format-10 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
 | P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `416140ec` (complete FP16/INT8/INT4 Vamana reopen coverage over Vamana controls/scalar quantization, bounded parallel schema evolution and worker-cap validation, and the performance kernel): generated vector/FTS/filter and Binary32/Binary64 Hamming oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, metric-aware Vamana/DiskANN contracts, dense/binary/FTS query-builder execution, include-doc-id persistence checks, schema-only WAL compaction, the complete feature matrix plus concurrent-reader/mixed-workload/scale tail-latency gates, and the 16-row lifecycle/resource/maintenance matrix are tested |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally for pin `416140ec`; hosted requalification is pending** (the preceding ten-job matrix passed; the exact-revision macOS 12 Intel qualification workflow remains available) |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and in hosted CI run `33810337678` for pin `416140ec`;** the exact-revision macOS 12 Intel qualification run `33811715564` remains queued |
 | Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Partially closed**: hosted Linux x86-64/ARM64, Windows x86-64, and macOS ARM64/Intel pass, and Intel builds target 12.0; an actual macOS 12 Intel runtime remains open |
 | Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Shadow differential passed** for 120 queries and lifecycle/resource checks; RSS, recovery, cross-platform, and serving-promotion evidence remain open |
 
