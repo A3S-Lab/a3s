@@ -24,8 +24,10 @@ remained 0.6000. zvec remains faster at this large scale (about 5.6x Flat and
 5.1x HNSW p50) because its comparison side is a native C++ wheel; the ratio is
 directional, not a universal or same-refiner claim. The revision-bound hosted
 run is [Vec CI `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206)
-and was queued when this record was updated; it must be green before a release
-qualification claim.
+and completed successfully, producing the revision-bound platform CSVs and
+versioned release-candidate artifact. This closes the hosted gate, but does
+not substitute for the actual macOS 12 Intel runtime or formal publication
+gates.
 
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 

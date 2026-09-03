@@ -154,9 +154,9 @@ is covered by [Vec CI run `33690839419`](https://github.com/A3S-Lab/Vec/actions/
 whose ten jobs are green, including the rounded-total scale gate, Python
 companion syntax check, and comparison-methodology documentation. The
 new performance-kernel revision is validated locally and its documentation-
-bound hosted run is [Vec CI run `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206);
-that run must complete green before this root pin is used as a release
-qualification claim. The underlying engine gate is [Vec CI run
+bound hosted run [Vec CI run `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206)
+completed green, including the platform CSVs and versioned release-candidate
+artifact. The underlying engine gate is [Vec CI run
 `33686399240`](https://github.com/A3S-Lab/Vec/actions/runs/33686399240).
 These
 artifacts are not a formal release: tagging or registry
