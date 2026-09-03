@@ -1047,7 +1047,7 @@
     "vec_revision": "41283f6315906a2737b5a8e8612ac876a8dc9c04",
     "code_candidate": {
       "implementation_revision": "93dbb5f337da832149bfd94e5989a7530bf6b9db",
-      "documentation_revision": "17113af4",
+      "documentation_revision": "17113af42d34cb95f2fa018a1999dc2d29623bc8",
       "vec_dependency_revision": "41283f6315906a2737b5a8e8612ac876a8dc9c04",
       "local_release_profile": {
         "profile": "workspace-retrieval-v3",
@@ -1085,6 +1085,14 @@
           "status": "completed",
           "conclusion": "success",
           "workflow": "Performance Qualification"
+        },
+        {
+          "run_id": 33713995994,
+          "url": "https://github.com/A3S-Lab/Code/actions/runs/33713995994",
+          "head_sha": "17113af42d34cb95f2fa018a1999dc2d29623bc8",
+          "status": "completed",
+          "conclusion": "success",
+          "workflow": "CI documentation refresh"
         }
       ]
     },
