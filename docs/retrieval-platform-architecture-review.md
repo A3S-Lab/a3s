@@ -9,9 +9,10 @@ Initial review date: 2026-08-29
 
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
-Vec `a416f63118400fa1f0e90bb1dbb81d478f108ff7` is now the root candidate;
+Vec `41283f6315906a2737b5a8e8612ac876a8dc9c04` is now the root candidate;
 it includes executable Vamana RobustPrune occlusion/saturation controls and
-standalone FP16/INT8/INT4 index quantization, in addition to the borrowed
+standalone FP16/INT8/INT4 index quantization with reopen/cache coverage for
+every scalar quantizer, in addition to the borrowed
 exact-score kernel from the preceding candidate.
 The exact dense executor traverses borrowed native vector storage instead of
 allocating a converted `f64` buffer for every candidate, and cosine query
@@ -25,7 +26,7 @@ three-process medians moved from 43.42 to 34.58 ms Flat p50 and from 2.19 to
 remained 0.6000. zvec remains faster at this large scale (about 5.6x Flat and
 5.1x HNSW p50) because its comparison side is a native C++ wheel; the ratio is
 directional, not a universal or same-refiner claim. The revision-bound hosted
-run is [Vec CI `33703702564`](https://github.com/A3S-Lab/Vec/actions/runs/33703702564)
+run is [Vec CI `33705867979`](https://github.com/A3S-Lab/Vec/actions/runs/33705867979)
 and is the revision-bound hosted validation for this candidate;
 the preceding documentation run `33698297563` and implementation run
 `33696717206` also completed successfully with the platform CSVs and versioned
