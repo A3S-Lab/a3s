@@ -148,32 +148,42 @@ Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
 
-The current Code retrieval pin includes a Memory-authoritative A3S Vec shadow
-for differential qualification. Its ownership boundary, status contract, and
-promotion gates are recorded in the
-[Vec migration note](crates/code/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
-Vec's public API review, reproducible candidate package, and remaining external
-release gate are recorded in
-[Vec release qualification](crates/vec/RELEASE.md).
+The latest independently qualified Code dependency commit `708a85e3` pins Vec
+`13585ccd` behind a Memory-authoritative differential shadow. Its ownership
+boundary, status contract, and promotion gates are recorded in the
+[Vec migration note](https://github.com/A3S-Lab/Code/blob/0e9ed3774ae6cb214555137231c0372df8ff4ee6/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
+The root Cloud compatibility lock and Code gitlink remain a separate component
+graph until their exact revisions are promoted together. Vec's public API
+review, reproducible candidate package, and remaining external release gate are
+recorded in [Vec release qualification](https://github.com/A3S-Lab/Vec/blob/2cde16c5b94f3903eeb90a7cd10721110f697fd9/RELEASE.md).
+
+The dependency pin passed [Code CI run 33773373773](https://github.com/A3S-Lab/Code/actions/runs/33773373773)
+after the failed Windows job passed on attempt 2, and its release profiles passed
+[performance run 33773373522](https://github.com/A3S-Lab/Code/actions/runs/33773373522).
+On the hosted 4-CPU Linux profile, Memory/Vec-primary exact p95 was
+9.7993/9.6626 ms, RRF-only p95 was 55.6142/58.6252 ms, and deterministic-rerank
+p95 was 58.2083/56.6000 ms. Both arms matched 120/120 differential queries with
+zero failures and released all records and bytes. This is a product-integration
+and SLO gate, not an HNSW-versus-zvec throughput comparison.
+
 The pinned Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
 the complete public feature matrix, a revision-bound 53-row smoke performance
 CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
-metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness;
-the recorded same-host 100k x 128 directional comparison (measured at the
-preceding `c758521c` vector-kernel revision; worker-cap-only `7e3b083e` does not
-change that path) shows zvec 0.7.0 at
-about 5.6x lower flat p50, 5.1x lower HNSW p50, and 2.2x shorter total HNSW
-build under the pinned one-worker controls. The newer Vec revision removes a
-per-candidate dense conversion and repeats each cosine query norm only once;
-that reduced the a3s-vec flat p50 by 20.4% and HNSW p50 by 21.3% on the same
-fixture. The current Code dependency is advanced to Vec revision
-`7e3b083e`; the comparison table remains a directional measurement, not a
-revision-bound release gate. The baseline uses Cargo's portable a3s-vec build against zvec's native
-wheel; a3s-vec also exact-reranks HNSW candidates while the zvec optional
-refiner is disabled, so these are not universal or compiler-level apples-to-
-apples ratios. Both recall values require a higher `ef` for a production
-target. See
-[Vec benchmark evidence](crates/vec/BENCHMARKS.md).
+metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness. On
+the same-host 100k x 128 one-worker fixture, the HNSW traversal follow-up cut
+a3s-vec p50 from 1,725.4 to 923.4 microseconds (-46.5%), raised QPS 92.8%, and
+reduced build time 23.6% without changing its 0.6000 Recall@10. Zvec 0.7.0 is
+still about 2.71x lower in HNSW p50 and 1.72x shorter to build, while its median
+Recall@10 is 0.5719. A3S Vec's unchanged Flat path remains about 5.6x slower at
+this scale. A three-run `target-cpu=native` control lowered A3S Vec's Flat p50
+by 13.3%, but it remained 4.83x above zvec; compiler target selection therefore
+accounts for only part of the gap.
+
+The comparison remains directional, not a revision-bound release gate: the
+baseline uses Cargo's portable a3s-vec build against zvec's native wheel, and
+a3s-vec exact-reranks HNSW candidates while the zvec optional refiner is
+disabled. Both recall values require a higher `ef` for a production target.
+See [Vec benchmark evidence](https://github.com/A3S-Lab/Vec/blob/2cde16c5b94f3903eeb90a7cd10721110f697fd9/BENCHMARKS.md).
 
 ## Installation
 
