@@ -128,7 +128,7 @@ another row.
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
 `crates/vec` git submodule. The current root pin is Vec
-`80c6e26511361c43efb1a06cb05d831a2df941a2` (documentation refresh over the
+`dd7e2a144b34704e4abf0b9df0cc54e8d13e1cce` (latest documentation refresh over the
 borrowed exact-score and
 one-query-norm performance kernel over methodology revision
 `d6b83458e0a1042a59e877d5df1511297b60f2fa`, comparison-methodology
@@ -154,9 +154,11 @@ is covered by [Vec CI run `33690839419`](https://github.com/A3S-Lab/Vec/actions/
 whose ten jobs are green, including the rounded-total scale gate, Python
 companion syntax check, and comparison-methodology documentation. The
 new performance-kernel revision is validated locally and its documentation-
-bound hosted run [Vec CI run `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206)
-completed green, including the platform CSVs and versioned release-candidate
-artifact. The underlying engine gate is [Vec CI run
+bound hosted run [Vec CI run `33698297563`](https://github.com/A3S-Lab/Vec/actions/runs/33698297563)
+is pending; the preceding implementation-bound run [Vec CI run
+`33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206) completed
+green, including the platform CSVs and versioned release-candidate artifact.
+The underlying engine gate is [Vec CI run
 `33686399240`](https://github.com/A3S-Lab/Vec/actions/runs/33686399240).
 These
 artifacts are not a formal release: tagging or registry
@@ -323,7 +325,7 @@ The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
    truthful. If product policy requires full semantic support on Intel, the
    release gate is blocked rather than silently claiming support.
 
-Vec `80c6e26` provides the exact-revision workflow for item 1. It runs only on
+Vec `dd7e2a1` provides the exact-revision workflow for item 1. It runs only on
 a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
 executes the locked engine suites offline, and uploads a checksummed crate plus
 machine-readable host evidence. No such runner is currently registered, so the

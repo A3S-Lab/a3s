@@ -1044,7 +1044,7 @@
   "performance_kernel_follow_up": {
     "date": "2026-09-03",
     "root_candidate_revision": "e23cd571f46c395f49ca0ceb2111aa3e2cc83fe8",
-    "vec_revision": "80c6e26511361c43efb1a06cb05d831a2df941a2",
+    "vec_revision": "dd7e2a144b34704e4abf0b9df0cc54e8d13e1cce",
     "environment": {
       "os": "Windows 11",
       "architecture": "x86_64",
@@ -1143,16 +1143,17 @@
       }
     },
     "hosted_ci": {
-      "run_id": 33696717206,
-      "url": "https://github.com/A3S-Lab/Vec/actions/runs/33696717206",
-      "head_sha": "80c6e26511361c43efb1a06cb05d831a2df941a2",
-      "status_when_recorded": "completed",
-      "conclusion_when_recorded": "success",
-      "artifact_count": 7,
-      "release_candidate_artifact": "a3s-vec-0.1.0-80c6e26511361c43efb1a06cb05d831a2df941a2"
+      "run_id": 33698297563,
+      "url": "https://github.com/A3S-Lab/Vec/actions/runs/33698297563",
+      "head_sha": "dd7e2a144b34704e4abf0b9df0cc54e8d13e1cce",
+      "status_when_recorded": "in_progress",
+      "conclusion_when_recorded": null,
+      "predecessor_run_id": 33696717206,
+      "predecessor_conclusion": "success"
     },
     "release_qualified": false,
     "remaining_gates": [
+      "hosted CI for Vec documentation revision dd7e2a1",
       "actual macOS 12 Intel runtime evidence",
       "formal tagged artifact and registry publication",
       "Code dependency promotion and RSS/external resource evidence"

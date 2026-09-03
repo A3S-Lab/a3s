@@ -9,8 +9,9 @@ Initial review date: 2026-08-29
 
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
-Vec `80c6e26511361c43efb1a06cb05d831a2df941a2` is now the root candidate;
-the borrowed exact-score implementation is unchanged from parent `e27524d`.
+Vec `dd7e2a144b34704e4abf0b9df0cc54e8d13e1cce` is now the root candidate;
+the borrowed exact-score implementation is unchanged from parent `e27524d`,
+with only the latest evidence pointers refreshed.
 The exact dense executor traverses borrowed native vector storage instead of
 allocating a converted `f64` buffer for every candidate, and cosine query
 norms are computed once per query across Flat, HNSW, Vamana, and DiskANN
@@ -23,11 +24,13 @@ three-process medians moved from 43.42 to 34.58 ms Flat p50 and from 2.19 to
 remained 0.6000. zvec remains faster at this large scale (about 5.6x Flat and
 5.1x HNSW p50) because its comparison side is a native C++ wheel; the ratio is
 directional, not a universal or same-refiner claim. The revision-bound hosted
-run is [Vec CI `33696717206`](https://github.com/A3S-Lab/Vec/actions/runs/33696717206)
-and completed successfully, producing the revision-bound platform CSVs and
-versioned release-candidate artifact. This closes the hosted gate, but does
-not substitute for the actual macOS 12 Intel runtime or formal publication
-gates.
+run is [Vec CI `33698297563`](https://github.com/A3S-Lab/Vec/actions/runs/33698297563)
+and is the revision-bound hosted validation for this evidence-only refresh;
+the preceding implementation run `33696717206` completed successfully with
+the platform CSVs and versioned release-candidate artifact. The new run must
+finish green before this latest documentation pin is treated as fully hosted,
+and neither run substitutes for the actual macOS 12 Intel runtime or formal
+publication gates.
 
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 
