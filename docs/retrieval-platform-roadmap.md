@@ -11,9 +11,10 @@ exit evidence exists for the same revision. Work can be parallelized only when
 the dependency graph says so.
 
 **Current integration status (2026-09-03):** The Code main candidate
-`17113af4` contains the Code-owned A3S Vec shadow adapter. It mirrors the
+`1b7c80d2` contains the Code-owned A3S Vec shadow adapter and the isolated
+`WorkspaceVectorIndex` contract. It mirrors the
 already validated Memory embedding batch into a session-scoped temporary Vec
-collection, keeps Memory authoritative, and exposes bounded status and
+collection, keeps Memory authoritative by default, and exposes bounded status and
 differential diagnostics across the Rust, Node.js, Python, and Go surfaces.
 The candidate's implementation pin is Vec
 `41283f6315906a2737b5a8e8612ac876a8dc9c04`;
@@ -31,14 +32,19 @@ performance, and package jobs, including the lifecycle matrix. The
 Windows x86-64 schema-4
 qualification compared 120/120 queries with zero mismatch or failure in both
 hybrid arms, retained 25,000 records per arm, and released both engines on
-close. Exact, RRF-only, and deterministic-rerank p95 were 6.7343, 50.7850, and
-49.7348 ms in the earlier qualification; the current Code v8.1.0 refresh
-reports 7.9257, 67.9645, and 70.2005 ms respectively, all within the same
-30/100/100 ms budgets. Code's same-graph release-profile refresh and full CI matrix also
-passed in runs `33712033140` and `33712033250`. This closes the developer-shadow
-P4 implementation evidence; the root Cloud compatibility lock still points
-at the older Code 8.0.4 graph, and Vec promotion, old-path removal, Intel
-macOS 12 runtime evidence, and the broader release gates remain open.
+close. The current Linux x86-64 Code release-profile refresh reports
+Memory-primary exact/RRF/deterministic p95 of 7.7799/50.2334/52.2498 ms and
+Vec-primary 7.8582/55.4365/54.3475 ms, all within the same 30/100/100 ms
+budgets. Vec-primary construction took 6,684.3 ms versus 3,851.9 ms for
+Memory-primary and accounted 54,500,008 versus 40,177,548 logical vector
+bytes; these are directional measurements, not RSS limits. Code's architecture
+CI and performance qualification passed in runs
+[`33744598683`](https://github.com/A3S-Lab/Code/actions/runs/33744598683) and
+[`33742847140`](https://github.com/A3S-Lab/Code/actions/runs/33742847140).
+This closes the developer-shadow P4 implementation evidence; the root Cloud
+compatibility lock still points at the older Code 8.0.4 graph, and Vec
+promotion, old-path removal, Intel macOS 12 runtime evidence, and the broader
+release gates remain open.
 
 **Historical engine review baseline (2026-08-30):** `a3s-vec` was then a
 pre-migration prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the

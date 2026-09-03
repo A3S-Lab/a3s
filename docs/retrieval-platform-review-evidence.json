@@ -1226,6 +1226,72 @@
       "Code dependency promotion and RSS/external resource evidence"
     ]
   },
+  "code_contract_follow_up": {
+    "date": "2026-09-03",
+    "code_revision": "1b7c80d2f1534b9d82bc72f8ff5ff57e7fff67da",
+    "vec_revision": "41283f6315906a2737b5a8e8612ac876a8dc9c04",
+    "architecture": {
+      "contract": "Code-owned WorkspaceVectorIndex",
+      "compatibility_adapter": "a3s-memory VectorIndex imported only in memory_vector_adapter.rs",
+      "lexical_engine": "a3s_vec FTS with whitespace tokenizer",
+      "serving_default": "a3s_memory",
+      "vec_primary": "typed opt-in preview with Memory differential shadow"
+    },
+    "hosted_validation": [
+      {
+        "run_id": 33744598683,
+        "url": "https://github.com/A3S-Lab/Code/actions/runs/33744598683",
+        "workflow": "CI",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "run_id": 33742847140,
+        "url": "https://github.com/A3S-Lab/Code/actions/runs/33742847140",
+        "workflow": "Performance Qualification",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "performance": {
+      "profile": "workspace-retrieval-v3",
+      "machine": "Linux x86_64, 4 logical CPUs",
+      "records": 25000,
+      "dimension": 384,
+      "top_k": 20,
+      "measured_queries": 100,
+      "warmups": 20,
+      "memory_primary": {
+        "exact_p95_ms": 7.77989,
+        "hybrid_rrf_only_p95_ms": 50.233357,
+        "hybrid_deterministic_rerank_p95_ms": 52.249757,
+        "workspace_build_ms": 3851.887744,
+        "vector_bytes": 40177548
+      },
+      "vec_primary": {
+        "exact_p95_ms": 7.85824,
+        "hybrid_rrf_only_p95_ms": 55.436508,
+        "hybrid_deterministic_rerank_p95_ms": 54.347528,
+        "workspace_build_ms": 6684.326336,
+        "vector_bytes": 54500008
+      },
+      "comparisons": 120,
+      "matching_comparisons": 120,
+      "mismatched_comparisons": 0,
+      "failed_queries": 0,
+      "failed_mutations": 0,
+      "initialization_failures": 0,
+      "close_records": 0,
+      "close_bytes": 0,
+      "status": "pass"
+    },
+    "remaining_gates": [
+      "actual macOS 12 Intel runtime evidence",
+      "RSS, temporary-disk, and file-handle measurements",
+      "semantic Memory-path removal/promotion decision",
+      "root Cloud compatibility-lock update and formal tagged publication"
+    ]
+  },
   "decision": {
     "vec_release_qualified": false,
     "code_migration_started": true,
