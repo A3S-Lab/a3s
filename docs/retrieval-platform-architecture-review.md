@@ -27,9 +27,10 @@ cross-platform SLO. The full Code workspace strict rustdoc command also passes
 on this candidate.
 
 This is developer-shadow evidence, not serving promotion: the root Cloud
-compatibility lock still records Code 8.0.4, P7 has not removed the duplicate
-workspace BM25/SQLite/vector paths, and actual macOS 12 Intel runtime, RSS/disk,
-formal tag/registry, and rollback evidence remain release gates.
+compatibility lock now records the verified Code 8.2.0 graph, while P7 has not
+removed the duplicate workspace BM25/SQLite/vector paths, and actual macOS 12
+Intel runtime, RSS/disk, formal tag/registry, and rollback evidence remain
+release gates.
 
 ## Follow-up: Vec worker-pool cap and candidate refresh (2026-09-03)
 

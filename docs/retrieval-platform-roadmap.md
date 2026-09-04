@@ -24,10 +24,10 @@ passed all hosted quality, MSRV, recovery, cross-platform, performance, and
 package jobs in CI run `33810337678`; the exact-revision macOS 12 Intel runtime
 run `33811715564` is queued. These figures are directional rather than RSS or
 cross-platform SLOs.
-The root Cloud
-compatibility lock still points at the older Code 8.0.4 graph, and Vec
-promotion, old-path removal, actual Intel macOS 12 runtime evidence, and the
-broader release gates remain open.
+The root Cloud compatibility lock now advances the verified Code 8.2.0 graph
+(`apps/cloud` compatibility commit `8fc2e6ce` and Code revision
+`9e870340`). Vec promotion, old-path removal, actual Intel macOS 12 runtime
+evidence, and the broader release gates remain open.
 
 **Historical engine review baseline (2026-08-30):** `a3s-vec` was then a
 pre-migration prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
@@ -318,9 +318,9 @@ close leaves zero vectors, tasks, handles, or sockets.
   [`33763816993`](https://github.com/A3S-Lab/Code/actions/runs/33763816993) and
   [`33763816547`](https://github.com/A3S-Lab/Code/actions/runs/33763816547).
   The hosted Vec matrix is green; actual macOS 12 Intel runtime evidence is
-  still external. The root Cloud compatibility lock is intentionally not
-  advanced until its Code manifest, lock entry, and component gitlink move as
-  one verified graph.
+  still external. The root Cloud compatibility lock is now advanced: its Code
+  manifest, lock entry, Cloud compatibility commit, and component gitlinks
+  moved as one verified graph.
 
 The P4 developer-shadow implementation is delivered. The exit gate for
 serving promotion remains tied to the later cross-platform, RSS/disk,

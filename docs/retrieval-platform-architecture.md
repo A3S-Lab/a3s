@@ -15,9 +15,9 @@ merge `1cd4423e`,
 including the Code-owned vector contract and revision-CAS adapter, and recorded
 below;
 the full serving migration and removal of the
-legacy workspace paths are not complete. The root Cloud lock still
-records the prior Code 8.0.4 component graph until a coordinated update is
-verified.
+legacy workspace paths are not complete. The root Cloud lock now records the
+verified Code 8.2.0 component graph; serving migration still requires the
+remaining cross-platform and rollback gates.
 
 ## 1. Problem and outcome
 
@@ -144,8 +144,8 @@ documentation follow-up `c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`,
 lifecycle/performance revision `9031943b53577e14f805692a3bfb3a3237b5072f`,
 and implementation `7e3b083e36ab5aeb300b2c45d6d59280971087da`);
 Code's current candidate dependency is pinned to Vec `416140ec`; the root
-Cloud compatibility graph remains on its reviewed Code 8.0.4 pin until the
-manifest, Cargo lock, and root compatibility lock are advanced together.
+Cloud compatibility graph is now advanced to the reviewed Code 8.2.0 pin, with
+the Cloud manifest, Cargo lock, and root compatibility lock updated together.
 Source changes are committed in the Vec repository first; the integration
 repository advances the gitlink only after engine checks and compatibility
 review pass.
