@@ -388,8 +388,8 @@ The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
 protocol Host/Harness tests, and the complete Core test suite (3106 passed,
 0 failed, 13 ignored; 3119 total). The root integration PRs are #307, #308,
-#309, #310, #311, #312, #313, #314, #315, #316, #317, and #318; coordinator
-integrations follow these Code changes.
+#309, #310, #311, #312, #313, #314, #315, #316, #317, #318, and #319;
+coordinator integrations follow these Code changes.
 
 The middleware follow-up passed `cargo fmt --all -- --check`, Code compilation,
 and 13 focused `agent::llm_invoker` tests. The streaming follow-up passed the
