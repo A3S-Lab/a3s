@@ -394,6 +394,13 @@ The first P1 slices are now delivered on Code `main`:
   optional result digest/byte count. Identity-aware claim, renewal, release,
   and completion operations fence stale workers while legacy ledger keys and
   old receipt files remain replay-compatible.
+- **P3/KRN-5 workflow result convergence** (`c48363a0`): resumable workflow
+  checkpoints now carry bounded workflow-step result receipts bound to
+  canonical step specifications; changed step identities, tampered outputs,
+  expired workers, and unreadable checkpoints fail closed, while old
+  checkpoints without receipts remain loadable. Flow decision claims use the
+  same identity-aware claim/renew/release/complete boundary and persist a
+  digest-only decision receipt.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
@@ -431,12 +438,21 @@ dispatcher (14), evaluation supervisor (6), ledger fencing/receipt (2), and
 execution identity (5) tests. Result receipts contain digests and bounded byte
 counts only; legacy claim records deserialize without the new optional fields.
 
-The next Code-side slice is **P3/KRN-5 workflow result convergence**:
+The workflow result convergence follow-up passed `cargo +stable fmt --all
+-- --check`, `cargo +stable check -p a3s-code-core`, the complete Core library
+suite (3153 passed, 0 failed, 13 ignored), Flow decision and ledger tests (18),
+orchestration tests (42), persisted-schema integration tests (11), file-store
+receipt restart coverage (1), and all integration-target compilation. The
+workflow and Flow paths retain digest-only receipts, reject stale or corrupt
+resumable state before executing steps, and keep legacy checkpoint/ledger JSON
+loadable.
 
-1. carry bounded result receipts through Flow/workflow step completion;
-2. bind model/tool evidence snapshots to the same claim/result adapter;
-3. qualify restart/retry and stale-worker fencing across mixed legacy/new
-   ledgers.
+The next Code-side slice is **P3/KRN-5/KRN-8 scheduler and plan convergence**:
+
+1. carry one bounded identity/receipt through dynamic Flow step admission;
+2. unify quotas, fairness, cancellation, and checkpoint semantics across
+   orchestration and Flow adapters;
+3. qualify mixed-generation restart/retry without duplicate side effects.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
