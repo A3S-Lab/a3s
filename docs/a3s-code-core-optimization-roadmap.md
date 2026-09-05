@@ -352,21 +352,27 @@ The first P1 slices are now delivered on Code `main`:
   event-streaming direct-tool calls reuse the coordinator's canonical
   TaskScheduler lease/error adapter while retaining their independent
   control-plane lifetime (they do not acquire the transcript Run lease).
+- **P1.2 terminal transition sink** (`e4b160a5`): the coordinator,
+  cancellation handles, session close, and admission-failure paths now apply
+  one typed terminal transition through the Code-owned Run store. Completed
+  Runs remain finalized by the authoritative `End` event, while cancellation
+  and failure retain monotonic first-terminal semantics.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
-and the complete Core library test suite (3103 passed, 0 failed, 13 ignored;
-3116 total). The root integration PRs are #307, #308, and #310; coordinator
-integrations follow these Code changes.
+protocol Host/Harness tests, and the complete Core test suite (3104 passed,
+0 failed, 13 ignored; 3117 total). The root integration PRs are #307, #308,
+#310, #311, and #312; coordinator integrations follow these Code changes.
 
-The next Code-side slice is **P1.2 terminal lifecycle convergence**:
+The next Code-side slice is **P3/KRN-5 model-call boundary preparation**:
 
-1. model one coordinator-owned terminal transition for blocking and streaming
-   runs while preserving the current persistence and event envelopes;
-2. extend that transition to direct-tool, delegated, protocol, and recovery
-   paths; and
-3. add cancellation/lease/replay qualification for every path before removing
-   compatibility lifecycle code.
+1. keep the existing `LlmInvoker` as the only provider-call gateway and make
+   its admission, cancellation, usage, retry, and evidence phases an explicit
+   internal contract;
+2. qualify blocking, streaming, structured, repair, compaction, and auxiliary
+   calls against that contract without introducing a second provider authority;
+3. use the resulting contract as the seam for the later `ToolInvocation` FSM,
+   typed trust/taint labels, and shared idempotency identity.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
