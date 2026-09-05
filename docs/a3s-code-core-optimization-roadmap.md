@@ -507,10 +507,33 @@ The durable cancellation and cross-process recovery slice landed in Code
    and takeover, verifies busy inspection and cancellation settlement, and
    injects event conflicts to prove bounded retry and convergence.
 
-The next Code-side slice is **P3/KRN-8 scheduler fairness and bounded control
-observability**: expose aggregate admission/takeover counters and qualify
-starvation-safe priority behavior across resumed workflow workers, while
-keeping the Flow event store and lease as the only workflow authorities.
+The scheduler fairness and bounded control observability slice landed in Code
+`e4772cc0` (`A3S-Lab/Code#97`):
+
+1. the agent-wide scheduler keeps the established occupancy `stats` wire shape
+   and adds an actor-owned health projection with bounded admitted, released,
+   cancelled, rejected, aging-promotion, peak-occupancy, and wait-time
+   counters; health reads also evaluate elapsed aging so the observed fairness
+   state cannot lag behind an eligible promotion;
+2. dynamic workflow tools and control handles share a process-local,
+   payload-free metrics block for claim attempts, busy/conflict outcomes,
+   takeovers, lease renewal/loss, terminal settlement, cancellation, and
+   in-flight claims; `DynamicWorkflowControl::diagnostics` composes those
+   counters with optional scheduler health without creating a second journal or
+   workflow authority; and
+3. resumed-workflow admission under sustained newer interactive arrivals is
+   covered by a starvation qualification, while typed Agent/Session surfaces
+   expose scheduler health consistently through Node, Python, and Go adapters.
+   Local qualification passed the complete Core library suite (3178 passed,
+   13 ignored), locked Node/Python binding checks, Go SDK and bridge tests, and
+   TypeScript declaration checks.
+
+The next Code-side slice is **P3/KRN-8 per-run quota and admission identity
+qualification**: measure and bound how one workflow or detached child can
+consume the shared scheduler under mixed workloads, preserving the current
+single Flow event-store and lease authorities. It should add only a typed
+quota/admission projection and adversarial tests; no second scheduler or
+workflow state store is allowed.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
