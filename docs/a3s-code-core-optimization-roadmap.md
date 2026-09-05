@@ -325,20 +325,35 @@ become a new authority.
 - Removing a working compatibility surface before its migration and rollback
   gates are recorded.
 
-## 9. Immediate next slice
+## 9. Progress and immediate next slice
 
-The next Code-side implementation slice is **P1.1 Core identity and event
-adapter**:
+The first P1 slices are now delivered on Code `main`:
 
-1. inventory the existing event/evidence digests and assign one owner per
-   identity;
-2. introduce `OperationId`, `SourceRevision`, `CapabilityStamp`, and
-   `EvidenceCursor` adapters without changing public envelopes;
-3. route one Run's Agent, evaluation, and research projections through the
-   adapter and prove replay/idempotency;
-4. add the first `ExecutionCoordinator` boundary around one blocking and one
-   streaming provider path; and
-5. publish measurements and a rollback note before expanding the migration.
+- **P1.1 Core identity and event adapter** (`f6995c73`): typed operation,
+  source, capability, evidence-cursor, artifact, and logical-clock values are
+  validated at the boundary; Run events and Evaluation Journal reuse the
+  canonical encoding; and `ResearchEventV1` is an explicit projection rather
+  than a second authority (`baeac00f`).
+- **P1.2 coordinator boundary** (`ae23dff7`): blocking and streaming Agent
+  paths share one internal `ExecutionCoordinator` for Run control, checkpoint
+  identity, and cancellation/invocation assembly. Event forwarding and
+  terminal cleanup remain mode-specific adapters until their state machines
+  can be migrated without changing behavior.
 
-This slice is intentionally smaller than a new feature. It reduces future
-complexity while preserving the native Code + Use + Desktop ownership model.
+The local qualification slice passed `cargo fmt --all -- --check`, focused
+identity/research/coordinator tests, blocking and streaming lifecycle tests,
+and the complete Core library test suite (3101 passed, 0 failed, 13 ignored;
+3114 total). The root integration PRs are #307, #308, and the
+coordinator integration follows this change.
+
+The next Code-side slice is **P1.2 coordinator lifecycle convergence**:
+
+1. move admission and child-task registration behind the coordinator while
+   retaining the current public Session APIs;
+2. make blocking, streaming, direct-tool, delegated, protocol, and recovery
+   paths emit one coordinator-owned terminal transition; and
+3. add cancellation/lease/replay qualification for every path before removing
+   compatibility lifecycle code.
+
+This remains an incremental refactor: no second Run store, event journal,
+package manager, or foreign Harness runtime is introduced.
