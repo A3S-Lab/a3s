@@ -344,11 +344,15 @@ The first P1 slices are now delivered on Code `main`:
   leases, single-flight admission, and detached stream supervision. The
   low-level `RunAdmission` remains a primitive; facades no longer duplicate
   admission policy.
+- **P1.2 terminal convergence** (`7e968054`): blocking and streaming
+  lifecycles use one cancellation-first `RunTerminalTransition`, with an
+  atomic one-shot RunStore settlement. Lifecycle adapters retain only their
+  mode-specific persistence, event-drain, and cleanup ordering.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
-and the complete Core library test suite (3101 passed, 0 failed, 13 ignored;
-3114 total). The root integration PRs are #307 and #308, and coordinator
+and the complete Core library test suite (3103 passed, 0 failed, 13 ignored;
+3116 total). The root integration PRs are #307, #308, and #310; coordinator
 integrations follow these Code changes.
 
 The next Code-side slice is **P1.2 terminal lifecycle convergence**:
