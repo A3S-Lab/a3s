@@ -477,15 +477,31 @@ The mixed-generation Code-side slice landed in Code `e6e794e1`
    covered by local qualification, including the no-duplicate-side-effect
    boundary.
 
-The next Code-side slice is **P3/KRN-5/KRN-8 parent-cancellation and takeover
-qualification**:
+The parent-cancellation and worker-takeover Code-side slice landed in Code
+`22977bc4` (`A3S-Lab/Code#95`):
 
-1. carry the persisted continuation identity through a worker claim and
-   renewal;
-2. fence a stale lease before admission and make cancellation settle every
-   owned step; and
-3. prove cancellation, takeover, and retry do not duplicate a committed side
-   effect across process generations.
+1. each dynamic workflow continuation derives one stable, digest-only claim
+   identity that excludes evolving plan progress and retry history;
+2. local workspaces use an atomic `.a3s/workflow/leases` sidecar, while remote
+   hosts can inject a shared `FlowDecisionLedger`; live workers heartbeat and
+   stale owners are fenced before workflow/step admission and completion;
+3. parent cancellation propagates through the child `ToolContext`, waits for
+   bounded settlement, releases only after execution stops, and leaves an
+   unsettled lease fenced until expiry; and
+4. generated run IDs, competing workers, expired-owner fencing, cancellation
+   at a retry boundary, pre-admission lease loss, and digest-only lease records
+   are covered by focused qualification plus the complete Core test suite.
+
+The next Code-side slice is **P3/KRN-5/KRN-8 durable cancellation and
+cross-process recovery qualification**:
+
+1. expose one host-facing cancellation/inspection adapter that coordinates
+   Flow's durable cancellation request with the worker lease and Run terminal
+   transition;
+2. qualify crash recovery, lease expiry, and event-store conflict retries with
+   two independent processes against the same local/remote adapters; and
+3. publish bounded takeover/settlement diagnostics without making the lease
+   sidecar a second workflow authority.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
