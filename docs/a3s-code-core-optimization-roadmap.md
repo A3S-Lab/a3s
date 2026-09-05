@@ -388,6 +388,12 @@ The first P1 slices are now delivered on Code `main`:
   claim, renewal, completion, and release while retaining legacy ledger keys
   for replay compatibility. Canonical semantic identities are validated and
   traced without persisting prompt, tool-argument, or instruction plaintext.
+- **P3/KRN-5 evidence-bound claim results** (`f8cf19d7`): evaluation dispatch
+  claims now persist a bounded `ExecutionResultReceiptV1` containing canonical
+  execution identity, evidence snapshot digest, terminal outcome, and an
+  optional result digest/byte count. Identity-aware claim, renewal, release,
+  and completion operations fence stale workers while legacy ledger keys and
+  old receipt files remain replay-compatible.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
@@ -419,12 +425,18 @@ supervisor (5), and ExecutionIdentity (4) tests. The legacy Flow and
 evaluation ledger keys remain unchanged, so historical receipts and replay
 behavior stay compatible.
 
-The next Code-side slice is **P3/KRN-5 evidence-bound claim results**:
+The evidence-bound result follow-up passed `cargo fmt --all -- --check`,
+`cargo check -p a3s-code-core`, the complete evaluation module (49), Flow
+dispatcher (14), evaluation supervisor (6), ledger fencing/receipt (2), and
+execution identity (5) tests. Result receipts contain digests and bounded byte
+counts only; legacy claim records deserialize without the new optional fields.
 
-1. bind claim identities to model/tool evidence snapshots without plaintext;
-2. add bounded result receipts to retryable workflow/evaluator dispatch;
-3. validate stale-worker fencing against canonical identity plus the legacy
-   ledger key.
+The next Code-side slice is **P3/KRN-5 workflow result convergence**:
+
+1. carry bounded result receipts through Flow/workflow step completion;
+2. bind model/tool evidence snapshots to the same claim/result adapter;
+3. qualify restart/retry and stale-worker fencing across mixed legacy/new
+   ledgers.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
