@@ -357,20 +357,27 @@ The first P1 slices are now delivered on Code `main`:
   one typed terminal transition through the Code-owned Run store. Completed
   Runs remain finalized by the authoritative `End` event, while cancellation
   and failure retain monotonic first-terminal semantics.
+- **P3/KRN-5 structured call cancellation seam** (`58670be5`): structured
+  blocking, streaming, repair, auxiliary, `generate_object`, and delegated
+  schema calls now accept one explicit cancellation boundary. Provider I/O
+  receives a child token, while the caller-owned token remains the lifecycle
+  authority; legacy helpers remain compatible and route through the same path.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
-protocol Host/Harness tests, and the complete Core test suite (3104 passed,
-0 failed, 13 ignored; 3117 total). The root integration PRs are #307, #308,
-#310, #311, and #312; coordinator integrations follow these Code changes.
+protocol Host/Harness tests, and the complete Core test suite (3106 passed,
+0 failed, 13 ignored; 3119 total). The root integration PRs are #307, #308,
+#309, #310, #311, #312, and #313; coordinator integrations follow these Code
+changes.
 
-The next Code-side slice is **P3/KRN-5 model-call boundary preparation**:
+The next Code-side slice is **P3/KRN-5 ModelCallMiddleware contract**:
 
-1. keep the existing `LlmInvoker` as the only provider-call gateway and make
-   its admission, cancellation, usage, retry, and evidence phases an explicit
-   internal contract;
-2. qualify blocking, streaming, structured, repair, compaction, and auxiliary
-   calls against that contract without introducing a second provider authority;
+1. introduce a typed internal `ModelCallRequest`/`ModelCallOutcome` contract
+   around the existing `LlmInvoker`, then route structured, repair, compaction,
+   and auxiliary calls through it;
+2. preserve the explicit caller/provider cancellation seam while qualifying
+   admission, usage, retry, evidence, and error semantics across every model
+   call shape;
 3. use the resulting contract as the seam for the later `ToolInvocation` FSM,
    typed trust/taint labels, and shared idempotency identity.
 
