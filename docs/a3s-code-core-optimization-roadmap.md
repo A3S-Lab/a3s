@@ -461,12 +461,29 @@ scheduler, planning, task, and QuickJS coverage. Session-bound workflows keep
 the enclosing lease so a max-active=1 scheduler cannot deadlock on nested task
 fan-out.
 
-The next Code-side slice is **P3/KRN-5/KRN-8 mixed-generation restart/retry
+The mixed-generation Code-side slice landed in Code `e6e794e1`
+(`A3S-Lab/Code#94`):
+
+1. new dynamic workflow runs pin the exact Code runtime build in the durable
+   Flow `WorkflowSpec`, while an explicit compatibility set can retain an
+   older worker and the bounded migration window still reads legacy unpinned
+   histories;
+2. Code reconstructs a digest-only continuation identity from the persisted
+   Run/step definitions, source hash, input digest, runtime build, retry
+   policy, and canonical plan identity, rejecting changed source/input,
+   duplicate or malformed definitions, and non-contiguous history before Flow
+   can admit a step body; and
+3. terminal replay, changed-generation reuse, and legacy unpinned replay are
+   covered by local qualification, including the no-duplicate-side-effect
+   boundary.
+
+The next Code-side slice is **P3/KRN-5/KRN-8 parent-cancellation and takeover
 qualification**:
 
-1. bind the projected plan and Flow-step identities to a persisted continuation;
-2. reject changed handler/input or stale generation claims before step bodies
-   start;
+1. carry the persisted continuation identity through a worker claim and
+   renewal;
+2. fence a stale lease before admission and make cancellation settle every
+   owned step; and
 3. prove cancellation, takeover, and retry do not duplicate a committed side
    effect across process generations.
 
