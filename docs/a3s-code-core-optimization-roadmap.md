@@ -550,12 +550,36 @@ Local qualification passed `cargo +stable check -p a3s-code-core
 Code PR was merged without waiting for long-running hosted soak checks, per
 the development-efficiency policy; the local gates are recorded above.
 
-The next Code-side slice is **P3/KRN-8 provider-aware admission
-qualification**: project provider/model capacity into the same scheduler
-without adding a second queue, then qualify cancellation and mixed-provider
-progress under a shared global budget. It must preserve the current Flow
-event-store and worker-lease authorities and keep provider limits as typed
-admission metadata rather than a new runtime authority.
+The provider-aware model-generation admission slice landed in Code
+`d75b88f0` (`A3S-Lab/Code#99`) and is pinned by this repository's `crates/code`
+gitlink:
+
+1. provider adapters can publish a typed, digest-only `ModelGenerationPool`
+   keyed by provider/model/endpoint origin and an optional non-secret account
+   scope; credentials, URL paths/queries, prompts, outputs, and transport
+   headers never enter scheduler state;
+2. regular, streaming, structured, repair, direct-tool, delegated-child, and
+   dynamic-workflow generations reserve the pool through quota-only admissions
+   in the existing priority scheduler, while the owning Run still consumes its
+   global orchestration slot; local client limits and shared provider limits
+   are intersected without introducing a second queue or authority; and
+3. stream EOF/terminal/cancellation/drop, structured repair, nested workflow
+   limits, and mixed-provider progress release reservations deterministically,
+   including the max-active=1 nested-call boundary.
+
+Local qualification passed strict formatting, `--all-features` Clippy, rustdoc,
+focused multi-quota/provider/stream lifetime tests, and the complete Core
+library suite (`3200 passed, 0 failed, 13 ignored`). The Code PR was merged
+without waiting for long-running hosted checks under the development-efficiency
+policy; provider rate limits, billing, and host policy remain outside Code.
+
+The next Code-side slice is **P3/KRN-8 admission qualification hardening**:
+add bounded per-pool health and configuration evidence to the existing
+scheduler projection, then qualify runtime rebind, cancellation, and noisy-
+neighbor behavior across provider pools. It must remain read-only metadata,
+avoid retaining provider labels or secrets, preserve the single scheduler and
+Flow lease authorities, and keep Gateway/host policy responsible for rate
+limits and billing.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
