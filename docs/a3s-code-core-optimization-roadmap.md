@@ -528,12 +528,34 @@ The scheduler fairness and bounded control observability slice landed in Code
    13 ignored), locked Node/Python binding checks, Go SDK and bridge tests, and
    TypeScript declaration checks.
 
-The next Code-side slice is **P3/KRN-8 per-run quota and admission identity
-qualification**: measure and bound how one workflow or detached child can
-consume the shared scheduler under mixed workloads, preserving the current
-single Flow event-store and lease authorities. It should add only a typed
-quota/admission projection and adversarial tests; no second scheduler or
-workflow state store is allowed.
+The per-run quota and admission-identity slice landed in Code `ade9dce4`
+(`A3S-Lab/Code#98`):
+
+1. the existing scheduler actor now accepts a validated
+   `TaskSchedulerQuota`, retains only a domain-separated digest and live
+   active/pending counters, skips a quota-blocked owner when another owner can
+   use global capacity, and prunes idle owner state;
+2. governed `ToolContext` values carry the exact run identity into detached
+   Task admission, while direct globally admitted Flow steps use the stable
+   continuation claim identity; the two boundaries remain explicit so nested
+   fan-out never reacquires an outer single-slot lease; and
+3. host diagnostics expose a live quota projection, with adversarial coverage
+   for mixed-owner progress, priority blocking, cancellation, malformed and
+   overlong scopes, identity/limit conflicts, idle-state pruning, dynamic
+   diagnostics, and detached run fan-out.
+
+Local qualification passed `cargo +stable check -p a3s-code-core
+--all-features`, strict clippy, the complete Core library suite (3185 passed,
+0 failed, 13 ignored), and documentation tests (8 passed, 6 ignored). The
+Code PR was merged without waiting for long-running hosted soak checks, per
+the development-efficiency policy; the local gates are recorded above.
+
+The next Code-side slice is **P3/KRN-8 provider-aware admission
+qualification**: project provider/model capacity into the same scheduler
+without adding a second queue, then qualify cancellation and mixed-provider
+progress under a shared global budget. It must preserve the current Flow
+event-store and worker-lease authorities and keep provider limits as typed
+admission metadata rather than a new runtime authority.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
