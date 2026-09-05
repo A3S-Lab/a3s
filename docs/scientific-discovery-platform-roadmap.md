@@ -3,6 +3,7 @@
 - Status: accepted product direction; implementation is staged
 - Decision date: 2026-09-05
 - Owners: A3S Code, A3S Use, and A3S Desktop
+- Code architecture follow-up: [A3S Code Core Optimization Roadmap](a3s-code-core-optimization-roadmap.md)
 - Related: [Native Code/Use boundary](https://github.com/A3S-Lab/Use/blob/main/docs/adr-003-native-code-harness-boundary.md), [Code evaluation substrate](https://github.com/A3S-Lab/Code/blob/main/manual/EVALUATION_SUBSTRATE.md), [Desktop product contract](../apps/desktop/DESIGN.md), [Science catalog](../packages/science/README.md)
 
 ## Product outcome

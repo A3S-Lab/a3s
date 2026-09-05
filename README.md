@@ -268,6 +268,7 @@ its owning repository before advancing its gitlink here, and read
   [review](docs/retrieval-platform-architecture-review.md), and
   [roadmap](docs/retrieval-platform-roadmap.md)
 - [Scientific discovery platform roadmap](docs/scientific-discovery-platform-roadmap.md)
+- [A3S Code Core optimization roadmap](docs/a3s-code-core-optimization-roadmap.md)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)
 
