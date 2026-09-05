@@ -492,16 +492,25 @@ The parent-cancellation and worker-takeover Code-side slice landed in Code
    at a retry boundary, pre-admission lease loss, and digest-only lease records
    are covered by focused qualification plus the complete Core test suite.
 
-The next Code-side slice is **P3/KRN-5/KRN-8 durable cancellation and
-cross-process recovery qualification**:
+The durable cancellation and cross-process recovery slice landed in Code
+`21dfabf5` (`A3S-Lab/Code#96`):
 
-1. expose one host-facing cancellation/inspection adapter that coordinates
-   Flow's durable cancellation request with the worker lease and Run terminal
-   transition;
-2. qualify crash recovery, lease expiry, and event-store conflict retries with
-   two independent processes against the same local/remote adapters; and
-3. publish bounded takeover/settlement diagnostics without making the lease
-   sidecar a second workflow authority.
+1. `DynamicWorkflowControl` is the single host-facing boundary for bounded,
+   redacted inspection, trusted history, driving, and request/force
+   cancellation; it uses the same Flow terminal transition and worker lease as
+   model-visible workflow execution;
+2. `CrossProcessFlowEventStore` protects the local JSONL adapter with a
+   process lock, while typed `with_flow_event_store` injection and the
+   registration helper support a host-owned remote/database store without
+   creating a shadow journal; and
+3. independent-process qualification kills an owner, waits for lease expiry
+   and takeover, verifies busy inspection and cancellation settlement, and
+   injects event conflicts to prove bounded retry and convergence.
+
+The next Code-side slice is **P3/KRN-8 scheduler fairness and bounded control
+observability**: expose aggregate admission/takeover counters and qualify
+starvation-safe priority behavior across resumed workflow workers, while
+keeping the Flow event store and lease as the only workflow authorities.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
