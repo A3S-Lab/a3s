@@ -362,6 +362,12 @@ The first P1 slices are now delivered on Code `main`:
   schema calls now accept one explicit cancellation boundary. Provider I/O
   receives a child token, while the caller-owned token remains the lifecycle
   authority; legacy helpers remain compatible and route through the same path.
+- **P3/KRN-5 typed ModelCallMiddleware seam** (`35c683cd`): completion and
+  structured provider calls now enter `LlmInvoker` through one typed request
+  and outcome contract. Evidence-kind selection, prompt estimation, provider
+  dispatch, budget, cancellation, usage, and error phases are no longer
+  repeated by each non-streaming call shape; streaming retains its explicit
+  proxy-receiver ownership boundary.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
@@ -370,16 +376,21 @@ protocol Host/Harness tests, and the complete Core test suite (3106 passed,
 #309, #310, #311, #312, and #313; coordinator integrations follow these Code
 changes.
 
-The next Code-side slice is **P3/KRN-5 ModelCallMiddleware contract**:
+The middleware follow-up passed `cargo fmt --all -- --check`, Code compilation,
+and 13 focused `agent::llm_invoker` tests. The intentionally filtered
+integration binaries were not rerun because the prior complete Core suite
+already covers their unchanged paths.
 
-1. introduce a typed internal `ModelCallRequest`/`ModelCallOutcome` contract
-   around the existing `LlmInvoker`, then route structured, repair, compaction,
-   and auxiliary calls through it;
-2. preserve the explicit caller/provider cancellation seam while qualifying
-   admission, usage, retry, evidence, and error semantics across every model
-   call shape;
-3. use the resulting contract as the seam for the later `ToolInvocation` FSM,
-   typed trust/taint labels, and shared idempotency identity.
+The next Code-side slice is **P3/KRN-5 streaming middleware and ToolInvocation
+FSM**:
+
+1. extend the typed contract to streaming setup, proxy completion, repair, and
+   compaction without transferring ownership of the caller's cancellation
+   token;
+2. add one `ToolInvocation` state machine for built-ins, MCP, Flow, and Use
+   Runtime Tasks with bounded admission, cancellation, and terminal evidence;
+3. bind typed trust/taint labels and shared idempotency identity at the model
+   and tool value boundaries.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
