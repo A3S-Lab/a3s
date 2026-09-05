@@ -573,10 +573,30 @@ library suite (`3200 passed, 0 failed, 13 ignored`). The Code PR was merged
 without waiting for long-running hosted checks under the development-efficiency
 policy; provider rate limits, billing, and host policy remain outside Code.
 
-The next Code-side slice is **P3/KRN-8 admission qualification hardening**:
-add bounded per-pool health and configuration evidence to the existing
-scheduler projection, then qualify runtime rebind, cancellation, and noisy-
-neighbor behavior across provider pools. It must remain read-only metadata,
+The provider-pool health hardening slice landed in Code `386d75b1`
+(`A3S-Lab/Code#100`) and is pinned by this repository's `crates/code` gitlink:
+
+1. the existing scheduler actor exposes `TaskScheduler::quota_health`, retaining
+   at most 64 recent idle digest-only quota epochs with admission, release,
+   cancellation, rejection, peak-occupancy, and bounded wait counters;
+2. `ModelGenerationPoolHealthSnapshot` composes that shared projection with
+   local reserved/available permits, and `AgentSession::model_generation_pool_health()`
+   provides a host-facing Rust read surface; nested runtime rebinds preserve
+   the exact provider pool identity while allowing tighter local limits; and
+3. focused qualification covers idle retention, cancellation, provider-pool
+   isolation, hard retention bounds, credential/routing redaction, and nested
+   rebind composition without adding a queue, store, or foreign runtime.
+
+Local qualification passed formatting, `--all-features` check, strict Clippy,
+rustdoc, and all focused health tests. The full Core run reached 3,204 passed,
+one pre-existing BM25/zvec native-index failure, and 13 ignored; no provider
+pool-health test failed. The Code PR was merged without waiting for long-running
+hosted checks under the development-efficiency policy. Provider rate limits,
+billing, and host policy remain outside Code.
+
+The next Code-side slice is **P3/KRN-8 operational qualification**: add bounded
+cross-process/SDK-facing health consumption and noisy-neighbor soak evidence
+without widening the scheduler's authority. It must remain read-only metadata,
 avoid retaining provider labels or secrets, preserve the single scheduler and
 Flow lease authorities, and keep Gateway/host policy responsible for rate
 limits and billing.
