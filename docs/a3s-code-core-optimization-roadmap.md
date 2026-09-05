@@ -383,6 +383,11 @@ The first P1 slices are now delivered on Code `main`:
   identities; typed trust, taint, and sanitization labels travel with values,
   and model/tool/task/command/event egress uses one redaction boundary without
   promoting untrusted or secret data.
+- **P3/KRN-5 identity propagation and ledger adapters** (`eee3ec95`): Flow
+  and evaluation dispatches now carry one typed `ExecutionClaimV1` through
+  claim, renewal, completion, and release while retaining legacy ledger keys
+  for replay compatibility. Canonical semantic identities are validated and
+  traced without persisting prompt, tool-argument, or instruction plaintext.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
@@ -408,14 +413,18 @@ security boundaries (32), model middleware (14), ToolInvocation (5), and task
 projection (118). The complete suite was not repeated because the changes are
 boundary-local and the prior complete Core qualification remains valid.
 
-The next Code-side slice is **P3/KRN-5 identity propagation and ledger adapters**:
+The identity propagation follow-up passed `cargo fmt --all -- --check`,
+`cargo check -p a3s-code-core`, and focused Flow dispatcher (14), evaluation
+supervisor (5), and ExecutionIdentity (4) tests. The legacy Flow and
+evaluation ledger keys remain unchanged, so historical receipts and replay
+behavior stay compatible.
 
-1. propagate the shared identity into workflow steps and evaluator dispatch
-   claims while preserving replay and stale-worker fencing;
-2. bind identity digests to model/tool evidence without exposing prompt or
-   argument plaintext in persisted records;
-3. add a bounded claim/result adapter for retryable work, keeping the existing
-   Run store and evaluation ledger as the durability authorities.
+The next Code-side slice is **P3/KRN-5 evidence-bound claim results**:
+
+1. bind claim identities to model/tool evidence snapshots without plaintext;
+2. add bounded result receipts to retryable workflow/evaluator dispatch;
+3. validate stale-worker fencing against canonical identity plus the legacy
+   ledger key.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
