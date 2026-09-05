@@ -348,6 +348,10 @@ The first P1 slices are now delivered on Code `main`:
   lifecycles use one cancellation-first `RunTerminalTransition`, with an
   atomic one-shot RunStore settlement. Lifecycle adapters retain only their
   mode-specific persistence, event-drain, and cleanup ordering.
+- **P1.2 task-admission convergence** (`d5c03fa5`): synchronous and
+  event-streaming direct-tool calls reuse the coordinator's canonical
+  TaskScheduler lease/error adapter while retaining their independent
+  control-plane lifetime (they do not acquire the transcript Run lease).
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
