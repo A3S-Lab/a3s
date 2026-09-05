@@ -81,7 +81,7 @@ test('the Box component resolves its package from the nested Rust workspace', ()
   assert.ok(box);
   assert.equal(box.manifest, 'src/runtime/Cargo.toml');
   assert.equal(box.package, 'a3s-box-runtime');
-  assert.equal(box.version, '3.2.2');
+  assert.equal(box.version, '3.2.3');
 });
 
 test('the Form component resolves the native core package from its nested manifest', () => {

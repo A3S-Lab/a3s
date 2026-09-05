@@ -4,6 +4,10 @@
 #   A3S_INSTALL_DIR      Binary directory; defaults to LocalAppData\Programs\a3s\bin.
 #   A3S_MODIFY_PATH      Set to 1 to add the install directory to the user PATH.
 #   A3S_GITHUB_TOKEN     Optional GitHub token for release API rate limits.
+#
+# Release archives may contain the target-specific Moli executable under
+# `moli\`. The embedded Code runtime discovers that sidecar beside `a3s.exe`;
+# archives without it continue to use the runtime's digest-verified cache.
 
 [CmdletBinding()]
 param(
@@ -40,6 +44,27 @@ param(
         Write-Warning "a3s installer: $Message"
     }
 
+    function Test-ReleaseNotFoundError {
+        param([Parameter(Mandatory = $true)]$ErrorRecord)
+
+        $response = $null
+        try {
+            $response = $ErrorRecord.Exception.Response
+        } catch {
+            # Custom exceptions may not expose an HTTP response object.
+        }
+        if ($null -ne $response) {
+            try {
+                if ([int]$response.StatusCode -eq 404) {
+                    return $true
+                }
+            } catch {
+                # Fall through to the diagnostic text for mocked/custom errors.
+            }
+        }
+        return ([string]$ErrorRecord.Exception.Message -match '(?i)\b404\b')
+    }
+
     function Invoke-InstallerRequest {
         param(
             [Parameter(Mandatory = $true)][scriptblock]$Operation,
@@ -51,6 +76,9 @@ param(
             try {
                 return & $Operation
             } catch {
+                if (Test-ReleaseNotFoundError $_) {
+                    throw
+                }
                 if ($attempt -eq $MaximumAttempts) {
                     throw
                 }
@@ -75,10 +103,16 @@ param(
         $parentWithSeparator = $fullParent + [IO.Path]::DirectorySeparatorChar
         $leaf = [IO.Path]::GetFileName($fullPath)
         if (-not $fullPath.StartsWith($parentWithSeparator, [StringComparison]::OrdinalIgnoreCase) -or
-            $leaf -notmatch '^\.a3s(?:-webview)?\.(new|backup|failed)\.[0-9a-f-]+\.exe$') {
-            throw "refusing to remove unexpected file $fullPath"
+            $leaf -notmatch '^\.a3s(?:-webview|-moli)?\.(new|backup|failed)\.[0-9a-f-]+(?:\.exe)?$') {
+            throw "refusing to remove unexpected generated path $fullPath"
         }
-        Remove-Item -LiteralPath $fullPath -Force
+        $item = Get-Item -LiteralPath $fullPath -Force
+        if ($item.PSIsContainer -and
+            ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+            Remove-Item -LiteralPath $fullPath -Recurse -Force
+        } else {
+            Remove-Item -LiteralPath $fullPath -Force
+        }
     }
 
     function Remove-InstallerTempDirectory {
@@ -183,7 +217,6 @@ param(
     Assert-NoReparsePoint -Path $installDir
     $installDir = (Get-Item -LiteralPath $installDir -Force).FullName.TrimEnd('\', '/')
 
-
     if ($env:A3S_MODIFY_PATH -match '^(1|true|yes)$') {
         $UpdatePath = $true
     }
@@ -212,8 +245,11 @@ param(
                     @(Invoke-RestMethod -Uri $releasesApi -Headers $apiHeaders -TimeoutSec 60)
                 }
             } catch {
-                Write-InstallerWarning "failed to query $candidateRepository releases: $($_.Exception.Message)"
-                continue
+                if (Test-ReleaseNotFoundError $_) {
+                    Write-InstallerWarning "$candidateRepository has no releases API yet; continuing with the other official repository"
+                    continue
+                }
+                throw "failed to query $candidateRepository releases: $($_.Exception.Message)"
             }
 
             foreach ($candidateRelease in @($releases | Where-Object {
@@ -244,7 +280,10 @@ param(
                 $repository = $candidateRepository
                 break
             } catch {
-                continue
+                if (Test-ReleaseNotFoundError $_) {
+                    continue
+                }
+                throw
             }
         }
         if ($null -eq $selectedRelease) {
@@ -292,6 +331,7 @@ param(
     $extracted = Join-Path $tempDir 'extracted'
     $binaryPath = Join-Path $installDir 'a3s.exe'
     $webviewPath = Join-Path $installDir 'a3s-webview.exe'
+    $moliPath = Join-Path $installDir 'moli'
 
     $stagedBinary = ''
     $backupBinary = ''
@@ -299,13 +339,20 @@ param(
     $stagedWebview = ''
     $backupWebview = ''
     $failedWebview = ''
+    $stagedMoli = ''
+    $backupMoli = ''
+    $failedMoli = ''
     $binaryActive = $false
     $oldBinarySaved = $false
     $webviewActive = $false
     $oldWebviewSaved = $false
+    $moliActive = $false
+    $oldMoliSaved = $false
     $binaryActivationStarted = $false
     $webviewActivationStarted = $false
+    $moliActivationStarted = $false
     $hasBundledWebview = $false
+    $hasBundledMoli = $false
     $committed = $false
     $installerMutex = $null
     $mutexAcquired = $false
@@ -360,11 +407,18 @@ param(
             }
             $entryNames = @($entries | ForEach-Object { $_.FullName.Replace('\', '/') })
             $webviewEntryCount = @($entryNames | Where-Object { $_ -ceq 'a3s-webview.exe' }).Count
+            $moliEntryCount = @($entryNames | Where-Object { $_ -ceq 'moli/moli.exe' }).Count
+            $moliEntryTotal = @($entryNames | Where-Object {
+                $_ -ceq 'moli' -or $_ -ceq 'moli/' -or $_ -like 'moli/*'
+            }).Count
             if (@($entryNames | Where-Object { $_ -ceq 'a3s.exe' }).Count -ne 1 -or
-                $webviewEntryCount -gt 1) {
-                throw 'release archive must contain exactly one a3s.exe and at most one a3s-webview.exe'
+                $webviewEntryCount -gt 1 -or
+                $moliEntryCount -gt 1 -or
+                ($moliEntryTotal -gt 0 -and $moliEntryCount -ne 1)) {
+                throw 'release archive must contain exactly one a3s.exe, at most one a3s-webview.exe, and a complete Moli bundle'
             }
             $hasBundledWebview = $webviewEntryCount -eq 1
+            $hasBundledMoli = $moliEntryCount -eq 1
             $legacyPayloadEntryCount = @($entryNames | Where-Object {
                 $_ -ceq 'support' -or $_.StartsWith('support/', [StringComparison]::Ordinal) -or
                 $_ -ceq 'release-compat' -or $_.StartsWith('release-compat/', [StringComparison]::Ordinal)
@@ -379,12 +433,13 @@ param(
             foreach ($entry in $entries) {
                 $entryName = $entry.FullName.Replace('\', '/')
                 $unixFileType = (($entry.ExternalAttributes -shr 16) -band 0xF000)
+                $isMoliEntry = $entryName -match '^moli(?:/.*)?$'
                 $isLegacyPayloadEntry = $entryName -ceq 'support' -or
                     $entryName.StartsWith('support/', [StringComparison]::Ordinal) -or
                     $entryName -ceq 'release-compat' -or
                     $entryName.StartsWith('release-compat/', [StringComparison]::Ordinal)
                 if (($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe)$' -and
-                    -not $isLegacyPayloadEntry) -or
+                    -not $isMoliEntry -and -not $isLegacyPayloadEntry) -or
                     ('/' + $entryName + '/') -match '/(\.|\.\.)/' -or
                     $unixFileType -notin @(0, 0x4000, 0x8000) -or
                     ($entry.ExternalAttributes -band [int][IO.FileAttributes]::ReparsePoint) -ne 0) {
@@ -398,8 +453,10 @@ param(
         Expand-Archive -LiteralPath $archive -DestinationPath $extracted
         $extractedBinary = Join-Path $extracted 'a3s.exe'
         $extractedWebview = Join-Path $extracted 'a3s-webview.exe'
+        $extractedMoli = Join-Path $extracted 'moli\moli.exe'
         if (-not (Test-Path -LiteralPath $extractedBinary -PathType Leaf) -or
-            ($hasBundledWebview -and -not (Test-Path -LiteralPath $extractedWebview -PathType Leaf))) {
+            ($hasBundledWebview -and -not (Test-Path -LiteralPath $extractedWebview -PathType Leaf)) -or
+            ($hasBundledMoli -and -not (Test-Path -LiteralPath $extractedMoli -PathType Leaf))) {
             throw 'the extracted release layout is invalid'
         }
         $reparseEntries = @(Get-ChildItem -LiteralPath $extracted -Recurse -Force |
@@ -415,10 +472,16 @@ param(
         $stagedWebview = Join-Path $installDir ".a3s-webview.new.$activationId.exe"
         $backupWebview = Join-Path $installDir ".a3s-webview.backup.$activationId.exe"
         $failedWebview = Join-Path $installDir ".a3s-webview.failed.$activationId.exe"
+        if ($hasBundledMoli) {
+            $stagedMoli = Join-Path $installDir ".a3s-moli.new.$activationId"
+            $backupMoli = Join-Path $installDir ".a3s-moli.backup.$activationId"
+            $failedMoli = Join-Path $installDir ".a3s-moli.failed.$activationId"
+        }
 
         foreach ($generatedPath in @(
             $stagedBinary, $backupBinary, $failedBinary,
-            $stagedWebview, $backupWebview, $failedWebview
+            $stagedWebview, $backupWebview, $failedWebview,
+            $stagedMoli, $backupMoli, $failedMoli
         )) {
             if (Test-Path -LiteralPath $generatedPath) {
                 throw "temporary activation path already exists: $generatedPath"
@@ -426,10 +489,42 @@ param(
         }
 
         Copy-Item -LiteralPath $extractedBinary -Destination $stagedBinary
+        if ($hasBundledMoli) {
+            [IO.Directory]::CreateDirectory($stagedMoli) | Out-Null
+            Get-ChildItem -LiteralPath (Join-Path $extracted 'moli') -Force |
+                Copy-Item -Destination $stagedMoli -Recurse
+            Assert-NoReparsePoint -Path $stagedMoli
+            if (-not (Test-Path -LiteralPath (Join-Path $stagedMoli 'moli.exe') -PathType Leaf)) {
+                throw 'the staged Moli runtime is not a regular file'
+            }
+        }
         if ($hasBundledWebview) {
             Copy-Item -LiteralPath $extractedWebview -Destination $stagedWebview
         }
         Assert-A3sVersion -Path $stagedBinary -ExpectedVersion $expectedVersion
+
+        if ($hasBundledMoli) {
+            $moliActivationStarted = $true
+            if (Test-Path -LiteralPath $moliPath) {
+                $existingMoli = Get-Item -LiteralPath $moliPath -Force
+                if (($existingMoli.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                    throw "refusing to replace reparse-point Moli runtime $moliPath"
+                }
+                if (-not $existingMoli.PSIsContainer) {
+                    throw "$moliPath is not a directory"
+                }
+                Assert-NoReparsePoint -Path $moliPath
+                Move-Item -LiteralPath $moliPath -Destination $backupMoli
+                $oldMoliSaved = $true
+            }
+            Move-Item -LiteralPath $stagedMoli -Destination $moliPath
+            $moliActive = $true
+            $stagedMoli = ''
+            Assert-NoReparsePoint -Path $moliPath
+            if (-not (Test-Path -LiteralPath (Join-Path $moliPath 'moli.exe') -PathType Leaf)) {
+                throw 'the installed Moli runtime is not a regular file'
+            }
+        }
 
         if ($hasBundledWebview) {
             $webviewActivationStarted = $true
@@ -498,6 +593,16 @@ param(
                 Write-InstallerWarning "could not remove the old WebView helper backup at $backupWebview`: $($_.Exception.Message)"
             }
         }
+        if ($oldMoliSaved) {
+            try {
+                Remove-GeneratedFile -Path $backupMoli -ExpectedParent $installDir
+                $oldMoliSaved = $false
+                $backupMoli = ''
+            } catch {
+                Write-InstallerWarning ("could not remove the old Moli runtime backup at " +
+                    $backupMoli + ": " + $_.Exception.Message)
+            }
+        }
         $pathEntries = @($env:Path -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         $pathContainsInstallDir = $false
         foreach ($entry in $pathEntries) {
@@ -547,6 +652,11 @@ param(
             Write-InstallerInfo "installed a3s-webview to $webviewPath"
         } else {
             Write-InstallerInfo "release $releaseTag has no bundled a3s-webview; a3s code will install the verified component on first use"
+        }
+        if ($hasBundledMoli) {
+            Write-InstallerInfo "installed the bundled Moli runtime to $moliPath"
+        } else {
+            Write-InstallerInfo "release $releaseTag has no bundled Moli runtime; a3s code will use its verified shared cache or first-use download"
         }
     } finally {
         if (-not $committed) {
@@ -630,6 +740,54 @@ param(
                 }
             }
 
+            if ($moliActivationStarted) {
+                $stagedMoliPresent = -not [string]::IsNullOrEmpty($stagedMoli) -and
+                    (Test-Path -LiteralPath $stagedMoli)
+                if (-not $stagedMoliPresent) {
+                    if (Test-Path -LiteralPath $moliPath) {
+                        try {
+                            Move-Item -LiteralPath $moliPath -Destination $failedMoli
+                            $moliActive = $false
+                        } catch {
+                            $moliActive = $true
+                            Write-InstallerWarning "could not move the failed Moli runtime; the previous runtime is preserved at $backupMoli"
+                        }
+                    } else {
+                        $moliActive = $false
+                    }
+                } else {
+                    $moliActive = $false
+                }
+
+                if (Test-Path -LiteralPath $backupMoli) {
+                    if (-not (Test-Path -LiteralPath $moliPath)) {
+                        try {
+                            Move-Item -LiteralPath $backupMoli -Destination $moliPath
+                            $oldMoliSaved = $false
+                        } catch {
+                            $oldMoliSaved = $true
+                            Write-InstallerWarning "could not restore the previous Moli runtime; its backup is preserved at $backupMoli"
+                        }
+                    } elseif ($stagedMoliPresent) {
+                        # Activation did not consume the staged runtime; the original is still active.
+                        $oldMoliSaved = $false
+                    } else {
+                        $oldMoliSaved = $true
+                        Write-InstallerWarning "could not restore the previous Moli runtime; its backup is preserved at $backupMoli"
+                    }
+                } else {
+                    $oldMoliSaved = $false
+                }
+            }
+
+        }
+        foreach ($generatedMoliPath in @($stagedMoli, $failedMoli)) {
+            try {
+                Remove-GeneratedFile -Path $generatedMoliPath -ExpectedParent $installDir
+            } catch {
+                Write-InstallerWarning ("cleanup failed for " + $generatedMoliPath +
+                    ": " + $_.Exception.Message)
+            }
         }
         foreach ($path in @($stagedBinary, $failedBinary)) {
             try {
@@ -661,6 +819,16 @@ param(
                 Remove-GeneratedFile -Path $backupWebview -ExpectedParent $installDir
             } catch {
                 Write-InstallerWarning "cleanup failed for $backupWebview`: $($_.Exception.Message)"
+            }
+        }
+        if ($oldMoliSaved) {
+            Write-InstallerWarning "preserved the previous Moli runtime at $backupMoli"
+        } else {
+            try {
+                Remove-GeneratedFile -Path $backupMoli -ExpectedParent $installDir
+            } catch {
+                Write-InstallerWarning ("cleanup failed for " + $backupMoli +
+                    ": " + $_.Exception.Message)
             }
         }
         try {

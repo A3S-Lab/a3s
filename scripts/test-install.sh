@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+repo_root=$(CDPATH=; cd -- "$(dirname -- "$0")/.." && pwd -P)
 installer="$repo_root/install.sh"
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/a3s-installer-test.XXXXXX")
 
@@ -23,10 +23,17 @@ assert_file() {
     [[ -f "$1" ]] || fail "expected file $1"
 }
 
+assert_content() {
+    local expected=$1
+    local path=$2
+    [[ "$(cat "$path")" == "$expected" ]] \
+        || fail "unexpected content in $path"
+}
+
 assert_no_generated_paths() {
     local root=$1
     local leftovers
-    leftovers=$(find "$root" -name '.a3s.*' -o -name '.a3s-webview.*')
+    leftovers=$(find "$root" \( -name '.a3s.*' -o -name '.a3s-webview.*' -o -name '.a3s-moli.*' \))
     [[ -z "$leftovers" ]] || fail "installer left temporary paths: $leftovers"
 }
 
@@ -74,10 +81,15 @@ set -eu
 : >"$MOCK_CURL_CALLED"
 destination=
 request_url=
+write_format=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -o)
             destination=$2
+            shift 2
+            ;;
+        -w)
+            write_format=$2
             shift 2
             ;;
         https://*)
@@ -87,11 +99,24 @@ while [ "$#" -gt 0 ]; do
         *) shift ;;
     esac
 done
+emit_status() {
+    if [ -n "$write_format" ]; then
+        printf '__A3S_HTTP_STATUS__%s' "$1"
+    fi
+}
 if [ -n "$destination" ]; then
     cp "$MOCK_ARCHIVE" "$destination"
 elif printf '%s' "$request_url" | grep -F '/repos/A3S-Lab/CLI/' >/dev/null &&
     ! printf '%s' "$request_url" | grep -F 'releases?per_page=100' >/dev/null &&
     [ "${MOCK_PRIMARY_RELEASE_NOT_FOUND:-0}" = 1 ]; then
+    emit_status 404
+    [ -n "$write_format" ] && exit 0
+    exit 22
+elif printf '%s' "$request_url" | grep -F '/repos/A3S-Lab/CLI/' >/dev/null &&
+    [ -n "${MOCK_PRIMARY_HTTP_STATUS:-}" ]; then
+    printf '{"message":"mock HTTP error"}'
+    emit_status "$MOCK_PRIMARY_HTTP_STATUS"
+    [ -n "$write_format" ] && exit 0
     exit 22
 elif printf '%s' "$request_url" | grep -F '/repos/A3S-Lab/a3s/' >/dev/null &&
     printf '%s' "$request_url" | grep -F 'releases?per_page=100' >/dev/null &&
@@ -106,6 +131,7 @@ elif [ -n "${MOCK_RELEASE_LIST_JSON:-}" ] &&
 else
     cat "$MOCK_RELEASE_JSON"
 fi
+emit_status 200
 EOF
 
 cat >"$mock_bin/mv" <<'EOF'
@@ -139,6 +165,11 @@ case "$MOCK_MV_FAULT" in
             .a3s-webview.new.*:a3s-webview) inject=1 ;;
         esac
         ;;
+    moli-activate)
+        case "$source_leaf:$destination_leaf" in
+            .a3s-moli.new.*:moli) inject=1 ;;
+        esac
+        ;;
 esac
 
 if [ "$inject" -eq 1 ]; then
@@ -157,6 +188,7 @@ unset A3S_VERSION A3S_INSTALL_DIR A3S_MODIFY_PATH A3S_GITHUB_TOKEN
 unset MOCK_MV_FAULT MOCK_MV_FAULT_VERSION
 unset MOCK_RELEASE_LIST_JSON MOCK_LEGACY_RELEASE_LIST_JSON MOCK_LEGACY_RELEASE_JSON
 unset MOCK_PRIMARY_RELEASE_NOT_FOUND
+unset MOCK_PRIMARY_HTTP_STATUS
 
 sha256_file() {
     if command -v sha256sum >/dev/null 2>&1; then
@@ -172,6 +204,7 @@ make_fixture() {
     local include_webview=${3:-1}
     local release_repository=${4:-A3S-Lab/CLI}
     local include_legacy_payload=${5:-0}
+    local include_moli=${6:-1}
     local release_repo_slug=${release_repository##*/}
     local payload="$fixture_root/payload"
     local archive="$fixture_root/a3s-v${version}-${target}.tar.gz"
@@ -188,6 +221,14 @@ make_fixture() {
             "$version" >"$payload/a3s-webview"
         chmod +x "$payload/a3s-webview"
         archive_members+=(a3s-webview)
+    fi
+    if [ "$include_moli" -eq 1 ]; then
+        mkdir -p "$payload/moli"
+        printf '#!/bin/sh\nprintf "moli %s\\n"\n' "$version" >"$payload/moli/moli"
+        chmod +x "$payload/moli/moli"
+        printf '{"schema":"a3s-code/moli-runtime-package/v1","version":"1.1.1","target":"%s"}\n' "$target" \
+            >"$payload/moli/moli-runtime.json"
+        archive_members+=(moli)
     fi
     if [ "$include_legacy_payload" -eq 1 ]; then
         mkdir -p "$payload/support" "$payload/release-compat"
@@ -221,18 +262,20 @@ mkdir -p "$test_root/home"
 # Stable archives published before the companion bundle remain installable;
 # Code owns their verified WebView first-use setup.
 export MOCK_UNAME_S=Linux MOCK_UNAME_M=x86_64
-make_fixture 1.2.2 x86_64-unknown-linux-gnu 0
+make_fixture 1.2.2 x86_64-unknown-linux-gnu 0 A3S-Lab/CLI 0 0
 legacy_root="$test_root/legacy-without-webview"
 run_install 1.2.2 "$legacy_root/bin"
 assert_file "$legacy_root/bin/a3s"
 [[ ! -e "$legacy_root/bin/a3s-webview" ]] \
     || fail 'legacy release unexpectedly installed a WebView companion'
+[[ ! -e "$legacy_root/bin/moli" ]] \
+    || fail 'legacy release unexpectedly installed a Moli runtime'
 assert_no_generated_paths "$legacy_root"
 
 # Historical CLI archives may contain runtime payloads that are no longer
 # supported. The installer validates their paths, extracts only the binaries,
 # and never copies the legacy payload into the installation directory.
-make_fixture 1.2.9 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 1
+make_fixture 1.2.9 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 1 0
 legacy_payload_root="$test_root/legacy-runtime-payload"
 run_install 1.2.9 "$legacy_payload_root/bin"
 assert_file "$legacy_payload_root/bin/a3s"
@@ -285,6 +328,15 @@ assert_no_generated_paths "$explicit_transition_root"
 unset MOCK_PRIMARY_RELEASE_NOT_FOUND
 unset MOCK_RELEASE_LIST_JSON MOCK_LEGACY_RELEASE_LIST_JSON MOCK_LEGACY_RELEASE_JSON
 
+# An API rate-limit or server error must not be reported as a missing release
+# or silently fall through to an unrelated repository.
+make_fixture 1.3.1 x86_64-unknown-linux-gnu
+export MOCK_PRIMARY_HTTP_STATUS=403
+expect_failure 'GitHub API rate limit' run_install 1.3.1 "$test_root/api-rate-limit/bin"
+grep -F 'HTTP 403' "$test_root/failure.stderr" >/dev/null \
+    || fail 'API rate-limit failure did not expose the HTTP status'
+unset MOCK_PRIMARY_HTTP_STATUS
+
 # Every published Unix target maps to the exact release asset name.
 for target_case in \
     'Linux x86_64 x86_64-unknown-linux-gnu' \
@@ -298,10 +350,13 @@ for target_case in \
     run_install 1.2.3 "$case_root/bin"
     assert_file "$case_root/bin/a3s"
     assert_file "$case_root/bin/a3s-webview"
+    assert_file "$case_root/bin/moli/moli"
     [[ "$("$case_root/bin/a3s" --version)" == 'a3s 1.2.3' ]] \
         || fail "wrong installed version for $target"
     [[ "$("$case_root/bin/a3s-webview")" == 'a3s-webview 1.2.3' ]] \
         || fail "wrong installed WebView companion for $target"
+    [[ "$("$case_root/bin/moli/moli")" == 'moli 1.2.3' ]] \
+        || fail "wrong installed Moli runtime for $target"
     assert_no_generated_paths "$case_root"
 done
 
@@ -314,7 +369,59 @@ make_fixture 1.2.4 x86_64-unknown-linux-gnu
 run_install 1.2.4 "$upgrade_root/bin"
 [[ "$("$upgrade_root/bin/a3s" --version)" == 'a3s 1.2.4' ]] || fail 'upgrade did not replace binary'
 [[ "$("$upgrade_root/bin/a3s-webview")" == 'a3s-webview 1.2.4' ]] \
-    || fail 'upgrade did not replace WebView companion'
+        || fail 'upgrade did not replace WebView companion'
+    [[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
+        || fail 'upgrade did not replace Moli runtime'
+assert_no_generated_paths "$upgrade_root"
+
+# A legacy release without a Moli sidecar does not destroy an already
+# installed runtime; the existing verified sidecar remains available to Code.
+make_fixture 1.2.4 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 0 0
+run_install 1.2.4 "$upgrade_root/bin"
+[[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
+    || fail 'a release without Moli removed the existing runtime'
+assert_no_generated_paths "$upgrade_root"
+
+# A partial Moli directory is rejected before activation and leaves the old
+# complete runtime and binaries untouched.
+incomplete_payload="$fixture_root/incomplete-moli-payload"
+rm -rf -- "$incomplete_payload"
+mkdir -p "$incomplete_payload/moli"
+printf '#!/bin/sh\nprintf "a3s 1.2.5\\n"\n' >"$incomplete_payload/a3s"
+chmod +x "$incomplete_payload/a3s"
+printf '#!/bin/sh\nprintf "a3s-webview 1.2.5\\n"\n' >"$incomplete_payload/a3s-webview"
+chmod +x "$incomplete_payload/a3s-webview"
+printf '{"schema":"a3s-code/moli-runtime-package/v1"}\n' >"$incomplete_payload/moli/moli-runtime.json"
+incomplete_archive="$fixture_root/a3s-v1.2.5-x86_64-unknown-linux-gnu.tar.gz"
+tar -czf "$incomplete_archive" -C "$incomplete_payload" a3s a3s-webview moli
+MOCK_ARCHIVE="$incomplete_archive"
+export MOCK_ARCHIVE
+incomplete_digest=$(sha256_file "$MOCK_ARCHIVE")
+printf '%s' \
+    "{\"tag_name\":\"v1.2.5\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/6\",\"name\":\"a3s-v1.2.5-x86_64-unknown-linux-gnu.tar.gz\",\"state\":\"uploaded\",\"digest\":\"sha256:${incomplete_digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v1.2.5/a3s-v1.2.5-x86_64-unknown-linux-gnu.tar.gz\"}]}" \
+    >"$fixture_root/incomplete-moli.json"
+MOCK_RELEASE_JSON="$fixture_root/incomplete-moli.json"
+export MOCK_RELEASE_JSON
+expect_failure 'incomplete Moli runtime' run_install 1.2.5 "$upgrade_root/bin"
+[[ "$("$upgrade_root/bin/a3s" --version)" == 'a3s 1.2.4' ]] \
+    || fail 'incomplete Moli archive changed the installed binary'
+[[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
+    || fail 'incomplete Moli archive changed the installed runtime'
+assert_no_generated_paths "$upgrade_root"
+
+# Existing Moli symlinks are never followed or replaced during an upgrade.
+make_fixture 1.2.5 x86_64-unknown-linux-gnu
+MOCK_RELEASE_JSON="$fixture_root/release-1.2.5-CLI.json"
+export MOCK_RELEASE_JSON
+moli_saved="$upgrade_root/moli-saved"
+mv "$upgrade_root/bin/moli" "$moli_saved"
+ln -s "$moli_saved" "$upgrade_root/bin/moli"
+expect_failure 'Moli symlink replacement' run_install 1.2.5 "$upgrade_root/bin"
+[[ -L "$upgrade_root/bin/moli" ]] || fail 'Moli symlink was replaced'
+[[ "$("$upgrade_root/bin/a3s" --version)" == 'a3s 1.2.4' ]] \
+    || fail 'Moli symlink rejection changed the installed binary'
+rm -f -- "$upgrade_root/bin/moli"
+mv "$moli_saved" "$upgrade_root/bin/moli"
 assert_no_generated_paths "$upgrade_root"
 
 # A digest mismatch fails before activation and preserves the installed version.
@@ -325,8 +432,10 @@ MOCK_RELEASE_JSON="$fixture_root/bad-digest.json"
 export MOCK_RELEASE_JSON
 expect_failure 'digest mismatch' run_install 1.2.5 "$upgrade_root/bin"
 [[ "$("$upgrade_root/bin/a3s" --version)" == 'a3s 1.2.4' ]] || fail 'digest failure changed old binary'
-[[ "$("$upgrade_root/bin/a3s-webview")" == 'a3s-webview 1.2.4' ]] \
-    || fail 'digest failure changed old WebView companion'
+    [[ "$("$upgrade_root/bin/a3s-webview")" == 'a3s-webview 1.2.4' ]] \
+        || fail 'digest failure changed old WebView companion'
+    [[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
+        || fail 'digest failure changed old Moli runtime'
 
 # A missing target digest cannot borrow the following asset's digest.
 make_fixture 1.2.6 x86_64-unknown-linux-gnu
@@ -360,8 +469,10 @@ MOCK_RELEASE_JSON="$fixture_root/unsafe.json"
 export MOCK_RELEASE_JSON
 expect_failure 'unsafe archive member' run_install 1.2.7 "$upgrade_root/bin"
 [[ "$("$upgrade_root/bin/a3s" --version)" == 'a3s 1.2.4' ]] || fail 'unsafe archive changed old binary'
-[[ "$("$upgrade_root/bin/a3s-webview")" == 'a3s-webview 1.2.4' ]] \
-    || fail 'unsafe archive changed old WebView companion'
+    [[ "$("$upgrade_root/bin/a3s-webview")" == 'a3s-webview 1.2.4' ]] \
+        || fail 'unsafe archive changed old WebView companion'
+    [[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
+        || fail 'unsafe archive changed old Moli runtime'
 
 # Unsupported and non-glibc hosts fail before making a network request.
 rm -f "$MOCK_CURL_CALLED"
@@ -397,7 +508,21 @@ fault_root="$test_root/fault-injection"
 make_fixture 4.0.0 x86_64-unknown-linux-gnu
 run_install 4.0.0 "$fault_root/bin"
 old_webview_sha=$(sha256_file "$fault_root/bin/a3s-webview")
+old_moli_sha=$(sha256_file "$fault_root/bin/moli/moli")
 
+make_fixture 4.0.1 x86_64-unknown-linux-gnu
+export MOCK_MV_FAULT=moli-activate
+rm -f "$MOCK_MV_FAULT_MARKER"
+expect_failure 'interruption after Moli runtime activation' \
+    run_install 4.0.1 "$fault_root/bin"
+[[ -e "$MOCK_MV_FAULT_MARKER" ]] || fail 'Moli runtime fault was not injected'
+[[ "$(sha256_file "$fault_root/bin/moli/moli")" == "$old_moli_sha" ]] \
+    || fail 'Moli activation interruption did not restore the previous runtime'
+[[ "$($fault_root/bin/a3s --version)" == 'a3s 4.0.0' ]] \
+    || fail 'Moli activation interruption changed the installed binary'
+assert_no_generated_paths "$fault_root"
+
+make_fixture 4.0.0 x86_64-unknown-linux-gnu
 export MOCK_MV_FAULT=webview-activate
 rm -f "$MOCK_MV_FAULT_MARKER"
 expect_failure 'interruption after WebView companion activation' \
@@ -405,6 +530,8 @@ expect_failure 'interruption after WebView companion activation' \
 [[ -e "$MOCK_MV_FAULT_MARKER" ]] || fail 'WebView companion fault was not injected'
 [[ "$(sha256_file "$fault_root/bin/a3s-webview")" == "$old_webview_sha" ]] \
     || fail 'WebView activation interruption did not restore the previous companion'
+[[ "$(sha256_file "$fault_root/bin/moli/moli")" == "$old_moli_sha" ]] \
+    || fail 'WebView activation interruption changed the installed Moli runtime'
 [[ "$("$fault_root/bin/a3s" --version)" == 'a3s 4.0.0' ]] \
     || fail 'WebView activation interruption changed the installed binary'
 assert_no_generated_paths "$fault_root"
@@ -419,6 +546,8 @@ expect_failure 'interruption after binary activation' \
     || fail 'binary activation interruption did not restore the previous binary'
 [[ "$(sha256_file "$fault_root/bin/a3s-webview")" == "$old_webview_sha" ]] \
     || fail 'binary activation interruption did not restore the previous WebView companion'
+[[ "$(sha256_file "$fault_root/bin/moli/moli")" == "$old_moli_sha" ]] \
+    || fail 'binary activation interruption changed the installed Moli runtime'
 assert_no_generated_paths "$fault_root"
 unset MOCK_MV_FAULT MOCK_MV_FAULT_VERSION
 

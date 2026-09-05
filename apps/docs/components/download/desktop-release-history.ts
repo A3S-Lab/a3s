@@ -8,6 +8,7 @@ type DesktopReleaseLocale = 'cn' | 'en';
 
 export interface DesktopReleaseHistoryEntry {
   version: string;
+  tag: string;
   publishedAt: string;
   releaseUrl: string;
   checksumUrl: string;
@@ -15,8 +16,8 @@ export interface DesktopReleaseHistoryEntry {
   notes: Readonly<Record<DesktopReleaseLocale, readonly string[]>>;
 }
 
-function taggedReleaseAssets(version: string): readonly DesktopReleaseAsset[] {
-  const assetBaseUrl = `${desktopRepositoryUrl}/releases/download/${version}`;
+function taggedReleaseAssets(tag: string): readonly DesktopReleaseAsset[] {
+  const assetBaseUrl = `${desktopRepositoryUrl}/releases/download/${tag}`;
   return desktopReleaseAssets.map((asset) => ({
     ...asset,
     href: `${assetBaseUrl}/${asset.fileName}`,
@@ -26,10 +27,11 @@ function taggedReleaseAssets(version: string): readonly DesktopReleaseAsset[] {
 export const desktopReleaseHistory = [
   {
     version: 'v0.1.0',
+    tag: 'desktop-v0.1.0',
     publishedAt: '2026-08-23',
-    releaseUrl: `${desktopRepositoryUrl}/releases/tag/v0.1.0`,
-    checksumUrl: `${desktopRepositoryUrl}/releases/download/v0.1.0/SHA256SUMS.txt`,
-    assets: taggedReleaseAssets('v0.1.0'),
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.0`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.0/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.0'),
     notes: {
       cn: [
         '首次发布 A3S Desktop 原生工作台，默认进入 Office 模式。',

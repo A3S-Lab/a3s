@@ -1,0 +1,338 @@
+name: A3S Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Existing root tag to publish, for example desktop-v0.1.1'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'desktop-v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  # Every successful run mutates the single desktop-latest release. Keep
+  # different version tags out of that publication window at the same time.
+  group: desktop-release
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 26.8.1
+  DESKTOP_UPDATE_ENDPOINT: https://github.com/A3S-Lab/a3s/releases/download/desktop-latest/latest.json
+  TAURI_BUNDLER_DMG_IGNORE_CI: true
+
+jobs:
+  validate:
+    name: Validate Desktop release metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      tag_name: ${{ steps.metadata.outputs.tag_name }}
+      version: ${{ steps.metadata.outputs.version }}
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
+          fetch-depth: 0
+
+      - name: Initialize Desktop and UI submodules
+        run: |
+          git -c url."https://github.com/".insteadOf=git@github.com: \
+            submodule update --init -- packages/ui apps/desktop
+
+      - name: Install Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust builds
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install dependencies and run the source gate
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npm run check
+
+      - name: Validate tag, package, and updater secret contract
+        id: metadata
+        shell: bash
+        env:
+          UPDATER_PUBKEY: ${{ secrets.A3S_DESKTOP_UPDATER_PUBKEY }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^desktop-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Expected tag format desktop-vX.Y.Z, got: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          VERSION="${BASH_REMATCH[1]}"
+          PACKAGE_VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          CARGO_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -n 1)"
+          test "$VERSION" = "$PACKAGE_VERSION"
+          test "$VERSION" = "$CARGO_VERSION"
+          TAURI_VERSION="$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")"
+          test "$VERSION" = "$TAURI_VERSION"
+          COMMITTED_PUBKEY="$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').plugins.updater.pubkey")"
+          test -n "$UPDATER_PUBKEY" || { echo 'Missing A3S_DESKTOP_UPDATER_PUBKEY secret' >&2; exit 1; }
+          test "$UPDATER_PUBKEY" = "$COMMITTED_PUBKEY" || {
+            echo 'A3S_DESKTOP_UPDATER_PUBKEY must match tauri.conf.json' >&2
+            exit 1
+          }
+          echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  publish-tauri:
+    name: Build and publish ${{ matrix.name }}
+    needs: validate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      # The Tauri action merges updater entries from the existing release.
+      # Serializing jobs prevents two latest.json uploads from racing.
+      max-parallel: 1
+      matrix:
+        include:
+          - name: macOS arm64
+            runner: macos-15
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - name: macOS x64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+          - name: Linux x64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage,deb
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      A3S_DESKTOP_UPDATER_PUBKEY: ${{ secrets.A3S_DESKTOP_UPDATER_PUBKEY }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Initialize Desktop and UI submodules
+        run: |
+          git -c url."https://github.com/".insteadOf=git@github.com: \
+            submodule update --init -- packages/ui apps/desktop
+
+      - name: Install Linux prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file libfuse2 libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf xdg-utils
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust builds
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install dependencies
+        working-directory: apps/desktop
+        run: npm ci
+
+      - name: Remove stale bundle output
+        working-directory: apps/desktop
+        run: npm run clean:package
+
+      - name: Validate signing inputs
+        shell: bash
+        run: |
+          test -n "$A3S_DESKTOP_UPDATER_PUBKEY" || { echo 'Missing A3S_DESKTOP_UPDATER_PUBKEY' >&2; exit 1; }
+          test -n "$TAURI_SIGNING_PRIVATE_KEY" || { echo 'Missing A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY' >&2; exit 1; }
+
+      - name: Generate release updater config
+        working-directory: apps/desktop
+        run: npm run release:config
+
+      - name: Build and publish signed Tauri bundles
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ needs.validate.outputs.tag_name }}
+          releaseName: A3S Desktop v__VERSION__
+          releaseBody: 'A3S Desktop platform installers and signed Tauri updater artifacts. The website download aliases are refreshed after all targets finish.'
+          releaseDraft: false
+          prerelease: false
+          generateReleaseNotes: true
+          releaseAssetNamePattern: 'A3S-[platform]-[arch][setup][ext]'
+          tauriScript: node scripts/release-build.mjs
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: true
+          args: --config src-tauri/tauri.release.conf.json --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+
+      - name: Smoke-test native sandbox on the release runner
+        working-directory: apps/desktop
+        run: npm run smoke:sandbox
+
+      - name: Verify packaged release artifacts
+        working-directory: apps/desktop
+        run: npm run verify:package -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --require-updater --verify-signatures
+
+  publish-latest-aliases:
+    name: Refresh website download aliases
+    needs:
+      - validate
+      - publish-tauri
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag_name }}
+          fetch-depth: 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Test release alias contract
+        run: node --test scripts/desktop-release-assets.test.mjs
+
+      - name: Download published release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          release_dir="$RUNNER_TEMP/a3s-desktop-release"
+          mkdir -p "$release_dir/source"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$release_dir/source" \
+            --pattern 'A3S-*' --pattern 'latest.json'
+          echo "DESKTOP_RELEASE_DIR=$release_dir" >> "$GITHUB_ENV"
+
+      - name: Materialize stable installer aliases
+        run: node scripts/desktop-release-assets.mjs "$DESKTOP_RELEASE_DIR/source" "$DESKTOP_RELEASE_DIR/latest" "${{ needs.validate.outputs.tag_name }}"
+
+      - name: Add stable aliases and checksums to the versioned release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          for asset in "$DESKTOP_RELEASE_DIR/latest"/*; do
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "$asset" --clobber
+          done
+
+      - name: Keep Desktop releases out of the mixed-product latest slot
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag_name }}
+        run: gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --latest=false
+
+      - name: Create or update the mutable desktop-latest release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view desktop-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit desktop-latest --repo "$GITHUB_REPOSITORY" \
+              --title 'A3S Desktop latest' \
+              --notes 'Mutable download aliases and updater manifest for the latest A3S Desktop release.' \
+              --latest=false
+          else
+            gh release create desktop-latest --repo "$GITHUB_REPOSITORY" \
+              --target "${{ needs.validate.outputs.tag_name }}" \
+              --title 'A3S Desktop latest' \
+              --notes 'Mutable download aliases and updater manifest for the latest A3S Desktop release.' \
+              --latest=false
+          fi
+
+      - name: Upload website aliases and updater manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for asset in "$DESKTOP_RELEASE_DIR/latest"/*; do
+            gh release upload desktop-latest --repo "$GITHUB_REPOSITORY" "$asset" --clobber
+          done
+
+      - name: Verify the public updater feed
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.validate.outputs.tag_name }}
+          EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          feed="$RUNNER_TEMP/a3s-desktop-release/public-latest.json"
+          for attempt in {1..8}; do
+            if curl --fail --location --silent --show-error \
+              --retry 2 --retry-all-errors \
+              "$DESKTOP_UPDATE_ENDPOINT" -o "$feed"; then
+              break
+            fi
+            if [[ "$attempt" == 8 ]]; then
+              echo 'desktop-latest/latest.json was not publicly readable after upload' >&2
+              exit 1
+            fi
+            sleep 3
+          done
+          node - "$feed" "$RELEASE_TAG" "$EXPECTED_VERSION" <<'NODE'
+          const fs = require('node:fs');
+          const [feedPath, releaseTag, expectedVersion] = process.argv.slice(2);
+          const manifest = JSON.parse(fs.readFileSync(feedPath, 'utf8'));
+          if (manifest.version !== expectedVersion) {
+            throw new Error(`feed version ${manifest.version} does not match ${expectedVersion}`);
+          }
+          for (const key of ['darwin-aarch64', 'darwin-x86_64', 'windows-x86_64', 'linux-x86_64']) {
+            const entry = manifest.platforms?.[key];
+            if (!entry || typeof entry.signature !== 'string' || !entry.signature.trim()) {
+              throw new Error(`feed is missing a signed ${key} entry`);
+            }
+            const expected = `/releases/download/${encodeURIComponent(releaseTag)}/`;
+            if (typeof entry.url !== 'string' || !entry.url.includes(expected)) {
+              throw new Error(`feed ${key} URL does not point to ${releaseTag}`);
+            }
+          }
+          NODE

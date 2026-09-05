@@ -1,4 +1,4 @@
-export type DesktopPlatformId = 'macos' | 'windows' | 'linux';
+export type DesktopPlatformId = 'macos-arm64' | 'macos-x64' | 'windows-x64' | 'linux-x64';
 
 export interface DesktopReleaseAsset {
   id: DesktopPlatformId;
@@ -8,33 +8,41 @@ export interface DesktopReleaseAsset {
   href: string;
 }
 
-export const desktopRepositoryUrl = 'https://github.com/A3S-Lab/Desktop';
+export const desktopRepositoryUrl = 'https://github.com/A3S-Lab/a3s';
 export const desktopReleasesUrl = `${desktopRepositoryUrl}/releases`;
-export const desktopLatestReleaseUrl = `${desktopReleasesUrl}/latest`;
-export const desktopReleaseAssetBaseUrl = `${desktopLatestReleaseUrl}/download`;
+export const desktopLatestReleaseTag = 'desktop-latest';
+export const desktopLatestReleaseUrl = `${desktopReleasesUrl}/tag/${desktopLatestReleaseTag}`;
+export const desktopReleaseAssetBaseUrl = `${desktopReleasesUrl}/download/${desktopLatestReleaseTag}`;
 export const desktopChecksumsUrl = `${desktopReleaseAssetBaseUrl}/SHA256SUMS.txt`;
 
 export const desktopReleaseAssets: readonly DesktopReleaseAsset[] = [
   {
-    id: 'macos',
-    name: 'macOS',
-    format: 'ZIP',
-    fileName: 'A3S-macos.zip',
-    href: `${desktopReleaseAssetBaseUrl}/A3S-macos.zip`,
+    id: 'macos-arm64',
+    name: 'macOS (Apple silicon)',
+    format: 'DMG',
+    fileName: 'A3S-macos-arm64.dmg',
+    href: `${desktopReleaseAssetBaseUrl}/A3S-macos-arm64.dmg`,
   },
   {
-    id: 'windows',
-    name: 'Windows',
-    format: 'ZIP',
-    fileName: 'A3S-windows.zip',
-    href: `${desktopReleaseAssetBaseUrl}/A3S-windows.zip`,
+    id: 'macos-x64',
+    name: 'macOS (Intel)',
+    format: 'DMG',
+    fileName: 'A3S-macos-x64.dmg',
+    href: `${desktopReleaseAssetBaseUrl}/A3S-macos-x64.dmg`,
   },
   {
-    id: 'linux',
-    name: 'Linux',
-    format: 'TAR.GZ',
-    fileName: 'A3S-linux.tar.gz',
-    href: `${desktopReleaseAssetBaseUrl}/A3S-linux.tar.gz`,
+    id: 'windows-x64',
+    name: 'Windows (x64)',
+    format: 'NSIS installer',
+    fileName: 'A3S-windows-x64.exe',
+    href: `${desktopReleaseAssetBaseUrl}/A3S-windows-x64.exe`,
+  },
+  {
+    id: 'linux-x64',
+    name: 'Linux (x64)',
+    format: 'AppImage',
+    fileName: 'A3S-linux-x64.AppImage',
+    href: `${desktopReleaseAssetBaseUrl}/A3S-linux-x64.AppImage`,
   },
 ] as const;
 
@@ -42,9 +50,9 @@ export const desktopDownloadContent = {
   en: {
     skip: 'Skip to downloads',
     title: 'Download A3S Desktop',
-    description: 'Choose your system and download the latest desktop build.',
+    description: 'Download the latest A3S Desktop installer from the A3S release.',
     downloadAction: 'Download',
-    previewNote: 'Preview builds are currently unsigned.',
+    previewNote: 'Installers are published from the A3S repository release and include SHA-256 checksums.',
     checksumAction: 'SHA-256 checksums',
     releaseNotesAction: 'Release notes',
     sourceAction: 'Source',
@@ -62,9 +70,9 @@ export const desktopDownloadContent = {
   cn: {
     skip: '跳到下载区域',
     title: '下载 A3S Desktop',
-    description: '选择你的系统，下载最新版桌面应用。',
+    description: '选择你的系统，从 A3S 主仓库 Release 下载最新版桌面安装包。',
     downloadAction: '下载',
-    previewNote: '当前预览包尚未签名。',
+    previewNote: '安装包统一托管在 A3S 主仓库 Release，并提供 SHA-256 校验文件。',
     checksumAction: 'SHA-256 校验',
     releaseNotesAction: '版本说明',
     sourceAction: '源码',

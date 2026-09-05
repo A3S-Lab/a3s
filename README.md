@@ -102,10 +102,8 @@ Four rules keep the system composable:
 4. **Evidence closes the loop.** Identity, revisions, digests, health, and
    receipts distinguish installation, authorization, activation, execution,
    and publication.
-
 Configuration uses [A3S ACL](crates/acl/), the Agent Configuration Language.
 ACL is not HCL and must be parsed and generated with `a3s-acl`.
-
 ## Choose a surface
 
 The umbrella CLI owns invocation context, shared configuration, credentials,
@@ -115,7 +113,7 @@ and detailed support contract.
 | Surface | Start here | Owns |
 | --- | --- | --- |
 | **Code** | `a3s code` | Local agent engine and terminal host |
-| **Desktop** | [Download](https://a3s-lab.github.io/a3s/download/) · [Source](apps/desktop/) | Native workbench powered by the local Code kernel |
+| **Desktop** | [Download](https://a3s-lab.github.io/a3s/download/) · [Releases](https://github.com/A3S-Lab/a3s/releases) · [Source](apps/desktop/) | Native workbench powered by the local Code kernel; installers are published in this repository |
 | **Use** | `a3s use capabilities --json` | Signed dependency graphs and hot-pluggable Tool, MCP, Flow, Skill, knowledge, and UI capabilities |
 | **Box** | `a3s box ps` | Explicit local isolation and OCI workloads |
 | **Power + MoE** | [Power](crates/power/) · [MoE](crates/moe/) | Model-neutral serving and residency plus model-specific equations and validation |
@@ -134,6 +132,16 @@ and detailed support contract.
 A3S is a composed system, so it does not have one blanket maturity label.
 Support claims live with the component that owns the behavior:
 
+The root repository also owns A3S Desktop distribution. Tags named
+`desktop-vX.Y.Z` publish platform installers and signed Tauri updater artifacts to the root GitHub Release;
+the release workflow refreshes the `desktop-latest` aliases consumed by the website download
+page and the in-app updater. Desktop updates install automatically and restart the application
+after a verified bundle is downloaded.
+
+For a local package, run `cd apps/desktop && npm run package:local`; this cleans stale bundle output,
+builds the platform-native Tauri artifacts, and verifies the files before they are shared. The
+complete signing, updater, alias, and public-feed sequence is documented in
+[`docs/desktop-release.md`](docs/desktop-release.md).
 | Area | Current posture | Source of truth |
 | --- | --- | --- |
 | CLI and installers | The standalone CLI repository owns source, CI, releases, and detailed product documentation; this root pins a reviewed revision and relays only the required integration assets. | [CLI](https://github.com/A3S-Lab/CLI) · [installer CI](.github/workflows/installers.yml) |
@@ -147,48 +155,6 @@ Support claims live with the component that owns the behavior:
 Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
-
-The latest Code `main` merge (`1cd4423e`) updates the `a3s-vec` dependency to
-version `0.1.1` at Vec commit `416140ec`, behind a Memory-authoritative
-differential shadow. Its ownership boundary, status contract, and promotion
-gates are recorded in the
-[Vec migration note](https://github.com/A3S-Lab/Code/blob/main/manual/WORKSPACE_RETRIEVAL_VEC_MIGRATION.md).
-The root Cloud compatibility lock and Code gitlink remain a separate component
-graph until their exact revisions are promoted together. Vec's public API
-review, reproducible candidate package, and remaining external release gate are
-recorded in [Vec release qualification](https://github.com/A3S-Lab/Vec/blob/416140ec5f9bd6fc8030f9f17735c0b10d099c99/RELEASE.md).
-
-The Code release-profile qualification passed [run 33811229333](https://github.com/A3S-Lab/Code/actions/runs/33811229333).
-The corresponding [CI run 33811229434](https://github.com/A3S-Lab/Code/actions/runs/33811229434)
-completed with one non-code semver-check job failure while rustdoc resolved the
-transient `tinyvec 1.13.0` dependency; its other completed jobs passed. The Vec
-candidate itself passed the ten-job [CI run 33810337678](https://github.com/A3S-Lab/Vec/actions/runs/33810337678)
-and produced the revision-bound package and performance artifacts. The exact
-macOS 12 Intel runtime gate remains queued in [run 33811715564](https://github.com/A3S-Lab/Vec/actions/runs/33811715564).
-On the hosted 4-CPU Linux profile, Memory/Vec-primary exact p95 was
-9.7993/9.6626 ms, RRF-only p95 was 55.6142/58.6252 ms, and deterministic-rerank
-p95 was 58.2083/56.6000 ms. Both arms matched 120/120 differential queries with
-zero failures and released all records and bytes. This is a product-integration
-and SLO gate, not an HNSW-versus-zvec throughput comparison.
-
-The preceding qualified Vec revision also carries Binary32/Binary64 exact L2/Hamming search,
-the complete public feature matrix, a revision-bound 53-row smoke performance
-CSV gate, five platform smoke CSVs (including lifecycle/resource/maintenance
-metrics), and a configurable larger-corpus a3s-vec/zvec comparison harness. On
-the same-host 100k x 128 one-worker fixture, the HNSW traversal follow-up cut
-a3s-vec p50 from 1,725.4 to 923.4 microseconds (-46.5%), raised QPS 92.8%, and
-reduced build time 23.6% without changing its 0.6000 Recall@10. Zvec 0.7.0 is
-still about 2.71x lower in HNSW p50 and 1.72x shorter to build, while its median
-Recall@10 is 0.5719. A3S Vec's unchanged Flat path remains about 5.6x slower at
-this scale. A three-run `target-cpu=native` control lowered A3S Vec's Flat p50
-by 13.3%, but it remained 4.83x above zvec; compiler target selection therefore
-accounts for only part of the gap.
-
-The comparison remains directional, not a revision-bound release gate: the
-baseline uses Cargo's portable a3s-vec build against zvec's native wheel, and
-a3s-vec exact-reranks HNSW candidates while the zvec optional refiner is
-disabled. Both recall values require a higher `ef` for a production target.
-See [Vec benchmark evidence](https://github.com/A3S-Lab/Vec/blob/416140ec5f9bd6fc8030f9f17735c0b10d099c99/BENCHMARKS.md).
 
 ## Installation
 
@@ -293,6 +259,7 @@ its owning repository before advancing its gitlink here, and read
 
 - [A3S website](https://a3s-lab.github.io/a3s/)
 - [Desktop download](https://a3s-lab.github.io/a3s/download/)
+- [Desktop release and update contract](docs/desktop-release.md)
 - [CLI reference](docs/cli-reference.md)
 - [Cloud compatibility lock](compat/cloud-stack.acl)
 - [Workflow architecture](compat/workflow-platform-architecture.md) and

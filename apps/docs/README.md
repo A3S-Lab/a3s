@@ -22,12 +22,13 @@ of shipping another workflow editor or product-specific top navigation.
 The production build runs Rspress once per language and assembles both outputs
 under `out/`. Chinese remains the unprefixed default language.
 
-The latest download actions use stable `releases/latest/download` links from
-`A3S-Lab/Desktop`. The release-history entries use tag-pinned asset URLs and
-checked bilingual notes from `components/download/desktop-release-history.ts`.
-Update that file when a Desktop release is published. Asset names are owned by
-the Desktop repository release workflow and must change in both repositories
-if packaging names change.
+The latest download actions use stable aliases from the A3S monorepo's
+`desktop-latest` GitHub Release. Versioned history entries use
+`desktop-vX.Y.Z` tag-pinned asset URLs and checked bilingual notes from
+`components/download/desktop-release-history.ts`. Update that file when a
+Desktop release is published. Asset names are owned by the root repository's
+Desktop release workflow and must change in both repositories if packaging
+names change.
 
 ## Project layout
 

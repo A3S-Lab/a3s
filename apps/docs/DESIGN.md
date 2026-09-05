@@ -73,7 +73,7 @@ principles, local quick start, and source call to action.
 
 The public-site showcase uses an asymmetric 12-column grid. Each card includes
 a committed screenshot, checked delivery label, plain-language responsibility,
-and separate site and source destinations. The 34-project directory below it
+and separate site and source destinations. The 35-project directory below it
 supports search and layer filters without hiding ownership or release data.
 
 Desktop navigation remains 72px high. It contains ecosystem sections, Desktop

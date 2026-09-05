@@ -78,10 +78,16 @@ assert(
   'English homepage does not use the English Flow preview',
 );
 
-const releaseBase = 'https://github.com/A3S-Lab/Desktop/releases/latest/download';
-const taggedReleaseBase = 'https://github.com/A3S-Lab/Desktop/releases/download/v0.1.0';
+const releaseBase = 'https://github.com/A3S-Lab/a3s/releases/download/desktop-latest';
+const taggedReleaseBase = 'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.0';
 for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDownload, 'English']]) {
-  for (const asset of ['A3S-macos.zip', 'A3S-windows.zip', 'A3S-linux.tar.gz', 'SHA256SUMS.txt']) {
+  for (const asset of [
+    'A3S-macos-arm64.dmg',
+    'A3S-macos-x64.dmg',
+    'A3S-windows-x64.exe',
+    'A3S-linux-x64.AppImage',
+    'SHA256SUMS.txt',
+  ]) {
     assert(
       downloadPage.includes(`${releaseBase}/${asset}`),
       `${locale} download page is missing ${asset}`,
@@ -92,11 +98,11 @@ for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDown
     );
   }
   assert(
-    downloadPage.includes('https://github.com/A3S-Lab/Desktop/releases'),
+    downloadPage.includes('https://github.com/A3S-Lab/a3s/releases'),
     `${locale} download page is missing release history`,
   );
   assert(
-    downloadPage.includes('https://github.com/A3S-Lab/Desktop'),
+    downloadPage.includes('https://github.com/A3S-Lab/a3s'),
     `${locale} download page is missing source`,
   );
   assert(
@@ -115,7 +121,7 @@ for (const marker of [
   '每个AI Native组织都需要构建专属的AI操作系统',
   '交付阶段',
   '不统计功能完成率',
-  '34 个职责明确的项目',
+  '35 个职责明确的项目',
   'v0.12.5',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
@@ -128,7 +134,7 @@ for (const marker of [
   'Every AI Native organization needs to build its own AI operating system.',
   'Delivery stage',
   'not a feature-completion score',
-  '34 focused projects',
+  '35 focused projects',
   'v0.12.5',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
@@ -138,7 +144,7 @@ for (const [homepage, locale] of [[chineseHome, 'Chinese'], [englishHome, 'Engli
   const projectStages = homepage.match(/class="a3s-project-delivery"/g) ?? [];
   const flowLinkCount = homepage.split(`href="${flowHref}"`).length - 1;
   const powerLinkCount = homepage.split(`href="${powerHref}"`).length - 1;
-  assert(projectStages.length === 34, `${locale} homepage has ${projectStages.length} project stages instead of 34`);
+  assert(projectStages.length === 35, `${locale} homepage has ${projectStages.length} project stages instead of 35`);
   assert(!homepage.includes('a3s-project-progress'), `${locale} homepage still uses progress UI for categorical delivery stages`);
   assert(!homepage.includes('role="progressbar"'), `${locale} homepage still presents delivery stages as completion percentages`);
   assert(homepage.includes('/brand/a3s-os-logo.png'), `${locale} homepage does not use the A3S OS logo`);

@@ -16,9 +16,10 @@ import { HomeNav } from '@/components/home/home-nav';
 import type { Lang } from '@/components/home/home-content';
 
 const platformIcons = {
-  macos: AppleLogo,
-  windows: WindowsLogo,
-  linux: LinuxLogo,
+  'macos-arm64': AppleLogo,
+  'macos-x64': AppleLogo,
+  'windows-x64': WindowsLogo,
+  'linux-x64': LinuxLogo,
 } as const;
 
 export default function DesktopDownloadPage({ lang = 'cn' }: { lang?: Lang }) {

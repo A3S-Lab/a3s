@@ -10,13 +10,18 @@ import {
 
 describe('Desktop release links', () => {
   test('provides one stable latest-release asset for every supported platform', () => {
-    assert.deepEqual(desktopReleaseAssets.map((asset) => asset.id), ['macos', 'windows', 'linux']);
-    assert.equal(new Set(desktopReleaseAssets.map((asset) => asset.fileName)).size, 3);
+    assert.deepEqual(desktopReleaseAssets.map((asset) => asset.id), [
+      'macos-arm64',
+      'macos-x64',
+      'windows-x64',
+      'linux-x64',
+    ]);
+    assert.equal(new Set(desktopReleaseAssets.map((asset) => asset.fileName)).size, 4);
 
     for (const asset of desktopReleaseAssets) {
       assert.equal(asset.href, `${desktopReleaseAssetBaseUrl}/${asset.fileName}`);
       assert.equal(
-        asset.href.startsWith(`${desktopRepositoryUrl}/releases/latest/download/`),
+        asset.href.startsWith(`${desktopRepositoryUrl}/releases/download/desktop-latest/`),
         true,
       );
     }
@@ -25,7 +30,7 @@ describe('Desktop release links', () => {
   test('publishes a checksum link beside the platform packages', () => {
     assert.equal(
       desktopChecksumsUrl,
-      'https://github.com/A3S-Lab/Desktop/releases/latest/download/SHA256SUMS.txt',
+      'https://github.com/A3S-Lab/a3s/releases/download/desktop-latest/SHA256SUMS.txt',
     );
   });
 

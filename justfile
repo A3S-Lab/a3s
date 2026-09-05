@@ -61,17 +61,37 @@ cloud:
 # A3S Desktop
 # ============================================================================
 
-# Start the React development server, Deno host, and native desktop window
+# Start the React development server and native Tauri window.
 desktop:
-    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' deno task dev
+    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' npm run dev
 
-# Start the React development server and Deno host without a native window
+# Start a frontend-only preview without a native window.
 desktop-web:
-    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' deno task dev:web
+    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' npm run dev:web
 
-# Validate the desktop host, React application, protocol, and Rsbuild output
+# Validate tests, TypeScript, the production bundle, native sandbox, and Tauri crate.
 desktop-check:
-    cd apps/desktop && deno task check
+    cd apps/desktop && npm run check
+
+# Build and verify the native A3S Desktop package for the current platform.
+desktop-package:
+    cd apps/desktop && npm run package:local
+
+# Build without the post-build verification step.
+desktop-package-build:
+    cd apps/desktop && npm run package
+
+# Verify an existing package in the Tauri target directory.
+desktop-package-verify:
+    cd apps/desktop && npm run verify:package
+
+# Generate the release-only updater overlay from the configured public key.
+desktop-release-config:
+    cd apps/desktop && npm run release:config
+
+# Build and verify a signed Desktop target before the release workflow uploads it.
+desktop-release-build *args:
+    cd apps/desktop && npm run release:build -- {{args}}
 
 # ============================================================================
 # A3S GUI
