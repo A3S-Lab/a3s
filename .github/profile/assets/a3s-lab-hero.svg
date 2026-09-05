@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">A3S Lab — the operating system for collective intelligence</title>
+  <desc id="desc">A3S Lab turns team contributions into crystal intelligence through a governed loop of context, capability, evidence, and reuse, with policy and receipts flowing through every task.</desc>
+
+  <rect x="1" y="1" width="1198" height="438" rx="24" fill="#f8fbfe" stroke="#d7e4ef" stroke-width="2"/>
+  <path d="M1 350H1199" stroke="#dfeaf3"/>
+  <path d="M80 1V439M300 1V439M520 1V439M740 1V439M960 1V439M1160 1V439" stroke="#edf3f8"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <g transform="translate(64 48)">
+      <rect width="52" height="52" rx="12" fill="#171717"/>
+      <path d="M12 39L26 13L40 39M18 30H34" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M9 42C17 35 24 37 29 40C35 44 42 41 45 35" fill="none" stroke="#9ad0ff" stroke-width="3" stroke-linecap="round"/>
+      <text x="68" y="20" fill="#60646c" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700" letter-spacing="2">A3S LAB / AI OS</text>
+      <text x="68" y="47" fill="#171717" font-size="20" font-weight="600">Open source · Local first</text>
+    </g>
+
+    <text x="64" y="184" fill="#171717" font-size="84" font-weight="650" letter-spacing="-3">A3S</text>
+    <text x="64" y="232" fill="#171717" font-size="31" font-weight="650" letter-spacing="-0.5">OPERATING SYSTEM</text>
+    <text x="64" y="270" fill="#0d74ce" font-size="25" font-weight="600">FOR COLLECTIVE INTELLIGENCE</text>
+    <text x="64" y="313" fill="#60646c" font-size="20">贡献带着上下文流动，经验在证据中结晶。</text>
+
+    <g transform="translate(620 48)">
+      <rect width="516" height="270" rx="16" fill="#171b21"/>
+      <text x="28" y="38" fill="#9ad0ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700" letter-spacing="1.5">CONTRIBUTION LOOP</text>
+      <path d="M42 132H472" stroke="#3b4652" stroke-width="2"/>
+
+      <g transform="translate(28 64)">
+        <rect width="130" height="110" rx="10" fill="#2a333d"/>
+        <text x="18" y="29" fill="#7fd39a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">01</text>
+        <text x="18" y="61" fill="#fff" font-size="20" font-weight="650">CONTEXT</text>
+        <text x="18" y="88" fill="#b0b4ba" font-size="16">判断 · 数据</text>
+      </g>
+
+      <path d="M169 119H187" stroke="#9ad0ff" stroke-width="3"/>
+      <path d="M181 112L190 119L181 126" fill="none" stroke="#9ad0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <g transform="translate(193 64)">
+        <rect width="130" height="110" rx="10" fill="#2a333d"/>
+        <text x="18" y="29" fill="#7fd39a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">02</text>
+        <text x="18" y="61" fill="#fff" font-size="20" font-weight="650">CAPABILITY</text>
+        <text x="18" y="88" fill="#b0b4ba" font-size="16">Skill · Flow</text>
+      </g>
+
+      <path d="M334 119H352" stroke="#9ad0ff" stroke-width="3"/>
+      <path d="M346 112L355 119L346 126" fill="none" stroke="#9ad0ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <g transform="translate(358 64)">
+        <rect width="130" height="110" rx="10" fill="#2a333d"/>
+        <text x="18" y="29" fill="#7fd39a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">03</text>
+        <text x="18" y="61" fill="#fff" font-size="20" font-weight="650">EVIDENCE</text>
+        <text x="18" y="88" fill="#b0b4ba" font-size="16">Test · Receipt</text>
+      </g>
+
+      <rect x="28" y="198" width="460" height="48" rx="9" fill="#f7fbff"/>
+      <path d="M50 222H92M104 222H146M158 222H200" stroke="#0d74ce" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="50" cy="222" r="6" fill="#171717"/>
+      <circle cx="200" cy="222" r="6" fill="#0d74ce"/>
+      <text x="224" y="229" fill="#171717" font-size="20" font-weight="650">CRYSTAL INTELLIGENCE</text>
+    </g>
+
+    <g transform="translate(64 382)">
+      <path d="M0 0H1070" stroke="#8ebce8" stroke-width="2.5"/>
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" text-anchor="middle">
+        <circle cx="0" cy="0" r="9" fill="#171717"/>
+        <text x="0" y="31" fill="#171717">POLICY</text>
+        <circle cx="356" cy="0" r="9" fill="#fff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="356" y="31" fill="#171717">GRANT</text>
+        <circle cx="712" cy="0" r="9" fill="#fff" stroke="#0d74ce" stroke-width="3"/>
+        <text x="712" y="31" fill="#171717">RUN</text>
+        <circle cx="1070" cy="0" r="9" fill="#0d74ce"/>
+        <text x="1070" y="31" fill="#171717">RECEIPT</text>
+      </g>
+    </g>
+  </g>
+</svg>
