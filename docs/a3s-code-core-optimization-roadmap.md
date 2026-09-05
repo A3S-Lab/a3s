@@ -339,19 +339,24 @@ The first P1 slices are now delivered on Code `main`:
   identity, and cancellation/invocation assembly. Event forwarding and
   terminal cleanup remain mode-specific adapters until their state machines
   can be migrated without changing behavior.
+- **P1.2 admission convergence** (`f6c84262`): conversation, recovery, and
+  manual-save entrypoints use the coordinator for close checks, task-scheduler
+  leases, single-flight admission, and detached stream supervision. The
+  low-level `RunAdmission` remains a primitive; facades no longer duplicate
+  admission policy.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
 and the complete Core library test suite (3101 passed, 0 failed, 13 ignored;
-3114 total). The root integration PRs are #307, #308, and the
-coordinator integration follows this change.
+3114 total). The root integration PRs are #307 and #308, and coordinator
+integrations follow these Code changes.
 
-The next Code-side slice is **P1.2 coordinator lifecycle convergence**:
+The next Code-side slice is **P1.2 terminal lifecycle convergence**:
 
-1. move admission and child-task registration behind the coordinator while
-   retaining the current public Session APIs;
-2. make blocking, streaming, direct-tool, delegated, protocol, and recovery
-   paths emit one coordinator-owned terminal transition; and
+1. model one coordinator-owned terminal transition for blocking and streaming
+   runs while preserving the current persistence and event envelopes;
+2. extend that transition to direct-tool, delegated, protocol, and recovery
+   paths; and
 3. add cancellation/lease/replay qualification for every path before removing
    compatibility lifecycle code.
 
