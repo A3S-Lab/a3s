@@ -9,13 +9,19 @@ function MarkdownHome({ lang }: { lang: Lang }) {
     <main>
       <h1>
         {lang === 'cn'
-          ? '为AI Native组织构建的AI操作系统生态'
-          : 'The AI operating system ecosystem built for AI Native organizations'}
+          ? '为 Agent 时代构建 AI 原生操作系统，让贡献沉淀为晶体智力'
+          : 'An AI-native operating system for fluid and crystal intelligence'}
       </h1>
       <p>
         {lang === 'cn'
-          ? 'A3S 包含 35 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。'
-          : 'A3S includes 35 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure.'}
+          ? 'A3S OS 让流体智力在新问题中即时组合，并把经过验证的判断沉淀为团队可复用的晶体智力。'
+          : 'A3S OS helps teams combine resources around new problems and turn verified judgment into reusable crystal intelligence.'}
+      </p>
+      <h2>{lang === 'cn' ? '为什么企业需要 A3S OS' : 'Why enterprises need A3S OS'}</h2>
+      <p>
+        {lang === 'cn'
+          ? '企业需要一个带着上下文、证据、版本和归属持续生长的晶体智力大脑。'
+          : 'Enterprises need a crystal intelligence brain that grows with context, evidence, versioning, and ownership.'}
       </p>
       <h2>{lang === 'cn' ? '项目目录' : 'Project directory'}</h2>
       <p>{lang === 'cn' ? '每个项目都列出职责、交付阶段、当前版本或通道和代码入口。' : 'Every project lists its responsibility, delivery stage, current version or channel, and source.'}</p>

@@ -115,10 +115,13 @@ assert(chineseDownload.includes('历史版本与更新说明'), 'Chinese downloa
 assert(englishDownload.includes('Release history and notes'), 'English download page is missing release notes');
 
 for (const marker of [
-  '为AI Native组织构建的AI操作系统生态',
+  '为 Agent 时代',
+  '流体智力',
+  '晶体智力',
   '分布在全球的成员和 Agent 共用一个 Workspace',
   'Shared Workspace',
-  '每个AI Native组织都需要构建专属的AI操作系统',
+  '每个 AI 原生组织都需要构建自己的晶体智力大脑',
+  '让流体智力安全结晶的五条系统规则。',
   '交付阶段',
   '不统计功能完成率',
   '35 个职责明确的项目',
@@ -128,10 +131,13 @@ for (const marker of [
 }
 
 for (const marker of [
-  'An AI operating system ecosystem for AI Native organizations.',
+  'An AI-native operating',
+  'fluid intelligence',
+  'crystal intelligence',
   'globally distributed humans and agents',
   'Shared Workspace',
-  'Every AI Native organization needs to build its own AI operating system.',
+  'Every AI-native organization needs to build its own crystal intelligence brain.',
+  'Five rules that let fluid intelligence crystallize safely.',
   'Delivery stage',
   'not a feature-completion score',
   '35 focused projects',

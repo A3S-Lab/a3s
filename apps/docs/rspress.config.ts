@@ -12,14 +12,14 @@ const alternateBase = locale === 'en' ? rootBase : `${rootBase}en/`;
 
 const copy = {
   cn: {
-    title: 'A3S — 为AI Native组织构建的AI操作系统生态',
-    description: 'A3S 项目索引。查看 35 个项目的职责、交付阶段、当前版本或通道和代码入口。',
+    title: 'A3S — 为 Agent 时代构建 AI 原生操作系统',
+    description: 'A3S OS 让流体智力在新问题中即时组合，并把经过验证的判断沉淀为团队可复用的晶体智力。',
     ecosystem: '生态',
     alternate: 'EN',
   },
   en: {
-    title: 'A3S — The AI operating system ecosystem for AI Native organizations',
-    description: 'The A3S project index. Browse 35 projects, their delivery stages, current versions or channels, sites, and source.',
+    title: 'A3S — An AI-native operating system for fluid and crystal intelligence',
+    description: 'A3S OS helps teams combine resources around new problems and turn verified judgment into reusable crystal intelligence.',
     ecosystem: 'Ecosystem',
     alternate: '中文',
   },

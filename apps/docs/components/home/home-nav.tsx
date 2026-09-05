@@ -13,6 +13,7 @@ export function HomeNav({ lang, page = 'home' }: { lang: Lang; page?: 'home' | '
   const sectionHref = (anchor: string) => page === 'home' ? anchor : `${homeHref}${anchor}`;
 
   const anchorLinks = [
+    { label: tr.intelligence, href: sectionHref('#intelligence') },
     { label: tr.ecosystem, href: sectionHref('#ecosystem') },
     { label: tr.principles, href: sectionHref('#principles') },
     { label: tr.download, href: downloadHref, current: page === 'download' },

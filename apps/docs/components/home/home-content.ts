@@ -10,6 +10,7 @@ export const homeContent = {
   en: {
     nav: {
       ecosystem: 'Ecosystem',
+      intelligence: 'Intelligence',
       principles: 'Principles',
       download: 'Desktop',
       language: '中文',
@@ -19,19 +20,46 @@ export const homeContent = {
       githubLabel: 'A3S on GitHub',
     },
     hero: {
-      eyebrow: 'OPEN AGENT TOOLING',
-      lineOne: 'An AI operating system',
-      lineTwo: 'ecosystem for AI Native',
-      accent: 'organizations.',
+      eyebrow: 'A3S OS / COLLECTIVE INTELLIGENCE',
+      lineOne: 'An AI-native operating',
+      lineTwo: 'system for fluid',
+      accent: 'and crystal intelligence.',
       description:
-        'A3S brings together 35 focused projects for coding, browser work, durable execution, data, evaluation, and infrastructure. Start locally, then add only the components the job needs.',
-      primaryAction: 'Browse 35 projects',
+        'A3S OS connects sessions, models, tools, memory, workflows, isolated execution, and Cloud operations through explicit contracts. Fluid intelligence helps teams form new solutions in context; crystal intelligence turns verified judgment into reusable organizational capability.',
+      primaryAction: 'See the intelligence loop',
     },
-    signal: ['35 focused projects', '9 public project sites', '3 system layers', 'Status and source in one place'],
+    signal: ['Fluid → crystal intelligence', '35 focused projects', 'Local-first / progressive', 'Context travels with contribution'],
+    vision: {
+      eyebrow: 'FLUID → CRYSTAL / ORGANIZATIONAL INTELLIGENCE',
+      title: 'Let fluid intelligence become a shared operating memory.',
+      description:
+        'Fluid intelligence helps a team combine people, agents, data, tools, and compute around a new problem. Crystal intelligence preserves the judgment that worked, with its context, evidence, and ownership, so the next team can call it again.',
+      fluid: {
+        label: '01 / FLUID INTELLIGENCE',
+        title: 'Discover in context.',
+        description:
+          'Start from the task and its constraints. Compose the right people, agents, tools, data, and compute, then test a new path inside explicit policy boundaries.',
+        steps: 'Sense · Compose · Test · Return',
+      },
+      crystal: {
+        label: '02 / CRYSTAL INTELLIGENCE',
+        title: 'Make good judgment reusable.',
+        description:
+          'Keep the context and evidence attached to a decision. Turn what worked into searchable memory, a capability, or a durable workflow with version, ownership, and a clear way to reuse it.',
+        steps: 'Context · Evidence · Version · Reuse',
+      },
+      enterprise: {
+        label: 'WHY A3S OS',
+        title: 'Build the crystal intelligence brain your team can reuse.',
+        description:
+          'The advantage of an enterprise lives in expert context, trade-offs, and tacit workflows. A3S OS gives every contribution a safe path from local work to shared organizational memory while keeping authority and responsibility explicit.',
+        points: ['Context stays attached', 'Evidence gates reuse', 'Permission and ownership stay clear'],
+      },
+    },
     principles: {
       eyebrow: 'SYSTEM RULES / 05',
-      title: 'Five rules that keep the parts understandable.',
-      description: 'They define where decisions are made, what survives a restart, and which component is responsible when work fails.',
+      title: 'Five rules that let fluid intelligence crystallize safely.',
+      description: 'They define where decisions are made, what survives a restart, and which component is responsible when work fails or a contribution is reused.',
       items: [
         { index: '01', title: 'Policy stays with the host', description: 'CLI, Bench, and Cloud choose the active models, tools, permissions, and workflows.' },
         { index: '02', title: 'Backends stay replaceable', description: 'Drivers, providers, stores, executors, and adapters meet through explicit interfaces.' },
@@ -42,13 +70,13 @@ export const homeContent = {
     },
     ecosystem: {
       eyebrow: 'ECOSYSTEM DIRECTORY / 35 PROJECTS',
-      title: 'Find the project that owns the job.',
-      description: 'Search by project or filter by layer. Every entry links to its source and shows its current version or channel and delivery stage.',
+      title: 'Build the layer your work needs.',
+      description: 'A3S OS keeps each capability in an owned project with a clear contract. Search by responsibility or filter by layer, then continue to its source, current version, and delivery stage.',
     },
     quickstart: {
-      eyebrow: 'QUICKSTART / LOCAL',
-      title: 'Install A3S and open a workspace.',
-      description: 'The CLI runs locally. Configure a supported model provider before starting Code.',
+      eyebrow: 'QUICKSTART / LOCAL-FIRST',
+      title: 'Start with one local Code session.',
+      description: 'A3S OS starts locally. Add memory, capabilities, orchestration, isolation, inference, or Cloud only when the work needs them.',
       copy: 'Copy install command',
       copied: 'Copied',
       docs: 'See all install options',
@@ -76,8 +104,8 @@ export const homeContent = {
     },
     cta: {
       eyebrow: 'USE ONLY WHAT YOU NEED',
-      title: 'Every AI Native organization needs to build its own AI operating system.',
-      description: 'Each project has its own repository, release cadence, and operating limits. The directory shows where to begin.',
+      title: 'Every AI-native organization needs to build its own crystal intelligence brain.',
+      description: 'A3S OS keeps authority boundaries explicit while turning verified contributions into context-rich, reusable team capability.',
       primary: 'View source',
     },
     footer: {
@@ -96,6 +124,7 @@ export const homeContent = {
   cn: {
     nav: {
       ecosystem: '生态',
+      intelligence: '智力循环',
       principles: '原则',
       download: '桌面端',
       language: 'EN',
@@ -105,19 +134,46 @@ export const homeContent = {
       githubLabel: 'A3S GitHub',
     },
     hero: {
-      eyebrow: '开放的 Agent 工具链',
-      lineOne: '为AI Native组织',
-      lineTwo: '构建的AI操作系统',
-      accent: '生态',
+      eyebrow: 'A3S OS / 集体智力',
+      lineOne: '为 Agent 时代',
+      lineTwo: '构建 AI 原生操作系统',
+      accent: '让贡献沉淀为晶体智力',
       description:
-        'A3S 包含 35 个职责明确的项目，覆盖编码、浏览器操作、持久执行、数据、评测与基础设施。先在本地开始，再按任务需要添加组件。',
-      primaryAction: '浏览 35 个项目',
+        'A3S OS 把会话、模型、工具、记忆、工作流、隔离执行和 Cloud 控制平面连接成明确契约。流体智力帮助团队在新问题中即时组合资源，晶体智力让经过验证的判断成为可复用的组织能力。',
+      primaryAction: '理解智力循环',
     },
-    signal: ['35 个职责明确的项目', '9 个公开项目页面', '3 个系统层级', '状态与代码统一索引'],
+    signal: ['流体智力 → 晶体智力', '35 个职责明确的项目', '本地优先 / 可渐进部署', '贡献带着上下文流动'],
+    vision: {
+      eyebrow: '流体智力 → 晶体智力 / 组织能力',
+      title: '让团队的即时判断，成为可复用的组织记忆。',
+      description:
+        '流体智力帮助团队围绕新问题即时组合人、Agent、数据、工具和算力。晶体智力把有效判断连同上下文、证据和归属保存下来，让下一次工作可以直接调用。',
+      fluid: {
+        label: '01 / 流体智力',
+        title: '在上下文中发现新解。',
+        description:
+          '从任务目标和约束出发，动态组合成员、Agent、工具、数据与算力，在清晰的策略边界内试错并快速形成判断。',
+        steps: '感知 · 组合 · 试错 · 回流',
+      },
+      crystal: {
+        label: '02 / 晶体智力',
+        title: '把有效判断变成共享能力。',
+        description:
+          '让结论带着上下文和证据被记录，沉淀为可检索的记忆、可组合的能力或可恢复的工作流，并保留版本、归属和复用路径。',
+        steps: '上下文 · 证据 · 版本 · 复用',
+      },
+      enterprise: {
+        label: '为什么需要 A3S OS',
+        title: '把团队贡献建设成持续生长的晶体智力大脑。',
+        description:
+          '企业真正独有的是专家判断中的上下文、取舍和隐性流程。A3S OS 为每次贡献提供从本地工作到组织记忆的安全路径，同时保留清晰的权限、责任和归属。',
+        points: ['上下文随贡献保留', '证据决定是否复用', '权限与归属边界清晰'],
+      },
+    },
     principles: {
       eyebrow: '系统规则 / 05',
-      title: '让各个组件保持清晰的五条规则。',
-      description: '这些规则说明由谁做决定、哪些状态需要跨重启保留，以及任务失败时该由哪个组件负责。',
+      title: '让流体智力安全结晶的五条系统规则。',
+      description: '这些规则说明由谁做决定、哪些状态需要跨重启保留，以及任务失败或贡献复用时该由哪个组件负责。',
       items: [
         { index: '01', title: '策略留在宿主', description: 'CLI、Bench 与 Cloud 选择启用哪些模型、工具、权限和工作流。' },
         { index: '02', title: '后端可以替换', description: '驱动、Provider、Store、Executor 与 Adapter 通过明确接口协作。' },
@@ -128,13 +184,13 @@ export const homeContent = {
     },
     ecosystem: {
       eyebrow: '生态目录 / 35 个项目',
-      title: '按职责找到对应项目。',
-      description: '按项目搜索或按层级筛选。每个条目都提供代码入口、当前版本或通道和交付阶段。',
+      title: '按工作需要建设对应层级。',
+      description: 'A3S OS 让每项能力都归属于一个有明确契约的项目。按职责搜索或按层级筛选，再进入代码、当前版本和交付阶段。',
     },
     quickstart: {
-      eyebrow: '快速开始 / 本地',
-      title: '安装 A3S，打开一个工作区。',
-      description: 'CLI 在本地运行。启动 Code 前，请先配置受支持的模型 Provider。',
+      eyebrow: '快速开始 / 本地优先',
+      title: '从一个本地 Code 会话开始。',
+      description: 'A3S OS 先在本地运行，再按任务需要加入记忆、能力编排、隔离执行、推理服务或 Cloud。',
       copy: '复制安装命令',
       copied: '已复制',
       docs: '查看全部安装方式',
@@ -162,8 +218,8 @@ export const homeContent = {
     },
     cta: {
       eyebrow: '只用需要的部分',
-      title: '每个AI Native组织都需要构建专属的AI操作系统',
-      description: '每个项目都有独立仓库、发布节奏和使用边界。项目目录会告诉你该从哪里开始。',
+      title: '每个 AI 原生组织都需要构建自己的晶体智力大脑',
+      description: 'A3S OS 保留清晰的权限边界，把经过验证的贡献沉淀为带上下文、可复用的团队能力。',
       primary: '查看代码',
     },
     footer: {

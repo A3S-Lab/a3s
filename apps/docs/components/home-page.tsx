@@ -55,7 +55,7 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
             </h1>
             <p>{tr.hero.description}</p>
             <div className="a3s-hero__actions">
-              <a className="a3s-button a3s-button--primary" href="#ecosystem">
+              <a className="a3s-button a3s-button--primary" href="#intelligence">
                 {tr.hero.primaryAction}
                 <ArrowRight aria-hidden="true" weight="bold" />
               </a>
@@ -73,6 +73,50 @@ export default function HomePage({ lang = 'cn' }: { lang?: Lang }) {
           })}
         </div>
       </aside>
+
+      <section className="a3s-section a3s-intelligence" id="intelligence" aria-labelledby="a3s-intelligence-title">
+        <div className="a3s-section-heading">
+          <div>
+            <span className="a3s-section-eyebrow">{tr.vision.eyebrow}</span>
+            <h2 id="a3s-intelligence-title">{tr.vision.title}</h2>
+          </div>
+          <p>{tr.vision.description}</p>
+        </div>
+
+        <div className="a3s-intelligence__grid">
+          <article className="a3s-intelligence-card a3s-intelligence-card--fluid">
+            <header>
+              <span>{tr.vision.fluid.label}</span>
+              <i aria-hidden="true" />
+            </header>
+            <h3>{tr.vision.fluid.title}</h3>
+            <p>{tr.vision.fluid.description}</p>
+            <small>{tr.vision.fluid.steps}</small>
+          </article>
+          <article className="a3s-intelligence-card a3s-intelligence-card--crystal">
+            <header>
+              <span>{tr.vision.crystal.label}</span>
+              <i aria-hidden="true" />
+            </header>
+            <h3>{tr.vision.crystal.title}</h3>
+            <p>{tr.vision.crystal.description}</p>
+            <small>{tr.vision.crystal.steps}</small>
+          </article>
+        </div>
+
+        <aside className="a3s-intelligence-enterprise" aria-labelledby="a3s-enterprise-title">
+          <div>
+            <span className="a3s-section-eyebrow">{tr.vision.enterprise.label}</span>
+            <h3 id="a3s-enterprise-title">{tr.vision.enterprise.title}</h3>
+          </div>
+          <div>
+            <p>{tr.vision.enterprise.description}</p>
+            <ul>
+              {tr.vision.enterprise.points.map((point) => <li key={point}>{point}</li>)}
+            </ul>
+          </div>
+        </aside>
+      </section>
 
       <section className="a3s-ecosystem" id="ecosystem" aria-labelledby="a3s-ecosystem-title">
         <div className="a3s-section a3s-ecosystem__inner">

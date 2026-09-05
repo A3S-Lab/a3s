@@ -115,6 +115,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .a3s-intelligence-enterprise {
+    gap: 42px;
+  }
+
   .a3s-quickstart {
     gap: 64px;
     grid-template-columns: 1fr;
@@ -243,6 +247,7 @@
   }
 
   .a3s-ecosystem__inner,
+  .a3s-intelligence,
   .a3s-principles,
   .a3s-quickstart {
     padding-top: 96px;
@@ -255,6 +260,24 @@
 
   .a3s-principles {
     padding-top: 72px;
+  }
+
+  .a3s-intelligence__grid {
+    margin-top: 42px;
+  }
+
+  .a3s-intelligence-card {
+    min-height: 300px;
+    padding: 26px;
+  }
+
+  .a3s-intelligence-card h3 {
+    margin-top: 48px;
+  }
+
+  .a3s-intelligence-enterprise {
+    padding: 28px;
+    gap: 28px;
   }
 
   .a3s-ecosystem-directory {
@@ -419,6 +442,11 @@
   }
 
   .a3s-directory-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .a3s-intelligence__grid,
+  .a3s-intelligence-enterprise {
     grid-template-columns: 1fr;
   }
 
