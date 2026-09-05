@@ -447,12 +447,28 @@ workflow and Flow paths retain digest-only receipts, reject stale or corrupt
 resumable state before executing steps, and keep legacy checkpoint/ledger JSON
 loadable.
 
-The next Code-side slice is **P3/KRN-5/KRN-8 scheduler and plan convergence**:
+The scheduler and plan convergence follow-up landed in Code `c21c49b3`
+(`A3S-Lab/Code#93`). Dynamic Flow history now projects into the canonical
+`ExecutionPlan`, including steps that predate a resumed observer; plan identity
+excludes mutable progress, and duplicate lifecycle delivery cannot regress a
+terminal status. Flow step bodies use a cancellation-aware per-workflow gate,
+standalone adapters can layer the agent-wide priority scheduler with a
+digest-only step identity, and delegated tasks carry their canonical identity
+through the same admission boundary. Local qualification passed the complete
+Core library suite (3162 passed, 0 failed, 13 ignored), all integration-target
+compilation, `--all-features` checking, documentation tests, and focused Flow,
+scheduler, planning, task, and QuickJS coverage. Session-bound workflows keep
+the enclosing lease so a max-active=1 scheduler cannot deadlock on nested task
+fan-out.
 
-1. carry one bounded identity/receipt through dynamic Flow step admission;
-2. unify quotas, fairness, cancellation, and checkpoint semantics across
-   orchestration and Flow adapters;
-3. qualify mixed-generation restart/retry without duplicate side effects.
+The next Code-side slice is **P3/KRN-5/KRN-8 mixed-generation restart/retry
+qualification**:
+
+1. bind the projected plan and Flow-step identities to a persisted continuation;
+2. reject changed handler/input or stale generation claims before step bodies
+   start;
+3. prove cancellation, takeover, and retry do not duplicate a committed side
+   effect across process generations.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
