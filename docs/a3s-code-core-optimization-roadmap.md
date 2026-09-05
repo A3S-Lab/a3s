@@ -378,6 +378,11 @@ The first P1 slices are now delivered on Code `main`:
   from admission through gate evaluation, execution, and a single terminal
   outcome. Rejection, cancellation, success, failure, and budget denial are
   typed without changing public Tool/ToolEnd protocol shapes.
+- **P3/KRN-5 trust/taint and execution identity** (`a22bea94`): model and
+  Tool request boundaries now derive replay-stable, domain-separated
+  identities; typed trust, taint, and sanitization labels travel with values,
+  and model/tool/task/command/event egress uses one redaction boundary without
+  promoting untrusted or secret data.
 
 The local qualification slice passed `cargo fmt --all -- --check`, focused
 identity/research/coordinator tests, blocking and streaming lifecycle tests,
@@ -397,14 +402,20 @@ FSM, executor-registry, and nested-governance tests (4 + 1 + 13 passed). The
 full suite was not repeated because this slice only adds an internal lifecycle
 guard around existing tool execution paths.
 
-The next Code-side slice is **P3/KRN-5 trust/taint and idempotency**:
+The trust/taint and identity follow-up passed `cargo fmt --all -- --check`,
+`cargo check -p a3s-code-core`, and focused tests for execution identity (3),
+security boundaries (32), model middleware (14), ToolInvocation (5), and task
+projection (118). The complete suite was not repeated because the changes are
+boundary-local and the prior complete Core qualification remains valid.
 
-1. bind typed trust/taint labels at model/tool value boundaries and enforce
-   egress/redaction at one value boundary;
-2. add shared idempotency identity across model calls, Tool calls, workflow
-   steps, and evaluator dispatches while preserving replay/fencing;
-3. route repair, compaction, and auxiliary model calls through the typed
-   middleware phases with caller-owned cancellation.
+The next Code-side slice is **P3/KRN-5 identity propagation and ledger adapters**:
+
+1. propagate the shared identity into workflow steps and evaluator dispatch
+   claims while preserving replay and stale-worker fencing;
+2. bind identity digests to model/tool evidence without exposing prompt or
+   argument plaintext in persisted records;
+3. add a bounded claim/result adapter for retryable work, keeping the existing
+   Run store and evaluation ledger as the durability authorities.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
