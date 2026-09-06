@@ -611,7 +611,20 @@ The cross-host qualification slice landed in Code `c4ee7d25`
    follow-up when dependencies are installed; no second scheduler or metrics
    store was introduced.
 
-The next Code-side slice is **P3/KRN-8 host fixture qualification**: exercise
+The BM25 replacement qualification correction landed in Code `a471e944`
+(`A3S-Lab/Code#102`) and is pinned by this repository's `crates/code` gitlink:
+
+1. the persistent replacement regression now rejects the old source content,
+   rather than rejecting a valid result from the same path after the catalog
+   has published the replacement generation;
+2. the test continues to cover the reconciliation race and native source
+   verification boundary without changing the zvec-grep integration or adding
+   another index authority; and
+3. ten repeated parallel BM25 suites passed locally after the correction.
+
+The earlier full-suite BM25 failure was therefore a false-positive assertion,
+not stale content escaping source verification. The next Code-side slice is
+**P3/KRN-8 host fixture qualification**: exercise
 the common projection through real Node/Python/Go runtime fixtures and retain
 only bounded aggregate outcomes for release diagnostics. It must remain
 read-only metadata, avoid retaining provider labels or secrets, preserve the
