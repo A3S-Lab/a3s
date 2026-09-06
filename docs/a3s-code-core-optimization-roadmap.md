@@ -686,11 +686,13 @@ entries, and the Tool artifact fallback uses the same operation. The mutable
 eviction policy remain in the store rather than being duplicated in Core.
 
 Persistent lexical index integrity fencing landed in Code `d68bdc4`
-(`A3S-Lab/Code#110`) and is now pinned here. Schema-v2 generations retain and
-verify per-chunk text digests, stable chunk IDs, canonical source digests,
-valid ranges, and duplicate-ID constraints before exposing a reopened native
-index. Corrupt or incompatible generations fail closed and are rebuilt from
-the current catalog; no stale or partially trusted postings are served.
+(`A3S-Lab/Code#110`), with strict schema-v2 field rejection in follow-up
+`a16210b2` (`A3S-Lab/Code#111`), and is now pinned here. Schema-v2 generations
+retain and verify per-chunk text digests, stable chunk IDs, canonical source
+digests, valid ranges, duplicate-ID constraints, and closed manifest fields
+before exposing a reopened native index. Corrupt or incompatible generations
+fail closed and are rebuilt from the current catalog; no stale or partially
+trusted postings are served.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
