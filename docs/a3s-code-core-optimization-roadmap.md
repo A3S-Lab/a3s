@@ -678,7 +678,8 @@ identity and cannot drift without producing a new observation. Code still does
 not own reviewer rubrics, thresholds, approval, or publication policy.
 
 Reviewer location validation landed in Code `79a2300c`
-(`A3S-Lab/Code#112`) and is now pinned here. Finding anchors remain bounded
+(`A3S-Lab/Code#112`), with zero-column coverage in follow-up `e797f69b`
+(`A3S-Lab/Code#113`), and is now pinned here. Finding anchors remain bounded
 text, while optional line/column coordinates are one-based and a column must be
 line-bound; malformed positions fail before a finding can be published or
 rebound.
