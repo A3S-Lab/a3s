@@ -638,6 +638,14 @@ digest update after each explicit resolution. Legacy unbound v1 findings retain
 their prior digest identity; bound findings include the evaluator record digest,
 preventing result replacement from masquerading as the same review observation.
 
+The research execution identity hardening landed in Code `91d4e3cf`
+(`A3S-Lab/Code#105`). Hosts can validate a `ResearchRunV1` against the exact
+admitted `ExecutionTargetV1`, and `ResearchEventV1::from_core_event_for_run`
+requires the bare Run id instead of guessing it from an opaque operation id.
+This closes a cross-Run projection ambiguity before evidence or reviewer facts
+are published; the host adapter still owns source capture, artifact storage,
+and evaluator policy.
+
 The next Code-side slice is **P3/KRN-8 host fixture qualification**: exercise
 the common projection through real Node/Python/Go runtime fixtures and retain
 only bounded aggregate outcomes for release diagnostics. It must remain
