@@ -677,5 +677,13 @@ finding identities; once present, the receipt digest is part of the finding
 identity and cannot drift without producing a new observation. Code still does
 not own reviewer rubrics, thresholds, approval, or publication policy.
 
+The create-only artifact-store boundary landed in Code `8bf60f34`
+(`A3S-Lab/Code#109`) and is now pinned here. `ArtifactStore::put_content_addressed`
+makes immutable replay explicit: exact writes are idempotent, URI/content or
+metadata collisions fail closed, manifest reopen rejects conflicting duplicate
+entries, and the Tool artifact fallback uses the same operation. The mutable
+`put` API remains available for compatibility cache callers; retention and
+eviction policy remain in the store rather than being duplicated in Core.
+
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
