@@ -594,12 +594,29 @@ pool-health test failed. The Code PR was merged without waiting for long-running
 hosted checks under the development-efficiency policy. Provider rate limits,
 billing, and host policy remain outside Code.
 
-The next Code-side slice is **P3/KRN-8 operational qualification**: add bounded
-cross-process/SDK-facing health consumption and noisy-neighbor soak evidence
-without widening the scheduler's authority. It must remain read-only metadata,
-avoid retaining provider labels or secrets, preserve the single scheduler and
-Flow lease authorities, and keep Gateway/host policy responsible for rate
-limits and billing.
+The cross-host qualification slice landed in Code `c4ee7d25`
+(`A3S-Lab/Code#101`) and is pinned by this repository's `crates/code` gitlink:
+
+1. Node.js, Python, and Go sessions expose the same read-only
+   `ModelGenerationPoolHealthSnapshot`; the versioned Go JSONL bridge advertises
+   `session_model_generation_pool_health`, and capability discovery lists it
+   before a host opts into the diagnostic surface;
+2. an eight-cycle noisy-neighbor qualification with twelve blocked waiters per
+   cycle proves an independent provider pool continues to admit work under a
+   full global budget while cancellation, release, and bounded retention
+   counters settle; and
+3. local qualification passed Core strict Clippy, all three host binding
+   `--all-features` checks, Go SDK tests, Go bridge tests, and the focused
+   noisy-neighbor test. Node TypeScript runtime checks remain a package-local
+   follow-up when dependencies are installed; no second scheduler or metrics
+   store was introduced.
+
+The next Code-side slice is **P3/KRN-8 host fixture qualification**: exercise
+the common projection through real Node/Python/Go runtime fixtures and retain
+only bounded aggregate outcomes for release diagnostics. It must remain
+read-only metadata, avoid retaining provider labels or secrets, preserve the
+single scheduler and Flow lease authorities, and keep Gateway/host policy
+responsible for rate limits and billing.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
