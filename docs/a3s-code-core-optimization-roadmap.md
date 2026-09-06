@@ -626,14 +626,17 @@ The earlier full-suite BM25 failure was therefore a false-positive assertion,
 not stale content escaping source verification.
 
 The reviewer composition binding landed in Code `e4d7e286`
-(`A3S-Lab/Code#103`) and is now pinned by this repository's `crates/code`
-gitlink. `ResearchReviewFindingV1::bind_evaluation_record` links a finding to
-one immutable `EvaluationRecordV1`, verifies the evaluator and Run identities,
-requires the evaluator's evidence snapshot digest, and keeps the finding
-`open` until host policy or a human explicitly resolves or waives it. Legacy
-unbound v1 findings retain their prior digest identity; bound findings include
-the evaluator record digest, preventing result replacement from masquerading
-as the same review observation.
+(`A3S-Lab/Code#103`), and its bounded response batch landed in Code `2c6c1d17`
+(`A3S-Lab/Code#104`); the latter is now pinned by this repository's
+`crates/code` gitlink. `ResearchReviewFindingV1::bind_evaluation_record` links
+a finding to one immutable `EvaluationRecordV1`, verifies the evaluator and Run
+identities, requires the evaluator's evidence snapshot digest, and keeps the
+finding `open` until host policy or a human explicitly resolves or waives it.
+`ResearchReviewBatchV1` prevents partial or mixed responses by requiring one
+project/Run/evaluation-record/evidence identity, canonical finding order, and a
+digest update after each explicit resolution. Legacy unbound v1 findings retain
+their prior digest identity; bound findings include the evaluator record digest,
+preventing result replacement from masquerading as the same review observation.
 
 The next Code-side slice is **P3/KRN-8 host fixture qualification**: exercise
 the common projection through real Node/Python/Go runtime fixtures and retain
