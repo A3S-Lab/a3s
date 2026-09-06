@@ -623,8 +623,19 @@ The BM25 replacement qualification correction landed in Code `a471e944`
 3. ten repeated parallel BM25 suites passed locally after the correction.
 
 The earlier full-suite BM25 failure was therefore a false-positive assertion,
-not stale content escaping source verification. The next Code-side slice is
-**P3/KRN-8 host fixture qualification**: exercise
+not stale content escaping source verification.
+
+The reviewer composition binding landed in Code `e4d7e286`
+(`A3S-Lab/Code#103`) and is now pinned by this repository's `crates/code`
+gitlink. `ResearchReviewFindingV1::bind_evaluation_record` links a finding to
+one immutable `EvaluationRecordV1`, verifies the evaluator and Run identities,
+requires the evaluator's evidence snapshot digest, and keeps the finding
+`open` until host policy or a human explicitly resolves or waives it. Legacy
+unbound v1 findings retain their prior digest identity; bound findings include
+the evaluator record digest, preventing result replacement from masquerading
+as the same review observation.
+
+The next Code-side slice is **P3/KRN-8 host fixture qualification**: exercise
 the common projection through real Node/Python/Go runtime fixtures and retain
 only bounded aggregate outcomes for release diagnostics. It must remain
 read-only metadata, avoid retaining provider labels or secrets, preserve the
