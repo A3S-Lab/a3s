@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="#start-local">Start local</a> ·
+  <a href="#request-path">Request path</a> ·
   <a href="#how-a3s-fits-together">System model</a> ·
   <a href="#choose-a-surface">Products</a> ·
   <a href="#installation">Install</a> ·
@@ -24,8 +25,8 @@ operating agent work. One interface connects sessions, models, tools,
 permissions, durable workflows, isolated execution, and Cloud operations while
 keeping authority boundaries and external dependencies explicit.
 
-Start with one local Code session. Add capabilities, orchestration, isolation,
-inference, or fleet control only when the work requires them.
+Start with one local Code session. Add a signed capability, a durable workflow,
+an isolated Box workload, or Cloud coordination only when the work requires it.
 
 > [!IMPORTANT]
 > This repository is the reviewed integration snapshot for independently
@@ -70,6 +71,16 @@ research, isolation, and operations:
 See [Installation](#installation) for Windows, Homebrew, Cargo, offline use,
 and release-channel details. The complete command surface lives in the
 [CLI reference](docs/cli-reference.md).
+
+## Request path
+
+<p align="center">
+  <img src="assets/readme/workflow.svg" width="100%" alt="A3S request path from a product host through explicit policy and capabilities to replaceable runtime providers and evidence">
+</p>
+
+The host chooses the authority. ACL and Use describe what the work may do;
+Code, Flow, Runtime, and Box carry it out through typed contracts. Health,
+digests, revisions, and outcomes return as evidence that the owner can inspect.
 
 ## How A3S fits together
 
@@ -155,6 +166,20 @@ complete signing, updater, alias, and public-feed sequence is documented in
 Component READMEs, releases, roadmaps, and compatibility locks carry exact
 versions, platforms, fixtures, and remaining gates. This page explains how the
 parts compose; it is not a merged changelog.
+
+### Current integration focus
+
+The latest reviewed component revisions keep the active work visible at the
+same boundaries:
+
+| Area | What is being hardened now |
+| --- | --- |
+| **Code** | Reviewer inputs reject malformed line boundaries, and findings stay bound to the admitted run and immutable evidence. |
+| **Box** | CRI pod sandboxes defer workload startup; runtime cleanup and feature gates cover OCI-only and macOS paths. |
+| **Integration** | The root advances component gitlinks independently; [`compat/cloud-stack.acl`](compat/cloud-stack.acl) remains the source of truth for exact versions and protocol levels. |
+
+These are component-level contracts, not a blanket support claim. Check the
+owning repository for platform, release, and qualification details.
 
 ## Installation
 
@@ -243,13 +268,21 @@ cargo clippy --all-targets -- -D warnings
 The root `justfile` orchestrates integration workflows:
 
 ```bash
+just desktop
+just desktop-check
+just desktop-package
 just code
-just web
+just desktop-web
 just docs
 just windhole
 just use-hotplug-e2e
 just cloud-stack-check
 ```
+
+Desktop keeps its JavaScript dependency graph in
+`apps/desktop/package-lock.json`. Run `cd apps/desktop && npm ci` once before
+using the desktop recipes; Tauri invokes Cargo for the native backend, while
+`just` remains the repository task runner.
 
 Submodules and the root have separate histories. Commit a component change in
 its owning repository before advancing its gitlink here, and read

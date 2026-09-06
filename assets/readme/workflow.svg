@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">A3S request path</title>
+  <desc id="desc">A request enters through a product host, receives explicit policy and capabilities, runs through a replaceable execution provider, and returns evidence to the owner.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#0d74ce"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="428" rx="22" fill="#ffffff" stroke="#dcdee0"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+    <text x="48" y="58" fill="#171717" font-size="36" font-weight="650" letter-spacing="-1">One request. Four explicit boundaries.</text>
+    <text x="48" y="92" fill="#60646c" font-size="20">A3S keeps authority with the host and sends receipts back to the owner.</text>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700" letter-spacing="1.2" fill="#60646c">
+      <text x="72" y="150">01 / REQUEST</text>
+      <text x="348" y="150">02 / CONTRACT</text>
+      <text x="658" y="150">03 / EXECUTE</text>
+      <text x="946" y="150">04 / EVIDENCE</text>
+    </g>
+
+    <g>
+      <rect x="48" y="178" width="224" height="144" rx="14" fill="#171717"/>
+      <text x="74" y="216" fill="#9ad0ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">HOST</text>
+      <text x="74" y="254" fill="#ffffff" font-size="24" font-weight="620">a3s code</text>
+      <text x="74" y="286" fill="#b0b4ba" font-size="18">CLI · Desktop · Cloud</text>
+      <text x="74" y="312" fill="#b0b4ba" font-size="18">chooses the authority</text>
+
+      <rect x="324" y="178" width="260" height="144" rx="14" fill="#f7fbff" stroke="#a8c8e8"/>
+      <text x="350" y="216" fill="#0d74ce" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">POLICY + CAPABILITIES</text>
+      <text x="350" y="254" fill="#171717" font-size="24" font-weight="620">ACL · Use · Flow</text>
+      <text x="350" y="286" fill="#60646c" font-size="18">models · tools · permissions</text>
+      <text x="350" y="312" fill="#60646c" font-size="18">identity · durable intent</text>
+
+      <rect x="636" y="178" width="260" height="144" rx="14" fill="#171717"/>
+      <text x="662" y="216" fill="#9ad0ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">RUNTIME</text>
+      <text x="662" y="254" fill="#ffffff" font-size="24" font-weight="620">Task · Service · Box</text>
+      <text x="662" y="286" fill="#b0b4ba" font-size="18">process · container · MicroVM</text>
+      <text x="662" y="312" fill="#b0b4ba" font-size="18">provider contract stays replaceable</text>
+
+      <rect x="948" y="178" width="204" height="144" rx="14" fill="#f7fbff" stroke="#a8c8e8"/>
+      <text x="974" y="216" fill="#0d74ce" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700">RECEIPT</text>
+      <text x="974" y="254" fill="#171717" font-size="24" font-weight="620">Evidence</text>
+      <text x="974" y="286" fill="#60646c" font-size="18">health · digest</text>
+      <text x="974" y="312" fill="#60646c" font-size="18">revision · outcome</text>
+    </g>
+
+    <g stroke="#0d74ce" stroke-width="3" fill="none" marker-end="url(#arrow)">
+      <path d="M272 250H324"/>
+      <path d="M584 250H636"/>
+      <path d="M896 250H948"/>
+    </g>
+
+    <path d="M72 368H1128" stroke="#8ebce8" stroke-width="2"/>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700">
+      <text x="72" y="397" fill="#171717">authority stays up front</text>
+      <text x="600" y="397" fill="#60646c" text-anchor="middle">exact revisions and protocol levels remain inspectable</text>
+      <text x="1128" y="397" fill="#0d74ce" text-anchor="end">evidence closes the loop</text>
+    </g>
+  </g>
+</svg>
