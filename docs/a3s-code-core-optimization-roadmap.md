@@ -669,5 +669,13 @@ create-only content-addressed artifact replay, and file-backed evaluator
 dispatch/result recovery. It also projects a bound, still-open reviewer batch;
 review policy and human disposition remain host-owned.
 
+Reviewer provenance binding landed in Code `3a085232` (`A3S-Lab/Code#108`) and
+is now pinned here. `ResearchReviewFindingV1::bind_provenance_receipt` binds a
+finding to the exact project, Run, artifact digest, and retained input evidence
+used by its reproducibility receipt. The optional field preserves legacy
+finding identities; once present, the receipt digest is part of the finding
+identity and cannot drift without producing a new observation. Code still does
+not own reviewer rubrics, thresholds, approval, or publication policy.
+
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
