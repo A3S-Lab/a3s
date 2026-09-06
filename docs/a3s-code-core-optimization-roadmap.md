@@ -684,6 +684,14 @@ text, while optional line/column coordinates are one-based and a column must be
 line-bound; malformed positions fail before a finding can be published or
 rebound.
 
+Run-aware reviewer provenance fencing landed in Code `29c5e26e`
+(`A3S-Lab/Code#114`) and is now pinned here. Hosts can pass the admitted
+`ResearchRunV1` to `bind_provenance_receipt_for_run`; Code then rejects a
+provenance receipt from another project revision in addition to project, Run,
+artifact, and evidence-input mismatches. The object-only compatibility binding
+remains available for older integrations, while the qualification fixture now
+covers the revision-drift rejection.
+
 The create-only artifact-store boundary landed in Code `8bf60f34`
 (`A3S-Lab/Code#109`) and is now pinned here. `ArtifactStore::put_content_addressed`
 makes immutable replay explicit: exact writes are idempotent, URI/content or
