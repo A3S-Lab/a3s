@@ -701,6 +701,13 @@ cross-project Run-id reuse case that the legacy object-only binding cannot
 observe. The qualification fixture covers this rejection alongside the
 provenance checks.
 
+Run-aware review-batch validation landed in Code `883f0fff`
+(`A3S-Lab/Code#117`) and is now pinned here. Hosts can construct or validate a
+`ResearchReviewBatchV1` with the admitted Run and exact evaluator record;
+Code closes the batch project/Run namespace and rejects a batch evidence
+digest that differs from the evaluator record. The legacy digest-only
+constructor remains available for wire compatibility.
+
 The create-only artifact-store boundary landed in Code `8bf60f34`
 (`A3S-Lab/Code#109`) and is now pinned here. `ArtifactStore::put_content_addressed`
 makes immutable replay explicit: exact writes are idempotent, URI/content or
