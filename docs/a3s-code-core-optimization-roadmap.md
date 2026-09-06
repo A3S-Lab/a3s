@@ -660,5 +660,14 @@ retained scheduler epochs; no second scheduler or metrics store was added.
 Flow remains the sole lease authority and Gateway/hosts own rate limits and
 billing.
 
+The RESEARCH-EXEC1 qualification landed in Code `25039b42`
+(`A3S-Lab/Code#107`) and is now pinned here. The
+`research_execution_qualification` integration fixture drives one research
+Run through exact Code/Use binding, contiguous evidence, Run-aware event
+projection, checkpoint serialization/restart, terminal cancellation,
+create-only content-addressed artifact replay, and file-backed evaluator
+dispatch/result recovery. It also projects a bound, still-open reviewer batch;
+review policy and human disposition remain host-owned.
+
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
