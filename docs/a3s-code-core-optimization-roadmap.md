@@ -693,6 +693,14 @@ artifact, and evidence-input mismatches. The object-only compatibility binding
 remains available for older integrations, while the qualification fixture now
 covers all three reproducibility-drift rejections.
 
+Run-aware evaluator binding landed in Code `9f420e87`
+(`A3S-Lab/Code#116`) and is now pinned here. Hosts can pass the admitted
+`ResearchRunV1` to `bind_evaluation_record_for_run`; Code verifies the finding
+and Run project namespace before accepting an evaluator record, closing the
+cross-project Run-id reuse case that the legacy object-only binding cannot
+observe. The qualification fixture covers this rejection alongside the
+provenance checks.
+
 The create-only artifact-store boundary landed in Code `8bf60f34`
 (`A3S-Lab/Code#109`) and is now pinned here. `ArtifactStore::put_content_addressed`
 makes immutable replay explicit: exact writes are idempotent, URI/content or
