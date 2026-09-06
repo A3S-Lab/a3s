@@ -701,6 +701,12 @@ cross-project Run-id reuse case that the legacy object-only binding cannot
 observe. The qualification fixture covers this rejection alongside the
 provenance checks.
 
+Wire-level batch evaluator fencing landed in Code `f0799779`
+(`A3S-Lab/Code#119`) and is now pinned here. `validate_for_run` verifies every
+finding's evaluator identity against the exact evaluator record, so a
+deserialized batch cannot bypass the binding contract merely by recomputing a
+valid finding digest with a different evaluator id.
+
 Run-aware review-batch validation landed in Code `1175c8d6`
 (`A3S-Lab/Code#118`, following `A3S-Lab/Code#117`) and is now pinned here.
 Hosts can construct or validate a `ResearchReviewBatchV1` with the admitted
