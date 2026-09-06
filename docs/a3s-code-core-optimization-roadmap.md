@@ -677,6 +677,12 @@ finding identities; once present, the receipt digest is part of the finding
 identity and cannot drift without producing a new observation. Code still does
 not own reviewer rubrics, thresholds, approval, or publication policy.
 
+Reviewer location validation landed in Code `79a2300c`
+(`A3S-Lab/Code#112`) and is now pinned here. Finding anchors remain bounded
+text, while optional line/column coordinates are one-based and a column must be
+line-bound; malformed positions fail before a finding can be published or
+rebound.
+
 The create-only artifact-store boundary landed in Code `8bf60f34`
 (`A3S-Lab/Code#109`) and is now pinned here. `ArtifactStore::put_content_addressed`
 makes immutable replay explicit: exact writes are idempotent, URI/content or
