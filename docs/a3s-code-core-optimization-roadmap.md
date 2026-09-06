@@ -646,12 +646,19 @@ This closes a cross-Run projection ambiguity before evidence or reviewer facts
 are published; the host adapter still owns source capture, artifact storage,
 and evaluator policy.
 
-The next Code-side slice is **P3/KRN-8 host fixture qualification**: exercise
-the common projection through real Node/Python/Go runtime fixtures and retain
-only bounded aggregate outcomes for release diagnostics. It must remain
-read-only metadata, avoid retaining provider labels or secrets, preserve the
-single scheduler and Flow lease authorities, and keep Gateway/host policy
-responsible for rate limits and billing.
+The P3/KRN-8 host fixture qualification landed in Code `7e4af9fb`
+(`A3S-Lab/Code#106`) and is now pinned by this repository's `crates/code`
+gitlink. The versioned `sdk/evaluation/model-generation-pool-health-v1.json`
+contract is consumed by the public Node.js, Python, and Go Session surfaces;
+each adapter checks digest-only identity, local reservation conservation,
+shared/local capacity bounds, a bounded aggregate field set, and recursive
+redaction. Go also has an opt-in real Rust JSONL bridge check. The default
+fixture uses an unreachable endpoint and sentinel credential, so it makes no
+provider request and cannot turn a health read into a billing operation. Core
+admission tests remain the authority for active, cancelled, released, and
+retained scheduler epochs; no second scheduler or metrics store was added.
+Flow remains the sole lease authority and Gateway/hosts own rate limits and
+billing.
 
 This remains an incremental refactor: no second Run store, event journal,
 package manager, or foreign Harness runtime is introduced.
