@@ -339,6 +339,9 @@ For every feature:
 4. Remove obsolete content (outdated docs, deprecated examples, completed TODOs)
 5. Verify code examples still work
 
+Terminal-Bench 4.0 evaluation of A3S Code via Harbor is documented in
+[`scripts/harbor/EVALUATION.md`](scripts/harbor/EVALUATION.md).
+
 ---
 
 ## Mandatory Code Design Rules

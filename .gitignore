@@ -57,6 +57,10 @@ config.acl
 # Temporary directory
 /temp/
 
+# Harbor / Terminal-Bench local job outputs
+.harbor-smoke/
+.harbor-eval/
+
 # Node.js (root should not have these)
 /node_modules/
 /package.json

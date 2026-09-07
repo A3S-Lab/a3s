@@ -264,6 +264,9 @@ Rules:
 - Tests must not leave temp files or sockets behind.
 - Rust builds should be validated from the affected crate workspace, not from the monorepo root.
 - Use app-local package scripts (`bun`, `npm`, `pnpm`) for frontend/documentation apps.
+- Terminal-Bench 4.0 / Harbor evaluation of A3S Code: follow
+  [`scripts/harbor/EVALUATION.md`](scripts/harbor/EVALUATION.md) (WSL, wheel
+  prefetch, `.a3s/config.acl` → `.env`, smoke ladder, then full `harbor run`).
 
 ## Pre-Submission Checklist
 

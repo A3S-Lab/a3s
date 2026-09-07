@@ -302,6 +302,7 @@ its owning repository before advancing its gitlink here, and read
   [roadmap](docs/retrieval-platform-roadmap.md)
 - [Scientific discovery platform roadmap](docs/scientific-discovery-platform-roadmap.md)
 - [A3S Code Core optimization roadmap](docs/a3s-code-core-optimization-roadmap.md)
+- [Terminal-Bench 4.0 evaluation (Harbor + A3S Code)](scripts/harbor/EVALUATION.md)
 - [CLI releases](https://github.com/A3S-Lab/CLI/releases)
 - [Discord](https://discord.gg/XVg6Hu6H)
 
