@@ -66,6 +66,11 @@ install_snapshot() {
 # administrator-owned snapshot before enabling the restricted setuid entrypoint.
 launcher_src=/home/roylin/桌面/code/a3s/a3s-box-sandbox-oci-launcher
 launcher_dst=/usr/local/libexec/a3s-box-sandbox-oci-launcher
+# Reuse the administrator-owned launcher already installed on the host when
+# the checkout does not carry a locally built copy.
+if [ ! -x "${launcher_src}" ] && [ -x "${launcher_dst}" ]; then
+    launcher_src=${launcher_dst}
+fi
 # Prefer the freshly built runtime in the checkout; fall back to the installed
 # artifact so the helper remains usable after a clean checkout.
 runtime_src=/home/roylin/桌面/code/a3s/crates/oci-runtime/target/release/a3s-oci
