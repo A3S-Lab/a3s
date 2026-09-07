@@ -4,8 +4,21 @@ set -eu
 # Run a3s-box's native sandbox inside a delegated system service.  The
 # system-level manager is required because an ordinary user cannot clear the
 # supplementary groups assigned by the login session.
+REPO_ROOT=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+OPERATOR_NAME=${SUDO_USER:-$(id -un)}
+OPERATOR_HOME=$(getent passwd "${OPERATOR_NAME}" | cut -d: -f6)
+HELPER="${REPO_ROOT}/a3s-box-sandbox-root-helper.sh"
+
+if [ -z "${OPERATOR_HOME}" ] || [ "${OPERATOR_HOME#/}" = "${OPERATOR_HOME}" ]; then
+    echo "Could not resolve an absolute home directory for ${OPERATOR_NAME}." >&2
+    exit 1
+fi
+
 if [ "$(id -u)" -ne 0 ]; then
-    exec sudo "$0" "$@"
+    exec sudo \
+        --preserve-env=A3S_BOX_SANDBOX_REPO_ROOT \
+        A3S_BOX_SANDBOX_REPO_ROOT="${REPO_ROOT}" \
+        "$0" "$@"
 fi
 
 if ! command -v newuidmap >/dev/null 2>&1 || ! command -v newgidmap >/dev/null 2>&1; then
@@ -26,8 +39,9 @@ exec systemd-run \
     --property=CPUAccounting=yes \
     --property=MemoryAccounting=yes \
     --property=TasksAccounting=yes \
-    --property=WorkingDirectory=/home/roylin/桌面/code/a3s \
-    --property=Environment=HOME=/home/roylin \
-    --property=Environment=USER=roylin \
-    --property=Environment=LOGNAME=roylin \
-    /home/roylin/桌面/code/a3s/a3s-box-sandbox-root-helper.sh "$@"
+    --property=WorkingDirectory="${REPO_ROOT}" \
+    --property=Environment=HOME="${OPERATOR_HOME}" \
+    --property=Environment=USER="${OPERATOR_NAME}" \
+    --property=Environment=LOGNAME="${OPERATOR_NAME}" \
+    --property=Environment=A3S_BOX_SANDBOX_REPO_ROOT="${REPO_ROOT}" \
+    "${HELPER}" "$@"

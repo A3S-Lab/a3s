@@ -6,6 +6,26 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+REPO_ROOT=${A3S_BOX_SANDBOX_REPO_ROOT:-}
+if [ -z "${REPO_ROOT}" ]; then
+    REPO_ROOT=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+fi
+USER_NAME=${SUDO_USER:-${USER:-}}
+if [ -z "${USER_NAME}" ] || [ "${USER_NAME}" = "root" ]; then
+    echo "Set SUDO_USER or USER to the unprivileged sandbox operator." >&2
+    exit 1
+fi
+USER_UID=$(id -u "${USER_NAME}")
+USER_GID=$(id -g "${USER_NAME}")
+USER_HOME=$(getent passwd "${USER_UID}" | cut -d: -f6)
+if [ -z "${USER_HOME}" ] || [ "${USER_HOME#/}" = "${USER_HOME}" ]; then
+    echo "Could not resolve an absolute home directory for ${USER_NAME}." >&2
+    exit 1
+fi
+LOCAL_SHARE="${USER_HOME}/.local/share/a3s-box"
+USER_SLICE="/sys/fs/cgroup/user.slice/user-${USER_UID}.slice"
+USER_SERVICE="${USER_SLICE}/user@${USER_UID}.service"
+
 # Propagate cpuset through the existing cgroup v2 hierarchy. Delegate= is not
 # a runtime-settable systemd property on all supported releases, while the
 # root helper can safely enable this controller before handing the subtree to
@@ -15,8 +35,8 @@ required_controllers="cpu cpuset memory pids"
 for controller_dir in \
     /sys/fs/cgroup \
     /sys/fs/cgroup/user.slice \
-    /sys/fs/cgroup/user.slice/user-1000.slice \
-    /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service; do
+    "${USER_SLICE}" \
+    "${USER_SERVICE}"; do
     available=$(cat "${controller_dir}/cgroup.controllers")
     case " ${available} " in
         *" cpuset "*) ;;
@@ -47,8 +67,7 @@ enable_required_controllers() {
     done
 }
 
-user_cgroup=/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service
-enable_required_controllers "$user_cgroup"
+enable_required_controllers "${USER_SERVICE}"
 
 install_snapshot() {
     source=$1
@@ -64,7 +83,7 @@ install_snapshot() {
 
 # A privileged launcher must never execute a user-writable runtime. Install an
 # administrator-owned snapshot before enabling the restricted setuid entrypoint.
-launcher_src=/home/roylin/桌面/code/a3s/a3s-box-sandbox-oci-launcher
+launcher_src="${REPO_ROOT}/a3s-box-sandbox-oci-launcher"
 launcher_dst=/usr/local/libexec/a3s-box-sandbox-oci-launcher
 # Reuse the administrator-owned launcher already installed on the host when
 # the checkout does not carry a locally built copy.
@@ -73,14 +92,14 @@ if [ ! -x "${launcher_src}" ] && [ -x "${launcher_dst}" ]; then
 fi
 # Prefer the freshly built runtime in the checkout; fall back to the installed
 # artifact so the helper remains usable after a clean checkout.
-runtime_src=/home/roylin/桌面/code/a3s/crates/oci-runtime/target/release/a3s-oci
+runtime_src="${REPO_ROOT}/crates/oci-runtime/target/release/a3s-oci"
 if [ ! -x "${runtime_src}" ]; then
-    runtime_src=/home/roylin/.local/share/a3s-box/a3s-oci
+    runtime_src="${LOCAL_SHARE}/a3s-oci"
 fi
-agent_src=/home/roylin/.local/share/a3s-box/a3s-oci-agent
-shim_src=/home/roylin/.local/share/a3s-box/a3s-box-shim
+agent_src="${LOCAL_SHARE}/a3s-oci-agent"
+shim_src="${LOCAL_SHARE}/a3s-box-shim"
 runtime_dir=/usr/local/libexec/a3s-box-sandbox
-box_src=/home/roylin/桌面/code/a3s/crates/box/src/target/release/a3s-box
+box_src="${REPO_ROOT}/crates/box/src/target/release/a3s-box"
 box_dst=/usr/local/libexec/a3s-box-sandbox-cli
 if [ ! -x "${launcher_src}" ] || [ ! -x "${runtime_src}" ] || [ ! -x "${agent_src}" ] || [ ! -x "${shim_src}" ] || [ ! -x "${box_src}" ]; then
     echo "missing Sandbox launcher, runtime, or CLI artifact" >&2
@@ -99,7 +118,7 @@ install_snapshot "$launcher_src" "$launcher_dst" 4755
 
 # The system service cgroup is owned by systemd. Move the launcher into the
 # user's already delegated cgroup tree before dropping privileges.
-cgroup_dir=/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/a3s-box-delegated
+cgroup_dir="${USER_SERVICE}/a3s-box-delegated"
 mkdir -p "${cgroup_dir}"
 # The delegation root itself must stay empty. Place the host-service launcher
 # in a child so the runtime can create its execution cgroups alongside it.
@@ -113,7 +132,7 @@ echo "sandbox helper cgroup=${cgroup_dir} controllers=${available} enabled=${ena
 
 # systemd owns the service cgroup initially; transfer it before dropping
 # privileges so the rootless runtime can create its private manager below it.
-chown roylin:roylin \
+chown "${USER_NAME}:${USER_NAME}" \
     "${cgroup_dir}" \
     "${cgroup_dir}/cgroup.procs" \
     "${cgroup_dir}/cgroup.subtree_control" \
@@ -122,11 +141,11 @@ chown roylin:roylin \
     "${launcher_dir}/cgroup.subtree_control"
 
 exec /usr/bin/setpriv \
-    --reuid=roylin \
-    --regid=roylin \
+    --reuid="${USER_UID}" \
+    --regid="${USER_GID}" \
     --clear-groups \
     /usr/bin/env \
     A3S_BOX_OCI_RUNTIME_PATH="$runtime_dir/a3s-oci" \
     A3S_BOX_OCI_AGENT_PATH="$runtime_dir/a3s-oci-agent" \
-    PATH="/home/roylin/.local/share/a3s-box:/usr/local/libexec:/usr/sbin:/usr/bin:/sbin:/bin" \
+    PATH="${LOCAL_SHARE}:/usr/local/libexec:/usr/sbin:/usr/bin:/sbin:/bin" \
     "$box_dst" "$@"
