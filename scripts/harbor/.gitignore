@@ -1,0 +1,8 @@
+.env
+wheels/*.whl
+wheels/*.partial
+__pycache__/
+*.pyc
+
+# local smoke/eval outputs live under repo .harbor-smoke/
+
