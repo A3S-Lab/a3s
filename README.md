@@ -175,7 +175,7 @@ same boundaries:
 | Area | What is being hardened now |
 | --- | --- |
 | **Code** | Reviewer inputs reject malformed line boundaries, and findings stay bound to the admitted run and immutable evidence. |
-| **Box** | CRI pod sandboxes defer workload startup; runtime cleanup and feature gates cover OCI-only and macOS paths. |
+| **Box** | Linux warm-pool and CRI teardown best-effort reaps orphans on destroy failure; Sandbox launcher discovery and foreground `--rm` cleanup are hardened on qualified hosts. |
 | **Integration** | The root advances component gitlinks independently; [`compat/cloud-stack.acl`](compat/cloud-stack.acl) remains the source of truth for exact versions and protocol levels. |
 
 These are component-level contracts, not a blanket support claim. Check the
