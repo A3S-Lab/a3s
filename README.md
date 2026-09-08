@@ -3,6 +3,12 @@
 </p>
 
 <p align="center">
+  <strong>Language / 语言:</strong>
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">中文</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/A3S-Lab/a3s/actions/workflows/installers.yml"><img alt="Installer tests" src="https://img.shields.io/github/actions/workflow/status/A3S-Lab/a3s/installers.yml?branch=main&amp;style=flat-square&amp;label=installers"></a>
   <a href="https://github.com/A3S-Lab/CLI/releases/latest"><img alt="Latest A3S CLI release" src="https://img.shields.io/github/v/release/A3S-Lab/CLI?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;color=171717"></a>
   <a href="https://crates.io/crates/a3s"><img alt="a3s on crates.io" src="https://img.shields.io/crates/v/a3s?style=flat-square&amp;color=0d74ce"></a>
@@ -175,7 +181,7 @@ same boundaries:
 | Area | What is being hardened now |
 | --- | --- |
 | **Code** | Reviewer inputs reject malformed line boundaries, and findings stay bound to the admitted run and immutable evidence. |
-| **Box** | CRI pod sandboxes defer workload startup; runtime cleanup and feature gates cover OCI-only and macOS paths. |
+| **Box** | Linux warm-pool and CRI teardown best-effort reaps orphans on destroy failure; Sandbox launcher discovery and foreground `--rm` cleanup are hardened on qualified hosts. |
 | **Integration** | The root advances component gitlinks independently; [`compat/cloud-stack.acl`](compat/cloud-stack.acl) remains the source of truth for exact versions and protocol levels. |
 
 These are component-level contracts, not a blanket support claim. Check the

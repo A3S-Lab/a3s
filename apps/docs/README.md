@@ -1,5 +1,11 @@
 # A3S Site
 
+<p>
+  <strong>Language / 语言:</strong>
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">中文</a>
+</p>
+
 This application builds the bilingual A3S ecosystem site with Rspress. It
 publishes the ecosystem homepage, the cross-platform A3S Desktop download
 page, and links to the public sites owned by individual A3S products. It does
