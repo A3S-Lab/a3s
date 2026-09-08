@@ -1,5 +1,11 @@
 # Cloud Stack Compatibility Lock
 
+<p>
+  <strong>Language / 语言:</strong>
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">中文</a>
+</p>
+
 `cloud-stack.acl` is the machine-readable compatibility boundary for the A3S
 Cloud integration gate. It pins every participating submodule to a full commit,
 records exact Cargo package versions, and names the protocol levels exercised

@@ -1,5 +1,11 @@
 # A3S智能体评测
 
+<p>
+  <strong>Language / 语言:</strong>
+  <a href="README.md">English</a> ·
+  <a href="README.zh-CN.md">中文</a>
+</p>
+
 A3S智能体评测 is a local, game-inspired control surface for A3S Bench. It
 turns Bench Tasks into selectable maps, a hangar roster into deployable
 aircraft-and-pilot combinations, real Bench jobs into per-aircraft mission
