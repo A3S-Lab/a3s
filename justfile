@@ -53,9 +53,22 @@ docs-build:
 # A3S Cloud
 # ============================================================================
 
-# Start the Cloud API and hot-reloading web console
-cloud:
+# Ensure the Cloud submodule is present for local recipes.
+[private]
+cloud-submodule:
+    sh scripts/ensure-dev-submodules.sh apps/cloud:Cargo.toml
+
+# Start the Cloud API in the foreground (deps via a3s-box when URL unset)
+cloud: cloud-submodule
     cd apps/cloud && just cloud
+
+# One-click: start a3s-cloud dependencies + control-plane (detached)
+up: cloud-submodule
+    cd apps/cloud && just up
+
+# One-click: stop detached a3s-cloud API and local dependencies
+down: cloud-submodule
+    cd apps/cloud && just down
 
 # ============================================================================
 # A3S Desktop
