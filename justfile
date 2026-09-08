@@ -58,6 +58,17 @@ cloud:
     cd apps/cloud && just cloud
 
 # ============================================================================
+# A3S Use Registry (local transport)
+# ============================================================================
+# `just up::registry` / `just down::registry` — signed use-registry/registry/
+# over HTTP (default :4873). Not the OCI registry from apps/cloud `just up`.
+# `just test::registry` — first-principles gate + mock multi-package pubs.
+
+mod up 'just/up.just'
+mod down 'just/down.just'
+mod test 'just/test.just'
+
+# ============================================================================
 # A3S Desktop
 # ============================================================================
 
