@@ -4,7 +4,9 @@
 
 [private]
 use-registry-submodule:
-    sh "{{ source_directory() }}/../scripts/ensure-dev-submodules.sh" use-registry:registry/metadata/root.json
+    sh "{{ source_directory() }}/../scripts/ensure-dev-submodules.sh" \
+        use-registry:registry/metadata/root.json \
+        use-registry:registry/targets/extensions/a3s/applet-demo/0.1.0/stable/any/a3s-applet-demo-0.1.0-any.tar.gz
 
 # Stop the Use Registry local transport
 registry: use-registry-submodule

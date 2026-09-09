@@ -299,6 +299,8 @@ its owning repository before advancing its gitlink here, and read
 - [A3S website](https://a3s-lab.github.io/a3s/)
 - [Desktop download](https://a3s-lab.github.io/a3s/download/)
 - [Desktop release and update contract](docs/desktop-release.md)
+- [Capability expansion implementation path](docs/capability-expansion-implementation-path.md)
+- [Desktop Applet plugin path](docs/desktop-applet-plugin-path.md) (per-project stubs: [Desktop P0](apps/desktop/docs/applet-uihost-roadmap.md), [Use P1](crates/use/docs/applet-ui-supply.md), [Code P2](crates/code/docs/applet-ui-freeze.md), [CLI P3](crates/cli/docs/applet-ui-projection-parity.md), [Box P4](crates/box/docs/applet-backend-boundary.md), [WebView P4b](crates/webview/docs/applet-webview-substrate.md), [Registry P5](use-registry/docs/applet-ui-package-supply.md), [Cloud P6](apps/cloud/docs/applet-ui-assignment.md))
 - [CLI reference](docs/cli-reference.md)
 - [Cloud compatibility lock](compat/cloud-stack.acl)
 - [Workflow architecture](compat/workflow-platform-architecture.md) and
