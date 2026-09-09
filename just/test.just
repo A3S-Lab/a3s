@@ -56,3 +56,33 @@ registry: use-registry-submodule ensure-registry-tools ensure-use-bin
     fi
     chmod +x "${root}/use-registry/scripts/"*.sh
     "${root}/use-registry/scripts/test_just_registry.sh"
+
+# Gate: non-Desktop Applet exits (Use/Code/CLI/Box/WebView + registry)
+# Does not run apps/desktop UiHost product proofs.
+[private]
+applet-non-desktop-submodules:
+    sh "{{ source_directory() }}/../scripts/ensure-dev-submodules.sh" \
+        crates/use:crates/extension/Cargo.toml \
+        crates/code:core/Cargo.toml \
+        crates/cli:Cargo.toml \
+        crates/box:src/core/Cargo.toml \
+        crates/webview:Cargo.toml \
+        use-registry:registry/metadata/root.json \
+        use-registry:registry/targets/extensions/a3s/applet-demo/0.1.0/stable/any/a3s-applet-demo-0.1.0-any.tar.gz
+
+applet-non-desktop: applet-non-desktop-submodules ensure-registry-tools ensure-use-bin
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ source_directory() }}/.."
+    export A3S_USE_E2E_BIN="${A3S_USE_E2E_BIN:-${root}/crates/use/target/debug/a3s-use}"
+    if [[ ! -x "${A3S_USE_E2E_BIN}" ]]; then
+      export A3S_USE_E2E_BIN="${root}/crates/use/target/release/a3s-use"
+    fi
+    export A3S_USE_BIN="${A3S_USE_BIN:-${A3S_USE_E2E_BIN}}"
+    export A3S_USE_REGISTRY_TOOLS_BIN="${A3S_USE_REGISTRY_TOOLS_BIN:-${root}/crates/use/target/debug/a3s-use-registry-tools}"
+    if [[ ! -x "${A3S_USE_REGISTRY_TOOLS_BIN}" ]]; then
+      export A3S_USE_REGISTRY_TOOLS_BIN="${root}/crates/use/target/release/a3s-use-registry-tools"
+    fi
+    chmod +x "${root}/scripts/test_applet_non_desktop.sh"
+    chmod +x "${root}/use-registry/scripts/"*.sh
+    "${root}/scripts/test_applet_non_desktop.sh"

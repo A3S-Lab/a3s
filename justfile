@@ -63,6 +63,7 @@ cloud:
 # `just up::registry` / `just down::registry` — signed use-registry/registry/
 # over HTTP (default :4873). Not the OCI registry from apps/cloud `just up`.
 # `just test::registry` — first-principles gate + mock multi-package pubs.
+# `just test::applet-non-desktop` — Applet P1–P5 FP gate (excludes apps/desktop).
 
 mod up 'just/up.just'
 mod down 'just/down.just'
@@ -73,8 +74,10 @@ mod test 'just/test.just'
 # ============================================================================
 
 # Start the React development server and native Tauri window.
+# RUST_MIN_STACK: Desktop's debug Agent/session warm futures are large; raise
+# the default thread stack so Tokio workers do not abort on overflow.
 desktop:
-    cd apps/desktop && A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' npm run dev
+    cd apps/desktop && RUST_MIN_STACK=8388608 A3S_DESKTOP_WORKSPACE='{{ justfile_directory() }}' npm run dev
 
 # Start a frontend-only preview without a native window.
 desktop-web:

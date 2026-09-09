@@ -1,6 +1,6 @@
 # Capability Expansion Implementation Path
 
-Status: planning baseline (verified against working tree, 2026-09-08)
+Status: planning baseline (verified against working tree, 2026-09-09)
 
 ## Objective
 
@@ -43,17 +43,19 @@ need more capability  →  Use apply again  →  Host publishes N+1
 
 | Subproject | Role in loop | State | Evidence |
 | --- | --- | --- | --- |
-| `use-registry` | Signed catalog input only | Delivered | Static TUF tree; no lease/batch |
-| `crates/use` | Install, snapshot, lease, progress | Delivered (+ Executable Tool projection) | `PluginManagerService`, `CapabilityRegistry` lease; package-local Executable Tools emit `executable_tools` (file evidence, no Runtime BindingStore) — FP: `monorepo_applet_demo_executable_echo_*` |
+| `use-registry` | Signed catalog input only | Delivered | Static TUF tree; no lease/batch; `just test::registry` + applet-demo Tracks |
+| `crates/use` | Install, snapshot, lease, progress | Delivered (+ Executable Tool projection) | `PluginManagerService`, `CapabilityRegistry` lease; package-local Executable Tools emit `executable_tools` (file evidence, no Runtime BindingStore) — FP: `monorepo_applet_demo_executable_echo_*`; gate: `just test::applet-non-desktop` |
 | `crates/code` | Atomic batch + Run freeze | Delivered | `SessionCapabilityBatch`, HOST-* gates; Core does not watch Use |
 | `crates/cli` | Official host that closes the loop | Delivered (+ package-local Executable Tools) | `reconcile_atomic_projection` → `apply_capability_batch`; `executable_tools` reinspect+spawn; FP: `applet_demo_*executable*`, `applet_demo_executable_echo_satisfies_ui_bind_tool_*`; live E2E admissions + committed-tree `real_use_installs_committed_applet_demo_*` asserts UI `bind_tool=echo` |
-| `apps/desktop` | Install UI + embedded Code | In progress (W1) | Plugins apply → `UseCapabilityRepublisher` → `SessionCapabilityBatch` / `apply_capability_batch` (Skill + Runtime Tool + managed stdio MCP); FP MCP reinspect against `use-registry/packages/applet-demo` |
+| `apps/desktop` | Install UI + embedded Code | **W1 projection delivered; P0 shell partial** | Plugins apply → `UseCapabilityRepublisher` → `SessionCapabilityBatch` (Skill + Runtime Tool + Executable Tool + managed stdio MCP + UI); `GET /api/v1/ui-catalog`; FP: applet-demo Executable Tool / MCP / UI / `bind_tool=echo` atomic batch; ActivityBar lists projected Applets (sandbox render still open) |
 | `apps/cloud` | Assignment / Fleet → Use | Partial | U0.1–U0.3 foundation; **U0.4** executable surfaces Planned; not a Code projector yet |
 
-CLI closes: install → N+1 → next surfaces. Desktop now republishes Use snapshots into
+CLI closes: install → N+1 → next surfaces. Desktop republishes Use snapshots into
 live Code sessions after Plugin Manager apply (and on cold session create), including
-Skill values and Core `UseRuntimeTaskProjectionAdapter` Runtime Tools. MCP / Flow / UI
-adapters and Plugins UI progress streaming remain follow-ons.
+Skill values, Core `UseRuntimeTaskProjectionAdapter` Runtime Tools, package-local
+Executable Tools, managed stdio MCP, and UI. Remaining Desktop gap is Applet **P0
+product exit** (install → shell entry → open sandboxed page → bridge), not Host
+republish wiring itself.
 
 ## What must not be built
 
@@ -172,15 +174,16 @@ remains mandatory after apply.
 ```text
 Now ──────────────────────────────────────────────────────────►
  W0 maintenance (continuous)
-      └─ W1 Desktop republish          ← critical product gap
-           └─ W2 Runtime Tool adapter convergence
-           └─ Desktop UiHost (Applet)  ← see desktop-applet-plugin-path.md
+      └─ W1 Desktop republish          ✅ delivered (maintain)
+           └─ W2 Runtime Tool adapter convergence ✅ on CLI; Desktop uses Core adapter via W1
+           └─ Desktop UiHost (Applet P0)  ← critical remaining product gap
       └─ W3 Cloud U0.4 (after U0.3 + Use M5/M6 deps)
- W4 registry supply (parallel, low coupling)
- W5 governed manager MCP for agents (only after W1)
+ W4 registry supply (parallel, low coupling) ✅ applet-demo committed
+ W5 governed manager MCP for agents (only after P0 product exit)
 ```
 
-**Priority rule:** Close open Host loops before adding new mutation surfaces.
+**Priority rule:** Close open Host product loops (Applet P0) before adding new
+mutation surfaces. Non-Desktop supply/projection exits stay maintenance.
 
 ## Efficiency rules (once the loop is closed)
 

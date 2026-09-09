@@ -109,14 +109,14 @@ binding. The page itself stays in a Desktop sandbox WebView.
 
 ---
 
-## Current state (verified 2026-09-08)
+## Current state (verified 2026-09-09)
 
 | Subproject | Role | State | Evidence |
 | --- | --- | --- | --- |
 | `crates/use` | Ui surface supply | **P1 exit delivered** | `docs/applet-ui-supply.md`; six-surface via `PluginManagerService` (`plugin_manager_six_surface`); Executable Tool `Prepared` from file inspection |
 | `crates/code` | `UiBinding` freeze | Delivered | `HOST-UI1` in `crates/code/ROADMAP.md`; `docs/applet-ui-freeze.md` |
 | `crates/cli` | Reference UI projection | Delivered (integrity + Executable Tools) | UI batch + `executable_tools`; FP package bytes + atomic `bind_tool=echo`; live Use E2E admissions + **committed** `registry/` (`real_use_installs_committed_applet_demo_*`) |
-| `apps/desktop` | Plugins page + UiHost | **Split — P0 open** | Plugins management delivered; `activity-destinations.ts` hard-codes `projects`/`plugins` only; **no** `activity_bar` / `UiBinding` under `src/` or `src-tauri/` |
+| `apps/desktop` | Plugins page + UiHost | **Split — W1 + sandbox + Tool bridge + gen pin; install→N+1 live proof open** | Plugins + W1; `ui-catalog` list/document/invoke; CSP `srcdoc` + `a3s.applet.v1` Tool bridge; open pages pin generation (reopen on N+1); full Plugins install→shell entry→live page proof still missing |
 | `crates/box` / Runtime | Isolated backends | **P4 boundary freeze delivered** | `docs/applet-backend-boundary.md` + `applet_boundary` contract tests |
 | `crates/webview` | Native WebView companion | **P4b boundary freeze delivered** | `docs/applet-webview-substrate.md` + `applet_boundary_tests`; optional substrate — not product UiHost |
 | `use-registry` / `packages/*` | Signed supply | **P5 package source + committed registry delivered** | `packages/applet-demo` + admission; Track A/J6/S0/S1; signed archive; monorepo `just up/test/down::registry` require the applet-demo target file (fail closed on stale gitlink) |
@@ -124,11 +124,12 @@ binding. The page itself stays in a Desktop sandbox WebView.
 
 ### Desktop distinction (do not conflate)
 
-| Delivered | Missing for Applet UX |
+| Delivered | Missing for Applet product exit (P0) |
 | --- | --- |
-| Plugins catalog / plan / apply | Package `activity_bar` → dynamic shell entries |
-| ActivityBar destination `plugins` (management) | Sandboxed page runtime for `UiBinding` |
-| Use apply → Skill/Tool/MCP republish path (W1 MCP staged) | Controlled Applet bridge to frozen Tool/MCP/Flow + UI catalog republish |
+| Plugins catalog / plan / apply | Full install → N+1 → shell entry → live page FP proof |
+| W1 republish into Code (`UseCapabilityRepublisher` → batch) | Compact-shell Launchpad entry as primary Applet open path |
+| `GET /api/v1/ui-catalog` (+ document / invoke) | End-to-end product UX polish / generation reopen UX completeness |
+| CSP `srcdoc` sandbox + `a3s.applet.v1` Tool bridge (partial) | Treat partial sandbox as product-complete without live install→open proof |
 
 ---
 
@@ -285,17 +286,19 @@ Now ─────────────────────────�
  Code HOST-UI1               ✅ delivered (maintain)
  CLI UI batch reference      ✅ delivered (maintain)
  WebView P4b boundary freeze ✅ delivered (maintain)
- Capability W1 Desktop republish (Skill/Tool/MCP)   ← still open; Applet prerequisite
-      └─ P0 Desktop UiHost (projection → entry → sandbox → bridge)  ← critical gap
+ P5 example UI package       ✅ delivered (committed registry + Track A)
+ Capability W1 Desktop republish (Skill/Tool/Executable Tool/MCP/UI)
+                             ✅ delivered (maintain; not product UiHost)
+      └─ P0 Desktop UiHost product exit (install→N+1→open→bridge)
+                             ← critical remaining gap
            └─ P3 CLI parity checklist as Desktop deltas appear
-      └─ P5 example UI package           ✅ delivered (committed registry + Track A)
  P2 Code maintenance (continuous)
  P4 Box backends only when a UI package needs OCI
  P6 Cloud U0.4 after host UiHost exists
 ```
 
-**Priority rule:** Close Desktop UiHost (and W1 republish) before inventing new
-package surfaces or Box-based “Applet VMs.”
+**Priority rule:** Close Desktop UiHost product exit (P0) before inventing new
+package surfaces or Box-based “Applet VMs.” Non-Desktop P1–P5 stay maintenance.
 
 ---
 
@@ -327,6 +330,24 @@ submodule work does not lose the Applet slice:
 | P4b WebView substrate | [`crates/webview/docs/applet-webview-substrate.md`](../crates/webview/docs/applet-webview-substrate.md) |
 | P5 Registry supply | [`use-registry/docs/applet-ui-package-supply.md`](../use-registry/docs/applet-ui-package-supply.md) |
 | P6 Cloud assignment | [`apps/cloud/docs/applet-ui-assignment.md`](../apps/cloud/docs/applet-ui-assignment.md) + ROADMAP `U0.4` |
+
+## Non-Desktop verify command
+
+From the monorepo root (Desktop UiHost intentionally excluded):
+
+```text
+just test::applet-non-desktop
+```
+
+Runs `scripts/test_applet_non_desktop.sh`: Use P1 FP + operation progress,
+Code `HOST-UI1` regressions, CLI `applet_demo` (+ live Use E2E when bins
+exist), Box/WebView `applet_boundary`, and use-registry Track A/J6/S0/S1.
+
+**Landing note:** P1/P4/P4b exit tests and docs currently land in submodule
+worktrees (Use/Box/WebView/Code) plus monorepo gate scripts. Durable
+clean-clone CI requires those tips committed and monorepo gitlinks advanced.
+Do not claim remote/main green until the submodule tips that contain the
+exit tests are published.
 
 ---
 
