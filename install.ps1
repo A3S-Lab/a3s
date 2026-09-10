@@ -170,6 +170,68 @@ param(
             $root -eq '\' -or $root -eq '/' -or $root -match '^[A-Za-z]:$')
     }
 
+    function Write-InstallerPlan {
+        param([string]$Message)
+        Write-Host "a3s-installer-plan: $Message"
+    }
+
+    function Show-InstallerInventory {
+        param([string]$TargetInstallDir)
+
+        Write-InstallerInfo "platform target: $target"
+        Write-InstallerPlan "channel=binary"
+        Write-InstallerPlan "action=github_binary"
+
+        $a3sCmd = Get-Command a3s -ErrorAction SilentlyContinue
+        if ($null -ne $a3sCmd) {
+            Write-InstallerInfo "existing a3s on PATH: $($a3sCmd.Source)"
+            Write-InstallerPlan "path_a3s=$($a3sCmd.Source)"
+        }
+        $codeCmd = Get-Command a3s-code -ErrorAction SilentlyContinue
+        if ($null -ne $codeCmd) {
+            Write-InstallerWarning "legacy a3s-code on PATH: $($codeCmd.Source) (not the umbrella CLI)"
+            Write-InstallerPlan "path_a3s_code=$($codeCmd.Source)"
+        }
+        $webviewCmd = Get-Command a3s-webview -ErrorAction SilentlyContinue
+        if ($null -ne $webviewCmd) {
+            Write-InstallerInfo "existing a3s-webview on PATH: $($webviewCmd.Source)"
+            Write-InstallerPlan "path_a3s_webview=$($webviewCmd.Source)"
+        }
+
+        $defaultBin = Join-Path $localAppData 'Programs\a3s\bin'
+        foreach ($probeDir in @($TargetInstallDir, $defaultBin) | Select-Object -Unique) {
+            foreach ($name in @('a3s.exe', 'a3s-webview.exe', 'a3s-code.exe')) {
+                $path = Join-Path $probeDir $name
+                if (Test-Path -LiteralPath $path) {
+                    Write-InstallerInfo "existing install file: $path"
+                    Write-InstallerPlan "local_file=$path"
+                }
+            }
+            $moliPath = Join-Path $probeDir 'moli'
+            if (Test-Path -LiteralPath $moliPath) {
+                Write-InstallerInfo "existing moli dir: $moliPath"
+                Write-InstallerPlan "local_moli=$moliPath"
+            }
+        }
+
+        $cargoHome = if (-not [string]::IsNullOrWhiteSpace($env:CARGO_HOME)) {
+            $env:CARGO_HOME
+        } else {
+            Join-Path $env:USERPROFILE '.cargo'
+        }
+        $cargoBin = Join-Path $cargoHome 'bin'
+        foreach ($name in @('a3s.exe', 'a3s-code.exe')) {
+            $path = Join-Path $cargoBin $name
+            if (Test-Path -LiteralPath $path) {
+                Write-InstallerWarning "Cargo install present: $path"
+                Write-InstallerPlan "cargo_bin=$path"
+            }
+        }
+
+        Write-InstallerInfo 'plan: install GitHub release binary into the configured install directory'
+        Write-InstallerInfo 'interactive Code TUI is launched with: a3s code'
+    }
+
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
         throw 'install.ps1 supports Windows only; use install.sh on macOS or Linux'
     }
@@ -220,6 +282,8 @@ param(
     if ($env:A3S_MODIFY_PATH -match '^(1|true|yes)$') {
         $UpdatePath = $true
     }
+
+    Show-InstallerInventory -TargetInstallDir $installDir
 
     # Windows PowerShell 5.1 may not enable TLS 1.2 by default.
     [Net.ServicePointManager]::SecurityProtocol =
@@ -657,6 +721,20 @@ param(
             Write-InstallerInfo "installed the bundled Moli runtime to $moliPath"
         } else {
             Write-InstallerInfo "release $releaseTag has no bundled Moli runtime; a3s code will use its verified shared cache or first-use download"
+        }
+
+        try {
+            $null = & $binaryPath code --help 2>&1
+            if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 2) {
+                Write-InstallerInfo 'launch the interactive Code TUI with: a3s code'
+            } else {
+                Write-InstallerWarning 'a3s code --help failed; ensure this release includes the Code TUI entry'
+            }
+        } catch {
+            Write-InstallerWarning "a3s code --help failed: $($_.Exception.Message)"
+        }
+        if ($null -ne $resolvedA3s) {
+            Write-InstallerInfo "a3s on PATH resolves to: $($resolvedA3s.Source)"
         }
     } finally {
         if (-not $committed) {

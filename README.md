@@ -52,7 +52,8 @@ cd /path/to/project
 a3s code
 ```
 
-Or the official macOS / glibc Linux installer:
+Or the official installer (auto-prefers Homebrew when available, otherwise the
+GitHub binary):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -254,34 +255,60 @@ products; see [homebrew-tap](homebrew-tap/README.md).
 
 ### Official installer — macOS and glibc Linux
 
+Recommended one-liner. Detects OS/arch, inventories existing installs, and
+chooses a channel:
+
+- **`auto` (default):** if Homebrew is on `PATH`, cleans legacy conflicts
+  (`a3s-code`, standalone `a3s-webview`), installs `a3s-lab/tap/a3s`, and removes
+  shadowing `~/.local/bin` copies so `which a3s` resolves to Homebrew.
+- **Otherwise:** installs the GitHub release archive into `~/.local/bin`.
+
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
   https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
 ```
 
-Default install directory: `~/.local/bin` (`a3s`, optional `a3s-webview`,
-optional `moli/`). Set `A3S_MODIFY_PATH=1` if you want the installer to append
-that directory to a shell profile (`~/.zshrc`, `~/.bashrc`, fish, or
-`~/.profile`). Otherwise add it to `PATH` yourself.
-
-Useful overrides: `A3S_VERSION=vX.Y.Z`, `A3S_INSTALL_DIR=/absolute/path`,
-`A3S_GITHUB_TOKEN=…` (API rate limits). The same script is also published from
-the [CLI](https://github.com/A3S-Lab/CLI) repository during the release
-migration.
-
 ```bash
-# Update (standalone channel)
-a3s self update
-# or re-run install.sh
+# Inspect only (no changes)
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh -s -- --dry-run
 
-# Uninstall — no uninstaller script; remove the activated files
-rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview
-rm -rf ~/.local/bin/moli
-# If you used A3S_MODIFY_PATH=1, remove the PATH line from your shell profile.
+# Force GitHub binary even when brew exists
+curl ... | sh -s -- --channel binary
+
+# Force Homebrew (fails if brew is missing)
+curl ... | sh -s -- --channel brew
 ```
 
-If you used a custom `A3S_INSTALL_DIR`, delete `a3s`, `a3s-webview`, and
-`moli/` from that directory instead.
+Binary-channel options: `A3S_VERSION=vX.Y.Z`, `A3S_INSTALL_DIR=/absolute/path`,
+`A3S_MODIFY_PATH=1` (append `~/.local/bin` to a shell profile). Also:
+`A3S_CHANNEL`, `A3S_YES`, `A3S_DRY_RUN`, `A3S_GITHUB_TOKEN`.
+
+```bash
+# Update
+# Homebrew channel: brew update && brew upgrade a3s
+# Binary channel:   a3s self update   # or re-run install.sh --channel binary
+
+# Uninstall binary channel
+rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview ~/.local/bin/a3s-code
+rm -rf ~/.local/bin/moli
+# Homebrew channel: brew uninstall a3s
+```
+
+#### Migrating from older macOS / Linux installs
+
+If `brew upgrade a3s` fails with a symlink error on `a3s-webview`, or you still
+have the legacy `a3s-code` formula, re-run the official installer (or):
+
+```bash
+brew uninstall a3s-code 2>/dev/null || true
+brew uninstall a3s-webview 2>/dev/null || true
+brew uninstall --force a3s 2>/dev/null || true
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-lab/tap/a3s
+```
+
+Do **not** use `brew install a3s-code` for this product.
 
 ### Official installer — Windows x64 (PowerShell 5.1+)
 
@@ -289,13 +316,13 @@ If you used a custom `A3S_INSTALL_DIR`, delete `a3s`, `a3s-webview`, and
 irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
 ```
 
-Default install directory: `%LOCALAPPDATA%\Programs\a3s\bin`. Set
-`$env:A3S_MODIFY_PATH = '1'` before running if you want the user PATH updated.
-Overrides mirror the Unix script: `A3S_VERSION`, `A3S_INSTALL_DIR`,
-`A3S_GITHUB_TOKEN`.
+Prints an inventory of existing `a3s` / legacy paths, then installs the GitHub
+zip into `%LOCALAPPDATA%\Programs\a3s\bin`. Set `$env:A3S_MODIFY_PATH = '1'`
+before running to update the user PATH. Overrides: `A3S_VERSION`,
+`A3S_INSTALL_DIR`, `A3S_GITHUB_TOKEN`.
 
 ```powershell
-# Update — in-place self-update is not supported on Windows; re-run the installer
+# Update — re-run the installer
 irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
 
 # Uninstall — close running a3s processes, then remove the install tree

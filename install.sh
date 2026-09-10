@@ -1,11 +1,20 @@
 #!/bin/sh
-# Install the latest stable A3S CLI release on macOS or GNU/Linux.
+# Install the A3S CLI on macOS or GNU/Linux.
+#
+# Default channel is "auto": prefer Homebrew when brew is on PATH (after
+# cleaning legacy a3s-code / a3s-webview conflicts), otherwise install the
+# GitHub release binary into ~/.local/bin.
 #
 # Environment overrides:
-#   A3S_VERSION          Release tag (for example v0.9.8); defaults to latest.
+#   A3S_VERSION          Release tag (for example v0.15.9); binary channel only.
 #   A3S_INSTALL_DIR      Binary directory; defaults to $HOME/.local/bin.
 #   A3S_MODIFY_PATH      Set to 1 to add the default directory to a shell profile.
+#   A3S_CHANNEL          auto | brew | binary (default: auto)
+#   A3S_YES              Set to 1 for non-interactive conflict cleanup
+#   A3S_DRY_RUN          Set to 1 to print detection/plan only
 #   A3S_GITHUB_TOKEN     Optional GitHub token for release API rate limits.
+#   A3S_INSTALL_LIB      Optional path to scripts/a3s-install-lib.sh
+#   A3S_INSTALL_LIB_URL  Optional URL for the helper library when piped via curl
 #
 # Release archives may contain the target-specific Moli executable under
 # `moli/`. The embedded Code runtime discovers that sidecar beside `a3s`;
@@ -17,10 +26,24 @@ REPOSITORY=""
 DEFAULT_INSTALL_DIR="${HOME:+$HOME/.local/bin}"
 version="${A3S_VERSION:-latest}"
 install_dir="${A3S_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
+channel="${A3S_CHANNEL:-auto}"
 modify_path=0
+dry_run=0
+yes_mode=0
 case "${A3S_MODIFY_PATH:-}" in
     1|true|TRUE|yes|YES) modify_path=1 ;;
 esac
+case "${A3S_DRY_RUN:-}" in
+    1|true|TRUE|yes|YES) dry_run=1 ;;
+esac
+case "${A3S_YES:-}" in
+    1|true|TRUE|yes|YES) yes_mode=1 ;;
+esac
+# curl | sh has no TTY — default to non-interactive yes.
+if [ ! -t 0 ]; then
+    yes_mode=1
+fi
+
 info() {
     printf 'a3s installer: %s\n' "$*"
 }
@@ -31,30 +54,81 @@ die() {
     printf 'a3s installer: error: %s\n' "$*" >&2
     exit 1
 }
+
+# Load shared detection helpers (local checkout, override path, or raw URL).
+_a3s_lib_loaded=0
+_a3s_lib_tmp=""
+_a3s_cleanup_lib_tmp() {
+    if [ -n "${_a3s_lib_tmp:-}" ] && [ -f "$_a3s_lib_tmp" ]; then
+        rm -f -- "$_a3s_lib_tmp" 2>/dev/null || true
+    fi
+}
+if [ -n "${A3S_INSTALL_LIB:-}" ] && [ -f "$A3S_INSTALL_LIB" ]; then
+    # shellcheck source=/dev/null
+    . "$A3S_INSTALL_LIB"
+    _a3s_lib_loaded=1
+else
+    _self=$0
+    case "$_self" in
+        */*) _dir=${_self%/*} ;;
+        *) _dir=. ;;
+    esac
+    if [ -f "$_dir/scripts/a3s-install-lib.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$_dir/scripts/a3s-install-lib.sh"
+        _a3s_lib_loaded=1
+    elif [ -f "$_dir/a3s-install-lib.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$_dir/a3s-install-lib.sh"
+        _a3s_lib_loaded=1
+    fi
+fi
+if [ "$_a3s_lib_loaded" -eq 0 ]; then
+    command -v curl >/dev/null 2>&1 || die "required command 'curl' was not found"
+    command -v mktemp >/dev/null 2>&1 || die "required command 'mktemp' was not found"
+    _lib_url="${A3S_INSTALL_LIB_URL:-https://raw.githubusercontent.com/A3S-Lab/a3s/main/scripts/a3s-install-lib.sh}"
+    _a3s_lib_tmp=$(mktemp) || die "failed to create a temporary file for installer helpers"
+    trap '_a3s_cleanup_lib_tmp' EXIT
+    curl -q -fsSL --proto '=https' --tlsv1.2 \
+        --connect-timeout 15 --max-time 60 --retry 3 --retry-delay 1 \
+        -o "$_a3s_lib_tmp" "$_lib_url" \
+        || die "failed to download installer helpers from $_lib_url"
+    # shellcheck source=/dev/null
+    . "$_a3s_lib_tmp"
+    _a3s_lib_loaded=1
+fi
+
 usage() {
     cat <<'EOF'
-Install the A3S CLI from an official GitHub release.
+Install the A3S CLI (umbrella binary; interactive Code TUI via `a3s code`).
 
 Usage: install.sh [options]
 
 Options:
-  --version <tag>       Install a stable tag such as v0.9.8 (default: latest)
-  --install-dir <path>  Install the binary in this directory
+  --channel <name>      auto (default), brew, or binary
+  --version <tag>       Stable tag such as v0.15.9 (binary channel only)
+  --install-dir <path>  Binary install directory (binary channel)
   --modify-path         Add the default install directory to a shell profile
   --no-modify-path      Leave shell profiles unchanged (the default)
+  --yes, -y             Non-interactive conflict cleanup
+  --dry-run             Print detection and plan only
   -h, --help            Show this help
 
-The same settings are available through A3S_VERSION, A3S_INSTALL_DIR, and
-A3S_MODIFY_PATH. A3S_GITHUB_TOKEN can raise GitHub API rate limits. Shell
-profiles are not changed unless explicitly requested.
+Environment: A3S_CHANNEL, A3S_VERSION, A3S_INSTALL_DIR, A3S_MODIFY_PATH,
+A3S_YES, A3S_DRY_RUN, A3S_GITHUB_TOKEN.
 
-During the repository release transition, latest compares published stable
-releases from A3S-Lab/CLI and A3S-Lab/a3s and selects the newer version. An
-explicit --version prefers A3S-Lab/CLI and falls back to A3S-Lab/a3s.
+Channel auto prefers Homebrew when available (cleans legacy a3s-code and
+standalone a3s-webview formulae, then installs a3s-lab/tap/a3s). Without
+Homebrew it installs the GitHub release archive into ~/.local/bin.
 EOF
 }
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        --channel)
+            [ "$#" -ge 2 ] || die "--channel requires a value"
+            channel=$2
+            shift 2
+            ;;
         --version)
             [ "$#" -ge 2 ] || die "--version requires a value"
             version=$2
@@ -73,6 +147,14 @@ while [ "$#" -gt 0 ]; do
             modify_path=0
             shift
             ;;
+        --yes|-y)
+            yes_mode=1
+            shift
+            ;;
+        --dry-run)
+            dry_run=1
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -82,6 +164,46 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+case "$channel" in
+    auto|brew|binary) ;;
+    *) die "invalid --channel '$channel' (expected auto, brew, or binary)" ;;
+esac
+case "$version" in
+    ""|latest) version=latest ;;
+    [0-9]*) version="v$version" ;;
+esac
+if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+    die "invalid stable release tag '$version' (expected vX.Y.Z)"
+fi
+for command_name in uname mktemp awk grep tr mkdir mv cp chmod rm rmdir sort uniq curl find; do
+    command -v "$command_name" >/dev/null 2>&1 || die "required command '$command_name' was not found"
+done
+
+a3s_detect_platform
+os=$a3s_os
+arch=$a3s_arch
+target=$a3s_target
+a3s_detect_brew
+a3s_resolve_channel "$channel" "$a3s_brew_present"
+a3s_print_inventory_and_plan
+
+if [ "$a3s_resolved_channel" = brew ] && [ "$version" != latest ]; then
+    die "pinned --version is only supported with --channel binary (Homebrew installs the formula's current bottle)"
+fi
+
+if [ "$dry_run" -eq 1 ]; then
+    info "dry-run complete; no changes made"
+    _a3s_cleanup_lib_tmp
+    exit 0
+fi
+
+if [ "$a3s_resolved_channel" = brew ]; then
+    a3s_install_via_brew "$yes_mode"
+    _a3s_cleanup_lib_tmp
+    exit 0
+fi
+
+# --- GitHub binary channel (existing path) ---
 [ -n "$install_dir" ] || die "HOME or A3S_INSTALL_DIR is required"
 case "$install_dir" in
     *'
@@ -97,42 +219,7 @@ requested_default_install=0
 if [ -n "$DEFAULT_INSTALL_DIR" ] && [ "$install_dir" = "$DEFAULT_INSTALL_DIR" ]; then
     requested_default_install=1
 fi
-case "$version" in
-    ""|latest) version=latest ;;
-    [0-9]*) version="v$version" ;;
-esac
-if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-    die "invalid stable release tag '$version' (expected vX.Y.Z)"
-fi
-for command_name in uname mktemp tar awk grep tr mkdir mv cp chmod rm rmdir sort uniq curl find; do
-    command -v "$command_name" >/dev/null 2>&1 || die "required command '$command_name' was not found"
-done
-case "$(uname -s)" in
-    Darwin) os=apple-darwin ;;
-    Linux)
-        os=unknown-linux-gnu
-        glibc_detected=0
-        if command -v getconf >/dev/null 2>&1 \
-            && getconf GNU_LIBC_VERSION >/dev/null 2>&1; then
-            glibc_detected=1
-        elif command -v ldd >/dev/null 2>&1 \
-            && ldd --version 2>&1 | grep -Eqi '(glibc|gnu libc)'; then
-            glibc_detected=1
-        fi
-        [ "$glibc_detected" -eq 1 ] \
-            || die "the published Linux CLI requires glibc, which could not be verified on this host"
-        ;;
-    MINGW*|MSYS*|CYGWIN*)
-        die "use install.ps1 from PowerShell to install A3S on Windows"
-        ;;
-    *) die "unsupported operating system: $(uname -s)" ;;
-esac
-case "$(uname -m)" in
-    x86_64|amd64) arch=x86_64 ;;
-    arm64|aarch64) arch=aarch64 ;;
-    *) die "unsupported CPU architecture: $(uname -m)" ;;
-esac
-target="$arch-$os"
+command -v tar >/dev/null 2>&1 || die "required command 'tar' was not found"
 mkdir -p "$install_dir" || die "failed to create $install_dir"
 install_dir=$(CDPATH=; cd -P "$install_dir" && pwd -P) \
     || die "failed to resolve the install directory"
@@ -140,6 +227,7 @@ install_dir=$(CDPATH=; cd -P "$install_dir" && pwd -P) \
 lock_dir="$install_dir/.a3s-installer.lock"
 lock_acquired=0
 release_install_lock() {
+    _a3s_cleanup_lib_tmp
     if [ "$lock_acquired" -eq 1 ]; then
         if rmdir "$lock_dir" 2>/dev/null; then
             lock_acquired=0
@@ -836,4 +924,12 @@ if [ "$has_bundled_webview" -eq 1 ]; then
     info "installed a3s-webview to $install_dir/a3s-webview"
 else
     info "release $release_tag has no bundled a3s-webview; a3s code will install the verified component on first use"
+fi
+if ! "$install_dir/a3s" code --help >/dev/null 2>&1; then
+    warn "a3s code --help failed; ensure this release includes the Code TUI entry"
+else
+    info "launch the interactive Code TUI with: a3s code"
+fi
+if command -v a3s >/dev/null 2>&1; then
+    info "a3s on PATH resolves to: $(command -v a3s)"
 fi

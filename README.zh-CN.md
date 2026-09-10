@@ -44,7 +44,7 @@ cd /path/to/project
 a3s code
 ```
 
-或使用官方 macOS / glibc Linux 安装脚本：
+或使用官方安装脚本（有 Homebrew 时优先 brew，否则安装 GitHub 二进制）：
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -209,27 +209,56 @@ brew untap a3s-lab/tap
 
 ### 官方安装脚本 — macOS 与 glibc Linux
 
+推荐一行命令。会检测 OS/架构、清点已有安装并选择渠道：
+
+- **`auto`（默认）：** 若 `PATH` 上有 Homebrew，则清理遗留冲突（`a3s-code`、独立的 `a3s-webview`），安装 `a3s-lab/tap/a3s`，并删除会遮蔽的 `~/.local/bin` 副本，使 `which a3s` 指向 Homebrew。
+- **否则：** 将 GitHub 发布归档安装到 `~/.local/bin`。
+
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
   https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
 ```
 
-默认安装目录：`~/.local/bin`（`a3s`、可选 `a3s-webview`、可选 `moli/`）。若希望安装器把该目录写入 shell profile（`~/.zshrc`、`~/.bashrc`、fish 或 `~/.profile`），设 `A3S_MODIFY_PATH=1`；否则请自行加入 `PATH`。
-
-常用覆盖：`A3S_VERSION=vX.Y.Z`、`A3S_INSTALL_DIR=/absolute/path`、`A3S_GITHUB_TOKEN=…`（API 限流）。发布迁移期间，同一脚本也会从 [CLI](https://github.com/A3S-Lab/CLI) 仓库发布。
-
 ```bash
-# 更新（独立安装渠道）
-a3s self update
-# 或重新运行 install.sh
+# 仅检测（不改动系统）
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh -s -- --dry-run
 
-# 卸载 — 无卸载脚本；删除已激活文件即可
-rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview
-rm -rf ~/.local/bin/moli
-# 若用过 A3S_MODIFY_PATH=1，请从 shell profile 中去掉对应 PATH 行。
+# 即使有 brew 也强制走 GitHub 二进制
+curl ... | sh -s -- --channel binary
+
+# 强制 Homebrew（没有 brew 会失败）
+curl ... | sh -s -- --channel brew
 ```
 
-若使用了自定义 `A3S_INSTALL_DIR`，请从该目录删除 `a3s`、`a3s-webview` 与 `moli/`。
+二进制渠道选项：`A3S_VERSION=vX.Y.Z`、`A3S_INSTALL_DIR=/absolute/path`、
+`A3S_MODIFY_PATH=1`（把 `~/.local/bin` 写入 shell profile）。另有：
+`A3S_CHANNEL`、`A3S_YES`、`A3S_DRY_RUN`、`A3S_GITHUB_TOKEN`。
+
+```bash
+# 更新
+# Homebrew 渠道：brew update && brew upgrade a3s
+# 二进制渠道：  a3s self update   # 或重新运行 install.sh --channel binary
+
+# 卸载二进制渠道
+rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview ~/.local/bin/a3s-code
+rm -rf ~/.local/bin/moli
+# Homebrew 渠道：brew uninstall a3s
+```
+
+#### 从旧版 macOS / Linux 安装迁移
+
+若 `brew upgrade a3s` 因 `a3s-webview` 符号链接失败，或仍装有遗留 `a3s-code` formula，请重新运行官方安装脚本，或：
+
+```bash
+brew uninstall a3s-code 2>/dev/null || true
+brew uninstall a3s-webview 2>/dev/null || true
+brew uninstall --force a3s 2>/dev/null || true
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-lab/tap/a3s
+```
+
+**不要**用 `brew install a3s-code` 安装本产品。
 
 ### 官方安装脚本 — Windows x64（PowerShell 5.1+）
 
@@ -237,10 +266,13 @@ rm -rf ~/.local/bin/moli
 irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
 ```
 
-默认安装目录：`%LOCALAPPDATA%\Programs\a3s\bin`。若希望更新用户 PATH，先设 `$env:A3S_MODIFY_PATH = '1'` 再运行。覆盖变量与 Unix 脚本一致：`A3S_VERSION`、`A3S_INSTALL_DIR`、`A3S_GITHUB_TOKEN`。
+会打印已有 `a3s` / 遗留路径清单，再把 GitHub zip 装到
+`%LOCALAPPDATA%\Programs\a3s\bin`。若要更新用户 PATH，先设
+`$env:A3S_MODIFY_PATH = '1'`。覆盖：`A3S_VERSION`、`A3S_INSTALL_DIR`、
+`A3S_GITHUB_TOKEN`。
 
 ```powershell
-# 更新 — Windows 不支持原地 self-update；重新运行安装脚本
+# 更新 — 重新运行安装脚本
 irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
 
 # 卸载 — 先关闭正在运行的 a3s 进程，再删除安装目录
