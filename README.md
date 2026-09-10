@@ -42,8 +42,17 @@ an isolated Box workload, or Cloud coordination only when the work requires it.
 
 ## Start local
 
-Install the stable CLI on macOS or glibc Linux, enter a project, and launch an
-interactive local session:
+The product entry is **`a3s`**; interactive Code is **`a3s code`**. Prefer one
+install channel. Homebrew (macOS/Linux):
+
+```bash
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s
+cd /path/to/project
+a3s code
+```
+
+Or the official macOS / glibc Linux installer:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \

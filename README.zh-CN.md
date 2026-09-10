@@ -35,7 +35,16 @@ A3S 是面向构建、运行与运维 Agent 工作的开源、本地优先运行
 
 ## 本地起步
 
-在 macOS 或 glibc Linux 上安装稳定版 CLI，进入项目并启动交互式本地会话：
+产品入口是 **`a3s`**；交互式 Code 是 **`a3s code`**。请只选一种安装渠道。Homebrew（macOS/Linux）：
+
+```bash
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s
+cd /path/to/project
+a3s code
+```
+
+或使用官方 macOS / glibc Linux 安装脚本：
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
