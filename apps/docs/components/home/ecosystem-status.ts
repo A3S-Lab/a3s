@@ -19,7 +19,7 @@ interface DeliveryStageCopy {
 export const statusVerifiedAt = '2026-09-10';
 
 const statusByProject = {
-  cli: { stage: 'preview', release: 'v0.15.10' },
+  cli: { stage: 'preview', release: 'v0.15.11' },
   code: { stage: 'released', release: 'v8.5.5' },
   desktop: { stage: 'preview', release: 'v0.1.0' },
   windhole: { stage: 'preview', release: 'main' },
