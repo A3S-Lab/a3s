@@ -74,9 +74,9 @@ research, isolation, and operations:
 | Inspect isolated workloads | `a3s box ps` |
 | Inspect installed products | `a3s list --installed` |
 
-See [Installation](#installation) for Windows, Homebrew, Cargo, offline use,
-and release-channel details. The complete command surface lives in the
-[CLI reference](docs/cli-reference.md).
+See [Installation](#installation) for install, update, and uninstall on every
+supported platform (Homebrew, official installers, Cargo), plus offline notes.
+The complete command surface lives in the [CLI reference](docs/cli-reference.md).
 
 ## Request path
 
@@ -189,22 +189,150 @@ owning repository for platform, release, and qualification details.
 
 ## Installation
 
-| Method | Command | Notes |
-| --- | --- | --- |
-| macOS / glibc Linux | `curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh \| sh` | Installs to `~/.local/bin` by default; set `A3S_MODIFY_PATH=1` to edit shell profiles |
-| Homebrew | `brew install a3s-lab/tap/a3s` | Supported on macOS and Linux |
-| Windows PowerShell 5.1+ | `irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 \| iex` | Installs under `%LOCALAPPDATA%\Programs\a3s\bin` by default |
-| Cargo | `cargo install a3s` | Builds the CLI only; install the optional WebView helper separately |
+The product entry is the **`a3s` CLI**. Interactive Code sessions start with
+`a3s code`. Pick **one** install channel and keep updates on that channel so
+PATH does not shadow a second copy.
 
-Release installers resolve one stable version, require an exact artifact for
-the detected platform, verify its SHA-256 digest and staged binary version,
-reject unsafe archive entries, and preserve the previous installation if
-activation fails.
+### Supported platforms
+
+| OS | Architectures | Delivery |
+| --- | --- | --- |
+| macOS 12+ | Apple Silicon (`aarch64`), Intel (`x86_64`) | Official installer, Homebrew, or Cargo |
+| Linux (glibc) | `x86_64`, `aarch64` | Official installer, Homebrew, or Cargo |
+| Windows 10/11 | `x64` (`x86_64`) only | PowerShell installer or Cargo |
+
+Not shipped for the umbrella CLI today: musl/Alpine Linux, Windows ARM, Mingw,
+or Cygwin. Use a supported host or build from source with Cargo where the
+toolchain allows.
+
+Release installers resolve one stable SemVer, require an exact artifact for the
+detected platform, verify the published SHA-256 and staged `a3s --version`,
+reject unsafe archive members, and keep the previous install if activation
+fails. They never use `sudo` or UAC.
+
+### Homebrew (macOS and Linux)
+
+Preferred package-manager path. Installs `a3s`, `a3s-webview`, the bundled
+`moli/` runtime, and `libzvec` from the CLI release archive.
+
+```bash
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s
+
+# Equivalent one-liner:
+# brew install a3s-lab/tap/a3s
+
+a3s --version
+a3s code
+```
+
+```bash
+# Update
+brew update && brew upgrade a3s
+
+# Uninstall the CLI formula
+brew uninstall a3s
+
+# Optional: remove the tap after uninstalling its formulae
+brew untap a3s-lab/tap
+```
+
+Do **not** use `brew install a3s-code` for this product. That formula is the
+**legacy** standalone `a3s-code` binary and does **not** provide `a3s`.
+
+Other tap formulae (`a3s-box`, `a3s-search`, `a3s-power`, …) are separate
+products; see [homebrew-tap](homebrew-tap/README.md).
+
+### Official installer — macOS and glibc Linux
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
+```
+
+Default install directory: `~/.local/bin` (`a3s`, optional `a3s-webview`,
+optional `moli/`). Set `A3S_MODIFY_PATH=1` if you want the installer to append
+that directory to a shell profile (`~/.zshrc`, `~/.bashrc`, fish, or
+`~/.profile`). Otherwise add it to `PATH` yourself.
+
+Useful overrides: `A3S_VERSION=vX.Y.Z`, `A3S_INSTALL_DIR=/absolute/path`,
+`A3S_GITHUB_TOKEN=…` (API rate limits). The same script is also published from
+the [CLI](https://github.com/A3S-Lab/CLI) repository during the release
+migration.
+
+```bash
+# Update (standalone channel)
+a3s self update
+# or re-run install.sh
+
+# Uninstall — no uninstaller script; remove the activated files
+rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview
+rm -rf ~/.local/bin/moli
+# If you used A3S_MODIFY_PATH=1, remove the PATH line from your shell profile.
+```
+
+If you used a custom `A3S_INSTALL_DIR`, delete `a3s`, `a3s-webview`, and
+`moli/` from that directory instead.
+
+### Official installer — Windows x64 (PowerShell 5.1+)
+
+```powershell
+irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
+```
+
+Default install directory: `%LOCALAPPDATA%\Programs\a3s\bin`. Set
+`$env:A3S_MODIFY_PATH = '1'` before running if you want the user PATH updated.
+Overrides mirror the Unix script: `A3S_VERSION`, `A3S_INSTALL_DIR`,
+`A3S_GITHUB_TOKEN`.
+
+```powershell
+# Update — in-place self-update is not supported on Windows; re-run the installer
+irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
+
+# Uninstall — close running a3s processes, then remove the install tree
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\a3s"
+# If PATH was modified, remove that directory from the user PATH environment variable.
+```
+
+### Cargo (any host with a Rust toolchain)
+
+```bash
+cargo install a3s --locked
+```
+
+```bash
+# Update
+cargo install a3s --locked
+
+# Uninstall
+cargo uninstall a3s
+```
+
+Cargo builds the CLI crate from crates.io. Release companions (`a3s-webview`,
+bundled `moli/`) are not always present the way they are in GitHub or Homebrew
+archives; prefer the official installer or Homebrew when you need the full
+release layout.
+
+### Verify and first session
+
+```bash
+a3s --version
+which a3s   # Unix: confirm a single expected path
+a3s code
+```
+
+If `a3s` is missing or the wrong binary runs, another install is earlier on
+`PATH` (common when Homebrew and `~/.local/bin` both have copies).
+
+User configuration under `~/.a3s/` (or the Windows equivalent) is **not**
+removed when you uninstall the binary. Delete that directory only if you want
+to wipe local config and caches.
+
+### Offline and no-mutation setup
 
 Set `A3S_OFFLINE=1` and `A3S_NO_AUTO_INSTALL=1` when setup must perform zero
-network access and zero component mutation. Standalone macOS and Linux installs
-can use `a3s self update`; Homebrew installations should update through
-Homebrew. Windows upgrades currently rerun the installer.
+network access and zero component mutation. That constrains runtime component
+installs; it does not replace choosing an offline-capable binary delivery.
 
 ## Repository map
 

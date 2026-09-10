@@ -64,7 +64,7 @@ a3s model use <provider>/<model>
 | 查看隔离工作负载 | `a3s box ps` |
 | 查看已安装产品 | `a3s list --installed` |
 
-Windows、Homebrew、Cargo、离线使用与发布通道细节见[安装](#安装)。完整命令面在 [CLI 参考](docs/cli-reference.md)。
+各支持平台的安装、更新、卸载（Homebrew、官方安装脚本、Cargo）以及离线说明见[安装](#安装)。完整命令面在 [CLI 参考](docs/cli-reference.md)。
 
 ## 请求路径
 
@@ -153,16 +153,123 @@ A3S 是组合系统，因此没有单一笼统的成熟度标签。支持声明�
 
 ## 安装
 
-| 方式 | 命令 | 说明 |
+产品入口是 **`a3s` CLI**。交互式 Code 会话用 `a3s code` 启动。请只选
+**一种**安装渠道，并在同一渠道上更新，避免 PATH 上出现互相遮蔽的第二份副本。
+
+### 支持的平台
+
+| 操作系统 | 架构 | 交付方式 |
 | --- | --- | --- |
-| macOS / glibc Linux | `curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh \| sh` | 默认安装到 `~/.local/bin`；设 `A3S_MODIFY_PATH=1` 可改 shell profile |
-| Homebrew | `brew install a3s-lab/tap/a3s` | 支持 macOS 与 Linux |
-| Windows PowerShell 5.1+ | `irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 \| iex` | 默认安装到 `%LOCALAPPDATA%\Programs\a3s\bin` |
-| Cargo | `cargo install a3s` | 只构建 CLI；可选 WebView helper 需另行安装 |
+| macOS 12+ | Apple Silicon（`aarch64`）、Intel（`x86_64`） | 官方安装脚本、Homebrew 或 Cargo |
+| Linux（glibc） | `x86_64`、`aarch64` | 官方安装脚本、Homebrew 或 Cargo |
+| Windows 10/11 | 仅 `x64`（`x86_64`） | PowerShell 安装脚本或 Cargo |
 
-发布安装器解析一个稳定版本，要求检测到的平台有精确产物，校验 SHA-256 与暂存二进制版本，拒绝不安全归档条目，并在激活失败时保留先前安装。
+伞形 CLI 当前**不**发布：musl/Alpine Linux、Windows ARM、Mingw、Cygwin。请使用受支持主机，或在工具链允许时用 Cargo 从源码构建。
 
-需要零网络与零组件变更时，设 `A3S_OFFLINE=1` 与 `A3S_NO_AUTO_INSTALL=1`。独立 macOS/Linux 安装可用 `a3s self update`；Homebrew 安装应通过 Homebrew 更新。Windows 升级目前通过重跑安装器完成。
+发布安装器解析一个稳定 SemVer，要求当前平台有精确产物，校验公开 SHA-256 与暂存的 `a3s --version`，拒绝不安全归档成员，并在激活失败时保留先前安装。安装器不使用 `sudo` 或 UAC。
+
+### Homebrew（macOS 与 Linux）
+
+推荐的包管理器路径。从 CLI 发布归档安装 `a3s`、`a3s-webview`、捆绑的 `moli/` 运行时以及 `libzvec`。
+
+```bash
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s
+
+# 等价一行命令：
+# brew install a3s-lab/tap/a3s
+
+a3s --version
+a3s code
+```
+
+```bash
+# 更新
+brew update && brew upgrade a3s
+
+# 卸载 CLI formula
+brew uninstall a3s
+
+# 可选：卸载完该 tap 下的 formula 后移除 tap
+brew untap a3s-lab/tap
+```
+
+**不要**用 `brew install a3s-code` 安装本产品。那个 formula 是**遗留**的独立 `a3s-code` 二进制，**不会**提供 `a3s`。
+
+其他 tap formula（`a3s-box`、`a3s-search`、`a3s-power` 等）是独立产品，见 [homebrew-tap](homebrew-tap/README.md)。
+
+### 官方安装脚本 — macOS 与 glibc Linux
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
+```
+
+默认安装目录：`~/.local/bin`（`a3s`、可选 `a3s-webview`、可选 `moli/`）。若希望安装器把该目录写入 shell profile（`~/.zshrc`、`~/.bashrc`、fish 或 `~/.profile`），设 `A3S_MODIFY_PATH=1`；否则请自行加入 `PATH`。
+
+常用覆盖：`A3S_VERSION=vX.Y.Z`、`A3S_INSTALL_DIR=/absolute/path`、`A3S_GITHUB_TOKEN=…`（API 限流）。发布迁移期间，同一脚本也会从 [CLI](https://github.com/A3S-Lab/CLI) 仓库发布。
+
+```bash
+# 更新（独立安装渠道）
+a3s self update
+# 或重新运行 install.sh
+
+# 卸载 — 无卸载脚本；删除已激活文件即可
+rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview
+rm -rf ~/.local/bin/moli
+# 若用过 A3S_MODIFY_PATH=1，请从 shell profile 中去掉对应 PATH 行。
+```
+
+若使用了自定义 `A3S_INSTALL_DIR`，请从该目录删除 `a3s`、`a3s-webview` 与 `moli/`。
+
+### 官方安装脚本 — Windows x64（PowerShell 5.1+）
+
+```powershell
+irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
+```
+
+默认安装目录：`%LOCALAPPDATA%\Programs\a3s\bin`。若希望更新用户 PATH，先设 `$env:A3S_MODIFY_PATH = '1'` 再运行。覆盖变量与 Unix 脚本一致：`A3S_VERSION`、`A3S_INSTALL_DIR`、`A3S_GITHUB_TOKEN`。
+
+```powershell
+# 更新 — Windows 不支持原地 self-update；重新运行安装脚本
+irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
+
+# 卸载 — 先关闭正在运行的 a3s 进程，再删除安装目录
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\a3s"
+# 若改过 PATH，请从用户 PATH 环境变量中移除该目录。
+```
+
+### Cargo（任意具备 Rust 工具链的主机）
+
+```bash
+cargo install a3s --locked
+```
+
+```bash
+# 更新
+cargo install a3s --locked
+
+# 卸载
+cargo uninstall a3s
+```
+
+Cargo 从 crates.io 构建 CLI crate。发布配套（`a3s-webview`、捆绑 `moli/`）不一定像 GitHub / Homebrew 归档那样齐全；需要完整发布布局时请优先官方安装脚本或 Homebrew。
+
+### 验证与首次会话
+
+```bash
+a3s --version
+which a3s   # Unix：确认只有预期路径
+a3s code
+```
+
+若找不到 `a3s` 或跑到错误二进制，通常是 PATH 上另一份安装更靠前（Homebrew 与 `~/.local/bin` 并存时常见）。
+
+卸载二进制**不会**删除 `~/.a3s/`（或 Windows 等价目录）下的用户配置。只有在要清空本地配置与缓存时才删除该目录。
+
+### 离线与禁止变更的环境
+
+需要零网络与零组件变更时，设 `A3S_OFFLINE=1` 与 `A3S_NO_AUTO_INSTALL=1`。这约束的是运行时组件安装，不能替代选择可离线交付的二进制渠道。
 
 ## 仓库地图
 
