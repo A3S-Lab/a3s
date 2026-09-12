@@ -23,7 +23,7 @@ export const runtimeArchitectureProjects: readonly ArchitectureProject[] = [
     role: localized('在 macOS、Linux 和 Windows 上管理 OCI 工作负载与隔离。', 'Manages OCI workloads and isolation on macOS, Linux, and Windows.'),
     href: getProjectPrimaryHref('oci-runtime'),
     nodes: [
-      node('consumers', 'Consumers & SDK', 'surface', 'CLI、RuntimeClient 与未来 shim 使用同一平台中立入口。', 'CLI, RuntimeClient, and future shims use one platform-neutral entrypoint.'),
+      node('consumers', 'Consumers & SDK', 'surface', 'CLI、RuntimeClient 与 containerd shim 使用同一公开 SDK。shim 不是生产就绪路径。', 'CLI, RuntimeClient, and the containerd shim share the public SDK. The shim is not a production-ready path.'),
       node('service', 'OciRuntimeService', 'core', '拥有 OCI schema、语义验证与宿主控制面。', 'Owns OCI schema, semantic validation, and the host control plane.'),
       node('lifecycle', 'Durable Lifecycle', 'contract', '持久化 exact config、operation journal、generation 与 fencing。', 'Persists exact config, operation journals, generations, and fencing.'),
       node('selection', 'RuntimeDriver', 'runtime', '显式选择共享宿主内核或 Utility VM 隔离。', 'Explicitly selects shared-host-kernel or Utility VM isolation.'),
