@@ -34,7 +34,7 @@ const statusByProject = {
   cloud: { stage: 'experimental', release: 'main' },
   site: { stage: 'released', release: 'live' },
   runtime: { stage: 'preview', release: 'v0.3.0' },
-  'oci-runtime': { stage: 'experimental', release: 'v0.2.0' },
+  'oci-runtime': { stage: 'experimental', release: 'v0.3.6' },
   flow: { stage: 'released', release: 'v1.0.0' },
   event: { stage: 'preview', release: 'v0.3.0' },
   lane: { stage: 'preview', release: 'v0.5.1' },
