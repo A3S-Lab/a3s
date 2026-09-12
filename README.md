@@ -191,7 +191,7 @@ same boundaries:
 | Area | What is being hardened now |
 | --- | --- |
 | **Code** | Reviewer inputs reject malformed line boundaries, and findings stay bound to the admitted run and immutable evidence. |
-| **Box** | Linux warm-pool and CRI teardown best-effort reaps orphans on destroy failure; Sandbox launcher discovery and foreground `--rm` cleanup are hardened on qualified hosts. |
+| **Box** | `v3.2.6` Linux Sandbox GA: default `SandboxViaOci` for `--isolation sandbox` (no `A3S_BOX_OCI_MIGRATION`), host prep + evidence binder; warm-pool/CRI orphan reap on destroy failure. Not a MicroVM/`BX0.3` claim. |
 | **Integration** | The root advances component gitlinks independently; [`compat/cloud-stack.acl`](compat/cloud-stack.acl) remains the source of truth for exact versions and protocol levels. |
 
 These are component-level contracts, not a blanket support claim. Check the
