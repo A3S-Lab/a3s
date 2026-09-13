@@ -17,25 +17,22 @@
 </p>
 
 <p align="center">
-  <a href="#本地起步">本地起步</a> ·
-  <a href="#请求路径">请求路径</a> ·
-  <a href="#a3s-如何拼在一起">系统模型</a> ·
-  <a href="#选择入口">产品入口</a> ·
+  <a href="#起步">起步</a> ·
+  <a href="#选择入口">入口</a> ·
+  <a href="#一次请求如何流动">请求路径</a> ·
   <a href="#安装">安装</a> ·
-  <a href="#仓库地图">仓库</a> ·
+  <a href="#仓库">仓库</a> ·
   <a href="https://a3s-lab.github.io/a3s/">网站</a>
 </p>
 
-A3S 是面向构建、运行与运维 Agent 工作的开源、本地优先运行时平台。同一套接口把会话、模型、工具、权限、可持久工作流、隔离执行与 Cloud 运维串起来，同时把权威边界与外部依赖写清楚。
-
-先从一次本地 Code 会话开始。只有在工作真正需要时，再接入已签名能力、可持久工作流、隔离的 Box 工作负载，或 Cloud 协同。
+A3S 是面向 Agent 工作的开源、本地优先运行时。会话自己声明模型、工具和权限；工作通过有类型的契约执行；隔离和 Cloud 只有在这次工作需要时才接入。
 
 > [!IMPORTANT]
-> 本仓库是各独立版本化 A3S 产品的已审阅集成快照。多数组件以 git 子模块形式钉在这里；根仓库负责安装器、编排、兼容性锁与共享文档。它不是 Rust workspace，也不是各产品的第二份拷贝。
+> 本仓库是已审阅的集成快照。多数产品以 git 子模块钉在这里。根仓库只负责安装器、编排、兼容性锁和这份首页。它不是 Rust workspace，也不是各产品的第二份拷贝。
 
-## 本地起步
+## 起步
 
-产品入口是 **`a3s`**；交互式 Code 是 **`a3s code`**。请只选一种安装渠道。Homebrew（macOS/Linux）：
+产品命令是 **`a3s`**。交互会话是 **`a3s code`**。只选一种安装渠道。
 
 ```bash
 brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
@@ -44,17 +41,7 @@ cd /path/to/project
 a3s code
 ```
 
-或使用官方安装脚本（有 Homebrew 时优先 brew，否则安装 GitHub 二进制）：
-
-```bash
-curl --proto '=https' --tlsv1.2 -LsSf \
-  https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh
-
-cd /path/to/project
-a3s code
-```
-
-依赖模型的会话需要已配置的 provider，或兼容的本地账号。显式查看并选择模型：
+依赖模型的会话需要显式指定提供方：
 
 ```bash
 a3s config init
@@ -63,156 +50,101 @@ a3s model list
 a3s model use <provider>/<model>
 ```
 
-同一套 CLI 可以从交互会话扩展到有界自动化、研究、隔离与运维：
-
-| 意图 | 第一条命令 |
+| 目的 | 命令 |
 | --- | --- |
-| 交互式工作 | `a3s code` |
-| 跑一个有界任务 | `a3s code exec "Check the API boundary and run its focused tests."` |
-| 产出有证据支撑的研究 | `a3s code research --web "Compare the implementation with its design"` |
+| 交互会话 | `a3s code` |
+| 一次有界任务 | `a3s code exec "Check the API boundary and run its focused tests."` |
+| 带证据的研究笔记 | `a3s code research --web "Compare the implementation with its design"` |
 | 查看隔离工作负载 | `a3s box ps` |
 | 查看已安装产品 | `a3s list --installed` |
 
-各支持平台的安装、更新、卸载（Homebrew、官方安装脚本、Cargo）以及离线说明见[安装](#安装)。完整命令面在 [CLI 参考](docs/cli-reference.md)。
-
-## 请求路径
-
-<p align="center">
-  <img src="assets/readme/workflow.svg" width="100%" alt="A3S 请求路径：从产品宿主经显式策略与能力，到可替换运行时提供者，再回到证据">
-</p>
-
-宿主选择权威。ACL 与 Use 描述工作可以做什么；Code、Flow、Runtime 与 Box 通过类型化契约执行。健康、摘要、修订与结果以证据形式回到所有者可检查的位置。
-
-## A3S 如何拼在一起
-
-<p align="center">
-  <img src="assets/readme/architecture.svg" width="100%" alt="A3S 架构：产品宿主设定策略，Agent 与工作流契约编排工作，可替换提供者执行，证据回到权威所有者">
-</p>
-
-A3S 逐步扩展。安装组件不会默默激活基础设施依赖，也不会把权威交给它。
-
-| 层 | 职责 | 所有者 |
-| --- | --- | --- |
-| **Host** | 调用、策略、模型、工具、权限 | [CLI](crates/cli/README.zh-CN.md) · [Code](crates/code/README.zh-CN.md) · [Cloud](apps/cloud/README.zh-CN.md) |
-| **Extend** | 已签名能力与类型化内容 | [Use](crates/use/README.zh-CN.md) · [Browser](crates/browser/README.zh-CN.md) · [Search](crates/search/README.zh-CN.md) · [OCR](crates/ocr/README.zh-CN.md) · [Parser](crates/parser/) · [Office](packages/office/README.zh-CN.md) · [Science](packages/science/README.zh-CN.md) |
-| **Coordinate** | 可重放工作流、事件、队列与评测 | [Flow](crates/flow/README.zh-CN.md) · [Event](crates/event/README.zh-CN.md) · [Lane](crates/lane/README.zh-CN.md) · [Bench](crates/bench/README.zh-CN.md) · [Test](crates/test/README.zh-CN.md) |
-| **Execute** | Task、Service、隔离与模型服务 | [Runtime](crates/runtime/README.zh-CN.md) · [Sandbox](crates/sandbox/README.zh-CN.md) · [Box](crates/box/README.zh-CN.md) · [OCI Runtime](crates/oci-runtime/README.zh-CN.md) · [Power](crates/power/README.zh-CN.md) · [MoE](crates/moe/README.zh-CN.md) |
-| **Scale** | 流量、期望状态、放置与调和 | [Gateway](crates/gateway/README.zh-CN.md) · [Cloud](apps/cloud/README.zh-CN.md) · [ORM](crates/orm/README.zh-CN.md) |
-| **Govern** | 观测、执行决策与已签名更新 | [Observer](crates/observer/README.zh-CN.md) · [Sentry](crates/sentry/README.zh-CN.md) · [Updater](crates/updater/) |
-
-四条规则保持系统可组合：
-
-1. **宿主拥有策略。** 产品宿主选择模型、工具、提供者与权限；后端不自行发明权威。
-2. **一件事一个主人。** Cloud 拥有期望状态，Flow 拥有可持久编排，Runtime 拥有与提供者无关的生命周期，具体提供者拥有执行细节。
-3. **契约可替换。** 进程、容器、MicroVM、模型服务与远程提供者落在类型化边界上，而不是变成隐藏默认。
-4. **证据闭环。** 身份、修订、摘要、健康与回执区分安装、授权、激活、执行与发布。
-
-配置使用 [A3S ACL](crates/acl/README.zh-CN.md)（Agent Configuration Language）。ACL 不是 HCL，必须用 `a3s-acl` 解析与生成。
+需要原生窗口时，下载 [A3S Desktop](https://a3s-lab.github.io/a3s/download/)。它是基于本地 Code 内核的 Tauri 工作台，不是 `a3s` 二进制的外壳。其他安装渠道见[安装](#安装)。
 
 ## 选择入口
 
-伞形 CLI 拥有调用上下文、共享配置、凭证、发现与输出策略。每个产品拥有自身行为、发布节奏与详细支持契约。
+先用 Code。只有这项工作需要另一个所有者时，再接入对应入口。
 
-| 入口 | 从这里开始 | 拥有 |
-| --- | --- | --- |
-| **Code** | `a3s code` | 本地 Agent 引擎与终端宿主 |
-| **Desktop** | [下载](https://a3s-lab.github.io/a3s/download/) · [Releases](https://github.com/A3S-Lab/a3s/releases) · [源码](apps/desktop/) | 由本地 Code 内核驱动的原生工作台；安装器发布在本仓库 |
-| **Use** | `a3s use capabilities --json` | 已签名依赖图与可热插拔的 Tool、MCP、Flow、Skill、知识与 UI 能力 |
-| **Box** | `a3s box ps` | 显式本地隔离与 OCI 工作负载 |
-| **Power + MoE** | [Power](crates/power/README.zh-CN.md) · [MoE](crates/moe/README.zh-CN.md) | 与模型无关的服务与驻留，以及模型特定方程与校验 |
-| **Flow + Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | 可持久编排与自托管控制面，受精确兼容性锁约束 |
-| **Search** | `a3s search …` | 浏览器优先搜索，带回退质量门控 |
-| **Bench** | `a3s bench …` | 评测运行与证据 |
-| **Top** | `a3s top` | Agent、容器、会话与事件的本地视图 |
+| 入口 | 从这里开始 | 负责 | 不负责 |
+| --- | --- | --- | --- |
+| **Code** | `a3s code` | 本地 Agent 会话、工作区、记忆和提供方 | 隔离机制、控制面期望状态 |
+| **Desktop** | [下载](https://a3s-lab.github.io/a3s/download/) · [源码](apps/desktop/) | 原生工作台：会话、文档、文件和科研设置 | 不能替代本机 Python 或 R。分析只在已发布的 a3s-box 镜像代次上运行。没有环境锁的清单名称不是已安装环境。 |
+| **Box** | `a3s box ps` | 本地 MicroVM 隔离和 OCI 工作负载 | 不会因为装了 Code 就自动启用 |
+| **Use** | `a3s use capabilities --json` | 已签名的能力图 | 不表示已安装、已激活或 Registry 可用。发现不是租约。预览阶段。 |
+| **Cloud** | [`compat/cloud-stack.acl`](compat/cloud-stack.acl) | 精确兼容锁下的自托管控制面 | 不是本地会话的默认路径 |
 
 > [!NOTE]
-> 发现不等于可用。目录条目可以描述安装策略，但不能证明每个平台或发布通道都有兼容产物。
+> 目录记录可以描述一个组件，但不证明每个平台或发布渠道都有兼容制品。
 
-## 发布姿态
+## 一次请求如何流动
 
-A3S 是组合系统，因此没有单一笼统的成熟度标签。支持声明落在拥有该行为的组件上：
+<p align="center">
+  <img src="assets/readme/workflow.svg" width="100%" alt="请求从产品宿主经过显式策略和能力，到达可替换的运行时提供方，再以证据返回">
+</p>
 
-根仓库也拥有 A3S Desktop 分发。名为 `desktop-vX.Y.Z` 的标签会把平台安装器与已签名 Tauri updater 产物发到根仓库 GitHub Release；发布工作流会刷新网站下载页与应用内更新器使用的 `desktop-latest` 别名。Desktop 在校验通过后自动安装更新并重启。
+宿主选择权威。[ACL](crates/acl/) 和 [Use](crates/use/) 说明这次工作可以做什么。Code、Flow、Runtime 和 Box 执行它。健康状态、摘要、修订和回执作为证据回到所有者手中。ACL 是 Agent 配置语言，不是 HCL，必须用 `a3s-acl` 解析和生成。
 
-本地打包可运行 `cd apps/desktop && npm run package:local`：清理过期产物、构建平台原生 Tauri 产物并在分享前校验文件。完整签名、更新器、别名与公开 feed 流程见 [`docs/desktop-release.md`](docs/desktop-release.md)。
+<p align="center">
+  <img src="assets/readme/architecture.svg" width="100%" alt="产品宿主设定策略，Agent 与工作流契约组合工作，可替换提供方执行，证据返回给拥有权威的一方">
+</p>
 
-| 领域 | 当前姿态 | 事实来源 |
-| --- | --- | --- |
-| CLI 与安装器 | 独立 CLI 仓库拥有源码、CI、发布与详细产品文档；本根仓库钉住已审阅修订，并只转发所需集成资产。 | [CLI](https://github.com/A3S-Lab/CLI) · [installer CI](.github/workflows/installers.yml) |
-| 本地 Agent 工作 | Code 拥有会话、工作区、检索、上下文、记忆与提供者资格，包括类型化 provider/model 代际容量与经共享调度器接纳、并一致投影到 Rust、Node.js、Python、Go 宿主的有界池健康证据。提供者与公网行为与本地核心分开资格化。 | [Code](crates/code/README.zh-CN.md) · [检索路线图](docs/retrieval-platform-roadmap.md) |
-| 原生命令隔离 | Sandbox 拥有 fail-closed 的 macOS、Linux、Windows 命令边界。Code 消费其小型 Rust 契约，不经过 Node.js 或遗留运行时兼容层。 | [Sandbox](crates/sandbox/README.zh-CN.md) · [安全模型](crates/sandbox/SECURITY.md) |
-| Cloud 与工作流 | 在发布集成声明前，组件修订、包版本与协议级别被锁在一起。 | [Cloud 栈锁](compat/cloud-stack.acl) · [工作流计划](compat/workflow-platform-development-plan.md) |
-| 能力 | Use 为预览。发现不意味着安装权威、激活或已运营 Registry 就绪。 | [Use](crates/use/README.zh-CN.md) · [Use Registry](use-registry/README.zh-CN.md) |
-| 隔离与推理 | 平台、驱动、加速器与产物证据是显式的。模型支持并不意味着每个优化内核或后端都已完成。 | [OCI Runtime](crates/oci-runtime/README.zh-CN.md) · [Runtime](crates/runtime/README.zh-CN.md) · [Power](crates/power/README.zh-CN.md) · [MoE](crates/moe/README.zh-CN.md) |
-| 早期表面 | Ash 与 Parser 仍为早期；Office 仍为 pre-1.0。 | [Ash](crates/ash/README.zh-CN.md) · [Parser](crates/parser/) · [Office](packages/office/README.zh-CN.md) |
+四条规则让部件可以替换：
 
-组件 README、发布、路线图与兼容性锁承载精确版本、平台、夹具与剩余门控。本页说明如何组合；它不是合并后的 changelog。
+1. 宿主拥有策略。后端不发明权威。
+2. 一件事只有一个所有者。Cloud 拥有期望状态，Flow 拥有持久编排，Runtime 拥有与提供方无关的生命周期，具体提供方拥有强制执行。
+3. 进程、容器、MicroVM 和远程提供方都走有类型的契约。它们都不是隐藏默认值。
+4. 摘要、修订和回执是不同事实。安装不是授权，授权也不是一次已完成的运行。
 
-### 当前集成焦点
+支持范围以拥有该行为的组件为准。本页不给整个系统一个统一成熟度标签。
 
-最新已审阅组件修订把正在硬化的工作放在同一组边界上：
-
-| 领域 | 正在硬化的内容 |
+| 主张 | 事实所在 |
 | --- | --- |
-| **Code** | Reviewer 输入拒绝畸形行边界；发现项绑定到已接纳运行与不可变证据。 |
-| **Box** | Linux 暖池与 CRI 拆除在 destroy 失败时尽力 reap 孤儿；合格主机上的 Sandbox launcher 发现与前台 `--rm` 清理已硬化。 |
-| **Integration** | 根仓库独立推进组件 gitlink；[`compat/cloud-stack.acl`](compat/cloud-stack.acl) 仍是精确版本与协议级别的事实来源。 |
-
-这些是组件级契约，不是笼统支持声明。平台、发布与资格细节请查看拥有仓库。
+| CLI 发布与安装器 | [CLI](https://github.com/A3S-Lab/CLI) · [安装器 CI](.github/workflows/installers.yml) |
+| Desktop 安装包与更新 | 本仓库标签 `desktop-vX.Y.Z`。签名、公证和更新源见[桌面发布](docs/desktop-release.md)。 |
+| 命令隔离 | [Sandbox](crates/sandbox/) |
+| Cloud 与工作流版本 | [Cloud 兼容锁](compat/cloud-stack.acl) |
+| 能力 | [Use](crates/use/) · [Use Registry](use-registry/) |
 
 ## 安装
 
-产品入口是 **`a3s` CLI**。交互式 Code 会话用 `a3s code` 启动。请只选
-**一种**安装渠道，并在同一渠道上更新，避免 PATH 上出现互相遮蔽的第二份副本。
+只选**一种**渠道并沿用它。`PATH` 上更靠前的另一份拷贝，是 `a3s` 看起来已安装却跑错二进制的常见原因。
 
-### 支持的平台
-
-| 操作系统 | 架构 | 交付方式 |
+| 系统 | 架构 | 渠道 |
 | --- | --- | --- |
-| macOS 12+ | Apple Silicon（`aarch64`）、Intel（`x86_64`） | 官方安装脚本、Homebrew 或 Cargo |
-| Linux（glibc） | `x86_64`、`aarch64` | 官方安装脚本、Homebrew 或 Cargo |
-| Windows 10/11 | 仅 `x64`（`x86_64`） | PowerShell 安装脚本或 Cargo |
+| macOS 12+ | Apple Silicon、Intel | 安装器、Homebrew、Cargo |
+| Linux（glibc） | `x86_64`、`aarch64` | 安装器、Homebrew、Cargo |
+| Windows 10/11 | 仅 `x64` | PowerShell 安装器、Cargo |
 
-伞形 CLI 当前**不**发布：musl/Alpine Linux、Windows ARM、Mingw、Cygwin。请使用受支持主机，或在工具链允许时用 Cargo 从源码构建。
+伞形 CLI 目前不提供：musl/Alpine、Windows ARM、MinGW、Cygwin。安装器解析一个 SemVer，要求对应平台制品，校验 SHA-256 和 `a3s --version`；激活失败则保留上一份安装。不会使用 `sudo` 或 UAC。
 
-发布安装器解析一个稳定 SemVer，要求当前平台有精确产物，校验公开 SHA-256 与暂存的 `a3s --version`，拒绝不安全归档成员，并在激活失败时保留先前安装。安装器不使用 `sudo` 或 UAC。
+### Homebrew（macOS 和 Linux）
 
-### Homebrew（macOS 与 Linux）
-
-推荐的包管理器路径。从 CLI 发布归档安装 `a3s`、`a3s-webview`、捆绑的 `moli/` 运行时以及 `libzvec`。
+会安装 `a3s`、`a3s-webview`、随附的 `moli/` 运行时和 `libzvec`。
 
 ```bash
 brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
 brew install a3s
-
-# 等价一行命令：
-# brew install a3s-lab/tap/a3s
-
 a3s --version
-a3s code
 ```
 
 ```bash
-# 更新
 brew update && brew upgrade a3s
-
-# 卸载 CLI formula
 brew uninstall a3s
-
-# 可选：卸载完该 tap 下的 formula 后移除 tap
-brew untap a3s-lab/tap
 ```
 
-**不要**用 `brew install a3s-code` 安装本产品。那个 formula 是**遗留**的独立 `a3s-code` 二进制，**不会**提供 `a3s`。
+不要执行 `brew install a3s-code`。那是旧的独立二进制，不提供 `a3s`。tap 里的其他公式（`a3s-box`、`a3s-search`、`a3s-power`）是独立产品。
 
-其他 tap formula（`a3s-box`、`a3s-search`、`a3s-power` 等）是独立产品，见 [homebrew-tap](homebrew-tap/README.md)。
+如果升级卡在 `a3s-webview` 符号链接，或旧的 `a3s-code` 公式还在：
 
-### 官方安装脚本 — macOS 与 glibc Linux
+```bash
+brew uninstall a3s-code 2>/dev/null || true
+brew uninstall a3s-webview 2>/dev/null || true
+brew uninstall --force a3s 2>/dev/null || true
+brew install a3s-lab/tap/a3s
+```
 
-推荐一行命令。会检测 OS/架构、清点已有安装并选择渠道：
+### 安装器
 
-- **`auto`（默认）：** 若 `PATH` 上有 Homebrew，则清理遗留冲突（`a3s-code`、独立的 `a3s-webview`），安装 `a3s-lab/tap/a3s`，并删除会遮蔽的 `~/.local/bin` 副本，使 `which a3s` 指向 Homebrew。
-- **否则：** 将 GitHub 发布归档安装到 `~/.local/bin`。
+在 macOS 和 glibc Linux 上，`PATH` 里有 Homebrew 就用 Homebrew，否则把 GitHub 归档装到 `~/.local/bin`。
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -220,190 +152,107 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 ```
 
 ```bash
-# 仅检测（不改动系统）
+# 只检查，不改动
 curl --proto '=https' --tlsv1.2 -LsSf \
   https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.sh | sh -s -- --dry-run
-
-# 即使有 brew 也强制走 GitHub 二进制
-curl ... | sh -s -- --channel binary
-
-# 强制 Homebrew（没有 brew 会失败）
-curl ... | sh -s -- --channel brew
 ```
 
-二进制渠道选项：`A3S_VERSION=vX.Y.Z`、`A3S_INSTALL_DIR=/absolute/path`、
-`A3S_MODIFY_PATH=1`（把 `~/.local/bin` 写入 shell profile）。另有：
-`A3S_CHANNEL`、`A3S_YES`、`A3S_DRY_RUN`、`A3S_GITHUB_TOKEN`。
+`--channel binary` 强制使用 GitHub 归档。`--channel brew` 在没有 Homebrew 时失败。可用变量：`A3S_VERSION`、`A3S_INSTALL_DIR`、`A3S_CHANNEL`、`A3S_YES`、`A3S_DRY_RUN`、`A3S_GITHUB_TOKEN`、`A3S_MODIFY_PATH=1`。
+
+Homebrew 渠道用 `brew upgrade a3s` 更新。二进制渠道用 `a3s self update` 或重跑安装器。卸载二进制渠道：
 
 ```bash
-# 更新
-# Homebrew 渠道：brew update && brew upgrade a3s
-# 二进制渠道：  a3s self update   # 或重新运行 install.sh --channel binary
-
-# 卸载二进制渠道
 rm -f ~/.local/bin/a3s ~/.local/bin/a3s-webview ~/.local/bin/a3s-code
 rm -rf ~/.local/bin/moli
-# Homebrew 渠道：brew uninstall a3s
 ```
 
-#### 从旧版 macOS / Linux 安装迁移
-
-若 `brew upgrade a3s` 因 `a3s-webview` 符号链接失败，或仍装有遗留 `a3s-code` formula，请重新运行官方安装脚本，或：
-
-```bash
-brew uninstall a3s-code 2>/dev/null || true
-brew uninstall a3s-webview 2>/dev/null || true
-brew uninstall --force a3s 2>/dev/null || true
-brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
-brew install a3s-lab/tap/a3s
-```
-
-**不要**用 `brew install a3s-code` 安装本产品。
-
-### 官方安装脚本 — Windows x64（PowerShell 5.1+）
+Windows x64（PowerShell 5.1+）安装到 `%LOCALAPPDATA%\Programs\a3s\bin`：
 
 ```powershell
 irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
 ```
 
-会打印已有 `a3s` / 遗留路径清单，再把 GitHub zip 装到
-`%LOCALAPPDATA%\Programs\a3s\bin`。若要更新用户 PATH，先设
-`$env:A3S_MODIFY_PATH = '1'`。覆盖：`A3S_VERSION`、`A3S_INSTALL_DIR`、
-`A3S_GITHUB_TOKEN`。
+运行前设置 `$env:A3S_MODIFY_PATH = '1'` 可更新用户 PATH。用同一条命令更新。卸载时先退出 `a3s`，删除该目录，并在你曾经添加时清掉 PATH 项。
 
-```powershell
-# 更新 — 重新运行安装脚本
-irm https://raw.githubusercontent.com/A3S-Lab/a3s/main/install.ps1 | iex
-
-# 卸载 — 先关闭正在运行的 a3s 进程，再删除安装目录
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Programs\a3s"
-# 若改过 PATH，请从用户 PATH 环境变量中移除该目录。
-```
-
-### Cargo（任意具备 Rust 工具链的主机）
+### Cargo
 
 ```bash
 cargo install a3s --locked
 ```
 
-```bash
-# 更新
-cargo install a3s --locked
+Cargo 从 crates.io 安装 CLI。不保证带上发布包里的 `a3s-webview` 和 `moli/`。需要完整布局时优先用 Homebrew 或安装器。
 
-# 卸载
-cargo uninstall a3s
-```
-
-Cargo 从 crates.io 构建 CLI crate。发布配套（`a3s-webview`、捆绑 `moli/`）不一定像 GitHub / Homebrew 归档那样齐全；需要完整发布布局时请优先官方安装脚本或 Homebrew。
-
-### 验证与首次会话
+### 安装之后
 
 ```bash
 a3s --version
-which a3s   # Unix：确认只有预期路径
+which a3s
 a3s code
 ```
 
-若找不到 `a3s` 或跑到错误二进制，通常是 PATH 上另一份安装更靠前（Homebrew 与 `~/.local/bin` 并存时常见）。
+卸载二进制不会删除 `~/.a3s/`（或 Windows 上的对应目录）。只有在你打算清掉本地配置和缓存时才删除它。
 
-卸载二进制**不会**删除 `~/.a3s/`（或 Windows 等价目录）下的用户配置。只有在要清空本地配置与缓存时才删除该目录。
+`A3S_OFFLINE=1` 和 `A3S_NO_AUTO_INSTALL=1` 会停止运行时组件安装和网络变更。它们不能把在线安装器变成离线安装器。
 
-### 离线与禁止变更的环境
-
-需要零网络与零组件变更时，设 `A3S_OFFLINE=1` 与 `A3S_NO_AUTO_INSTALL=1`。这约束的是运行时组件安装，不能替代选择可离线交付的二进制渠道。
-
-## 仓库地图
-
-根目录是 monorepo 集成点，不是 Rust workspace。多数组件是作为 git 子模块跟踪的外部仓库；直接跟踪的应用、集成资产、`crates/common` 与 `crates/updater` 由根仓库拥有。
+## 仓库
 
 ```text
 a3s/
-├── apps/          Cloud、Desktop、docs 与 Windhole 应用
-├── packages/      Office、Science 与 UI
-├── crates/        产品宿主、能力、运行时、服务与 SDK
-├── compat/        精确跨项目修订与协议锁
-├── assets/        仓库原生 README 视觉资源
-├── use-registry/  官方已签名 A3S Use Registry 部署
-└── homebrew-tap/  发布 formulae
+├── apps/          Cloud、Desktop、docs、Windhole
+├── packages/      Office、Science、UI
+├── crates/        宿主、能力、运行时、服务
+├── compat/        精确修订与协议锁
+├── use-registry/  钉住的已签名 Use Registry 部署
+└── homebrew-tap/  发布公式
 ```
 
-<details>
-<summary><strong>按关注点浏览组件</strong></summary>
-
-| 分组 | 项目 |
-| --- | --- |
-| 产品宿主 | [CLI](crates/cli/README.zh-CN.md) · [Code](crates/code/README.zh-CN.md) · [Desktop](apps/desktop/) · [Ash](crates/ash/README.zh-CN.md) · [Windhole](apps/windhole/README.zh-CN.md) · [Cloud](apps/cloud/README.zh-CN.md) |
-| 检索与工作区智能 | [Vec](crates/vec/README.zh-CN.md) · [Code 工作区检索](crates/code/manual/WORKSPACE_RETRIEVAL_OPERATIONS.md) |
-| 能力与内容 | [Use](crates/use/README.zh-CN.md) · [Browser](crates/browser/README.zh-CN.md) · [Search](crates/search/README.zh-CN.md) · [OCR](crates/ocr/README.zh-CN.md) · [Parser](crates/parser/) · [Office](packages/office/README.zh-CN.md) · [Science](packages/science/README.zh-CN.md) |
-| 运行时、推理与协同 | [Runtime](crates/runtime/README.zh-CN.md) · [Sandbox](crates/sandbox/README.zh-CN.md) · [Box](crates/box/README.zh-CN.md) · [OCI Runtime](crates/oci-runtime/README.zh-CN.md) · [Power](crates/power/README.zh-CN.md) · [MoE](crates/moe/README.zh-CN.md) · [Flow](crates/flow/README.zh-CN.md) · [Event](crates/event/README.zh-CN.md) · [Lane](crates/lane/README.zh-CN.md) · [Memory](crates/memory/README.zh-CN.md) · [ORM](crates/orm/README.zh-CN.md) |
-| 验证 | [Bench](crates/bench/README.zh-CN.md) · [Test](crates/test/README.zh-CN.md) |
-| 接口与运维 | [Boot](crates/boot/README.zh-CN.md) · [Gateway](crates/gateway/README.zh-CN.md) · [AHP](crates/ahp/README.zh-CN.md) · [ACL](crates/acl/README.zh-CN.md) · [TUI](crates/tui/README.zh-CN.md) · [GUI](crates/gui/README.zh-CN.md) · [UI](packages/ui/README.zh-CN.md) · [WebView](crates/webview/README.zh-CN.md) · [Observer](crates/observer/README.zh-CN.md) · [Sentry](crates/sentry/README.zh-CN.md) · [Updater](crates/updater/) |
-
-</details>
-
-根级 Use Registry 是钉住的部署仓库，不是包源 monorepo。[Use](crates/use/README.zh-CN.md) 拥有 Registry 格式与工具；包源与构建仍在各拥有仓库。
-
-[CLI 迁移记录](docs/cli-repository-migration.md)说明临时的 0.11.x 根迁移与恢复后的独立所有权。交互式[项目目录](https://a3s-lab.github.io/a3s/#ecosystem)展示每个项目的角色、阶段、发布通道、网站与源码。
-
-## 开发
-
-克隆精确集成快照：
+克隆完整快照，不要只拉半棵树：
 
 ```bash
 git clone --recurse-submodules git@github.com:A3S-Lab/a3s.git
 cd a3s
 ```
 
-已有检出可运行 `git submodule update --init --recursive`。
+已有检出则执行 `git submodule update --init --recursive`。
 
 > [!IMPORTANT]
-> 不要在根目录创建 `Cargo.toml`、运行 `cargo init`，或把根当作 Rust crate。在拥有变更的组件内工作与测试。
+> 不要在根目录添加 `Cargo.toml` 或运行 `cargo init`。在拥有该改动的组件里构建和测试。先在该组件自己的仓库提交，再在这里推进 gitlink。
 
-例如，在子模块中校验钉住的 CLI：
-
-```bash
-cd crates/cli
-cargo fmt --all -- --check
-cargo test --all-targets
-cargo clippy --all-targets -- -D warnings
-```
-
-根 `justfile` 编排集成工作流：
+根目录 `justfile` 只做编排。Desktop 的 JavaScript 依赖在 `apps/desktop/package-lock.json`；使用 desktop 配方前先执行一次 `cd apps/desktop && npm ci`。
 
 ```bash
 just desktop
 just desktop-check
-just desktop-package
 just code
-just desktop-web
 just docs
-just windhole
-just use-hotplug-e2e
 just cloud-stack-check
 ```
 
-Desktop 的 JavaScript 依赖图在 `apps/desktop/package-lock.json`。使用 desktop 配方前先运行一次 `cd apps/desktop && npm ci`；Tauri 通过 Cargo 调用原生后端，`just` 仍是仓库任务运行器。
+<details>
+<summary><strong>组件索引</strong></summary>
 
-子模块与根有各自历史。先在拥有仓库提交组件变更，再在此推进 gitlink；变更仓库结构前请阅读 [AGENTS.md](AGENTS.md)。
+| 分组 | 项目 |
+| --- | --- |
+| 宿主 | [CLI](crates/cli/)、[Code](crates/code/)、[Desktop](apps/desktop/)、[Cloud](apps/cloud/)、[Ash](crates/ash/)、[Windhole](apps/windhole/) |
+| 能力与内容 | [Use](crates/use/)、[Browser](crates/browser/)、[Search](crates/search/)、[OCR](crates/ocr/)、[Parser](crates/parser/)、[Office](packages/office/)、[Science](packages/science/) |
+| 执行 | [Runtime](crates/runtime/)、[Sandbox](crates/sandbox/)、[Box](crates/box/)、[OCI Runtime](crates/oci-runtime/)、[Power](crates/power/)、[MoE](crates/moe/) |
+| 协调 | [Flow](crates/flow/)、[Event](crates/event/)、[Lane](crates/lane/)、[Memory](crates/memory/)、[ORM](crates/orm/)、[Gateway](crates/gateway/) |
+| 界面 | [ACL](crates/acl/)、[Boot](crates/boot/)、[TUI](crates/tui/)、[GUI](crates/gui/)、[WebView](crates/webview/)、[UI](packages/ui/) |
+| 验证与运维 | [Bench](crates/bench/)、[Test](crates/test/)、[Observer](crates/observer/)、[Sentry](crates/sentry/)、[Updater](crates/updater/) |
 
-## 文档与社区
+</details>
 
-- [A3S 网站](https://a3s-lab.github.io/a3s/)
+[项目目录](https://a3s-lab.github.io/a3s/#ecosystem)列出每个项目的角色、阶段和发布渠道。[AGENTS.md](AGENTS.md) 是这个根仓库的贡献约定。
+
+## 延伸阅读
+
+- [网站](https://a3s-lab.github.io/a3s/)
 - [Desktop 下载](https://a3s-lab.github.io/a3s/download/)
-- [Desktop 发布与更新契约](docs/desktop-release.md)
 - [CLI 参考](docs/cli-reference.md)
-- [Cloud 兼容性锁](compat/cloud-stack.acl)
-- [工作流架构](compat/workflow-platform-architecture.md) 与
-  [有序开发计划](compat/workflow-platform-development-plan.md)
-- [本地检索架构](docs/retrieval-platform-architecture.md)、
-  [评审](docs/retrieval-platform-architecture-review.md) 与
-  [路线图](docs/retrieval-platform-roadmap.md)
-- [科学发现平台路线图](docs/scientific-discovery-platform-roadmap.md)
-- [A3S Code Core 优化路线图](docs/a3s-code-core-optimization-roadmap.md)
-- [Terminal-Bench 4.0 评测（Harbor + A3S Code）](scripts/harbor/EVALUATION.md)
-- [CLI 发布](https://github.com/A3S-Lab/CLI/releases)
+- [Desktop 发布](docs/desktop-release.md)
+- [Cloud 兼容锁](compat/cloud-stack.acl)
 - [Discord](https://discord.gg/XVg6Hu6H)
 
 ## 许可证
 
-本集成仓库采用 [MIT License](LICENSE)。独立版本化项目保留其拥有仓库声明的许可证。
+本集成仓库采用 [MIT](LICENSE)。被钉住的项目保留各自所属仓库声明的许可证。

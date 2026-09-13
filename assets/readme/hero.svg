@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-  <title id="title">A3S — the local-first runtime platform for agent work</title>
-  <desc id="desc">A technical editorial hero pairs the A3S name with the a3s code command and an explicit contract chain from host policy to evidence.</desc>
+  <title id="title">A3S — a local-first runtime for agent work</title>
+  <desc id="desc">The hero pairs the A3S name with the a3s code command. Isolation and Cloud stay off until the work needs them.</desc>
   <defs>
     <linearGradient id="canvas" x1="72" y1="20" x2="1150" y2="500" gradientUnits="userSpaceOnUse">
       <stop stop-color="#ffffff"/>
@@ -34,12 +34,12 @@
 
     <text x="60" y="188" fill="#171717" font-size="78" font-weight="650" letter-spacing="-3.2">A3S</text>
     <text x="60" y="244" fill="#171717" font-size="42" font-weight="620" letter-spacing="-1.3">
-      <tspan x="60">The operating system</tspan>
+      <tspan x="60">A local-first runtime</tspan>
       <tspan x="60" dy="50">for agent work.</tspan>
     </text>
     <text x="60" y="336" fill="#60646c" font-size="22">
-      <tspan x="60">One interface for sessions, capabilities, workflows,</tspan>
-      <tspan x="60" dy="32">execution, and Cloud — with every boundary explicit.</tspan>
+      <tspan x="60">Start with a3s code. Isolation and Cloud</tspan>
+      <tspan x="60" dy="32">stay off until the work needs them.</tspan>
     </text>
 
     <g filter="url(#shadow)">
