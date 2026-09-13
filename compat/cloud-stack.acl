@@ -28,15 +28,15 @@ component "box" {
   package = "a3s-box-runtime"
   path = "crates/box"
   repository = "git@github.com:A3S-Lab/Box.git"
-  revision = "c7cb1793faa20498bc5c500fe89938a7bf6aa355"
+  revision = "774c57abd1d70b227c45b4dbc1ce50a7027308aa"
   source = "git"
-  version = "3.2.5"
+  version = "3.2.6"
 }
 component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "34666186ba6bcc0bb2c9f6187e61366a860947c6"
+  revision = "3df87761dc299436174f5273466d80c40ba509ea"
   source = "git"
   version = "0.1.0"
 }
