@@ -48,8 +48,10 @@ describe('ecosystem delivery status', () => {
   });
 
   test('records the verified status snapshot', () => {
-    assert.equal(statusVerifiedAt, '2026-09-10');
-    assert.equal(getProjectDeliveryStatus('cli', 'en').release, 'v0.15.11');
+    assert.equal(statusVerifiedAt, '2026-09-14');
+    assert.equal(getProjectDeliveryStatus('cli', 'en').release, 'v0.15.12');
+    assert.equal(getProjectDeliveryStatus('code', 'en').release, 'v8.5.8');
+    assert.equal(getProjectDeliveryStatus('use', 'en').release, 'v0.3.12');
     assert.equal(getProjectDeliveryStatus('flow', 'en').stage, 'released');
     assert.equal(getProjectDeliveryStatus('flow', 'en').release, 'v1.0.0');
     assert.equal(getProjectDeliveryStatus('power', 'en').stage, 'preview');
