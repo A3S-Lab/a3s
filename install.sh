@@ -485,14 +485,20 @@ failed_binary=""
 staged_webview=""
 backup_webview=""
 failed_webview=""
+staged_zvec=""
+backup_zvec=""
+failed_zvec=""
+zvec_lib_name=""
 old_moli_saved=0
 staged_moli=""
 backup_moli=""
 failed_moli=""
 old_binary_saved=0
 old_webview_saved=0
+old_zvec_saved=0
 binary_activation_started=0
 webview_activation_started=0
+zvec_activation_started=0
 moli_activation_started=0
 committed=0
 
@@ -500,7 +506,7 @@ remove_generated_binary() {
     generated_path=${1:-}
     [ -n "$generated_path" ] || return 0
     case "$generated_path" in
-        "$install_dir"/.a3s.*|"$install_dir"/.a3s-webview.*|"$install_dir"/.a3s-moli.*)
+        "$install_dir"/.a3s.*|"$install_dir"/.a3s-webview.*|"$install_dir"/.a3s-libzvec.*|"$install_dir"/.a3s-moli.*)
             if [ -d "$generated_path" ] && [ ! -L "$generated_path" ]; then
                 rm -rf -- "$generated_path"
             else
@@ -574,6 +580,37 @@ rollback_activation() {
         fi
     fi
 
+    if [ "$zvec_activation_started" -eq 1 ]; then
+        if [ ! -e "$staged_zvec" ] && [ ! -L "$staged_zvec" ]; then
+            if [ -e "$install_dir/$zvec_lib_name" ] || [ -L "$install_dir/$zvec_lib_name" ]; then
+                if mv "$install_dir/$zvec_lib_name" "$failed_zvec"; then
+                    :
+                else
+                    warn "could not move the failed libzvec library; the previous library is preserved at $backup_zvec"
+                fi
+            fi
+        fi
+
+        if [ -e "$backup_zvec" ] || [ -L "$backup_zvec" ]; then
+            if [ ! -e "$install_dir/$zvec_lib_name" ] && [ ! -L "$install_dir/$zvec_lib_name" ]; then
+                if mv "$backup_zvec" "$install_dir/$zvec_lib_name"; then
+                    old_zvec_saved=0
+                else
+                    old_zvec_saved=1
+                    warn "could not restore the previous libzvec library; its backup is preserved at $backup_zvec"
+                fi
+            elif [ -e "$staged_zvec" ] || [ -L "$staged_zvec" ]; then
+                # Activation did not consume the staged library; the original is still active.
+                old_zvec_saved=0
+            else
+                old_zvec_saved=1
+                warn "could not restore the previous libzvec library; its backup is preserved at $backup_zvec"
+            fi
+        else
+            old_zvec_saved=0
+        fi
+    fi
+
     if [ "$moli_activation_started" -eq 1 ]; then
         if [ ! -e "$staged_moli" ] && [ ! -L "$staged_moli" ]; then
             if [ -e "$install_dir/moli" ] || [ -L "$install_dir/moli" ]; then
@@ -627,6 +664,13 @@ cleanup() {
         warn "preserved the previous WebView helper at $backup_webview"
     fi
     remove_generated_binary "$failed_webview"
+    remove_generated_binary "$staged_zvec"
+    if [ "$old_zvec_saved" -eq 0 ]; then
+        remove_generated_binary "$backup_zvec"
+    elif [ -e "$backup_zvec" ] || [ -L "$backup_zvec" ]; then
+        warn "preserved the previous libzvec library at $backup_zvec"
+    fi
+    remove_generated_binary "$failed_zvec"
     remove_generated_binary "$staged_moli"
     if [ "$old_moli_saved" -eq 0 ]; then
         remove_generated_binary "$backup_moli"
@@ -634,7 +678,8 @@ cleanup() {
         warn "preserved the previous Moli runtime at $backup_moli"
     fi
     remove_generated_binary "$failed_moli"
-    rm -f -- "$archive" "$archive_list" "$temp_dir/a3s" "$temp_dir/a3s-webview"
+    rm -f -- "$archive" "$archive_list" "$temp_dir/a3s" "$temp_dir/a3s-webview" \
+        "$temp_dir/libzvec_c_api.dylib" "$temp_dir/libzvec_c_api.so"
     rm -rf -- "$temp_dir/moli"
     rmdir "$temp_dir" 2>/dev/null
     release_install_lock
@@ -684,6 +729,23 @@ has_bundled_moli=0
 if [ "$moli_entry_count" -eq 1 ]; then
     has_bundled_moli=1
 fi
+zvec_dylib_count=$(awk '$0 == "libzvec_c_api.dylib" { count += 1 } END { print count + 0 }' "$archive_list")
+zvec_so_count=$(awk '$0 == "libzvec_c_api.so" { count += 1 } END { print count + 0 }' "$archive_list")
+[ "$zvec_dylib_count" -le 1 ] \
+    || die "release archive must contain at most one libzvec_c_api.dylib"
+[ "$zvec_so_count" -le 1 ] \
+    || die "release archive must contain at most one libzvec_c_api.so"
+[ "$((zvec_dylib_count + zvec_so_count))" -le 1 ] \
+    || die "release archive must not contain both libzvec_c_api.dylib and libzvec_c_api.so"
+has_bundled_zvec=0
+zvec_lib_name=""
+if [ "$zvec_dylib_count" -eq 1 ]; then
+    has_bundled_zvec=1
+    zvec_lib_name="libzvec_c_api.dylib"
+elif [ "$zvec_so_count" -eq 1 ]; then
+    has_bundled_zvec=1
+    zvec_lib_name="libzvec_c_api.so"
+fi
 legacy_payload_entry_count=$(awk '
     $0 == "support" || index($0, "support/") == 1 ||
     $0 == "release-compat" || index($0, "release-compat/") == 1 { count += 1 }
@@ -702,7 +764,7 @@ tar -tvzf "$archive" | awk '
 
 while IFS= read -r entry; do
     case "$entry" in
-        a3s|a3s-webview|moli|moli/*|support|support/*|release-compat|release-compat/*) ;;
+        a3s|a3s-webview|libzvec_c_api.dylib|libzvec_c_api.so|moli|moli/*|support|support/*|release-compat|release-compat/*) ;;
         *) die "release archive contains an unexpected path: $entry" ;;
     esac
     case "/$entry/" in
@@ -716,6 +778,9 @@ if [ "$has_bundled_webview" -eq 1 ]; then
 fi
 if [ "$has_bundled_moli" -eq 1 ]; then
     archive_members="$archive_members moli"
+fi
+if [ "$has_bundled_zvec" -eq 1 ]; then
+    archive_members="$archive_members $zvec_lib_name"
 fi
 # The validated archive member names never contain whitespace.
 # shellcheck disable=SC2086
@@ -732,6 +797,10 @@ if [ "$has_bundled_moli" -eq 1 ]; then
         || die "the extracted Moli runtime is not a regular file"
     find "$temp_dir/moli" -type l -print -quit | grep -q . \
         && die "the extracted Moli runtime contains a symbolic link" || :
+fi
+if [ "$has_bundled_zvec" -eq 1 ]; then
+    [ -f "$temp_dir/$zvec_lib_name" ] && [ ! -L "$temp_dir/$zvec_lib_name" ] \
+        || die "the extracted libzvec library is not a regular file"
 fi
 chmod 755 "$temp_dir/a3s" || die "failed to make the staged a3s binary executable"
 if [ "$has_bundled_webview" -eq 1 ]; then
@@ -766,8 +835,14 @@ if [ "$has_bundled_webview" -eq 1 ]; then
     backup_webview="$install_dir/.a3s-webview.backup.$activation_id"
     failed_webview="$install_dir/.a3s-webview.failed.$activation_id"
 fi
+if [ "$has_bundled_zvec" -eq 1 ]; then
+    staged_zvec="$install_dir/.a3s-libzvec.new.$activation_id"
+    backup_zvec="$install_dir/.a3s-libzvec.backup.$activation_id"
+    failed_zvec="$install_dir/.a3s-libzvec.failed.$activation_id"
+fi
 for generated_path in "$staged_binary" "$backup_binary" "$failed_binary" \
     "$staged_webview" "$backup_webview" "$failed_webview" \
+    "$staged_zvec" "$backup_zvec" "$failed_zvec" \
     "$staged_moli" "$backup_moli" "$failed_moli"; do
     [ ! -e "$generated_path" ] && [ ! -L "$generated_path" ] \
         || die "temporary activation path already exists: $generated_path"
@@ -786,6 +861,32 @@ if [ "$has_bundled_webview" -eq 1 ]; then
         || die "failed to stage the a3s-webview companion"
     chmod 755 "$staged_webview" \
         || die "failed to make the a3s-webview companion executable"
+fi
+if [ "$has_bundled_zvec" -eq 1 ]; then
+    cp "$temp_dir/$zvec_lib_name" "$staged_zvec" \
+        || die "failed to stage the libzvec library"
+    chmod 755 "$staged_zvec" \
+        || die "failed to make the staged libzvec library readable"
+fi
+# Activate libzvec before the version check so @loader_path / $ORIGIN can resolve
+# it beside the staged binary in $install_dir.
+if [ "$has_bundled_zvec" -eq 1 ]; then
+    zvec_activation_started=1
+    if [ -L "$install_dir/$zvec_lib_name" ]; then
+        die "refusing to replace symlink $install_dir/$zvec_lib_name"
+    fi
+    if [ -e "$install_dir/$zvec_lib_name" ]; then
+        [ -f "$install_dir/$zvec_lib_name" ] \
+            || die "$install_dir/$zvec_lib_name is not a regular file"
+        cp -p "$install_dir/$zvec_lib_name" "$backup_zvec" \
+            || die "failed to back up the existing libzvec library"
+        old_zvec_saved=1
+    fi
+    mv -f "$staged_zvec" "$install_dir/$zvec_lib_name" \
+        || die "failed to activate the libzvec library"
+    staged_zvec=""
+    [ -f "$install_dir/$zvec_lib_name" ] \
+        || die "the installed libzvec library is missing"
 fi
 verify_binary_version "$staged_binary" \
     || die "the staged a3s binary failed its version check"
@@ -859,6 +960,12 @@ if remove_generated_binary "$backup_webview"; then
 else
     warn "could not remove the old WebView helper backup at $backup_webview"
 fi
+if remove_generated_binary "$backup_zvec"; then
+    old_zvec_saved=0
+    backup_zvec=""
+else
+    warn "could not remove the old libzvec library backup at $backup_zvec"
+fi
 if remove_generated_binary "$backup_moli"; then
     old_moli_saved=0
     backup_moli=""
@@ -924,6 +1031,9 @@ if [ "$has_bundled_webview" -eq 1 ]; then
     info "installed a3s-webview to $install_dir/a3s-webview"
 else
     info "release $release_tag has no bundled a3s-webview; a3s code will install the verified component on first use"
+fi
+if [ "$has_bundled_zvec" -eq 1 ]; then
+    info "installed $zvec_lib_name to $install_dir/$zvec_lib_name"
 fi
 if ! "$install_dir/a3s" code --help >/dev/null 2>&1; then
     warn "a3s code --help failed; ensure this release includes the Code TUI entry"

@@ -33,7 +33,7 @@ assert_content() {
 assert_no_generated_paths() {
     local root=$1
     local leftovers
-    leftovers=$(find "$root" \( -name '.a3s.*' -o -name '.a3s-webview.*' -o -name '.a3s-moli.*' \))
+    leftovers=$(find "$root" \( -name '.a3s.*' -o -name '.a3s-webview.*' -o -name '.a3s-libzvec.*' -o -name '.a3s-moli.*' \))
     [[ -z "$leftovers" ]] || fail "installer left temporary paths: $leftovers"
 }
 
@@ -177,7 +177,12 @@ if [ "$inject" -eq 1 ]; then
     kill -TERM "$PPID"
 fi
 EOF
-chmod +x "$mock_bin/uname" "$mock_bin/getconf" "$mock_bin/ldd" "$mock_bin/curl" "$mock_bin/mv"
+cat >"$mock_bin/brew" <<'EOF'
+#!/bin/sh
+# Tests exercise the GitHub binary channel; never invoke the real Homebrew CLI.
+exit 1
+EOF
+chmod +x "$mock_bin/uname" "$mock_bin/getconf" "$mock_bin/ldd" "$mock_bin/curl" "$mock_bin/mv" "$mock_bin/brew"
 
 base_path=$PATH
 export PATH="$mock_bin:$base_path"
@@ -205,12 +210,14 @@ make_fixture() {
     local release_repository=${4:-A3S-Lab/CLI}
     local include_legacy_payload=${5:-0}
     local include_moli=${6:-1}
+    local include_zvec=${7:-1}
     local release_repo_slug=${release_repository##*/}
     local payload="$fixture_root/payload"
     local archive="$fixture_root/a3s-v${version}-${target}.tar.gz"
     local asset_name="a3s-v${version}-${target}.tar.gz"
     local archive_members=(a3s)
     local digest
+    local zvec_lib_name=libzvec_c_api.so
 
     rm -rf -- "$payload"
     mkdir -p "$payload"
@@ -229,6 +236,14 @@ make_fixture() {
         printf '{"schema":"a3s-code/moli-runtime-package/v1","version":"1.1.1","target":"%s"}\n' "$target" \
             >"$payload/moli/moli-runtime.json"
         archive_members+=(moli)
+    fi
+    if [ "$include_zvec" -eq 1 ]; then
+        case "$target" in
+            *-apple-darwin) zvec_lib_name=libzvec_c_api.dylib ;;
+            *) zvec_lib_name=libzvec_c_api.so ;;
+        esac
+        printf 'zvec fixture %s\n' "$version" >"$payload/$zvec_lib_name"
+        archive_members+=("$zvec_lib_name")
     fi
     if [ "$include_legacy_payload" -eq 1 ]; then
         mkdir -p "$payload/support" "$payload/release-compat"
@@ -253,8 +268,9 @@ run_install() {
     shift 2
     HOME="$test_root/home" \
     A3S_INSTALL_DIR="$install_dir" \
+    A3S_CHANNEL=binary \
     MOCK_GLIBC=1 \
-    sh "$installer" --version "$version" --no-modify-path "$@"
+    sh "$installer" --channel binary --version "$version" --no-modify-path "$@"
 }
 
 mkdir -p "$test_root/home"
@@ -262,7 +278,7 @@ mkdir -p "$test_root/home"
 # Stable archives published before the companion bundle remain installable;
 # Code owns their verified WebView first-use setup.
 export MOCK_UNAME_S=Linux MOCK_UNAME_M=x86_64
-make_fixture 1.2.2 x86_64-unknown-linux-gnu 0 A3S-Lab/CLI 0 0
+make_fixture 1.2.2 x86_64-unknown-linux-gnu 0 A3S-Lab/CLI 0 0 0
 legacy_root="$test_root/legacy-without-webview"
 run_install 1.2.2 "$legacy_root/bin"
 assert_file "$legacy_root/bin/a3s"
@@ -270,12 +286,14 @@ assert_file "$legacy_root/bin/a3s"
     || fail 'legacy release unexpectedly installed a WebView companion'
 [[ ! -e "$legacy_root/bin/moli" ]] \
     || fail 'legacy release unexpectedly installed a Moli runtime'
+[[ ! -e "$legacy_root/bin/libzvec_c_api.so" ]] \
+    || fail 'legacy release unexpectedly installed libzvec'
 assert_no_generated_paths "$legacy_root"
 
 # Historical CLI archives may contain runtime payloads that are no longer
 # supported. The installer validates their paths, extracts only the binaries,
 # and never copies the legacy payload into the installation directory.
-make_fixture 1.2.9 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 1 0
+make_fixture 1.2.9 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 1 0 0
 legacy_payload_root="$test_root/legacy-runtime-payload"
 run_install 1.2.9 "$legacy_payload_root/bin"
 assert_file "$legacy_payload_root/bin/a3s"
@@ -351,6 +369,10 @@ for target_case in \
     assert_file "$case_root/bin/a3s"
     assert_file "$case_root/bin/a3s-webview"
     assert_file "$case_root/bin/moli/moli"
+    case "$target" in
+        *-apple-darwin) assert_file "$case_root/bin/libzvec_c_api.dylib" ;;
+        *) assert_file "$case_root/bin/libzvec_c_api.so" ;;
+    esac
     [[ "$("$case_root/bin/a3s" --version)" == 'a3s 1.2.3' ]] \
         || fail "wrong installed version for $target"
     [[ "$("$case_root/bin/a3s-webview")" == 'a3s-webview 1.2.3' ]] \
@@ -372,14 +394,16 @@ run_install 1.2.4 "$upgrade_root/bin"
         || fail 'upgrade did not replace WebView companion'
     [[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
         || fail 'upgrade did not replace Moli runtime'
+assert_content 'zvec fixture 1.2.4' "$upgrade_root/bin/libzvec_c_api.so"
 assert_no_generated_paths "$upgrade_root"
 
 # A legacy release without a Moli sidecar does not destroy an already
 # installed runtime; the existing verified sidecar remains available to Code.
-make_fixture 1.2.4 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 0 0
+make_fixture 1.2.4 x86_64-unknown-linux-gnu 1 A3S-Lab/CLI 0 0 0
 run_install 1.2.4 "$upgrade_root/bin"
 [[ "$("$upgrade_root/bin/moli/moli")" == 'moli 1.2.4' ]] \
     || fail 'a release without Moli removed the existing runtime'
+assert_content 'zvec fixture 1.2.4' "$upgrade_root/bin/libzvec_c_api.so"
 assert_no_generated_paths "$upgrade_root"
 
 # A partial Moli directory is rejected before activation and leaves the old
@@ -484,7 +508,7 @@ rm -f "$MOCK_CURL_CALLED"
 export MOCK_UNAME_S=Linux MOCK_UNAME_M=x86_64 MOCK_GLIBC=0
 expect_failure 'musl host' env \
     HOME="$test_root/home" A3S_INSTALL_DIR="$test_root/musl/bin" \
-    MOCK_GLIBC=0 sh "$installer" --version 1.2.4 --no-modify-path
+    MOCK_GLIBC=0 sh "$installer" --channel binary --version 1.2.4 --no-modify-path
 [[ ! -e "$MOCK_CURL_CALLED" ]] || fail 'non-glibc host reached the network'
 
 # PATH modification is opt-in and idempotent.
@@ -493,12 +517,12 @@ make_fixture 1.2.8 x86_64-unknown-linux-gnu
 profile_home="$test_root/profile-home"
 mkdir -p "$profile_home"
 HOME="$profile_home" SHELL=/bin/sh \
-    sh "$installer" --version 1.2.8
+    sh "$installer" --channel binary --version 1.2.8
 [[ ! -e "$profile_home/.profile" ]] || fail 'default install modified a shell profile'
 HOME="$profile_home" SHELL=/bin/sh \
-    sh "$installer" --version 1.2.8 --modify-path
+    sh "$installer" --channel binary --version 1.2.8 --modify-path
 HOME="$profile_home" SHELL=/bin/sh \
-    sh "$installer" --version 1.2.8 --modify-path
+    sh "$installer" --channel binary --version 1.2.8 --modify-path
 [[ "$(grep -Fxc 'export PATH="$HOME/.local/bin:$PATH"' "$profile_home/.profile")" -eq 1 ]] \
     || fail 'PATH profile entry is not idempotent'
 
