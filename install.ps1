@@ -152,7 +152,7 @@ param(
 
         $versionOutput = (& $Path --version 2>&1 | Out-String).Trim()
         if ($LASTEXITCODE -ne 0) {
-            throw "the a3s binary at $Path failed its version check"
+            throw "the a3s binary at $Path failed its version check (exit $LASTEXITCODE): $versionOutput"
         }
         if ($versionOutput -cne "a3s $ExpectedVersion") {
             throw "binary at $Path reported '$versionOutput', expected version $ExpectedVersion"
@@ -547,6 +547,9 @@ param(
             $stagedWebview, $backupWebview, $failedWebview,
             $stagedMoli, $backupMoli, $failedMoli
         )) {
+            if ([string]::IsNullOrEmpty($generatedPath)) {
+                continue
+            }
             if (Test-Path -LiteralPath $generatedPath) {
                 throw "temporary activation path already exists: $generatedPath"
             }
@@ -565,7 +568,9 @@ param(
         if ($hasBundledWebview) {
             Copy-Item -LiteralPath $extractedWebview -Destination $stagedWebview
         }
-        Assert-A3sVersion -Path $stagedBinary -ExpectedVersion $expectedVersion
+        # Verify the extracted payload before activation. Running the staged
+        # `.a3s.new.*.exe` name is unreliable on some Windows hosts/AV paths.
+        Assert-A3sVersion -Path $extractedBinary -ExpectedVersion $expectedVersion
 
         if ($hasBundledMoli) {
             $moliActivationStarted = $true
