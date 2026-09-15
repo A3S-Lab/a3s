@@ -139,8 +139,9 @@ jobs:
         if: steps.cli-release.outputs.available == 'true'
         env:
           A3S_GITHUB_TOKEN: ${{ github.token }}
+          A3S_CHANNEL: binary
           A3S_INSTALL_DIR: ${{ runner.temp }}/a3s-smoke/bin
-        run: sh install.sh --no-modify-path
+        run: sh install.sh --channel binary --no-modify-path
 
       - name: Verify binary
         if: steps.cli-release.outputs.available == 'true'

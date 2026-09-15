@@ -178,6 +178,11 @@ a3s_install_via_brew() {
     yes=$1
     a3s_install_info "installing via Homebrew (a3s-lab/tap/a3s)"
 
+    # Homebrew 4.x+ refuses third-party taps until trusted.
+    if command -v brew >/dev/null 2>&1 && brew trust --help >/dev/null 2>&1; then
+        brew trust a3s-lab/tap >/dev/null 2>&1 || true
+    fi
+
     brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap \
         || a3s_install_die "failed to tap a3s-lab/tap"
 
