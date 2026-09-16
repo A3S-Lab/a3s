@@ -117,7 +117,7 @@ test('the Sandbox component is bound through the exact Code dependency', () => {
   assert.ok(sandbox);
   assert.equal(sandbox.manifest, 'Cargo.toml');
   assert.equal(sandbox.package, 'a3s-sandbox');
-  assert.equal(sandbox.version, '0.1.0');
+  assert.equal(sandbox.version, '0.1.3');
 
   const codeManifest = readFileSync(resolve(ROOT, 'crates/code/core/Cargo.toml'), 'utf8');
   const declaration = tomlDependency(
