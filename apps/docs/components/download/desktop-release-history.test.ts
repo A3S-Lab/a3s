@@ -6,8 +6,8 @@ import { desktopReleaseHistory } from './desktop-release-history';
 describe('Desktop release history', () => {
   test('lists checked releases from newest to oldest', () => {
     assert.ok(desktopReleaseHistory.length > 0);
-    assert.equal(desktopReleaseHistory[0]?.version, 'v0.1.0');
-    assert.equal(desktopReleaseHistory[0]?.tag, 'desktop-v0.1.0');
+    assert.equal(desktopReleaseHistory[0]?.version, 'v0.1.2');
+    assert.equal(desktopReleaseHistory[0]?.tag, 'desktop-v0.1.2');
 
     const publishedDates = desktopReleaseHistory.map((release) => release.publishedAt);
     assert.deepEqual(publishedDates, [...publishedDates].sort().reverse());

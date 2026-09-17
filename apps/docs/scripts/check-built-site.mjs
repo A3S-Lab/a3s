@@ -79,7 +79,10 @@ assert(
 );
 
 const releaseBase = 'https://github.com/A3S-Lab/a3s/releases/download/desktop-latest';
-const taggedReleaseBase = 'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.0';
+const taggedReleaseBases = [
+  'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.2',
+  'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.0',
+];
 for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDownload, 'English']]) {
   for (const asset of [
     'A3S-macos-arm64.dmg',
@@ -92,10 +95,12 @@ for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDown
       downloadPage.includes(`${releaseBase}/${asset}`),
       `${locale} download page is missing ${asset}`,
     );
-    assert(
-      downloadPage.includes(`${taggedReleaseBase}/${asset}`),
-      `${locale} download page history is missing v0.1.0 ${asset}`,
-    );
+    for (const taggedReleaseBase of taggedReleaseBases) {
+      assert(
+        downloadPage.includes(`${taggedReleaseBase}/${asset}`),
+        `${locale} download page history is missing ${taggedReleaseBase} ${asset}`,
+      );
+    }
   }
   assert(
     downloadPage.includes('https://github.com/A3S-Lab/a3s/releases'),
