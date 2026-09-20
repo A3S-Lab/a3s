@@ -26,6 +26,46 @@ function taggedReleaseAssets(tag: string): readonly DesktopReleaseAsset[] {
 
 export const desktopReleaseHistory = [
   {
+    version: 'v0.1.4',
+    tag: 'desktop-v0.1.4',
+    publishedAt: '2026-09-20',
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.4`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.4/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.4'),
+    notes: {
+      cn: [
+        'macOS Apple silicon 安装包已 Developer ID 签名并公证，下载后可直接打开安装。',
+        '内置 a3s-box 3.2.7，科学家 Bot / 科研环境无需本机另行安装虚拟机运行时。',
+        '应用内更新通道与下载页均通过 desktop-latest 指向本版本。',
+      ],
+      en: [
+        'macOS Apple silicon build is Developer ID signed and notarized; Gatekeeper allows open-and-install.',
+        'Ships a3s-box 3.2.7 so Scientist Bot / Science Lab needs no separate host runtime install.',
+        'In-app updater and the download page resolve this build through desktop-latest.',
+      ],
+    },
+  },
+  {
+    version: 'v0.1.3',
+    tag: 'desktop-v0.1.3',
+    publishedAt: '2026-09-18',
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.3`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.3/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.3'),
+    notes: {
+      cn: [
+        '发布 macOS Apple silicon 安装包与应用内更新归档。',
+        '下载页与更新通道通过 desktop-latest 解析到本版本。',
+        '该构建为临时签名，未做 Apple 公证（请改用 v0.1.4）。',
+      ],
+      en: [
+        'Published the macOS Apple silicon installer and in-app updater archive.',
+        'Website downloads and the updater resolved this build through desktop-latest.',
+        'This build was ad-hoc signed and not notarized (use v0.1.4 instead).',
+      ],
+    },
+  },
+  {
     version: 'v0.1.2',
     tag: 'desktop-v0.1.2',
     publishedAt: '2026-09-17',
@@ -34,16 +74,14 @@ export const desktopReleaseHistory = [
     assets: taggedReleaseAssets('desktop-v0.1.2'),
     notes: {
       cn: [
-        '发布 macOS Apple silicon（arm64）桌面安装包与更新通道。',
-        '强化 Auto-review × 产物追溯信任环（版本级 Lineage Review 同步）。',
-        '专家 Bot 任务审查与 mouse-never 端到端门禁继续以 boyue/deepseek-v4-flash 验证。',
-        '下载页仍通过可变的 desktop-latest 别名解析最新安装包。',
+        '补充 macOS Apple silicon 安装包引导发布。',
+        '网站下载仍通过可变别名 desktop-latest 获取最新包。',
+        '提供 SHA-256 校验文件便于核对安装包完整性。',
       ],
       en: [
-        'Ships the macOS Apple silicon (arm64) Desktop installer and updater channel.',
-        'Hardens the Auto-review × artifact-lineage trust loop (version-scoped Lineage Review sync).',
-        'Keeps expert-bot task-review and mouse-never E2E gates on boyue/deepseek-v4-flash.',
-        'The download page still resolves installers through the mutable desktop-latest alias.',
+        'Bootstrap macOS Apple silicon Desktop installer release.',
+        'Website downloads continue to resolve through the mutable desktop-latest alias.',
+        'Includes a SHA-256 checksum file for installer verification.',
       ],
     },
   },
