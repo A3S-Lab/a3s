@@ -130,8 +130,8 @@ for (const marker of [
   '交付阶段',
   '不统计功能完成率',
   '35 个职责明确的项目',
-  'v8.6.0',
-  'v0.16.0',
+  'v8.7.0',
+  'v0.17.1',
 ]) {
   assert(chineseHome.includes(marker), `Chinese homepage is missing: ${marker}`);
 }
@@ -147,8 +147,8 @@ for (const marker of [
   'Delivery stage',
   'not a feature-completion score',
   '35 focused projects',
-  'v8.6.0',
-  'v0.16.0',
+  'v8.7.0',
+  'v0.17.1',
 ]) {
   assert(englishHome.includes(marker), `English homepage is missing: ${marker}`);
 }
