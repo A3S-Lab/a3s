@@ -116,3 +116,7 @@
 [submodule "crates/sandbox"]
 	path = crates/sandbox
 	url = git@github.com:A3S-Lab/Sandbox.git
+[submodule "crates/apofasi"]
+	path = crates/apofasi
+	url = git@github.com:A3S-Lab/Apofasi.git
+	branch = main
