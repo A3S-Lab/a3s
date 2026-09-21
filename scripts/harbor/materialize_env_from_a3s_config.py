@@ -25,6 +25,27 @@ def _provider_api_key_env(provider: str) -> str:
     return known.get(provider, f"{provider.upper().replace('-', '_')}_API_KEY")
 
 
+def _provider_block(src: str, provider: str) -> str | None:
+    """Return the brace body for `providers \"<provider>\" { ... }` if present."""
+    marker = f'providers "{provider}"'
+    start = src.find(marker)
+    if start < 0:
+        return None
+    brace = src.find("{", start)
+    if brace < 0:
+        return None
+    depth = 0
+    for i in range(brace, len(src)):
+        ch = src[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return src[brace + 1 : i]
+    return None
+
+
 def main() -> int:
     root = _repo_root()
     src_path = root / ".a3s" / "config.acl"
@@ -33,17 +54,24 @@ def main() -> int:
         return 1
 
     src = src_path.read_text(encoding="utf-8")
-    m_key = re.search(r'api_key\s*=\s*"([^"]+)"', src)
-    m_base = re.search(r'base_url\s*=\s*"([^"]+)"', src)
     m_model = re.search(r'default_model\s*=\s*"([^"]+)"', src)
+    model = m_model.group(1) if m_model else "deepseek/deepseek-v4-pro"
+    provider = model.split("/", 1)[0].strip().lower() or "deepseek"
+
+    block = _provider_block(src, provider) or ""
+    # Fall back to whole-file search only when the named provider block is absent.
+    search_src = block if block else src
+    m_key = re.search(r'api_key\s*=\s*"([^"]+)"', search_src)
+    m_base = re.search(r'base_url\s*=\s*"([^"]+)"', search_src)
+    if not m_key and block:
+        # Some ACLs keep a shared key outside the provider block.
+        m_key = re.search(r'api_key\s*=\s*"([^"]+)"', src)
     key = m_key.group(1) if m_key else ""
     base = m_base.group(1) if m_base else "https://api.deepseek.com"
-    model = m_model.group(1) if m_model else "deepseek/deepseek-v4-pro"
     if not key:
         print("ERROR: no api_key in .a3s/config.acl")
         return 1
 
-    provider = model.split("/", 1)[0].strip().lower() or "deepseek"
     api_key_env = _provider_api_key_env(provider)
 
     # Harbor resolves provider keys from the host environment. Always export
