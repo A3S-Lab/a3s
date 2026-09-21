@@ -46,7 +46,7 @@ const statusByProject = {
   power: { stage: 'preview', release: 'v0.9.0' },
   ahp: { stage: 'released', release: 'v2.4.0' },
   acl: { stage: 'preview', release: 'v0.3.0' },
-  tui: { stage: 'preview', release: 'v0.1.15' },
+  tui: { stage: 'preview', release: 'v0.2.0' },
   gui: { stage: 'preview', release: 'main' },
   webview: { stage: 'preview', release: 'v0.1.5' },
   ui: { stage: 'preview', release: 'v0.2.1' },
