@@ -9,7 +9,7 @@ a3s/                            ← MONOREPO ROOT (NOT a Rust workspace)
 ├── apps/
 │   └── docs/                   # Documentation site (Next.js/Fumadocs-style app)
 ├── crates/                     # Rust crates (submodules)
-│   ├── acl/ ahp/ box/ code/ event/ gateway/
+│   ├── acl/ ahp/ apofasi/ box/ code/ event/ gateway/
 │   ├── lane/ memory/ power/ search/ updater/ use/
 │   └── common/                 # Shared types (local crate)
 ├── use-registry/              # Official signed A3S Use Registry deployment (submodule)

@@ -57,6 +57,9 @@ config.acl
 # Temporary directory
 /temp/
 
+# Local scratch (venvs, manual experiment caches)
+.scratch/
+
 # Harbor / Terminal-Bench local job outputs
 .harbor-smoke/
 .harbor-eval/

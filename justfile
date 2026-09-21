@@ -173,6 +173,159 @@ cloud-stack-check:
     cargo check --manifest-path crates/gateway/Cargo.toml --locked --all-targets --features wire
 
 # ============================================================================
+# Local experiments
+# ============================================================================
+
+# Run the local Laya decision-model suite (MPS/CPU) with per-case I/O logs.
+# Example: `just laya` or `just laya --case english_billing_triage`
+laya *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    venv="${root}/.scratch/laya-venv"
+    py="${venv}/bin/python"
+    suite="${root}/scripts/laya/run_suite.py"
+    if [[ ! -x "${py}" ]]; then
+      echo "Creating Laya venv at ${venv}"
+      uv venv -p 3.12 "${venv}"
+      uv pip install --python "${py}" laya
+    fi
+    exec "${py}" "${suite}" {{ args }}
+
+# Resolve / fetch an Apofasi-compatible checkpoint (defaults to the same
+# hub bundle used by `just laya`). Prints the path; exports nothing.
+# Example: `just ap-checkpoint`
+ap-checkpoint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    chmod +x "${root}/scripts/ap/resolve_checkpoint.sh"
+    "${root}/scripts/ap/resolve_checkpoint.sh"
+
+# Run the reference decision suite through Apofasi (same cases and checks as `just laya`).
+# Example: `just ap` or `just ap --case english_billing_triage`
+ap *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    crate="${root}/crates/apofasi"
+    venv="${root}/.scratch/laya-venv"
+    py="${venv}/bin/python"
+    if [[ ! -f "${crate}/Cargo.toml" ]]; then
+      echo "missing crates/apofasi; init submodule first" >&2
+      exit 1
+    fi
+    if [[ ! -x "${py}" ]]; then
+      echo "Creating reference venv at ${venv}"
+      uv venv -p 3.12 "${venv}"
+      uv pip install --python "${py}" laya
+    fi
+    chmod +x "${root}/scripts/ap/resolve_checkpoint.sh"
+    export APOFASI_CHECKPOINT="$("${root}/scripts/ap/resolve_checkpoint.sh")"
+    echo "APOFASI_CHECKPOINT=${APOFASI_CHECKPOINT}"
+    features="infer,cli"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      features="cli,metal"
+      mlx_root="${MLX_ROOT:-}"
+      if [[ -z "${mlx_root}" ]]; then
+        for cand in "${root}/.scratch"/laya-venv/lib/python*/site-packages/mlx; do
+          if [[ -f "${cand}/lib/libmlx.dylib" ]]; then
+            mlx_root="${cand}"
+            break
+          fi
+        done
+      fi
+      if [[ -n "${mlx_root}" && -f "${mlx_root}/lib/libmlx.dylib" ]]; then
+        export MLX_ROOT="${mlx_root}"
+        features="cli,metal,mlx"
+      fi
+    fi
+    cd "${crate}"
+    cargo build --release --features "${features}" --bin a3s-apofasi
+    exec "${py}" "${root}/scripts/ap/run_suite.py" --bin "${crate}/target/release/a3s-apofasi" {{ args }}
+
+# Apofasi CLI smoke (lexical or neural).
+# Example: `just ap-smoke --lexical` or `just ap-smoke`
+ap-smoke *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    crate="${root}/crates/apofasi"
+    features="cli"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      features="cli,metal"
+      mlx_root="${MLX_ROOT:-}"
+      if [[ -z "${mlx_root}" ]]; then
+        for cand in "${root}/.scratch"/laya-venv/lib/python*/site-packages/mlx; do
+          if [[ -f "${cand}/lib/libmlx.dylib" ]]; then
+            mlx_root="${cand}"
+            break
+          fi
+        done
+      fi
+      if [[ -n "${mlx_root}" && -f "${mlx_root}/lib/libmlx.dylib" ]]; then
+        export MLX_ROOT="${mlx_root}"
+        features="cli,metal,mlx"
+      fi
+    fi
+    # Lexical-only smoke does not need weights.
+    if [[ " {{ args }} " != *" --lexical "* ]]; then
+      chmod +x "${root}/scripts/ap/resolve_checkpoint.sh"
+      export APOFASI_CHECKPOINT="$("${root}/scripts/ap/resolve_checkpoint.sh")"
+      echo "APOFASI_CHECKPOINT=${APOFASI_CHECKPOINT}"
+    fi
+    cd "${crate}"
+    exec cargo run --release --features "${features}" --bin a3s-apofasi -- smoke {{ args }}
+
+# Apofasi CLI latency bench (release; uses hub weights by default).
+ap-bench *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    crate="${root}/crates/apofasi"
+    features="cli"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      features="cli,metal"
+      mlx_root="${MLX_ROOT:-}"
+      if [[ -z "${mlx_root}" ]]; then
+        for cand in "${root}/.scratch"/laya-venv/lib/python*/site-packages/mlx; do
+          if [[ -f "${cand}/lib/libmlx.dylib" ]]; then
+            mlx_root="${cand}"
+            break
+          fi
+        done
+      fi
+      if [[ -n "${mlx_root}" && -f "${mlx_root}/lib/libmlx.dylib" ]]; then
+        export MLX_ROOT="${mlx_root}"
+        features="cli,metal,mlx"
+      fi
+    fi
+    chmod +x "${root}/scripts/ap/resolve_checkpoint.sh"
+    export APOFASI_CHECKPOINT="$("${root}/scripts/ap/resolve_checkpoint.sh")"
+    echo "APOFASI_CHECKPOINT=${APOFASI_CHECKPOINT}"
+    cd "${crate}"
+    exec cargo run --release --features "${features}" --bin a3s-apofasi -- bench {{ args }}
+
+# Same cases as `just laya` / `just ap`, with repeated-sample p50 and published Jev figures.
+# Example: `just ap-vs-laya`
+ap-vs-laya:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    exec just ap --compare
+
+# Compare Apofasi neural answers to the Python reference on one billing case
+# (same on-disk weights). Requires `just laya` venv.
+# Example: `just ap-parity`
+ap-parity:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{ justfile_directory() }}"
+    chmod +x "${root}/scripts/ap/resolve_checkpoint.sh"
+    export APOFASI_CHECKPOINT="$("${root}/scripts/ap/resolve_checkpoint.sh")"
+    exec "${root}/.scratch/laya-venv/bin/python" "${root}/scripts/ap/parity_smoke.py"
+
+# ============================================================================
 # Maintenance
 # ============================================================================
 

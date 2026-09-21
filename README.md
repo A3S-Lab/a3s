@@ -275,7 +275,7 @@ just cloud-stack-check
 | Group | Projects |
 | --- | --- |
 | Hosts | [CLI](crates/cli/), [Code](crates/code/), [Desktop](apps/desktop/), [Cloud](apps/cloud/), [Ash](crates/ash/), [Windhole](apps/windhole/) |
-| Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Office](packages/office/), [Science](packages/science/) |
+| Capabilities and content | [Use](crates/use/), [Browser](crates/browser/), [Search](crates/search/), [OCR](crates/ocr/), [Parser](crates/parser/), [Apofasi](crates/apofasi/), [Office](packages/office/), [Science](packages/science/) |
 | Execution | [Runtime](crates/runtime/), [Sandbox](crates/sandbox/), [Box](crates/box/), [OCI Runtime](crates/oci-runtime/), [Power](crates/power/), [MoE](crates/moe/) |
 | Coordination | [Flow](crates/flow/), [Event](crates/event/), [Lane](crates/lane/), [Memory](crates/memory/), [ORM](crates/orm/), [Gateway](crates/gateway/) |
 | Interfaces | [ACL](crates/acl/), [Boot](crates/boot/), [TUI](crates/tui/), [GUI](crates/gui/), [WebView](crates/webview/), [UI](packages/ui/) |
