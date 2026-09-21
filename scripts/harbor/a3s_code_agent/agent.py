@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shlex
 from pathlib import Path
 from typing import Any, override
@@ -40,7 +41,14 @@ def _resolve_host_wheel(version: str | None) -> Path | None:
 class A3sCodeAgent(BaseInstalledAgent):
     """Install a3s-code into the task container and run headlessly."""
 
-    MODEL_CONNECTION = ModelConnectionSpec(passthrough=True)
+    # Harbor's built-in PROVIDERS map does not include boyue/*. Declare the
+    # env names here so resolve_model_connection can still bind the key/base URL
+    # when the provider slug is unknown to Harbor.
+    MODEL_CONNECTION = ModelConnectionSpec(
+        passthrough=True,
+        api_key_envs=("BOYUE_API_KEY",),
+        base_url_envs=("BOYUE_BASE_URL",),
+    )
 
     def __init__(self, *args: Any, version: str | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -149,9 +157,12 @@ class A3sCodeAgent(BaseInstalledAgent):
             "gemini": "GEMINI_API_KEY",
             "deepseek": "DEEPSEEK_API_KEY",
             "openrouter": "OPENROUTER_API_KEY",
+            "boyue": "BOYUE_API_KEY",
         }.get(provider, f"{provider.upper().replace('-', '_')}_API_KEY")
+        base_url_env = f"{provider.upper().replace('-', '_')}_BASE_URL"
 
-        if not access.api_key:
+        api_key = access.api_key or os.environ.get(api_key_env)
+        if not api_key:
             raise ValueError(
                 f"No API key found for provider {provider!r}. "
                 f"Export {api_key_env} in the Harbor host environment "
@@ -159,8 +170,16 @@ class A3sCodeAgent(BaseInstalledAgent):
                 "Install-only succeeds without a key; full TB trials require one."
             )
 
-        base_url = access.base_url or ""
+        base_url = (
+            access.base_url
+            or os.environ.get(base_url_env)
+            or os.environ.get("DEEPSEEK_BASE_URL")
+            or ""
+        )
         env = dict(access.env or {})
+        env.setdefault(api_key_env, api_key)
+        if base_url:
+            env.setdefault(base_url_env, base_url)
         escaped_instruction = shlex.quote(instruction)
         model = shlex.quote(self.model_name)
         api_key_env_q = shlex.quote(api_key_env)

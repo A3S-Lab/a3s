@@ -116,7 +116,12 @@ set +a
 ```
 
 Harbor discovers `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` for model
-`deepseek/<name>` via its provider registry (`passthrough` on the adapter).
+`deepseek/<name>` via its built-in provider registry. For `boyue/<name>`
+(not in Harbor's PROVIDERS map), the adapter declares
+`MODEL_CONNECTION.api_key_envs=("BOYUE_API_KEY",)` and falls back to
+`os.environ` so `--ae BOYUE_API_KEY=...` / materialized `.env` still bind.
+`materialize_env_from_a3s_config.py` writes the provider-specific key env
+(`BOYUE_API_KEY` for boyue) plus DeepSeek aliases when needed.
 
 ## Adapter behavior (method)
 

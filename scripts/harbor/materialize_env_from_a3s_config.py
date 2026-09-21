@@ -12,6 +12,19 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _provider_api_key_env(provider: str) -> str:
+    known = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "google": "GOOGLE_API_KEY",
+        "gemini": "GEMINI_API_KEY",
+        "deepseek": "DEEPSEEK_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+        "boyue": "BOYUE_API_KEY",
+    }
+    return known.get(provider, f"{provider.upper().replace('-', '_')}_API_KEY")
+
+
 def main() -> int:
     root = _repo_root()
     src_path = root / ".a3s" / "config.acl"
@@ -30,20 +43,33 @@ def main() -> int:
         print("ERROR: no api_key in .a3s/config.acl")
         return 1
 
+    provider = model.split("/", 1)[0].strip().lower() or "deepseek"
+    api_key_env = _provider_api_key_env(provider)
+
+    # Harbor resolves provider keys from the host environment. Always export
+    # the model provider's env name. Keep DEEPSEEK_* aliases when the ACL key
+    # is reused for boyue/deepseek-compatible OpenAI endpoints.
+    lines = [
+        "# Generated from .a3s/config.acl — do not commit",
+        f"{api_key_env}={key}",
+        f"A3S_TB_MODEL={model}",
+    ]
+    if api_key_env != "DEEPSEEK_API_KEY":
+        lines.append(f"DEEPSEEK_API_KEY={key}")
+    lines.append(f"DEEPSEEK_BASE_URL={base}")
+    if provider == "boyue":
+        lines.append(f"BOYUE_BASE_URL={base}")
+
     env_path = root / "scripts" / "harbor" / ".env"
-    env_path.write_text(
-        "# Generated from .a3s/config.acl — do not commit\n"
-        f"DEEPSEEK_API_KEY={key}\n"
-        f"DEEPSEEK_BASE_URL={base}\n"
-        f"A3S_TB_MODEL={model}\n",
-        encoding="utf-8",
-    )
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     try:
         os.chmod(env_path, 0o600)
     except OSError:
         pass
     print(f"wrote={env_path}")
     print(f"model={model}")
+    print(f"provider={provider}")
+    print(f"api_key_env={api_key_env}")
     print(f"base_url={base}")
     print(f"key_set={bool(key)}")
     print(f"key_len={len(key)}")

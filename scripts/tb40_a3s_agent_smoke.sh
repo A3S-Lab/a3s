@@ -26,7 +26,7 @@ fi
 echo "using_model=$MODEL"
 
 have_key=0
-for k in OPENAI_API_KEY ANTHROPIC_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY; do
+for k in OPENAI_API_KEY ANTHROPIC_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY BOYUE_API_KEY; do
   if [[ -n "${!k:-}" ]]; then
     have_key=1
     echo "detected_key_env=$k"
@@ -37,6 +37,17 @@ if [[ "$have_key" -eq 0 ]]; then
   echo "Or run: python3 $REPO_ROOT/scripts/harbor/materialize_env_from_a3s_config.py" >&2
   exit 2
 fi
+
+# Harbor resolves provider keys from the host environment. Forward every
+# materialize-emitted key/base-url pair so boyue/* models do not require a
+# manual --ae override.
+harbor_env_args=()
+for k in OPENAI_API_KEY ANTHROPIC_API_KEY DEEPSEEK_API_KEY OPENROUTER_API_KEY BOYUE_API_KEY \
+  DEEPSEEK_BASE_URL BOYUE_BASE_URL; do
+  if [[ -n "${!k:-}" ]]; then
+    harbor_env_args+=(--ae "${k}=${!k}")
+  fi
+done
 
 mkdir -p "$JOB_DIR"
 cd "$JOB_DIR"
@@ -51,6 +62,7 @@ harbor run \
   -l 1 \
   -k 1 \
   --agent-setup-timeout-multiplier 3 \
+  "${harbor_env_args[@]}" \
   --jobs-dir "$JOB_DIR/jobs" 2>&1 | tee "$JOB_DIR/a3s-agent-smoke.log"
 RC=${PIPESTATUS[0]}
 set -e
