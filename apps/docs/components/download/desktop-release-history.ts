@@ -26,6 +26,26 @@ function taggedReleaseAssets(tag: string): readonly DesktopReleaseAsset[] {
 
 export const desktopReleaseHistory = [
   {
+    version: 'v0.1.6',
+    tag: 'desktop-v0.1.6',
+    publishedAt: '2026-09-22',
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.6`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.6/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.6'),
+    notes: {
+      cn: [
+        '相对 v0.1.5：单文档 /review 主机续批不再插入多余用户气泡；前文回顾改为右侧异色虚线箭头指向已审段落，且不再自动滚回前文。',
+        '批注连线统一为虚线；继续内置 a3s-box 与 a3s-office，Document Expert / 科学家 Bot 开箱可用。',
+        'macOS Apple silicon 包仍为 Developer ID 签名并公证；下载页与应用内更新指向本版。',
+      ],
+      en: [
+        'Since v0.1.5: progressive /review host continues no longer paint an extra user bubble; prior-recall uses right-side colored dashed arrows to earlier spans and does not auto-scroll the editor back.',
+        'Comment connector leaders are dashed; still ships a3s-box and a3s-office so Document Expert / Scientist Bot work out of the box.',
+        'macOS Apple silicon remains Developer ID signed and notarized. Downloads and in-app updates resolve to this build.',
+      ],
+    },
+  },
+  {
     version: 'v0.1.5',
     tag: 'desktop-v0.1.5',
     publishedAt: '2026-09-22',
