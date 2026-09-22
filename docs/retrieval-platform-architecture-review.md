@@ -7,6 +7,49 @@ and a migration decision record; it is not a release qualification.
 
 Initial review date: 2026-08-29
 
+## Current engine contract (2026-09-22)
+
+The findings, follow-up dispositions, and remediation list below describe the
+snapshots they name, principally Vec `fbb1081`. They are not current engine
+defects. That includes VEC-P0-04, VEC-P0-05, and VEC-P0-06: `WalRecord` carries
+a revision, read-only create returns `permission_denied` before it creates the
+collection, and recovery reads are bounded. The current judgment is
+[`vec-engine-first-principles-review.md`](vec-engine-first-principles-review.md).
+
+The checked-in engine layout is `crates/vec/src`: `lib.rs`, `collection.rs`
+and `collection/`, `config.rs`, `doc.rs` and `doc/`, `embedding.rs`,
+`error.rs`, `index/`, `iterator.rs`, `multi_query.rs`, `query.rs`,
+`schema.rs` and `schema/`, `score_f64.rs`, `stats.rs`, `storage/` and
+`storage_ceilings.rs`, `text.rs` and `text/`, and `types.rs`, with integration
+tests under `crates/vec/tests/`. There is no `api/`, `planner/`, `codec/`, or
+`testkit/` directory.
+
+The following are not current engine defects or open engine gates: HNSW, IVF,
+or DiskANN delegating to a flat index; collection FTS as only a full scan; a
+checkpoint publishing one `snapshot.json` before `manifest.json`; the default
+build requiring Jieba/`zstd-sys`; WAL replay without a revision (VEC-P0-04);
+read-only create writing the collection (VEC-P0-05); unbounded WAL or snapshot
+reads (VEC-P0-06); or a five-test / 533-Clippy description of the current tree.
+macOS 12 Monterey is unsupported and is not an open engine gate.
+
+A workspace source revision, chunk catalog, and collection that describe the
+same bytes, and publication of the public result, are owned by Code. The
+engine has no workspace walker, CLI, embedding-provider client, or `vgrep`.
+Vec commit `13585ccd` is not checkout `880d547` and is not the commit this
+contract names for that Code check.
+
+Enterprise GA is a hosted-green revision, a git tag, and a crates.io checksum
+that matches the release artifact. Enterprise GA for `0.1.1` is closed.
+`a3s-vec` `0.1.4` is tag `0.1.4` at revision
+`9a07e9a33726dd187080b00a44505f9bbd31bd97` with crates.io SHA-256
+`15c4220df078de9c350aea98e0f9187890cec066e4d3ee242170a2ab762ed80f`. GitHub
+Actions run
+[`35510190796`](https://github.com/A3S-Lab/Vec/actions/runs/35510190796)
+completed with conclusion `success` on that revision, so the `0.1.4` hosted
+gate is green. Checkout `880d547be07b2b863cf960a960809d21b37564ac` and the
+dirty `crates/vec` working tree are not the GA artifact. The parent gitlink
+for `crates/vec` remains `e6d067fcd4ff5ac536c5c9ee2fc8ea837f193576`.
+
 ## Follow-up: Code Vec shadow promotion candidate (2026-09-03)
 
 Code candidate `1c117f87` (the qualification source revision, documented by
@@ -28,9 +71,10 @@ on this candidate.
 
 This is developer-shadow evidence, not serving promotion: the root Cloud
 compatibility lock now records the verified Code 8.2.0 graph, while P7 has not
-removed the duplicate workspace BM25/SQLite/vector paths, and actual macOS 12
-Intel runtime, RSS/disk, formal tag/registry, and rollback evidence remain
-release gates.
+removed the duplicate workspace BM25/SQLite/vector paths. At that date,
+macOS 12 Intel runtime, RSS/disk, formal tag/registry, and rollback evidence
+were still treated as release gates. macOS 12 Monterey is unsupported and is
+not an open engine gate.
 
 ## Follow-up: Vec worker-pool cap and candidate refresh (2026-09-03)
 
@@ -54,9 +98,11 @@ Vec pin reports Memory/Vec-primary exact p95 8.1480/8.1448 ms, RRF-only
 54,500,008 versus 40,177,548. These are directional logical measurements, not
 RSS or a cross-platform SLO.
 
-The external macOS 12 Intel runtime, process RSS/temp-disk limits, formal
-release tag/registry publication, and removal of the Memory compatibility path
-remain open gates.
+At that follow-up, the external macOS 12 Intel runtime, process RSS/temp-disk
+limits, formal release tag/registry publication, and removal of the Memory
+compatibility path were still open. macOS 12 Monterey is unsupported and is
+not an open engine gate. Enterprise GA for `0.1.4` is the record at the top of
+this file, not this follow-up.
 
 ## Follow-up: borrowed exact-score performance kernel (2026-09-03)
 
@@ -81,9 +127,9 @@ run is [Vec CI `33705867979`](https://github.com/A3S-Lab/Vec/actions/runs/337058
 and is the revision-bound hosted validation for this candidate;
 the preceding documentation run `33698297563` and implementation run
 `33696717206` also completed successfully with the platform CSVs and versioned
-release-candidate artifacts. Neither hosted run substitutes for the actual
-macOS 12 Intel runtime or formal
-publication gates.
+release-candidate artifacts. Neither hosted run was a macOS 12 Intel runtime
+qualification. macOS 12 Monterey is unsupported and is not an open engine
+gate.
 
 ## Follow-up: Vec scale, WAL, and release-gate evidence (2026-09-03)
 
@@ -134,8 +180,9 @@ a3s-vec's HNSW Recall@10 was 0.6000 versus zvec's 0.5719 median (range
 0.5625-0.5781). The full table, controls, and lifecycle caveat are in
 [`crates/vec/BENCHMARKS.md`](../crates/vec/BENCHMARKS.md). This is capacity
 evidence, not a universal ranking or a migration approval. The separate
-macOS 12 Intel runtime and formal publication gates remain open because no
-qualifying self-hosted runner is currently registered.
+macOS 12 Intel runtime and formal publication gates were open in that
+comparison because no qualifying self-hosted runner was registered. macOS 12
+Monterey is unsupported and is not an open engine gate.
 
 ## Follow-up: Vec in-process snapshot concurrency (2026-08-30)
 
@@ -162,11 +209,12 @@ with Rust 1.98.0, the default, no-default, and all-feature suites each contain
 strict Clippy variants, and all-feature rustdoc pass; the complete default suite
 also passes on Rust 1.75.
 
-The coherent-reader/serialized-writer gate is **closed for the current
+The coherent-reader/serialized-writer gate was **closed for that follow-up's
 in-process exact surface**. Multi-process contention/stale-lock diagnostics,
 the supported-platform matrix, larger generated differential corpora,
 durability fault injection, real ANN/indexed FTS, migration benefit, and Code
-shadow migration remain open.
+shadow migration were open in that follow-up. That is not a current claim that
+HNSW, IVF, or DiskANN delegate to a flat index.
 
 ## Follow-up: Vec differential exact-search oracle (2026-08-30)
 
@@ -202,11 +250,14 @@ suites each contain 57 passing unit/integration tests plus four compile-fail
 doctests. Rustfmt, both strict Clippy variants, and all-feature rustdoc pass;
 the complete default suite also passes on Rust 1.75.
 
-The deterministic differential gate is **closed for the current exact
-vector/scan-BM25 surface**. The broader P1 exit remains open for coherent-reader
-and serialized-writer concurrency evidence, larger generated and FTS-filter
-golden corpora, and supported-platform runs. Real ANN/indexed FTS, durability
-fault injection, migration benefit, and Code shadow migration remain open.
+The deterministic differential gate was **closed for that follow-up's exact
+vector/scan-BM25 surface**. The broader P1 exit was still open then for
+coherent-reader and serialized-writer concurrency evidence, larger generated
+and FTS-filter golden corpora, and supported-platform runs. Real ANN/indexed
+FTS, durability fault injection, migration benefit, and Code shadow migration
+were open in that follow-up. They are not current statements that HNSW, IVF,
+or DiskANN delegate to a flat index, or that collection FTS is only a full
+scan.
 
 ## Follow-up: Vec native vector encoding contract (2026-08-30)
 
@@ -229,9 +280,9 @@ The exact oracle now evaluates L2, inner product, cosine, and MIPS-L2 for every
 native numeric dense type and both sparse types. Accumulation is in `f64`, so a
 stored FP64 source is not narrowed before scoring; the public `f32` score is
 the only checked narrowing boundary. Sparse scoring no longer treats every
-metric as a dot product. Binary queries, packed/scaled INT4 or INT8 index
-quantization, and refinement remain `NotSupported` until later index phases
-provide real consumers and exact re-score evidence.
+metric as a dot product. In that follow-up, binary queries, packed or scaled
+INT4 or INT8 index quantization, and refinement were `NotSupported`. That
+sentence is not a current engine defect.
 
 Changing sparse FP16 from misleading numeric `f32` values to raw bits required
 an explicit compatibility boundary. Manifest, snapshot, and WAL markers now
@@ -248,14 +299,16 @@ default, no-default, and all-feature configurations on arm64 macOS 26.6.2 with
 Rust 1.98.0. Rustfmt, both strict Clippy variants, and all-feature rustdoc pass.
 The complete default suite also passes on the declared Rust 1.75 MSRV after
 pinning `zvec-core`'s broad Rayon range and the test-only tempfile dependency to
-compatible releases. The current optional Jieba chain uses Rust 2024 manifests
-and therefore still needs newer Cargo.
+compatible releases. That follow-up's optional Jieba chain used Rust 2024
+manifests and needed a newer Cargo. The default build does not require Jieba
+or `zstd-sys`.
 
-VEC-P1-04 is **closed for the current exact surface**. All numbered P1 review
-findings are now closed, but the P1 delivery exit remains open for differential
-FTS/vector fixtures, coherent-reader/concurrent-writer evidence, and supported-
-platform runs. Real ANN/indexed FTS, the full durability fault matrix,
-migration benefit, and Code shadow migration also remain open.
+VEC-P1-04 was **closed for that follow-up's exact surface**. The numbered P1
+review findings were closed then, while the P1 delivery exit was still open
+for differential FTS/vector fixtures, coherent-reader/concurrent-writer
+evidence, and supported-platform runs. Real ANN/indexed FTS, the full
+durability fault matrix, migration benefit, and Code shadow migration were
+also open then. Those sentences are not current engine defects.
 
 ## Follow-up: Vec truthful index and query configuration (2026-08-30)
 
@@ -284,10 +337,11 @@ contract tests. On arm64 macOS 26.6.2 with Rust 1.98.0, each default/no-default/
 all-feature run has 37 passing unit/integration tests plus four compile-fail
 doctests; rustfmt, both strict Clippy variants, and rustdoc pass.
 
-VEC-P1-05 is **closed** at this revision. VEC-P1-04 quantized/binary semantics,
-real ANN/indexed FTS, differential/concurrency evidence, the durability fault
-matrix, migration benefit, and the supported-platform matrix remain open. This
-is still a pre-migration prototype.
+VEC-P1-05 was **closed** at that revision. VEC-P1-04 quantized/binary
+semantics, real ANN/indexed FTS, differential/concurrency evidence, the
+durability fault matrix, migration benefit, and the supported-platform matrix
+were still open then. That follow-up called the engine a pre-migration
+prototype. That call is not the current engine contract.
 
 ## Follow-up: Vec executable runtime configuration (2026-08-30)
 
@@ -312,11 +366,12 @@ then passed after its removal. The full matrix was repeated on arm64 macOS
 unit/integration tests plus four compile-fail doctests; rustfmt, both strict
 Clippy variants, and rustdoc pass.
 
-VEC-P1-05 is **partially closed**. Process and collection runtime configuration
-is now truthful; future index/query parameters, schema segment sizing, and
-schema-evolution concurrency controls still need explicit `NotSupported`
-behavior or implemented consumers. VEC-P1-04 and that remaining P1-05 work are
-the open engine-contract findings.
+At that follow-up, VEC-P1-05 was partially closed. Process and collection
+runtime configuration was truthful then. Future index and query parameters,
+schema segment sizing, and schema-evolution concurrency controls lacked an
+explicit `NotSupported` outcome or an implemented consumer in that snapshot.
+Those items are not current engine defects, and macOS 12 Monterey is not that
+gate.
 
 ## Follow-up: Vec kernel encapsulation (2026-08-30)
 
@@ -335,9 +390,10 @@ feature matrix was repeated: each configuration has 26 passing unit/integration
 tests plus the compile-fail doctest; rustfmt, both strict Clippy variants, and
 rustdoc also pass on the same arm64 macOS 26.6.2 / Rust 1.98.0 host.
 
-VEC-P1-07 is **closed** at this revision. VEC-P1-04/05, real ANN/indexed FTS,
+VEC-P1-07 was **closed** at that revision. VEC-P1-04/05, real ANN/indexed FTS,
 the durability fault matrix, concurrency, migration benefit, and the supported-
-platform matrix remain open. This remains a pre-migration prototype.
+platform matrix were still open then. That follow-up's pre-migration label is
+not the current engine contract.
 
 ## Follow-up: Vec contract validation and portable default (2026-08-30)
 
@@ -389,16 +445,19 @@ and seven public durability tests. Finding disposition added by this revision:
 
 | Finding | Follow-up state | Remaining evidence |
 | --- | --- | --- |
-| VEC-P0-07 | **Partially closed** | The default build is portable by dependency inspection and arm64 execution. The explicit Jieba feature still needs native-toolchain packaging evidence, and both configurations still need x86_64 macOS 12 build/runtime qualification. |
+| VEC-P0-07 | **Snapshot only; not a current defect** | That follow-up still asked for x86_64 macOS 12 qualification. The current default build does not require Jieba/`zstd-sys`, and macOS 12 Monterey is not an open engine gate. |
 | VEC-P1-02 | **Closed for the current exact query surface** | Every current numeric dense schema type and metric has negative dimension evidence; dense/sparse/FTS type routing and explicit binary/sparse unsupported paths are covered. Future index implementations must reuse this contract and add differential evidence. |
 | VEC-P1-03 | **Closed** | JSON has a documented schema-aware adapter policy, all supported scalar/non-binary array variants have canonicalization evidence, and incompatible/overflow/binary cases fail before persistence. |
 | Strict format/Clippy debt | **Closed at `10412b3`** | Both strict Clippy variants, rustfmt, rustdoc, and all three feature-matrix test runs pass. |
-| Insufficient integration coverage | **Improved, open** | Contract and durability suites now provide 15 public integration tests; concurrency, differential FTS/vector, fault injection, index recall, and platform suites remain open. |
+| Insufficient integration coverage | **Snapshot follow-up** | That revision had 15 public integration tests. Its remaining concurrency, differential, fault, recall, and platform suites were not closed then. This row is not a current engine gate. |
 
-VEC-P1-04/05/07, real ANN/indexed FTS, the full durability fault matrix,
-concurrency, migration benefit, and supported-platform evidence remain open.
-Code's current retrieval implementation remains the golden reference and no
-old path is removed.
+At that follow-up, VEC-P1-04/05/07, real ANN/indexed FTS, the full durability
+fault matrix, concurrency, migration benefit, and supported-platform evidence
+were still open. That is not a current claim that HNSW, IVF, or DiskANN
+delegate to a flat index, that collection FTS is only a full scan, or that
+the default build requires Jieba/`zstd-sys`. Code's retrieval implementation
+remained the golden reference in that snapshot, and no old path was removed
+by it.
 
 ## Follow-up: Vec durability baseline (2026-08-30)
 
@@ -435,50 +494,51 @@ schema add/backfill/rename/drop, plus committed checksum/truncation failures,
 partial uncommitted tails, orphan snapshot generations, oversized snapshots,
 read-only create/open/close behavior, and checkpoint generation publication.
 
-Finding disposition at this revision:
+Finding disposition at that follow-up revision, not the current engine contract:
 
 | Finding | Follow-up state | Remaining evidence |
 | --- | --- | --- |
-| VEC-P0-01 | **Mitigated, open** | False private ANN facades are gone, but real ANN plus recall/latency/parameter-sensitivity evidence remains P3 work. |
-| VEC-P0-02 | **Open** | FTS remains an explicitly documented exact corpus scan; generation-tagged postings and golden parity evidence are absent. |
-| VEC-P0-03 | **Partially closed** | Immutable generations and orphan-publication recovery are tested; every fsync/rename/prune boundary still needs deterministic fault injection. |
+| VEC-P0-01 | **Snapshot only; not a current defect** | This row does not say that HNSW, IVF, or DiskANN delegate to a flat index in the current engine. |
+| VEC-P0-02 | **Snapshot only; not a current defect** | This row does not say that collection FTS is only a full scan in the current engine. |
+| VEC-P0-03 | **Snapshot follow-up** | That revision tested immutable generations. It is not a current claim that checkpoint publishes one `snapshot.json` before `manifest.json`. |
 | VEC-P0-04 | **Closed for format 2** | WAL revisions/operation identities replay monotonically across every DML and schema sequence in the current suite. |
 | VEC-P0-05 | **Closed on the review host** | Read-only create, missing-lock open, normal open, and close behavior have integration coverage. Cross-platform lock evidence remains in the platform gate. |
-| VEC-P0-06 | **Partially closed** | Byte budgets and oversized/corrupt input tests exist; per-document/field budgets and recovery fuzzing remain open. |
-| VEC-P0-07 | **Open** | The default Jieba dependency chain and Intel macOS 12 qualification are unchanged. |
+| VEC-P0-06 | **Snapshot follow-up** | That revision had byte budgets and oversized-input tests. This row is not a current engine gate. |
+| VEC-P0-07 | **Snapshot only; not a current defect** | The current default build does not require Jieba/`zstd-sys`. macOS 12 Monterey is unsupported and is not an open engine gate. |
 | VEC-P1-01 | **Closed for format 2** | Schema plus backfilled documents replay and checkpoint at one revision. A compact schema-delta encoding is optional future work, not current authority. |
 | VEC-P1-06 | **Closed as documentation drift** | Vec architecture now describes the checked-in modules/tests and labels future index/planner modules as gated work. Broader API/query/concurrency coverage remains a release gate. |
 | Strict format/Clippy debt | **Closed at `78840ce`** | The two strict Clippy variants and rustfmt pass. Three noisy API-annotation lints are explicitly deferred in Cargo lint policy while the prototype API changes; substantive `all`/`pedantic` lints remain enabled. |
 
-All other findings remain open. In particular, this revision does not validate
+At that follow-up revision, the other findings in this table were still open.
+They are not the current engine gates in the contract at the top of this
+file. In particular, that revision did not validate
 query dimension errors, the JSON type escape hatch, quantization semantics,
 configuration wiring, the public `zvec_core` escape hatch, real ANN/indexed
 FTS, concurrency, migration benefit, or Intel macOS 12. Code's current
 retrieval implementation remains the golden reference and no old path is
 removed.
 
-## Executive decision
+## Executive decision for the `fbb1081` snapshot
 
-The current `a3s-vec` revision is a useful API and portability prototype, but
+This decision is not the current engine contract. The `fbb1081` `a3s-vec`
+revision was a useful API and portability prototype, but
 it is not complete and it has not passed the quality bar required to replace
 the Code workspace retrieval path. The existing Code and TUI baselines are
 the available behavioral reference at this point; they are not a qualification
 of the new engine.
 
-The review therefore makes four decisions:
+The snapshot review made four decisions. They are not current engine gates:
 
-1. Keep Code's current workspace BM25 and `a3s-memory` vector path as the
-   read-only golden reference. Do not delete SQLite, SQLite-vector, or Code
-   BM25 integration in this revision.
-2. Treat `a3s-vec` as pre-migration until the P0/P1 correctness, recovery,
-   resource, and API-contract findings below are closed with reproducible
-   evidence.
-3. Keep semantic Embedding and reranking outside the storage engine. Providers
-   must be explicitly admitted and injected by the host; storage must not
-   download models, access the network, or discover workspace files.
-4. Do not advertise Intel macOS 12 support for the new engine or semantic
-   providers until an actual `x86_64-apple-darwin` Monterey artifact and
-   runtime report exists.
+1. That snapshot kept Code's workspace BM25 and `a3s-memory` vector path as
+   the read-only golden reference and did not delete SQLite, SQLite-vector, or
+   Code BM25 integration.
+2. That snapshot treated `a3s-vec` as pre-migration until the P0/P1 findings
+   below were closed. Those findings are not current defects.
+3. Semantic Embedding and reranking stayed outside the storage engine.
+   Providers had to be admitted by the host; storage did not download models,
+   access the network, or discover workspace files.
+4. That snapshot refused to advertise Intel macOS 12 support. macOS 12
+   Monterey is unsupported and is not an open engine gate.
 
 The revised roadmap is in
 [`retrieval-platform-roadmap.md`](retrieval-platform-roadmap.md). A compact,
@@ -534,16 +594,17 @@ responses were placed in the evidence record. Real DeepSeek/remote-provider
 execution is supplementary and was not used as a substitute for deterministic
 correctness or portability tests in this review.
 
-The following commands were used from the owning crate workspaces:
+The following commands were used from the owning crate workspaces for the
+`fbb1081` snapshot. They are not the current fmt, Clippy, or test status.
 
 | Command | Observed result | Meaning |
 | --- | --- | --- |
-| `cargo test --manifest-path crates/vec/Cargo.toml --no-default-features` | **5 passed**, 0 failed | Only the five current unit tests pass; this is not full feature coverage |
-| `cargo test --manifest-path crates/vec/Cargo.toml` | **5 passed**, 0 failed | Default `jieba` feature also builds on arm64; this does not qualify Intel Monterey |
-| `cargo test --manifest-path crates/vec/Cargo.toml --all-features` | **5 passed**, 0 failed | Async plus Jieba feature combination builds on arm64; coverage remains five unit tests |
+| `cargo test --manifest-path crates/vec/Cargo.toml --no-default-features` | **5 passed**, 0 failed | That snapshot had five unit tests; this is not the current suite |
+| `cargo test --manifest-path crates/vec/Cargo.toml` | **5 passed**, 0 failed | That snapshot's default feature build on arm64; this does not qualify Intel Monterey and is not the current suite |
+| `cargo test --manifest-path crates/vec/Cargo.toml --all-features` | **5 passed**, 0 failed | That snapshot's async plus Jieba run on arm64; coverage then was five unit tests |
 | `cargo check --manifest-path crates/vec/Cargo.toml --release` | **Passed**, 49 warnings | Release compilation works on arm64; warnings include unused/dead code |
-| `cargo fmt --manifest-path crates/vec/Cargo.toml -- --check` | **Failed** | The checked-in Vec source is not rustfmt-clean |
-| `cargo clippy --manifest-path crates/vec/Cargo.toml --all-targets -- -D warnings` | **Failed**: 533 diagnostics | Strict lint quality gate is open |
+| `cargo fmt --manifest-path crates/vec/Cargo.toml -- --check` | **Failed** | That snapshot's Vec source was not rustfmt-clean |
+| `cargo clippy --manifest-path crates/vec/Cargo.toml --all-targets -- -D warnings` | **Failed**: 533 diagnostics | That snapshot's strict lint run failed. This is not current release debt |
 | `cargo test -p a3s-code-core --lib agent_api::retrieval_tests` | **12 passed** | Current Code API/retrieval baseline |
 | `cargo test -p a3s-code-core --lib agent_api::retrieval_qa_tests` | **5 passed, 1 ignored** | Current Code QA/lifecycle baseline |
 | `cargo test -p a3s-code-core --lib tools::builtin::bm25` | **14 passed** | Current lexical golden reference |
@@ -572,52 +633,63 @@ zstd branch. The default `jieba` feature does add this build chain:
 jieba-rs → include-flate → zstd → zstd-sys → cc
 ```
 
-That chain is important for the portability claim. The current architecture
-requires a portable correctness path, but the default feature set still
-causes a native C compilation dependency. Neither the default feature nor the
-no-default-feature path was built on Intel macOS 12 during this review.
+That chain is important for the portability claim of this snapshot. The
+`fbb1081` default feature set caused a native C compilation dependency.
+Neither feature set was built on Intel macOS 12 during this review. That is
+not the current default: `default = []`, and the default build does not
+require Jieba or `zstd-sys`. macOS 12 Monterey is unsupported and is not an
+open engine gate.
 
 ## 4. Findings
 
 Severity describes the risk to a safe migration, not the amount of code
 required to fix it.
 
-### P0 — must close before any Code shadow migration
+### P0 — snapshot observations for `fbb1081`
 
-| ID | Observation | Consequence | Required closure evidence |
+These rows describe Vec `fbb1081`. They are not current defects. HNSW, IVF,
+and DiskANN do not delegate to a flat index. Collection FTS is not only a
+full scan. Checkpoint does not publish one `snapshot.json` before
+`manifest.json`. The default build does not require Jieba/`zstd-sys`.
+VEC-P0-04, VEC-P0-05, and VEC-P0-06 are withdrawn the same way: `WalRecord`
+carries a revision, read-only create returns `permission_denied` before it
+creates the collection, and recovery reads are bounded.
+
+| ID | Observation on `fbb1081` | Consequence in that snapshot | Current status |
 | --- | --- | --- | --- |
-| VEC-P0-01 | HNSW, IVF, and DiskANN types delegate `build` and `search` directly to `FlatIndex` (`crates/vec/src/index/hnsw.rs`, `ivf.rs`, `diskann.rs`). Parameters such as `m`, `ef`, `n_list`, and degree are not used by query execution. | The public index names overstate capability. A benchmark or release note could incorrectly claim ANN behaviour or performance. | Implement a real index or mark the type explicitly as an exact facade. Add recall/latency tests against the flat oracle and verify parameter sensitivity. |
-| VEC-P0-02 | The collection FTS route re-tokenizes every document and recomputes document frequency during each query (`crates/vec/src/collection.rs`, `execute_fts`/`bm25`). The standalone postings helper is not the collection query authority. | Query cost is a full corpus scan and can diverge from the advertised indexed FTS semantics. | Build and publish generation-tagged postings/statistics; compare indexed results with a brute-force oracle on golden corpora. |
-| VEC-P0-03 | Checkpoint writes and renames `snapshot.json`, then writes `manifest.json` (`crates/vec/src/storage/mod.rs`). A crash between those publications leaves the old manifest checksum paired with the new snapshot. | Reopen can fail with a checksum mismatch after a power-loss window, even though a complete snapshot exists. | Use generation-specific immutable files and publish one manifest commit point; inject crashes at every rename/fsync boundary and prove deterministic recovery. |
-| VEC-P0-04 | WAL replay returns records but does not carry or apply a record revision. `StorageHandle::open` initializes the in-memory revision from the manifest before replay. | After restart, the document state and revision can disagree; stale derived indexes or clients can observe an invalid generation. | Persist a monotonic revision/operation identity in each frame, advance it during replay, and test insert/update/delete/schema sequences across restart. |
-| VEC-P0-05 | `StorageHandle::create` creates directories, lock files, and a snapshot even when `read_only` is true. `Collection::close` always calls `flush`, while a read-only handle cannot checkpoint. | Read-only mode mutates the filesystem and may fail during normal close. This violates both API and lifecycle expectations. | Separate create/open modes, prohibit writes before touching storage, make read-only close side-effect-free, and test lock/close/error paths. |
-| VEC-P0-06 | WAL and snapshot reads deserialize unbounded byte buffers (`read_to_end`, whole JSON vectors/documents) without a configured allocation budget. | A corrupted or hostile local file can force unbounded memory growth before a typed error is returned. | Add frame, document, field, and total-recovery limits; fuzz malformed lengths and verify `resource_exhausted` outcomes. |
-| VEC-P0-07 | The default dependency path reaches `zstd-sys` and `cc` through the optional Jieba tokenizer, while the architecture promises no mandatory C/C++ dependency. | The stated Intel/macOS portability contract is not mechanically true for the default build and has no Monterey artifact evidence. | Make the portable default genuinely portable or document the native requirement; build and run both feature sets on x86_64 macOS 12. |
+| VEC-P0-01 | On `fbb1081`, HNSW, IVF, and DiskANN types delegated `build` and `search` directly to `FlatIndex` (`crates/vec/src/index/hnsw.rs`, `ivf.rs`, `diskann.rs`). Parameters such as `m`, `ef`, `n_list`, and degree were not used by query execution. This is not a current defect. | The public index names overstated capability. | Historical request only, not a current gate. |
+| VEC-P0-02 | On `fbb1081`, the collection FTS route re-tokenized every document and recomputed document frequency during each query (`crates/vec/src/collection.rs`, `execute_fts`/`bm25`). The standalone postings helper was not the collection query authority. This is not a current defect. | Query cost was a full corpus scan. | Historical request only, not a current gate. |
+| VEC-P0-03 | On `fbb1081`, checkpoint wrote and renamed `snapshot.json`, then wrote `manifest.json` (`crates/vec/src/storage/mod.rs`). A crash between those publications left the old manifest checksum paired with the new snapshot. This is not a current defect. | Reopen could fail after a power-loss window. | Historical request only, not a current gate. |
+| VEC-P0-04 | On `fbb1081`, WAL replay returned records but did not carry or apply a record revision. This is not a current defect. `WalRecord` carries a revision, and open rejects a non-monotonic frame. | That snapshot could disagree with the manifest after restart. | Historical request only, not a current gate. |
+| VEC-P0-05 | On `fbb1081`, `StorageHandle::create` wrote files even when `read_only` was true. This is not a current defect. Read-only create returns `permission_denied` before it creates the collection. | Read-only mode mutated the filesystem in that snapshot. | Historical request only, not a current gate. |
+| VEC-P0-06 | On `fbb1081`, WAL and snapshot reads deserialized unbounded byte buffers. This is not a current defect. Manifest, snapshot, WAL replay, index-cache, and DiskANN reads are bounded. | A corrupted local file could force unbounded memory growth in that snapshot. | Historical request only, not a current gate. |
+| VEC-P0-07 | On `fbb1081`, the default dependency path reached `zstd-sys` and `cc` through the optional Jieba tokenizer. This is not a current defect: the default build does not require Jieba or `zstd-sys`, and macOS 12 Monterey is not an open engine gate. | That default build had no Monterey artifact. | Historical request only, not a current gate. |
 
-### P1 — must close before opt-in semantic `vgrep`
+### P1 — snapshot observations for `fbb1081`, not current engine gates
 
-| ID | Observation | Consequence | Required closure evidence |
+| ID | Observation on `fbb1081` | Consequence in that snapshot | Current status |
 | --- | --- | --- | --- |
-| VEC-P1-01 | `WalRecord::Schema` replay only checks the collection name and does not apply the schema. | A schema change acknowledged before a crash may disappear or leave documents interpreted under the wrong schema. | Replay every schema operation and validate schema digest/revision transitions. |
-| VEC-P1-02 | Dense query scoring can skip a dimension-mismatched vector and return an empty result instead of a typed query error. | Callers cannot distinguish “no match” from an invalid query/index state. | Validate query dimension at the boundary and add error-contract tests for every metric and vector type. |
-| VEC-P1-03 | `matches_field_type` treats any `FieldValue::Json` as compatible with every schema field. | JSON can bypass scalar type and nullability guarantees. | Define an explicit JSON schema/type policy and reject incompatible values. |
-| VEC-P1-04 | Binary/int4/fp16 and related codecs currently perform approximate conversions; they do not yet establish complete quantized storage/search semantics. | API names can imply zvec-compatible quantization when only a conversion helper exists. | Add encoded-format round trips, error bounds, metric tests, and exact re-score guarantees. |
-| VEC-P1-05 | `IoBackend`, buffer, segment, and several index configuration fields are recorded but are not connected to a measurable execution path. | Configuration is misleading and makes resource planning impossible. | Either wire each option into execution or remove it from the public contract until implemented. |
-| VEC-P1-06 | The architecture promises `tests/api_compat.rs`, `crud_and_query.rs`, `durability.rs`, `indexes.rs`, and `concurrency.rs`; those integration tests and the documented `api/`, `planner/`, `codec/`, and `testkit/` layout are absent in the pinned crate. | The stated verification and module ownership cannot be reproduced from the repository. | Add the tests/layout or revise the architecture document to match the implementation, then pin the evidence. |
-| VEC-P1-07 | `pub mod core { pub use zvec_core::*; }` exposes the external kernel through the public API. | Replacing the kernel becomes a breaking change and leaks an unreviewed dependency surface. | Keep the kernel private and expose only stable A3S types, or record an explicit compatibility exception. |
+| VEC-P1-01 | On `fbb1081`, `WalRecord::Schema` replay only checked the collection name and did not apply the schema. This is not a current defect. Replay installs `WalOperation::Schema` and `SchemaOnly`. | A schema change could disappear in that snapshot. | Historical request only, not a current gate. |
+| VEC-P1-02 | On `fbb1081`, dense query scoring could skip a dimension-mismatched vector and return an empty result. This is not a current defect. `validate_dense_payload` returns `invalid_argument`. | Callers could not distinguish “no match” from an invalid query in that snapshot. | Historical request only, not a current gate. |
+| VEC-P1-03 | On `fbb1081`, `matches_field_type` treated any `FieldValue::Json` as compatible with every schema field. This is not a current defect. Incompatible JSON is rejected. | JSON could bypass scalar type checks in that snapshot. | Historical request only, not a current gate. |
+| VEC-P1-04 | On `fbb1081`, binary, int4, and fp16 codecs did not yet establish exact re-score. This is not a current search defect. Quantized coordinates do not supply the public score. | API names could imply quantization that was only a conversion helper. | Historical request only, not a current gate. |
+| VEC-P1-05 | On `fbb1081`, `IoBackend` and several index configuration fields were recorded without an execution path. This is not a current defect. `IoBackend::Positioned` opens a positioned reader. | Configuration was misleading in that snapshot. | Historical request only, not a current gate. |
+| VEC-P1-06 | On `fbb1081`, the documented `api/`, `planner/`, `codec/`, and `testkit/` layout was absent. This is not a current defect. The checked-in layout is `crates/vec/src`. | That snapshot's module map could not be reproduced. | Historical request only, not a current gate. |
+| VEC-P1-07 | On `fbb1081`, `pub use zvec_core` exposed the external kernel. This is not a current defect. `use a3s_vec::core` does not compile. | Replacing the kernel was a breaking change in that snapshot. | Historical request only, not a current gate. |
 
-### P2 — quality and release debt
+### P2 — quality and release debt recorded for the `fbb1081` snapshot
 
-- The strict format and Clippy gates are open (`cargo fmt --check` fails and
-  Clippy reports 533 errors under `-D warnings`).
-- The Vec crate has five inline unit tests and no durable CRUD, corruption,
-  concurrency, index-recall, or cross-platform integration suite in the pinned
-  checkout.
-- Existing Code performance evidence describes session-local/small-corpus
-  behaviour. It does not establish that a durable `a3s-vec` projection would
-  improve latency, memory, startup, or request amplification.
-- FTS/filter paths parse and scan repeatedly. This is a measurable optimization
-  opportunity only after correctness and bounded-resource contracts are fixed.
+This list is that snapshot. It is not current release debt. The 2026-09-22
+review withdrew this description of the later tree.
+
+- In that snapshot, `cargo fmt --check` failed and Clippy reported 533
+  diagnostics under `-D warnings`.
+- That pinned checkout had five inline unit tests and did not yet show the
+  later durability, concurrency, and index suites.
+- That snapshot's Code performance evidence described session-local behavior.
+  It did not establish a durable projection's latency or memory.
+- That snapshot's FTS and filter paths parsed and scanned repeatedly. That is
+  not a current claim that collection FTS is only a full scan.
 
 ## 5. Product-surface boundary matrix
 
@@ -635,33 +707,36 @@ The lack of a CLI command is not a bug to paper over by aliasing the old
 search tool. It is a contract decision: `vgrep` must identify its route,
 revision, freshness, and fallback reason consistently in every host.
 
-## 6. Intel macOS 12 conclusion
+## 6. Intel macOS 12 conclusion for the `fbb1081` snapshot
 
-No Intel macOS 12 release claim is justified by this snapshot.
+No Intel macOS 12 release claim was justified by this snapshot. macOS 12
+Monterey is unsupported and is not an open engine gate.
 
 What is known:
 
 - The review host is Apple Silicon macOS 26.3, not Intel Monterey.
 - The crate has a portable no-default-feature build that passed five unit
   tests on that host.
-- The default Jieba feature reaches a C compiler through `zstd-sys`.
-- There is no recorded x86_64 Monterey artifact, installer smoke run, runtime
-  benchmark, CPU-feature check, or offline semantic-provider test.
+- In that snapshot, the default Jieba feature reached a C compiler through
+  `zstd-sys`. The current default build does not require Jieba or `zstd-sys`.
+- That snapshot recorded no x86_64 Monterey artifact, installer smoke run,
+  runtime benchmark, CPU-feature check, or offline semantic-provider test.
+  macOS 12 Monterey is unsupported and is not an open engine gate.
 
-The minimum honest support matrix is therefore:
+The snapshot's support matrix was:
 
-| Capability | Intel macOS 12 status |
+| Capability | Intel macOS 12 status in that snapshot |
 | --- | --- |
-| Existing Code exact/FTS baseline | Must be qualified independently by the Code/CLI release pipeline |
-| `a3s-vec` portable core | **Unverified** until x86_64 build and runtime smoke pass |
-| `vgrep --rg` | **Not shipped** in the pinned CLI |
-| `vgrep --fts` | **Not shipped** and engine path unverified |
-| Local semantic Embedding | **Unadvertised** until a compatible Intel artifact/runtime report exists |
-| Explicitly authorized remote semantic route | Possible only under host egress policy; not a local-engine qualification |
+| Existing Code exact/FTS baseline | Qualified by the Code/CLI release pipeline, not by this engine gate |
+| `a3s-vec` portable core | Snapshot host only. macOS 12 Monterey is unsupported and is not an open engine gate |
+| `vgrep --rg` | Not shipped in the pinned CLI |
+| `vgrep --fts` | Not shipped in that snapshot |
+| Local semantic Embedding | Not an engine gate. macOS 12 Monterey is unsupported |
+| Explicitly authorized remote semantic route | Host egress policy only; not a Monterey engine gate |
 
-If product policy requires full semantic support on Intel, the release gate is
-blocked. Exact search must remain truthful and usable rather than silently
-falling back to stale semantic results.
+That snapshot treated a full Intel semantic requirement as a blocked release
+gate. macOS 12 Monterey is unsupported and is not an open engine gate. Exact
+search stays truthful.
 
 ## 7. Revised architectural decisions
 
@@ -708,35 +783,43 @@ provider vectors, hardware class, and warm/cold state:
 | Durability | Every acknowledged mutation recovers to one coherent revision after injected crashes and partial tails | WAL/checkpoint fault matrix |
 | Lifecycle | Close, cancellation, lock release, and provider shutdown leave no leaked tasks, handles, sockets, vectors, or temp files | Repeated session lifecycle test |
 | Privacy and egress | New path makes no additional provider/network call and emits no source text/vector/credential in diagnostics | Redaction and egress audit |
-| Platform support | Linux, Windows, macOS arm64, and Intel macOS 12 pass the same required core gates | Pinned artifact/runtime matrix |
+| Platform support | Linux, Windows, and supported macOS pass the same required core gates. macOS 12 Monterey is unsupported and is not an open engine gate | Pinned artifact/runtime matrix |
 
 The benchmark protocol must define a small statistical noise allowance before
 running the comparison. A result outside that allowance blocks migration; it
 does not get hidden by changing the query set or silently selecting a fallback.
 
-## 9. Ordered remediation and release gates
+## 9. Ordered remediation recorded for the `fbb1081` snapshot
 
-The next implementation sequence is:
+This sequence is the `fbb1081` record, not a new engine plan. Asking to keep
+collection FTS as a scan, to require a Monterey build, or to keep ANN facades
+exact is not a current engine defect. Steps 1 and 2 are withdrawn as well:
+they are not required closure. The snapshot sequence was:
 
-1. Correct storage publication/revision/replay and read-only lifecycle (the
-   P0 durability set).
-2. Add bounded deserialization, explicit dimension/type errors, and schema WAL
-   application.
-3. Make the FTS index authoritative or label it as a reference scan; add the
-   brute-force evaluator and integration/fault tests promised by the design.
-4. Resolve the default-feature native dependency and produce x86_64 Monterey
-   build/runtime evidence.
-5. Keep ANN facades exact and explicitly named until real HNSW/IVF/DiskANN
-   implementations pass recall and resource gates.
-6. Build the Code adapter in shadow mode, then add one governed `vgrep` route
-   and shared CLI/TUI/SDK result DTOs.
-7. Run the migration-benefit matrix. Only after it passes may the roadmap's
-   P7 removal of duplicate workspace SQLite/BM25/vector paths begin.
+1. That snapshot asked to correct revision, replay, and the read-only
+   lifecycle. This is not a current defect. `WalRecord` carries a revision,
+   and read-only create returns `permission_denied` before it creates the
+   collection. The separate claim that checkpoint publishes one `snapshot.json`
+   before `manifest.json` is also not a current defect.
+2. That snapshot asked to bound deserialization and to apply schema WAL
+   records. This is not a current defect. Recovery reads are bounded, and
+   schema replay installs the schema. This step does not restore a
+   Jieba/`zstd-sys` default or a Monterey gate.
+3. That snapshot asked to make the FTS index authoritative or to label it as a
+   reference scan. Collection FTS is not only a full scan in the current engine.
+4. That snapshot asked for a Monterey build. macOS 12 Monterey is unsupported
+   and is not an open engine gate.
+5. That snapshot asked to keep ANN facades exact. HNSW, IVF, and DiskANN do
+   not delegate to a flat index.
+6. That snapshot asked to build the Code adapter in shadow mode. Publication of
+   the public result stays owned by Code.
+7. That snapshot asked to run the migration-benefit matrix before removing the
+   old Code path. That removal is not an engine gate.
 
 Formatting, strict Clippy, deterministic unit/integration tests, crash
 recovery, cross-platform smoke, and host end-to-end evidence are release gates,
-not optional cleanup. Until all are green, the honest status is “prototype and
-baseline under review,” not “latest a3s-code retrieval engine released.”
+not optional cleanup. That sentence described the `fbb1081` snapshot. It does
+not describe the current engine contract at the top of this file.
 
 ## 10. Source references
 

@@ -4,9 +4,47 @@ Status: proposed cross-project architecture. The engine-level details for
 `a3s-vec` live in [`crates/vec/ARCHITECTURE.md`](../crates/vec/ARCHITECTURE.md);
 the delivery gates live in
 [`retrieval-platform-roadmap.md`](retrieval-platform-roadmap.md).
-The first-principles implementation audit and open release blockers are
-recorded in
-[`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md).
+The 2026-09-22 engine judgment is
+[`vec-engine-first-principles-review.md`](vec-engine-first-principles-review.md).
+[`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md)
+records the older `fbb1081` snapshot. Where that snapshot disagrees with the
+current contract below, the current contract wins.
+
+## Current engine contract (2026-09-22)
+
+The checked-in engine layout is `crates/vec/src`: `lib.rs`, `collection.rs`
+and `collection/`, `config.rs`, `doc.rs` and `doc/`, `embedding.rs`,
+`error.rs`, `index/`, `iterator.rs`, `multi_query.rs`, `query.rs`,
+`schema.rs` and `schema/`, `score_f64.rs`, `stats.rs`, `storage/` and
+`storage_ceilings.rs`, `text.rs` and `text/`, and `types.rs`, with integration
+tests under `crates/vec/tests/`. There is no `api/`, `planner/`, `codec/`, or
+`testkit/` directory.
+
+The following are not current engine defects or open engine gates: HNSW, IVF,
+or DiskANN delegating to a flat index; collection FTS as only a full scan; a
+checkpoint publishing one `snapshot.json` before `manifest.json`; the default
+build requiring Jieba/`zstd-sys`; WAL replay without a revision (VEC-P0-04);
+read-only create writing the collection (VEC-P0-05); unbounded WAL or snapshot
+reads (VEC-P0-06); or a five-test / 533-Clippy description of the current tree.
+macOS 12 Monterey is unsupported and is not an open engine gate.
+
+A workspace source revision, chunk catalog, and collection that describe the
+same bytes, and publication of the public result, are owned by Code. The
+engine has no workspace walker, CLI, embedding-provider client, or `vgrep`.
+Vec commit `13585ccd` is not checkout `880d547` and is not the commit this
+contract names for that Code check.
+
+Enterprise GA is a hosted-green revision, a git tag, and a crates.io checksum
+that matches the release artifact. Enterprise GA for `0.1.1` is closed.
+`a3s-vec` `0.1.4` is tag `0.1.4` at revision
+`9a07e9a33726dd187080b00a44505f9bbd31bd97` with crates.io SHA-256
+`15c4220df078de9c350aea98e0f9187890cec066e4d3ee242170a2ab762ed80f`. GitHub
+Actions run
+[`35510190796`](https://github.com/A3S-Lab/Vec/actions/runs/35510190796)
+completed with conclusion `success` on that revision, so the `0.1.4` hosted
+gate is green. Checkout `880d547be07b2b863cf960a960809d21b37564ac` and the
+dirty `crates/vec` working tree are not the GA artifact. The parent gitlink
+for `crates/vec` remains `e6d067fcd4ff5ac536c5c9ee2fc8ea837f193576`.
 
 This document is the ownership and dependency contract for the local retrieval
 capability used by A3S Code and the future built-in `vgrep` tool. The
@@ -132,41 +170,15 @@ another row.
 ### 4.1 Repository packaging rule
 
 `A3S-Lab/Vec` hosts the crate and the A3S repository consumes it through the
-`crates/vec` git submodule. The current root pin is Vec
-`416140ec5f9bd6fc8030f9f17735c0b10d099c99` (`a3s-vec` 0.1.1), carrying the
-current Vec qualification over the
-borrowed exact-score and
-one-query-norm performance kernel over methodology revision
-`d6b83458e0a1042a59e877d5df1511297b60f2fa`, comparison-methodology
-documentation over hosted benchmark pin `7f3e2a9`, CI hardening over the
-scale-control revision `9a9c0850cf09ec90f54a9f7e9d8be3ca12af95f1`,
-documentation follow-up `c2344dda55cc36e4c3e3d3fbab3e3512a12b18e8`,
-lifecycle/performance revision `9031943b53577e14f805692a3bfb3a3237b5072f`,
-and implementation `7e3b083e36ab5aeb300b2c45d6d59280971087da`);
-Code's current candidate dependency is pinned to Vec `416140ec`; the root
-Cloud compatibility graph is now advanced to the reviewed Code 8.2.0 pin, with
-the Cloud manifest, Cargo lock, and root compatibility lock updated together.
+`crates/vec` git submodule. The parent gitlink is
+`e6d067fcd4ff5ac536c5c9ee2fc8ea837f193576`. That pin is integration state. It
+is not the `0.1.4` GA artifact, and this document does not move it. Enterprise
+GA is the record in the current engine contract at the top of this file.
+Tagging is not blocked on a macOS 12 Intel runtime report.
+
 Source changes are committed in the Vec repository first; the integration
 repository advances the gitlink only after engine checks and compatibility
 review pass.
-
-Vec main CI builds a revision-bound `0.1.1` release-candidate crate, checksum,
-machine-readable manifest, feature-matrix, concurrent-reader, mixed-workload,
-scale-comparison, and lifecycle-matrix CSVs, plus one copy of all five smoke
-CSVs for each hosted
-platform, only after its
-quality, MSRV, fuzz, and platform jobs pass. The current ten-job hosted gate is
-[Vec CI run `33810337678`](https://github.com/A3S-Lab/Vec/actions/runs/33810337678),
-including the rounded-total scale gate, Python companion syntax check, and
-versioned release-candidate artifact. The Code candidate's release-profile
-qualification passed in [run `33811229333`](https://github.com/A3S-Lab/Code/actions/runs/33811229333);
-the full CI run is [33811229434](https://github.com/A3S-Lab/Code/actions/runs/33811229434)
-with a dependency-tool rustdoc failure in its semver job. The exact-revision
-macOS 12 Intel runtime qualification is queued in [run `33811715564`](https://github.com/A3S-Lab/Vec/actions/runs/33811715564).
-These
-artifacts are not a formal release: tagging or registry
-publication remains blocked until an actual macOS 12 Intel runtime report is
-attached for the same revision.
 
 No root `Cargo.toml` or root Rust workspace is introduced.
 
@@ -177,15 +189,28 @@ modules are replaceable behind contracts, while the logical data model is
 stable:
 
 ```text
-a3s-vec/
-├── api/          public lifecycle, collection, errors, iterators
-├── schema/       fields, dimensions, metrics, index parameters
-├── document/     typed values, nulls, vectors, projections
-├── storage/      manifest, WAL, snapshots, locks, recovery
-├── index/        flat, scalar, FTS/BM25, HNSW, IVF/SOAR, DiskANN, quantizers
-├── planner/      filters, route execution, fusion, group/radius semantics
-├── codec/        versioned serialization and checksums
-└── testkit/      reference scan, generators, corruption/fault injection
+crates/vec/src/
+├── lib.rs
+├── collection.rs
+├── collection/
+├── config.rs
+├── doc.rs
+├── doc/
+├── embedding.rs
+├── error.rs
+├── index/
+├── iterator.rs
+├── multi_query.rs
+├── query.rs
+├── schema.rs
+├── schema/
+├── score_f64.rs
+├── stats.rs
+├── storage/
+├── storage_ceilings.rs
+├── text.rs
+├── text/
+└── types.rs
 ```
 
 ### 5.1 Authority and publication
@@ -196,6 +221,14 @@ and format version. A write is acknowledged only after the configured WAL
 durability policy. A checkpoint publishes data and index files first, then
 atomically publishes the manifest. Recovery validates the manifest and replays
 only complete WAL frames after its checkpoint.
+
+HNSW, IVF, and DiskANN build their own graphs or centroid postings. They do
+not delegate `build` or `search` to a flat index. Indexed FTS searches term
+postings when the generation matches and uses a document scan only as the
+fallback. A checkpoint writes `segments/snapshot-<generation>.bin` and then
+publishes `manifest.json` by rename; it does not publish one `snapshot.json`
+before `manifest.json`. The default Cargo features are empty, so the default
+build does not require Jieba or `zstd-sys`.
 
 An index built against another revision is ignored and replaced by an exact
 scan. This rule applies equally to an in-memory index and a future persistent
@@ -313,26 +346,13 @@ All providers use bounded batches, cancellation, timeout, retry budgets,
 dimension/finite-value validation, and redacted errors. Query and document
 vectors must come from the same descriptor.
 
-### 7.2 macOS 12 Intel release matrix
+### 7.2 Platform gate
 
-The hard platform gate is `x86_64-apple-darwin` with macOS deployment target
-12.0:
-
-1. `a3s-vec` core, flat search, FTS, filters, WAL, and recovery compile and
-   pass runtime smoke without C/C++, `io_uring`, or required SIMD.
-2. `vgrep --rg` and `vgrep --fts` work with no model runtime.
-3. A local semantic provider is advertised only after an actual Intel Monterey
-   artifact, CPU feature, cold/warm, RSS, cancellation, and offline test.
-4. If no local provider qualifies, an explicitly authorized remote provider may
-   be used; otherwise semantic mode reports unavailable while exact/FTS remain
-   truthful. If product policy requires full semantic support on Intel, the
-   release gate is blocked rather than silently claiming support.
-
-Vec `416140ec` provides the exact-revision workflow for item 1. It runs only on
-a self-hosted `a3s-macos-12` Intel runner, rejects a mismatched host or checkout,
-executes the locked engine suites offline, and uploads a checksummed crate plus
-machine-readable host evidence. No such runner is currently registered, so the
-workflow makes the gate executable but does not mark it passed.
+macOS 12 Monterey is unsupported and is not an open engine gate. The former
+self-hosted `a3s-macos-12` workflow is not a release requirement. Hosted Intel
+CI is `macos-15-intel` with deployment target 15.0. Exact and lexical search
+stay available without a model. A local semantic provider is a Code and host
+concern and is not an engine correctness gate.
 
 ## 8. Migration safety
 
@@ -355,14 +375,15 @@ a3s-vec-backed opt-in vgrep
 remove Code workspace BM25 + SQLite/sqlite-vec vector path
           │ retain a3s-memory for long-term Agent memory
           v
-stable optional vgrep; advanced ANN/persistent cache only by ADR
+stable optional vgrep; the checked-in HNSW, IVF, and DiskANN indexes stay derived state
 ```
 
 During dual projection, both systems consume the same catalog and provider
 vectors; they must not independently scan files or double Embedding requests.
 The old path remains a read-only oracle and rollback target until all gates are
 green. Removal is allowed only after a release reports parity for correctness,
-stale-source rejection, privacy, latency, memory, close, and Intel smoke.
+stale-source rejection, privacy, latency, memory, and close. macOS 12
+Monterey is not that gate.
 
 ## 9. Architectural decisions still requiring an ADR
 

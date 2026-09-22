@@ -2,15 +2,50 @@
 
 This roadmap implements the architecture in
 [`retrieval-platform-architecture.md`](retrieval-platform-architecture.md).
-The latest first-principles audit is recorded in
-[`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md),
-with reproducible command evidence in
-[`retrieval-platform-review-evidence.json`](retrieval-platform-review-evidence.json).
-It is gate-based rather than calendar-based: a phase is complete only when its
-exit evidence exists for the same revision. Work can be parallelized only when
-the dependency graph says so.
+The 2026-09-22 engine judgment is
+[`vec-engine-first-principles-review.md`](vec-engine-first-principles-review.md).
+[`retrieval-platform-architecture-review.md`](retrieval-platform-architecture-review.md)
+is the older `fbb1081` snapshot. It is gate-based rather than calendar-based:
+a phase is complete only when its exit evidence exists for the same revision.
+Work can be parallelized only when the dependency graph says so.
 
-**Current integration status (2026-09-04):** Code's `main` merge
+## Current engine contract (2026-09-22)
+
+The checked-in engine layout is `crates/vec/src`: `lib.rs`, `collection.rs`
+and `collection/`, `config.rs`, `doc.rs` and `doc/`, `embedding.rs`,
+`error.rs`, `index/`, `iterator.rs`, `multi_query.rs`, `query.rs`,
+`schema.rs` and `schema/`, `score_f64.rs`, `stats.rs`, `storage/` and
+`storage_ceilings.rs`, `text.rs` and `text/`, and `types.rs`, with integration
+tests under `crates/vec/tests/`. There is no `api/`, `planner/`, `codec/`, or
+`testkit/` directory.
+
+The following are not current engine defects or open engine gates: HNSW, IVF,
+or DiskANN delegating to a flat index; collection FTS as only a full scan; a
+checkpoint publishing one `snapshot.json` before `manifest.json`; the default
+build requiring Jieba/`zstd-sys`; WAL replay without a revision (VEC-P0-04);
+read-only create writing the collection (VEC-P0-05); unbounded WAL or snapshot
+reads (VEC-P0-06); or a five-test / 533-Clippy description of the current tree.
+macOS 12 Monterey is unsupported and is not an open engine gate.
+
+A workspace source revision, chunk catalog, and collection that describe the
+same bytes, and publication of the public result, are owned by Code. The
+engine has no workspace walker, CLI, embedding-provider client, or `vgrep`.
+Vec commit `13585ccd` is not checkout `880d547` and is not the commit this
+contract names for that Code check.
+
+Enterprise GA is a hosted-green revision, a git tag, and a crates.io checksum
+that matches the release artifact. Enterprise GA for `0.1.1` is closed.
+`a3s-vec` `0.1.4` is tag `0.1.4` at revision
+`9a07e9a33726dd187080b00a44505f9bbd31bd97` with crates.io SHA-256
+`15c4220df078de9c350aea98e0f9187890cec066e4d3ee242170a2ab762ed80f`. GitHub
+Actions run
+[`35510190796`](https://github.com/A3S-Lab/Vec/actions/runs/35510190796)
+completed with conclusion `success` on that revision, so the `0.1.4` hosted
+gate is green. Checkout `880d547be07b2b863cf960a960809d21b37564ac` and the
+dirty `crates/vec` working tree are not the GA artifact. The parent gitlink
+for `crates/vec` remains `e6d067fcd4ff5ac536c5c9ee2fc8ea837f193576`.
+
+**Historical integration status (2026-09-04):** Code's `main` merge
 `1cd4423e` contains the Code-owned A3S
 Vec shadow adapter and isolated `WorkspaceVectorIndex` contract. It mirrors the
 already validated Memory embedding batch into a session-scoped temporary Vec
@@ -21,13 +56,14 @@ The current Code dependency and root submodule pin Vec
 retains bounded, deterministic parallel schema backfills and candidate-schema
 validation while retaining atomic publication. The versioned Vec candidate
 passed all hosted quality, MSRV, recovery, cross-platform, performance, and
-package jobs in CI run `33810337678`; the exact-revision macOS 12 Intel runtime
-run `33811715564` is queued. These figures are directional rather than RSS or
+package jobs in CI run `33810337678`; a macOS 12 Intel runtime run was queued
+at that date. macOS 12 Monterey is unsupported and is not an open engine gate.
+These figures are directional rather than RSS or
 cross-platform SLOs.
 The root Cloud compatibility lock now advances the verified Code 8.2.0 graph
 (`apps/cloud` compatibility commit `8fc2e6ce` and Code revision
-`9e870340`). Vec promotion, old-path removal, actual Intel macOS 12 runtime
-evidence, and the broader release gates remain open.
+`9e870340`). That paragraph's macOS 12 runtime item is not an open engine
+gate. macOS 12 Monterey is unsupported.
 
 **Historical engine review baseline (2026-08-30):** `a3s-vec` was then a
 pre-migration prototype, but Vec `0236e0d0cd9d4c203a689567e52a0591697260a2` closes the
@@ -35,8 +71,8 @@ numbered P1 contract findings for the current exact surface. Native dense and
 sparse FP16, INT4, INT8, INT16, and binary payloads now have strict physical-
 type, range/chunk, typed-access, and lossless storage contracts. Every numeric
 native form executes exact L2/IP/cosine/MIPS-L2 with `f64` intermediates;
-binary search and scale-bearing index quantization remain explicit future work
-rather than implied behavior. Format 3 prevents the new sparse-FP16 bit layout
+binary search and scale-bearing index quantization were then treated as future
+work rather than implied behavior. Format 3 prevents the new sparse-FP16 bit layout
 from being reinterpreted by an older reader. Retained runtime controls have
 execution owners, future index/query/schema controls fail before mutation, and
 the external algorithm kernel remains private. Independent references now
@@ -48,15 +84,16 @@ Strict rustfmt, Clippy, three 60-test feature-matrix runs plus four compile-fail
 doctests, rustdoc, and the default suite on the declared Rust 1.75 MSRV are
 green. Real ANN/indexed FTS, broader generated and FTS/filter evidence, the
 durability fault/fuzz matrix, cross-platform evidence, and migration benefit
-remain open. Code's existing workspace BM25 and `a3s-memory` vector path remain
+were open in that baseline. They are not the current engine defects named in
+the contract above. Code's existing workspace BM25 and `a3s-memory` vector path remain
 the golden reference; P7 removal has not started.
 
 ## 1. Current baseline and target
 
-The current checkout contains three relevant implementations:
+That 2026-09-04 baseline contained three relevant implementations:
 
-- `crates/vec` is the `A3S-Lab/Vec` git submodule at `416140ec` (`a3s-vec`
-  0.1.1 release candidate; complete
+- The 2026-09-04 notes below describe `crates/vec` at `416140ec` (`a3s-vec`
+  0.1.1; complete
   FP16/INT8/INT4 Vamana reopen coverage over Vamana control execution and the
   hosted-evidence/test-count refresh over the borrowed
   exact-score and one-query-norm performance kernel over comparison-methodology
@@ -69,9 +106,9 @@ The current checkout contains three relevant implementations:
   bounded parallel schema backfills/validation are implemented behind exact
   fallbacks and revisioned
   generations. Namespace-only upstream CRUD, vector-search, and schema-builder
-  fixtures run as executable gates. The crate remains a release candidate: its
-  hosted matrix and package gate do not substitute for an actual macOS 12 Intel
-  runtime result.
+  fixtures run as executable gates. macOS 12 Monterey is unsupported and is
+  not an open engine gate. Enterprise GA is the `0.1.4` record in the current
+  engine contract, not this older pin and not checkout `880d547`.
 - `a3s-code-core` has a session-local chunk catalog, incremental BM25,
   `a3s-memory` exact-vector partitions, deterministic RRF/MMR, provider ports,
   source verification, and a Memory-authoritative Vec shadow adapter. The
@@ -122,12 +159,13 @@ closed on the same pinned component graph. At minimum this means:
 | --- | --- | --- |
 | P0 correctness | Real index/recovery behaviour, monotonic revisions, atomic manifest publication, read-only lifecycle, and bounded deserialization | **Engine gate closed** at Vec implementation pin `416140ec`: format-10 snapshots/WAL, all 18 injected publication boundaries, bounded recovery fuzzing, lock ownership, and read-only lifecycle are executable gates |
 | P1 contract | Schema WAL replay, typed dimension/type errors, native codec semantics, wired configuration, private kernel boundary, and promised integration tests | **Closed for the advertised engine surface** at root pin `416140ec` (complete FP16/INT8/INT4 Vamana reopen coverage over Vamana controls/scalar quantization, bounded parallel schema evolution and worker-cap validation, and the performance kernel): generated vector/FTS/filter and Binary32/Binary64 Hamming oracles, advanced FTS, concurrency, private-kernel compile failures, typed unsupported paths, IVF SOAR/cache contracts, public `Send + Sync` contracts, metric-aware Vamana/DiskANN contracts, dense/binary/FTS query-builder execution, include-doc-id persistence checks, schema-only WAL compaction, the complete feature matrix plus concurrent-reader/mixed-workload/scale tail-latency gates, and the 16-row lifecycle/resource/maintenance matrix are tested |
-| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | **Passed locally and in hosted CI run `33810337678` for pin `416140ec`;** the exact-revision macOS 12 Intel qualification run `33811715564` remains queued |
-| Cross-platform | x86_64 macOS 12.0 build, smoke, runtime, and offline exact/FTS evidence | **Partially closed**: hosted Linux x86-64/ARM64, Windows x86-64, and macOS ARM64/Intel pass, and Intel builds target 12.0; an actual macOS 12 Intel runtime remains open |
-| Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Shadow differential passed** for 120 queries and lifecycle/resource checks; RSS, recovery, cross-platform, and serving-promotion evidence remain open |
+| Strict quality | `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` for Vec | Historical pass in hosted CI run `33810337678` for pin `416140ec`. macOS 12 qualification is not an open engine gate |
+| Cross-platform | Hosted Linux, Windows, and macOS on supported versions | **Monterey unsupported**: macOS 12 is not an engine gate. Hosted Intel CI is `macos-15-intel` |
+| Migration benefit | Differential quality, latency, memory, startup, recovery, lifecycle, and privacy report against the frozen Code baseline | **Product migration still open**: RSS, recovery, and serving promotion are not closed. This row is not an engine defect, and macOS 12 Monterey is not this gate |
 
-An open row blocks the dependent phase. Passing a superficial API or compile
-check cannot substitute for the required runtime evidence.
+An open product row blocks serving promotion. It does not reopen the withdrawn
+engine defects or macOS 12. Passing a superficial API or compile check cannot
+substitute for the required runtime evidence.
 
 ## 3. Phased delivery
 
@@ -276,8 +314,8 @@ WAL append.
 **Exit gate**
 
 Every approximate result has an exact reference comparison and stale-index
-fallback test. Reopen/checksum tests pass on Linux, Windows, macOS arm64, and
-macOS 12 Intel; no optimization is required for correctness.
+fallback test. Reopen/checksum tests pass on Linux, Windows, and supported
+macOS. macOS 12 Monterey is unsupported and is not required for correctness.
 
 ### P4 — Code catalog adapter and shadow migration
 
@@ -317,8 +355,8 @@ close leaves zero vectors, tasks, handles, or sockets.
   and the revision-bound Linux release benchmark passed in runs
   [`33763816993`](https://github.com/A3S-Lab/Code/actions/runs/33763816993) and
   [`33763816547`](https://github.com/A3S-Lab/Code/actions/runs/33763816547).
-  The hosted Vec matrix is green; actual macOS 12 Intel runtime evidence is
-  still external. The root Cloud compatibility lock is now advanced: its Code
+  The hosted Vec matrix is green. macOS 12 Monterey is unsupported and is not
+  an engine gate. The root Cloud compatibility lock is now advanced: its Code
   manifest, lock entry, Cloud compatibility commit, and component gitlinks
   moved as one verified graph.
 
@@ -412,8 +450,9 @@ available through configuration.
   provider policy, vgrep output, TUI interaction, and cleanup.
 - Benchmarks for exact/hybrid p95, indexing throughput, memory, cold/warm model
   load, cancellation recovery, and request amplification.
-- Intel macOS 12 build/smoke/runtime gate, plus Linux, Windows, and macOS
-  arm64 CI; verify installer and Homebrew metadata only after artifacts exist.
+- Linux, Windows, and supported macOS CI. macOS 12 Monterey is unsupported
+  and is not an engine gate. Verify installer and Homebrew metadata only after
+  artifacts exist.
 - Operator runbook for status, stale indexes, model installation, remote-egress
   consent, and rollback.
 - Publish the architecture-review report and machine-readable evidence for the
@@ -486,8 +525,8 @@ The program is complete only when all of the following are true:
 - no workspace path depends on SQLite, `sqlite-vec`, or duplicate Code BM25;
 - Embedding and Reranking are explicit provider capabilities, not hidden model
   dependencies;
-- Intel macOS 12 support is backed by actual artifacts and runtime evidence,
-  not just a target triple;
+- macOS 12 Monterey is unsupported and is not an engine gate; hosted Intel
+  qualification uses a supported macOS version;
 - every release claim links to a reproducible `a3s-test`/benchmark report.
 - the [architecture review](retrieval-platform-architecture-review.md) has no
   unresolved release-blocking finding, and the migration-benefit report is
