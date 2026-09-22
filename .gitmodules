@@ -120,7 +120,7 @@
 	path = crates/apofasi
 	url = git@github.com:A3S-Lab/Apofasi.git
 	branch = main
-[submodule "packages/a3s-effect"]
+[submodule "packages/effect"]
 	path = packages/effect
 	url = git@github.com:A3S-Lab/Effect.git
 	branch = main
