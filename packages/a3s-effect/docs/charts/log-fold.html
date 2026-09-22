@@ -57,7 +57,8 @@ const obsReveal=(id,fn)=>{
 const TR=[
   ['Text turn',[[0,'f'],[1,'o']],false],
   ['Confirm',[[0,'f'],[1,'o'],[2,'o'],[3,'o'],[4,'o']],false],
-  ['Question',[[0,'f'],[1,'o'],[2,'o'],[3,'o']],false],
+  // message, first model.turn, question.answered, second model.turn (row 4, not the tool row)
+  ['Question',[[0,'f'],[1,'o'],[2,'o'],[4,'o']],false],
   ['Dup key',[[0,'f']],false],
 ];
 const LAST=5;

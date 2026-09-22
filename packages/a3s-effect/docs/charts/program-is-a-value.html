@@ -60,9 +60,9 @@ obsReveal('ch',s=>{
     el(s,'line',{x1:X0,y1:y+9,x2:X0+max*PX,y2:y+9,stroke:GRID,'stroke-width':.6,
       class:'fade',style:`animation-delay:${i*.08}s`});
     for(let k=0;k<v;k++){
-      const x=X0+k*PX+PX/2,h=9+rnd(k+1,i+2)*6;
-      el(s,'line',{x1:x,y1:y+9,x2:x,y2:y+9-h,stroke:INK,'stroke-width':.9,
-        opacity:.55+rnd(k+3,i+5)*.45,class:'fade',style:`animation-delay:${i*.08+k*.012}s`});
+      const x=X0+k*PX+PX/2,h=14;
+      el(s,'line',{x1:x,y1:y+9,x2:x,y2:y+9-h,stroke:INK,'stroke-width':1.6,
+        opacity:1,class:'fade',style:`animation-delay:${i*.08+k*.012}s`});
       if(k%5===4)el(s,'circle',{cx:x,cy:y+13,r:.8,fill:'#C6C5BF',
         class:'fade',style:`animation-delay:${i*.08+k*.012}s`});
     }
