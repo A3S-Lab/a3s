@@ -26,6 +26,26 @@ function taggedReleaseAssets(tag: string): readonly DesktopReleaseAsset[] {
 
 export const desktopReleaseHistory = [
   {
+    version: 'v0.1.5',
+    tag: 'desktop-v0.1.5',
+    publishedAt: '2026-09-22',
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.5`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.5/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.5'),
+    notes: {
+      cn: [
+        'macOS Apple silicon 安装包已 Developer ID 签名并公证，下载后可直接打开安装。',
+        '内置 a3s-box 与 a3s-office：科学家 Bot / Document Expert 无需本机另行安装运行时。',
+        '应用内更新与下载页均通过 desktop-latest 指向本版本。',
+      ],
+      en: [
+        'macOS Apple silicon build is Developer ID signed and notarized; Gatekeeper allows open-and-install.',
+        'Ships a3s-box and a3s-office so Scientist Bot / Document Expert need no separate host runtime install.',
+        'In-app updater and the download page resolve this build through desktop-latest.',
+      ],
+    },
+  },
+  {
     version: 'v0.1.4',
     tag: 'desktop-v0.1.4',
     publishedAt: '2026-09-20',
