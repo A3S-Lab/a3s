@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>The log decides the next transition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F0EFEB;--ink:#1C1C1A;--muted:#8F8E88;--faint:#C6C5BF;--grid:#DEDDD6}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--ink);padding:40px;-webkit-font-smoothing:antialiased}
+  .grid2{display:grid;grid-template-columns:1fr;gap:22px;max-width:720px;margin:0 auto}
+  .card{background:var(--bg);border-radius:24px;padding:28px 28px 20px}
+  h2{font-weight:700;font-size:16.5px;letter-spacing:-.02em;margin-bottom:3px}
+  .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  .src{font-size:9.5px;color:var(--faint);margin-top:10px;letter-spacing:.08em;font-weight:500}
+  svg{width:100%;height:auto;display:block;margin:0 auto}
+  svg text{font-family:'Inter',sans-serif}
+  .pop{transform-box:fill-box;transform-origin:center;animation:pop .5s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes pop{from{transform:scale(0)}to{transform:none}}
+  .fade{animation:fade .9s ease both}
+  @keyframes fade{from{opacity:0}}
+  .draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s cubic-bezier(.4,0,.2,1) both}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion:reduce){
+    .pop,.fade{animation:none}
+    .draw{animation:none;stroke-dasharray:none;stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+<div class="grid2">
+  <div class="card">
+    <h2>The log decides the next transition</h2>
+    <div class="sub">● first fact · ○ later fact · a line stops when the fold enables nothing · a duplicate key never grows a second node</div>
+    <svg id="ch" viewBox="0 0 400 340" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="src">L11 TREND LINEAGE · A3S-EFFECT TESTS/HARNESS.RS · FACT LOG</div>
+  </div>
+</div>
+<script>
+const INK='#1C1C1A',PAPER='#F0EFEB',MUTED='#8F8E88';
+const NS='http://www.w3.org/2000/svg';
+const el=(p,t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);p.appendChild(n);return n};
+const txt=(p,a,s)=>{const n=el(p,'text',a);n.textContent=s;return n};
+const tip=(n,s)=>{const t=document.createElementNS(NS,'title');t.textContent=s;n.appendChild(t)};
+const timers={};
+const obsReveal=(id,fn)=>{
+  const n=document.getElementById(id);
+  const go=()=>{(timers[id]||[]).forEach(clearInterval);timers[id]=[];n.innerHTML='';fn(n)};
+  const io=new IntersectionObserver(es=>{if(es[0].isIntersecting){go();io.disconnect()}},{threshold:.3});
+  io.observe(n);n.style.cursor='pointer';n.addEventListener('click',go);
+};
+// L11 Trend Lineage. Rows are log positions. Columns are threads.
+// open=false means resume enables nothing further. Duplicate has no effect node.
+(()=>{
+const TR=[
+  ['Text turn',[[0,'f'],[1,'o']],false],
+  ['Confirm',[[0,'f'],[1,'o'],[2,'o'],[3,'o'],[4,'o']],false],
+  ['Question',[[0,'f'],[1,'o'],[2,'o'],[3,'o']],false],
+  ['Dup key',[[0,'f']],false],
+];
+const LAST=5;
+const yY=step=>36+step*42,colX=c=>96+c*72;
+const labels=['message','model','answer','tool','model','resume'];
+obsReveal('ch',s=>{
+  for(let step=0;step<=LAST;step++){
+    el(s,'line',{x1:78,y1:yY(step),x2:372,y2:yY(step),stroke:'#E3E2DB','stroke-width':.8,
+      class:'fade',style:`animation-delay:${step*.03}s`});
+    txt(s,{x:70,y:yY(step)+3,'font-size':7.5,'font-weight':600,fill:MUTED,'text-anchor':'end',
+      class:'fade',style:`animation-delay:${step*.03}s`},labels[step]);
+  }
+  TR.forEach(([name,ev,open],c)=>{
+    const x=colX(c);
+    for(let k=0;k<ev.length-1;k++){
+      const gap=ev[k+1][0]-ev[k][0];
+      el(s,'line',{x1:x,y1:yY(ev[k][0])+7,x2:x,y2:yY(ev[k+1][0])-7,
+        stroke:'#B0AFA9','stroke-width':1,
+        'stroke-dasharray':gap>2?'2 4':'none',pathLength:1,
+        class:'draw',style:`animation-delay:${.3+c*.07}s;animation-duration:.6s`});
+    }
+    const last=ev[ev.length-1][0];
+    if(open)
+      el(s,'line',{x1:x,y1:yY(last)+7,x2:x,y2:yY(LAST)+16,stroke:'#B0AFA9','stroke-width':1,
+        pathLength:1,class:'draw',style:`animation-delay:${.45+c*.07}s;animation-duration:.6s`});
+    ev.forEach(([step,t])=>{
+      const node=el(s,'circle',t==='f'
+        ?{cx:x,cy:yY(step),r:5.5,fill:INK}
+        :{cx:x,cy:yY(step),r:5.5,fill:PAPER,stroke:INK,'stroke-width':1.4});
+      node.setAttribute('class','pop');
+      node.style.animationDelay=(.35+c*.07)+'s';
+      tip(node,name==='Dup key'
+        ?'DuplicateTransition — the effect body is not called'
+        :`${name} — ${labels[step]}`);
+    });
+    el(s,'circle',{cx:x,cy:open?yY(LAST)+16:yY(last)+12,r:open?3:1.6,
+      fill:open?INK:'#C6C5BF',class:'pop',style:`animation-delay:${.6+c*.07}s`});
+    const ly=yY(LAST)+28;
+    txt(s,{x,y:ly,'font-size':7,'font-weight':600,fill:'#4A4944',
+      transform:`rotate(-32 ${x} ${ly})`,'text-anchor':'end',
+      class:'fade',style:`animation-delay:${.7+c*.05}s`},name);
+  });
+});
+})();
+</script>
+</body>
+</html>

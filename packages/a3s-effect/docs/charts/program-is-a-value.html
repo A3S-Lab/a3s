@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>The program is a value until Effect::run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F0EFEB;--ink:#1C1C1A;--muted:#8F8E88;--faint:#C6C5BF;--grid:#DEDDD6}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--ink);padding:40px;-webkit-font-smoothing:antialiased}
+  .grid2{display:grid;grid-template-columns:1fr;gap:22px;max-width:720px;margin:0 auto}
+  .card{background:var(--bg);border-radius:24px;padding:28px 28px 20px}
+  h2{font-weight:700;font-size:16.5px;letter-spacing:-.02em;margin-bottom:3px}
+  .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  .src{font-size:9.5px;color:var(--faint);margin-top:10px;letter-spacing:.08em;font-weight:500}
+  svg{width:100%;height:auto;display:block;margin:0 auto}
+  svg text{font-family:'Inter',sans-serif}
+  .fade{animation:fade .9s ease both}
+  @keyframes fade{from{opacity:0}}
+  @media (prefers-reduced-motion:reduce){
+    .fade{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="grid2">
+  <div class="card">
+    <h2>The program is a value until Effect::run</h2>
+    <div class="sub">one tick = one public method on Effect · value builders do not call the service · only run does</div>
+    <svg id="ch" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="src">F5 TICK ROWS · A3S-EFFECT SRC/EFFECT.RS · CONSTRUCT VERSUS RUN</div>
+  </div>
+</div>
+<script>
+const INK='#1C1C1A',MUTED='#8F8E88',GRID='#DEDDD6';
+const rnd=(i,k)=>Math.abs(((i*73856093)^(k*19349663))%1000)/1000;
+const NS='http://www.w3.org/2000/svg';
+const el=(p,t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);p.appendChild(n);return n};
+const txt=(p,a,s)=>{const n=el(p,'text',a);n.textContent=s;return n};
+const tip=(n,s)=>{const t=document.createElementNS(NS,'title');t.textContent=s;n.appendChild(t)};
+const timers={};
+const obsReveal=(id,fn)=>{
+  const n=document.getElementById(id);
+  const go=()=>{(timers[id]||[]).forEach(clearInterval);timers[id]=[];n.innerHTML='';fn(n)};
+  const io=new IntersectionObserver(es=>{if(es[0].isIntersecting){go();io.disconnect()}},{threshold:.3});
+  io.observe(n);n.style.cursor='pointer';n.addEventListener('click',go);
+};
+// F5 Tick Rows. VALUE counts Effect methods that return another Effect.
+// RUN counts the one method that executes: Effect::run.
+(()=>{
+const D=[['VALUE',14],['RUN',1]];
+obsReveal('ch',s=>{
+  const y0=i=>96+i*88,X0=104,PX=16.7,max=14;
+  D.forEach(([name,v],i)=>{
+    const y=y0(i);
+    txt(s,{x:94,y:y+3,'font-size':8,'font-weight':700,fill:'#6A6963','text-anchor':'end',
+      'letter-spacing':'.08em',class:'fade',style:`animation-delay:${i*.08}s`},name);
+    el(s,'line',{x1:X0,y1:y+9,x2:X0+max*PX,y2:y+9,stroke:GRID,'stroke-width':.6,
+      class:'fade',style:`animation-delay:${i*.08}s`});
+    for(let k=0;k<v;k++){
+      const x=X0+k*PX+PX/2,h=9+rnd(k+1,i+2)*6;
+      el(s,'line',{x1:x,y1:y+9,x2:x,y2:y+9-h,stroke:INK,'stroke-width':.9,
+        opacity:.55+rnd(k+3,i+5)*.45,class:'fade',style:`animation-delay:${i*.08+k*.012}s`});
+      if(k%5===4)el(s,'circle',{cx:x,cy:y+13,r:.8,fill:'#C6C5BF',
+        class:'fade',style:`animation-delay:${i*.08+k*.012}s`});
+    }
+    const lab=txt(s,{x:X0+v*PX+10,y:y+4,'font-size':11,'font-weight':800,fill:INK,
+      class:'fade',style:`animation-delay:${.4+i*.08}s`},v);
+    tip(lab,name==='VALUE'
+      ?'14 methods return an Effect and do not run it'
+      :'Effect::run is the only edge that executes the description');
+    txt(s,{x:X0,y:y+28,'font-size':7,'font-weight':600,fill:MUTED,
+      class:'fade',style:`animation-delay:${.2+i*.08}s`},
+      name==='VALUE'?'succeed through provide':'Effect::run');
+  });
+  txt(s,{x:200,y:308,'font-size':7,'font-weight':600,fill:'#B0AFA9','text-anchor':'middle',
+    'letter-spacing':'.12em',class:'fade',style:'animation-delay:.9s'},
+    'ONE TICK = ONE PUBLIC METHOD · THE SERVICE STAYS UNCALLED UNTIL RUN');
+});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Both waits end on a fact, not a timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F0EFEB;--ink:#1C1C1A;--muted:#8F8E88;--faint:#C6C5BF;--grid:#DEDDD6}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--ink);padding:40px;-webkit-font-smoothing:antialiased}
+  .grid2{display:grid;grid-template-columns:1fr;gap:22px;max-width:720px;margin:0 auto}
+  .card{background:var(--bg);border-radius:24px;padding:28px 28px 20px}
+  h2{font-weight:700;font-size:16.5px;letter-spacing:-.02em;margin-bottom:3px}
+  .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  .src{font-size:9.5px;color:var(--faint);margin-top:10px;letter-spacing:.08em;font-weight:500}
+  svg{width:100%;height:auto;display:block;margin:0 auto}
+  svg text{font-family:'Inter',sans-serif}
+  .pop{transform-box:fill-box;transform-origin:center;animation:pop .5s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes pop{from{transform:scale(0)}to{transform:none}}
+  .fade{animation:fade .9s ease both}
+  @keyframes fade{from{opacity:0}}
+  @media (prefers-reduced-motion:reduce){.pop,.fade{animation:none}}
+</style>
+</head>
+<body>
+<div class="grid2">
+  <div class="card">
+    <h2>Both waits end on a fact, not a timer</h2>
+    <div class="sub">hollow = transitions while parked · ink = after the answer fact · confirmation.answered and question.answered, including allow_free_text</div>
+    <svg id="ch" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="src">F12 DUMBBELL QUEUE · A3S-EFFECT TESTS/HARNESS.RS · NO PROCESS-LOCAL TIMER</div>
+  </div>
+</div>
+<script>
+const INK='#1C1C1A',PAPER='#F0EFEB';
+const rnd=(i,k)=>Math.abs(((i*73856093)^(k*19349663))%1000)/1000;
+const NS='http://www.w3.org/2000/svg';
+const el=(p,t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);p.appendChild(n);return n};
+const txt=(p,a,s)=>{const n=el(p,'text',a);n.textContent=s;return n};
+const tip=(n,s)=>{const t=document.createElementNS(NS,'title');t.textContent=s;n.appendChild(t)};
+const timers={};
+const obsReveal=(id,fn)=>{
+  const n=document.getElementById(id);
+  const go=()=>{(timers[id]||[]).forEach(clearInterval);timers[id]=[];n.innerHTML='';fn(n)};
+  const io=new IntersectionObserver(es=>{if(es[0].isIntersecting){go();io.disconnect()}},{threshold:.3});
+  io.observe(n);n.style.cursor='pointer';n.addEventListener('click',go);
+};
+// F12 Dumbbell Queue. Parked count is 0. The answer fact enables 1 transition.
+(()=>{
+const D=[
+  ['CONFIRM',0,1,'confirmation.answered enables the tool'],
+  ['QUESTION',0,1,'question.answered enables the next model turn; allow_free_text stays on the question'],
+];
+obsReveal('ch',s=>{
+  const y0=i=>108+i*78,X0=128,X1=340,mapX=v=>X0+v*(X1-X0);
+  D.forEach(([name,parked,after,note],i)=>{
+    const y=y0(i),xa=mapX(parked),xb=mapX(after);
+    txt(s,{x:116,y:y+3,'font-size':7.5,'font-weight':700,fill:'#6A6963','text-anchor':'end',
+      'letter-spacing':'.06em',class:'fade',style:`animation-delay:${i*.08}s`},name);
+    el(s,'line',{x1:X0-6,y1:y,x2:X1+6,y2:y,stroke:'#E3E2DB','stroke-width':.7,
+      class:'fade',style:`animation-delay:${i*.08}s`});
+    const n=Math.abs(after-parked);
+    for(let k=0;k<n;k++){
+      const t=(k+.5)/n,x=xa+t*(xb-xa),yy=y+(rnd(k+1,i+3)-.5)*2.6;
+      el(s,'circle',{cx:x,cy:yy,r:1.5+rnd(k+2,i+4)*.9,fill:'#8F8E88',opacity:.85,
+        class:'pop',style:`animation-delay:${.3+i*.08+k*.03}s`});
+    }
+    el(s,'circle',{cx:xa,cy:y,r:4.2,fill:PAPER,stroke:INK,'stroke-width':1.3,
+      class:'pop',style:`animation-delay:${.2+i*.08}s`});
+    const ink=el(s,'circle',{cx:xb,cy:y,r:4.6,fill:INK,
+      class:'pop',style:`animation-delay:${.6+i*.08}s`});
+    tip(ink,note);
+    txt(s,{x:xa,y:y-12,'font-size':8.5,'font-weight':700,fill:'#B0AFA9','text-anchor':'middle',
+      class:'fade',style:`animation-delay:${.3+i*.08}s`},parked);
+    txt(s,{x:xb,y:y-12,'font-size':10,'font-weight':800,fill:INK,'text-anchor':'middle',
+      class:'fade',style:`animation-delay:${.7+i*.08}s`},after);
+  });
+  txt(s,{x:X0,y:276,'font-size':7,'font-weight':600,fill:'#C6C5BF',class:'fade'},'PARKED');
+  txt(s,{x:X1,y:276,'font-size':7,'font-weight':600,fill:'#C6C5BF','text-anchor':'end',class:'fade'},'AFTER THE FACT');
+  txt(s,{x:200,y:304,'font-size':7,'font-weight':600,fill:'#B0AFA9','text-anchor':'middle',
+    'letter-spacing':'.12em',class:'fade',style:'animation-delay:1s'},
+    'ONE BEAD = ONE TRANSITION UNLOCKED · HOLLOW = PARKED · INK = AFTER THE FACT');
+});
+})();
+</script>
+</body>
+</html>
