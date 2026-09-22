@@ -177,7 +177,12 @@ bash /mnt/d/code/a3s/scripts/tb40_a3s_agent_smoke.sh
 Runs **1 task × 1 trial**. Harbor may pick a hard task (for example
 `layout-config-recreation2` with a multi-hour agent timeout). That is enough to
 prove install + model wiring; it is **not** a substitute for a planned full
-suite.
+suite. Pin a shorter diagnostic task with:
+
+```bash
+export A3S_TB_INCLUDE_TASK=terminal-bench/bun-sourcemap-leak
+bash /mnt/d/code/a3s/scripts/tb40_a3s_agent_smoke.sh
+```
 
 Stop a runaway smoke:
 

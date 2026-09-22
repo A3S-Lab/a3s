@@ -52,6 +52,12 @@ done
 mkdir -p "$JOB_DIR"
 cd "$JOB_DIR"
 
+include_args=()
+if [[ -n "${A3S_TB_INCLUDE_TASK:-}" ]]; then
+  include_args+=(-i "$A3S_TB_INCLUDE_TASK")
+  echo "include_task=$A3S_TB_INCLUDE_TASK"
+fi
+
 set +e
 harbor run \
   -d "terminal-bench/terminal-bench@4.0.0" \
@@ -62,6 +68,7 @@ harbor run \
   -l 1 \
   -k 1 \
   --agent-setup-timeout-multiplier 3 \
+  "${include_args[@]}" \
   "${harbor_env_args[@]}" \
   --jobs-dir "$JOB_DIR/jobs" 2>&1 | tee "$JOB_DIR/a3s-agent-smoke.log"
 RC=${PIPESTATUS[0]}
