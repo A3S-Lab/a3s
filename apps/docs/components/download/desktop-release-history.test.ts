@@ -6,12 +6,17 @@ import { desktopReleaseHistory } from './desktop-release-history';
 describe('Desktop release history', () => {
   test('lists checked releases from newest to oldest', () => {
     assert.ok(desktopReleaseHistory.length > 0);
-    assert.equal(desktopReleaseHistory[0]?.version, 'v0.1.5');
-    assert.equal(desktopReleaseHistory[0]?.tag, 'desktop-v0.1.5');
+    assert.equal(desktopReleaseHistory[0]?.version, 'v0.1.6');
+    assert.equal(desktopReleaseHistory[0]?.tag, 'desktop-v0.1.6');
     assert.equal(desktopReleaseHistory.at(-1)?.version, 'v0.1.0');
 
     const publishedDates = desktopReleaseHistory.map((release) => release.publishedAt);
-    assert.deepEqual(publishedDates, [...publishedDates].sort().reverse());
+    for (let index = 1; index < publishedDates.length; index += 1) {
+      assert.ok(
+        publishedDates[index - 1]! >= publishedDates[index]!,
+        `expected ${publishedDates[index - 1]} >= ${publishedDates[index]}`,
+      );
+    }
     assert.equal(new Set(desktopReleaseHistory.map((release) => release.version)).size, desktopReleaseHistory.length);
   });
 
