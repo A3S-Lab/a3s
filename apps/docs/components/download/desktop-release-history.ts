@@ -34,14 +34,14 @@ export const desktopReleaseHistory = [
     assets: taggedReleaseAssets('desktop-v0.1.5'),
     notes: {
       cn: [
-        'macOS Apple silicon 安装包已 Developer ID 签名并公证，下载后可直接打开安装。',
-        '内置 a3s-box 与 a3s-office：科学家 Bot / Document Expert 无需本机另行安装运行时。',
-        '应用内更新与下载页均通过 desktop-latest 指向本版本。',
+        '相对 v0.1.4：安装包内置 a3s-office，Document Expert（Word / Excel / PPT / Markdown / PDF）开箱可用，无需本机另装 Office CLI。',
+        '单文档 /review：渐进批注、Findings 优先队列与 Accept / Address 闭环；复杂合同场景与 live Desktop 门禁已收口。',
+        '继续内置 a3s-box（科学家 Bot / 科研环境）；macOS Apple silicon 包仍为 Developer ID 签名并公证，下载页与应用内更新指向本版。',
       ],
       en: [
-        'macOS Apple silicon build is Developer ID signed and notarized; Gatekeeper allows open-and-install.',
-        'Ships a3s-box and a3s-office so Scientist Bot / Document Expert need no separate host runtime install.',
-        'In-app updater and the download page resolve this build through desktop-latest.',
+        'Since v0.1.4: ships bundled a3s-office so Document Expert (Word / Excel / PPT / Markdown / PDF) works out of the box—no separate Office CLI install.',
+        'Single-document /review: progressive annotate, Findings priority queue, and Accept / Address loop; complex-contract coverage and live Desktop gates are closed.',
+        'Still includes a3s-box for Scientist Bot / Science Lab; macOS Apple silicon remains Developer ID signed and notarized. Downloads and in-app updates resolve to this build.',
       ],
     },
   },
