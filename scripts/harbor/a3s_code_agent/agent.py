@@ -188,9 +188,10 @@ class A3sCodeAgent(BaseInstalledAgent):
             "set -euo pipefail; "
             'if [ -f "$HOME/.local/bin/env" ]; then . "$HOME/.local/bin/env"; fi; '
             'export PATH="$HOME/.local/bin:$PATH"; '
+            "export PYTHONUNBUFFERED=1; "
             f'PY="{_CONTAINER_HOME}/venv/bin/python"; '
             f"printf '%s' {escaped_instruction} > {_CONTAINER_INSTRUCTION}; "
-            "\"$PY\" "
+            "\"$PY\" -u "
             f"{_CONTAINER_RUNNER} "
             "--workspace /app "
             f"--instruction-file {_CONTAINER_INSTRUCTION} "
