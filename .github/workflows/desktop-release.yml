@@ -78,7 +78,9 @@ jobs:
         working-directory: apps/desktop
         run: |
           npm ci
-          npm run check
+          npm run build
+          npm run sandbox:validate
+          cargo check --manifest-path src-tauri/Cargo.toml --locked
 
       - name: Validate tag, package, and updater secret contract
         id: metadata
