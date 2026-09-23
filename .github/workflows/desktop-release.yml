@@ -80,6 +80,7 @@ jobs:
           npm ci
           npm run build
           npm run sandbox:validate
+          mkdir -p src-tauri/gen/box src-tauri/gen/office src-tauri/gen/builtin-mind-kb
           cargo check --manifest-path src-tauri/Cargo.toml --locked
 
       - name: Validate tag, package, and updater secret contract
@@ -209,6 +210,10 @@ jobs:
       - name: Generate release updater config
         working-directory: apps/desktop
         run: npm run release:config
+
+      - name: Prepare Tauri resource directories
+        working-directory: apps/desktop
+        run: mkdir -p src-tauri/gen/box src-tauri/gen/office src-tauri/gen/builtin-mind-kb
 
       - name: Build and publish signed Tauri bundles
         uses: tauri-apps/tauri-action@v1
