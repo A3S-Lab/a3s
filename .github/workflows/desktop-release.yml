@@ -52,7 +52,7 @@ jobs:
             -c url."https://github.com/A3S-Lab/".insteadOf="git@github.com:A3S-Lab/" \
             -c url."https://x-access-token:${DESKTOP_REPO_TOKEN}@github.com/kense-labs/".insteadOf="git@github.com:kense-labs/" \
             submodule update --init -- \
-            packages/ui packages/office crates/lane crates/use crates/sandbox apps/desktop
+            packages/ui packages/office crates/lane crates/use crates/sandbox apps/desktop use-registry
 
       - name: Install Linux prerequisites
         run: |
@@ -159,7 +159,7 @@ jobs:
             -c url."https://github.com/A3S-Lab/".insteadOf="git@github.com:A3S-Lab/" \
             -c url."https://x-access-token:${DESKTOP_REPO_TOKEN}@github.com/kense-labs/".insteadOf="git@github.com:kense-labs/" \
             submodule update --init -- \
-            packages/ui packages/office crates/lane crates/use crates/sandbox apps/desktop
+            packages/ui packages/office crates/lane crates/use crates/sandbox apps/desktop use-registry
 
       - name: Install Linux prerequisites
         if: runner.os == 'Linux'
