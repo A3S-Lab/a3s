@@ -26,6 +26,26 @@ function taggedReleaseAssets(tag: string): readonly DesktopReleaseAsset[] {
 
 export const desktopReleaseHistory = [
   {
+    version: 'v0.1.7',
+    tag: 'desktop-v0.1.7',
+    publishedAt: '2026-09-23',
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.7`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.7/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.7'),
+    notes: {
+      cn: [
+        '修复工作区知识库读取：模型发出的 functions.read 现在按 Read(*) 放行。已授予读取权限时，审查知识库 Markdown 正文不再被 permission policy 拦截。',
+        '同一策略下列目录仍然可用，工作区外路径和未授权写入仍拒绝。',
+        '发布 macOS 与 Windows x64 安装包；下载页和应用内更新通过 desktop-latest 指向本版。',
+      ],
+      en: [
+        'Fixes workspace knowledge-base reads: model-emitted functions.read now matches Read(*). Granted read permission can open review-library Markdown instead of being blocked by the permission policy.',
+        'Directory listing still works under the same policy. Paths outside the workspace and unauthorized writes stay denied.',
+        'Publishes macOS and Windows x64 installers. Downloads and in-app updates resolve to this build through desktop-latest.',
+      ],
+    },
+  },
+  {
     version: 'v0.1.6',
     tag: 'desktop-v0.1.6',
     publishedAt: '2026-09-22',

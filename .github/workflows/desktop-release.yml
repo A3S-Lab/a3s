@@ -41,10 +41,18 @@ jobs:
           ref: ${{ github.event.inputs.tag_name || github.ref }}
           fetch-depth: 0
 
-      - name: Initialize Desktop and UI submodules
+      - name: Initialize Desktop and release submodules
+        env:
+          DESKTOP_REPO_TOKEN: ${{ secrets.A3S_DESKTOP_SUBMODULE_READ_TOKEN }}
         run: |
-          git -c url."https://github.com/".insteadOf=git@github.com: \
-            submodule update --init -- packages/ui apps/desktop
+          set -euo pipefail
+          test -n "$DESKTOP_REPO_TOKEN"
+          # A3S-Lab modules are public. Desktop source is the private kense-labs/work repo.
+          git \
+            -c url."https://github.com/A3S-Lab/".insteadOf="git@github.com:A3S-Lab/" \
+            -c url."https://x-access-token:${DESKTOP_REPO_TOKEN}@github.com/kense-labs/".insteadOf="git@github.com:kense-labs/" \
+            submodule update --init -- \
+            packages/ui packages/office crates/lane crates/use crates/sandbox apps/desktop
 
       - name: Install Linux prerequisites
         run: |
@@ -103,7 +111,7 @@ jobs:
     name: Build and publish ${{ matrix.name }}
     needs: validate
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       # The Tauri action merges updater entries from the existing release.
@@ -111,6 +119,14 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis,msi
+          - name: Linux x64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage,deb
           - name: macOS arm64
             runner: macos-15
             target: aarch64-apple-darwin
@@ -119,14 +135,6 @@ jobs:
             runner: macos-15-intel
             target: x86_64-apple-darwin
             bundles: app,dmg
-          - name: Linux x64
-            runner: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            bundles: appimage,deb
-          - name: Windows x64
-            runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            bundles: nsis,msi
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -138,10 +146,17 @@ jobs:
           ref: ${{ needs.validate.outputs.tag_name }}
           fetch-depth: 0
 
-      - name: Initialize Desktop and UI submodules
+      - name: Initialize Desktop and release submodules
+        env:
+          DESKTOP_REPO_TOKEN: ${{ secrets.A3S_DESKTOP_SUBMODULE_READ_TOKEN }}
         run: |
-          git -c url."https://github.com/".insteadOf=git@github.com: \
-            submodule update --init -- packages/ui apps/desktop
+          set -euo pipefail
+          test -n "$DESKTOP_REPO_TOKEN"
+          git \
+            -c url."https://github.com/A3S-Lab/".insteadOf="git@github.com:A3S-Lab/" \
+            -c url."https://x-access-token:${DESKTOP_REPO_TOKEN}@github.com/kense-labs/".insteadOf="git@github.com:kense-labs/" \
+            submodule update --init -- \
+            packages/ui packages/office crates/lane crates/use crates/sandbox apps/desktop
 
       - name: Install Linux prerequisites
         if: runner.os == 'Linux'
@@ -156,6 +171,11 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -169,6 +189,10 @@ jobs:
       - name: Install dependencies
         working-directory: apps/desktop
         run: npm ci
+
+      - name: Build bundled a3s-office CLI
+        working-directory: packages/office
+        run: cargo build -p a3s-office-cli --release
 
       - name: Remove stale bundle output
         working-directory: apps/desktop
@@ -207,7 +231,7 @@ jobs:
 
       - name: Smoke-test native sandbox on the release runner
         working-directory: apps/desktop
-        run: npm run smoke:sandbox
+        run: npm run sandbox:smoke
 
       - name: Verify packaged release artifacts
         working-directory: apps/desktop
