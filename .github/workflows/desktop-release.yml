@@ -52,6 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$DESKTOP_REPO_TOKEN"
+          git config --global core.autocrlf false
           # A3S-Lab modules are public. Desktop source is the private kense-labs/work repo.
           git \
             -c url."https://github.com/A3S-Lab/".insteadOf="git@github.com:A3S-Lab/" \
@@ -160,6 +161,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$DESKTOP_REPO_TOKEN"
+          git config --global core.autocrlf false
           git \
             -c url."https://github.com/A3S-Lab/".insteadOf="git@github.com:A3S-Lab/" \
             -c url."https://x-access-token:${DESKTOP_REPO_TOKEN}@github.com/kense-labs/".insteadOf="git@github.com:kense-labs/" \
