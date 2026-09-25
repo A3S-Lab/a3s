@@ -22,7 +22,7 @@ _CONTAINER_RUNNER = f"{_CONTAINER_HOME}/runner.py"
 _CONTAINER_ACL = f"{_CONTAINER_HOME}/agent.acl"
 _CONTAINER_WHEEL_DIR = f"{_CONTAINER_HOME}/wheels"
 _CONTAINER_INSTRUCTION = f"{EnvironmentPaths.agent_dir}/instruction.txt"
-_DEFAULT_WHEEL_VERSION = "8.2.0"
+_DEFAULT_WHEEL_VERSION = "8.6.0"
 
 
 def _resolve_host_wheel(version: str | None) -> Path | None:
@@ -71,9 +71,12 @@ class A3sCodeAgent(BaseInstalledAgent):
     async def install(self, environment: BaseEnvironment) -> None:
         # Prefer a prebuilt manylinux wheel: skip build-essential/git to keep
         # agent setup under Harbor's default 360s agent-setup timeout.
+        # Request curl only. Harbor's `ca_certificates` package is marked
+        # always_install and forces apt even when CA roots are already present;
+        # TB images used here already ship curl + CA certs.
         await self.ensure_system_dependencies(
             environment,
-            ("curl", "ca_certificates"),
+            ("curl",),
         )
 
         version_spec = f"=={self._version}" if self._version else ""
