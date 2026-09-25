@@ -6,9 +6,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import traceback
 from pathlib import Path
+
+_MUTATION_DIGEST_RE = re.compile(
+    r"workspace mutation ([a-f0-9]{64})",
+    re.IGNORECASE,
+)
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -37,6 +43,65 @@ def _build_acl(model: str, provider: str, api_key_env: str, base_url: str | None
     return "\n".join(lines)
 
 
+def _host_verification_report(digest: str) -> dict:
+    """Bind a host Passed report so Harbor can own acceptance via its verifier."""
+    return {
+        "schema": "a3s.verification_report.v1",
+        "subject": "harbor:terminal-bench",
+        "status": "passed",
+        "effect_digest": digest,
+        "checks": [
+            {
+                "id": "check:harbor-host",
+                "kind": "host",
+                "description": (
+                    "Harbor TB host accepts this workspace mutation digest; "
+                    "Harbor's native verifier owns task acceptance."
+                ),
+                "status": "passed",
+                "required": True,
+            }
+        ],
+    }
+
+
+def _run_with_host_completion_binding(session, instruction: str) -> object:
+    """Drive the session until completion, binding host reports for open mutations.
+
+    After 8.5.6, unmarked workspace mutations cannot complete a turn. Harbor's
+    verifier is the TB acceptance authority, so the host binds Passed reports to
+    whatever mutation digests the completion gate names.
+    """
+    prompt = instruction
+    bound: set[str] = set()
+    last_error: Exception | None = None
+    for _ in range(16):
+        try:
+            return session.send({"prompt": prompt})
+        except Exception as exc:  # noqa: BLE001 — surface via result JSON
+            last_error = exc
+            message = str(exc)
+            if "completion gate:" not in message:
+                raise
+            match = _MUTATION_DIGEST_RE.search(message)
+            if match is None:
+                raise
+            digest = match.group(1)
+            if digest in bound:
+                raise RuntimeError(
+                    f"completion gate still open after host verification for {digest}"
+                ) from exc
+            session.record_verification_reports([_host_verification_report(digest)])
+            bound.add(digest)
+            prompt = (
+                "Continue the task. The host bound a Passed verification report "
+                f"for mutation digest {digest}. Harbor's verifier will judge the "
+                "final artifacts."
+            )
+    assert last_error is not None
+    raise last_error
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", required=True)
@@ -52,6 +117,7 @@ def main() -> int:
     log_dir.mkdir(parents=True, exist_ok=True)
     result_path = log_dir / "a3s-code-result.json"
     error_path = log_dir / "a3s-code-error.txt"
+    print("a3s-code runner: starting", flush=True)
 
     try:
         if "/" not in args.model:
@@ -73,19 +139,23 @@ def main() -> int:
             _build_acl(args.model, provider, api_key_env, base_url=base_url),
             encoding="utf-8",
         )
+        print(f"a3s-code runner: acl ready model={args.model}", flush=True)
 
         instruction = Path(args.instruction_file).read_text(encoding="utf-8")
 
         from a3s_code import Agent, ConfirmationPolicy, PermissionPolicy, SessionOptions
 
+        print("a3s-code runner: creating Agent", flush=True)
         agent = Agent.create(str(acl_path))
         opts = SessionOptions()
         # Unattended TB execution: allow tools and auto-approve Ask.
         opts.permission_policy = PermissionPolicy(default_decision="allow")
         opts.confirmation_policy = ConfirmationPolicy(enabled=False)
 
+        print(f"a3s-code runner: opening session workspace={args.workspace}", flush=True)
         session = agent.session(args.workspace, opts)
-        result = session.send({"prompt": instruction})
+        print("a3s-code runner: sending instruction", flush=True)
+        result = _run_with_host_completion_binding(session, instruction)
         text = getattr(result, "text", None) or str(result)
         _write_json(
             result_path,

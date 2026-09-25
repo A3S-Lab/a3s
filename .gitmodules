@@ -72,7 +72,7 @@
 	url = git@github.com:A3S-Lab/Cloud.git
 [submodule "apps/desktop"]
 	path = apps/desktop
-	url = git@github.com:kense-labs/work.git
+	url = git@github.com:A3S-Lab/Desktop.git
 [submodule "crates/use"]
 	path = crates/use
 	url = git@github.com:A3S-Lab/Use.git
@@ -120,6 +120,7 @@
 	path = crates/apofasi
 	url = git@github.com:A3S-Lab/Apofasi.git
 	branch = main
-[submodule "crates/molifasi"]
-	path = crates/molifasi
-	url = git@github.com:A3S-Lab/Molifasi.git
+[submodule "packages/effect"]
+	path = packages/effect
+	url = git@github.com:A3S-Lab/Effect.git
+	branch = main

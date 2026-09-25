@@ -128,7 +128,9 @@ DeepSeek aliases when needed.
 ## Adapter behavior (method)
 
 1. **Install** (agent setup, timed; default Harbor setup budget ~360s, smoke uses multiplier 3):
-   - Ensure light system deps (`curl`, `ca_certificates`) — avoid `build-essential` when using a binary wheel
+   - Ensure light system deps (`curl` only — Harbor marks `ca_certificates`
+     `always_install`, which forces apt even when CA roots are already present);
+     avoid `build-essential` when using a binary wheel
    - Upload prefetched manylinux wheel into `/tmp/a3s-code-harbor/wheels/`
    - `uv` + Python 3.12 venv + `uv pip install` the wheel
    - Upload `runner.py`
