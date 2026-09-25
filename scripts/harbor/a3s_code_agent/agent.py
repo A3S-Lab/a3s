@@ -170,6 +170,7 @@ class A3sCodeAgent(BaseInstalledAgent):
         base_url_q = shlex.quote(base_url)
         command = (
             "set -euo pipefail; "
+            "export PYTHONUNBUFFERED=1; "
             'if [ -f "$HOME/.local/bin/env" ]; then . "$HOME/.local/bin/env"; fi; '
             'export PATH="$HOME/.local/bin:$PATH"; '
             f'PY="{_CONTAINER_HOME}/venv/bin/python"; '
