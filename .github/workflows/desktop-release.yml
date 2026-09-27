@@ -7,6 +7,11 @@ on:
         description: 'Existing root tag to publish, for example desktop-v0.1.1'
         required: true
         type: string
+      targets:
+        description: 'Comma-separated matrix names to build, for example Linux x64. Empty builds every target.'
+        required: false
+        type: string
+        default: ''
   push:
     tags:
       - 'desktop-v*'
@@ -134,6 +139,10 @@ jobs:
   publish-tauri:
     name: Build and publish ${{ matrix.name }}
     needs: validate
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      github.event.inputs.targets == '' ||
+      contains(format(',{0},', github.event.inputs.targets), format(',{0},', matrix.name))
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 180
     strategy:
@@ -165,6 +174,9 @@ jobs:
       A3S_DESKTOP_UPDATER_PUBKEY: ${{ secrets.A3S_DESKTOP_UPDATER_PUBKEY }}
       # GitHub-hosted Ubuntu cannot mount FUSE, so linuxdeploy must extract the AppImage.
       APPIMAGE_EXTRACT_AND_RUN: "1"
+      # linuxdeploy bundles binutils 2.35 strip, which rejects RELR (.relr.dyn) sections
+      # in current Ubuntu libraries. Tauri reports that as "failed to run linuxdeploy".
+      NO_STRIP: "1"
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
@@ -265,7 +277,8 @@ jobs:
           uploadUpdaterJson: true
           uploadUpdaterSignatures: true
           updaterJsonPreferNsis: true
-          args: --config src-tauri/tauri.release.conf.json --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          # Linux stays verbose because Tauri drops linuxdeploy stderr at the default log level.
+          args: --config src-tauri/tauri.release.conf.json --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}${{ matrix.target == 'x86_64-unknown-linux-gnu' && ' --verbose' || '' }}
 
       - name: Smoke-test native sandbox on the release runner
         working-directory: apps/desktop
@@ -280,6 +293,10 @@ jobs:
     needs:
       - validate
       - publish-tauri
+    # A partial dispatch cannot satisfy the four-installer alias contract.
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      github.event.inputs.targets == ''
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
