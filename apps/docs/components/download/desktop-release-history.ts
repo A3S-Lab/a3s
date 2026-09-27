@@ -26,6 +26,26 @@ function taggedReleaseAssets(tag: string): readonly DesktopReleaseAsset[] {
 
 export const desktopReleaseHistory = [
   {
+    version: 'v0.1.8',
+    tag: 'desktop-v0.1.8',
+    publishedAt: '2026-09-27',
+    releaseUrl: `${desktopRepositoryUrl}/releases/tag/desktop-v0.1.8`,
+    checksumUrl: `${desktopRepositoryUrl}/releases/download/desktop-v0.1.8/SHA256SUMS.txt`,
+    assets: taggedReleaseAssets('desktop-v0.1.8'),
+    notes: {
+      cn: [
+        'macOS Apple silicon 安装包使用 Developer ID 签名。本版未完成 Apple 公证，其他 Mac 首次打开时可能被 Gatekeeper 拦截。',
+        'Windows x64 与 Linux x64 安装包与本版同源，由发布流程构建后挂到同一下载页。',
+        '首页不再展示公文写作和合同起草；合同审查仍然保留。下载页与应用内更新通过 desktop-latest 指向本版。',
+      ],
+      en: [
+        'The macOS Apple silicon installer is Developer ID signed. This build is not notarized, so Gatekeeper may block the first open on another Mac.',
+        'Windows x64 and Linux x64 installers are built from the same version and published on this download page.',
+        'Official-document drafting and contract drafting are hidden from Home; contract file review stays. Downloads and in-app updates resolve through desktop-latest.',
+      ],
+    },
+  },
+  {
     version: 'v0.1.7',
     tag: 'desktop-v0.1.7',
     publishedAt: '2026-09-23',

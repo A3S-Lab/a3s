@@ -148,6 +148,8 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       A3S_DESKTOP_UPDATER_PUBKEY: ${{ secrets.A3S_DESKTOP_UPDATER_PUBKEY }}
+      # GitHub-hosted Ubuntu cannot mount FUSE, so linuxdeploy must extract the AppImage.
+      APPIMAGE_EXTRACT_AND_RUN: "1"
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
