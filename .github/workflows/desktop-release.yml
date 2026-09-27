@@ -72,6 +72,11 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -79,6 +84,12 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri -> target
+
+      - name: Build Office frontend package
+        working-directory: packages/office
+        run: |
+          bun install --frozen-lockfile
+          bun run build
 
       - name: Install dependencies and run the source gate
         working-directory: apps/desktop
@@ -197,6 +208,12 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri -> target
+
+      - name: Build Office frontend package
+        working-directory: packages/office
+        run: |
+          bun install --frozen-lockfile
+          bun run build
 
       - name: Install dependencies
         working-directory: apps/desktop
