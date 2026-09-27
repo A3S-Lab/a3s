@@ -17,9 +17,9 @@ import type { Lang } from '@/components/home/home-content';
 
 const platformIcons = {
   'macos-arm64': AppleLogo,
-  'macos-x64': AppleLogo,
   'windows-x64': WindowsLogo,
   'linux-x64': LinuxLogo,
+  'linux-arm64': LinuxLogo,
 } as const;
 
 export default function DesktopDownloadPage({ lang = 'cn' }: { lang?: Lang }) {

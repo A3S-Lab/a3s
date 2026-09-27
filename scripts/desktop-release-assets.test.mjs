@@ -28,6 +28,10 @@ const sourceNames = [
   'A3S-linux-x86_64.AppImage.sig',
   'A3S-linux-x86_64.AppImage.tar.gz',
   'A3S-linux-x86_64.AppImage.tar.gz.sig',
+  'A3S-linux-aarch64.AppImage',
+  'A3S-linux-aarch64.AppImage.sig',
+  'A3S-linux-aarch64.AppImage.tar.gz',
+  'A3S-linux-aarch64.AppImage.tar.gz.sig',
   'latest.json',
 ];
 
@@ -35,24 +39,24 @@ describe('Desktop release aliases', () => {
   test('resolves every website installer to a versioned Tauri asset', () => {
     assert.deepEqual(resolveDesktopDownloadAliases(sourceNames), [
       { alias: 'A3S-macos-arm64.dmg', source: 'A3S-darwin-aarch64.dmg' },
-      { alias: 'A3S-macos-x64.dmg', source: 'A3S-darwin-x64.dmg' },
       { alias: 'A3S-windows-x64.exe', source: 'A3S-windows-x64-setup.exe' },
       { alias: 'A3S-linux-x64.AppImage', source: 'A3S-linux-x86_64.AppImage' },
+      { alias: 'A3S-linux-arm64.AppImage', source: 'A3S-linux-aarch64.AppImage' },
     ]);
   });
 
   test('fails when a platform installer or updater manifest is missing', async () => {
     assert.throws(
       () => resolveDesktopDownloadAliases(['A3S-macos-aarch64.dmg']),
-      /missing the installer required for A3S-macos-x64\.dmg/,
+      /missing the installer required for A3S-windows-x64\.exe/,
     );
     const source = await mkdtemp(path.join(os.tmpdir(), 'a3s-desktop-release-source-'));
     const output = await mkdtemp(path.join(os.tmpdir(), 'a3s-desktop-release-output-'));
     try {
       await writeFile(path.join(source, 'A3S-darwin-aarch64.dmg'), 'arm');
-      await writeFile(path.join(source, 'A3S-darwin-x64.dmg'), 'x64');
       await writeFile(path.join(source, 'A3S-windows-x64-setup.exe'), 'windows');
       await writeFile(path.join(source, 'A3S-linux-x86_64.AppImage'), 'linux');
+      await writeFile(path.join(source, 'A3S-linux-aarch64.AppImage'), 'linux-arm');
       await assert.rejects(
         materializeDesktopDownloadAliases(source, output),
         /missing latest\.json/,
@@ -96,16 +100,21 @@ describe('Desktop release aliases', () => {
         manifest.platforms['linux-x86_64'].url,
         'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.0/A3S-linux-x86_64.AppImage',
       );
+      assert.equal(
+        manifest.platforms['linux-aarch64'].url,
+        'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.0/A3S-linux-aarch64.AppImage',
+      );
+      assert.equal(manifest.platforms['darwin-x86_64'], undefined);
       for (const key of [
         'darwin-aarch64',
-        'darwin-x86_64',
         'darwin-aarch64-app',
-        'darwin-x86_64-app',
         'windows-x86_64',
         'windows-x86_64-nsis',
         'windows-x86_64-msi',
         'linux-x86_64',
         'linux-x86_64-appimage',
+        'linux-aarch64',
+        'linux-aarch64-appimage',
       ]) {
         assert.equal(typeof manifest.platforms[key]?.signature, 'string', key);
         assert.ok(manifest.platforms[key].signature.length > 0, key);
@@ -113,6 +122,8 @@ describe('Desktop release aliases', () => {
       const checksums = await readFile(path.join(output, 'SHA256SUMS.txt'), 'utf8');
       assert.match(checksums, /A3S-macos-arm64\.dmg/);
       assert.match(checksums, /A3S-linux-x64\.AppImage/);
+      assert.match(checksums, /A3S-linux-arm64\.AppImage/);
+      assert.doesNotMatch(checksums, /A3S-macos-x64\.dmg/);
     } finally {
       await Promise.all([rm(source, { recursive: true, force: true }), rm(output, { recursive: true, force: true })]);
     }
@@ -131,6 +142,9 @@ describe('Desktop release aliases', () => {
       'A3S-linux-amd64.AppImage',
       'A3S-linux-amd64.AppImage.tar.gz',
       'A3S-linux-amd64.AppImage.tar.gz.sig',
+      'A3S-linux-aarch64.AppImage',
+      'A3S-linux-aarch64.AppImage.tar.gz',
+      'A3S-linux-aarch64.AppImage.tar.gz.sig',
       'latest.json',
     ];
     try {
@@ -147,6 +161,7 @@ describe('Desktop release aliases', () => {
       const manifest = await buildDesktopUpdaterManifest(source, 'desktop-v0.1.0');
       assert.match(manifest.platforms['windows-x86_64'].url, /setup\.nsis\.zip$/u);
       assert.match(manifest.platforms['linux-x86_64'].url, /\.AppImage\.tar\.gz$/u);
+      assert.match(manifest.platforms['linux-aarch64'].url, /aarch64\.AppImage\.tar\.gz$/u);
     } finally {
       await rm(source, { recursive: true, force: true });
     }

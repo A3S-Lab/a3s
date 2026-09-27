@@ -12,9 +12,9 @@ describe('Desktop release links', () => {
   test('provides one stable latest-release asset for every supported platform', () => {
     assert.deepEqual(desktopReleaseAssets.map((asset) => asset.id), [
       'macos-arm64',
-      'macos-x64',
       'windows-x64',
       'linux-x64',
+      'linux-arm64',
     ]);
     assert.equal(new Set(desktopReleaseAssets.map((asset) => asset.fileName)).size, 4);
 

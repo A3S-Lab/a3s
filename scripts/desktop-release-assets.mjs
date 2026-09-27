@@ -19,10 +19,6 @@ export const DESKTOP_DOWNLOAD_ALIASES = [
     candidates: [/^A3S-(?:darwin|macos)-(?:aarch64|arm64)\.dmg$/i],
   },
   {
-    alias: 'A3S-macos-x64.dmg',
-    candidates: [/^A3S-(?:darwin|macos)-(?:x64|x86_64)\.dmg$/i],
-  },
-  {
     alias: 'A3S-windows-x64.exe',
     candidates: [/^A3S-windows-(?:x64|x86_64)-setup\.exe$/i],
   },
@@ -32,6 +28,13 @@ export const DESKTOP_DOWNLOAD_ALIASES = [
       /^A3S-linux-(?:x86_64|amd64)\.AppImage$/i,
       // Keep the historical hyphenated spelling as a migration fallback.
       /^A3S-linux-(?:x86_64|amd64)-AppImage$/i,
+    ],
+  },
+  {
+    alias: 'A3S-linux-arm64.AppImage',
+    candidates: [
+      /^A3S-linux-(?:aarch64|arm64)\.AppImage$/i,
+      /^A3S-linux-(?:aarch64|arm64)-AppImage$/i,
     ],
   },
 ];
@@ -83,11 +86,6 @@ const UPDATER_ASSET_SPECS = [
     patterns: [/^A3S-(?:darwin|macos)-(?:aarch64|arm64)\.app\.tar\.gz$/i],
   },
   {
-    key: 'darwin-x86_64',
-    installer: 'app',
-    patterns: [/^A3S-(?:darwin|macos)-(?:x64|x86_64)\.app\.tar\.gz$/i],
-  },
-  {
     key: 'windows-x86_64',
     installer: 'nsis',
     patterns: [
@@ -109,6 +107,14 @@ const UPDATER_ASSET_SPECS = [
     patterns: [
       /^A3S-linux-(?:x86_64|amd64)\.AppImage$/i,
       /^A3S-linux-(?:x86_64|amd64)\.AppImage\.tar\.gz$/i,
+    ],
+  },
+  {
+    key: 'linux-aarch64',
+    installer: 'appimage',
+    patterns: [
+      /^A3S-linux-(?:aarch64|arm64)\.AppImage$/i,
+      /^A3S-linux-(?:aarch64|arm64)\.AppImage\.tar\.gz$/i,
     ],
   },
 ];
@@ -156,7 +162,7 @@ export async function buildDesktopUpdaterManifest(
     platforms[key] ??= entry;
     platforms[`${key}-${installer}`] = entry;
   }
-  const requiredPlatforms = ['darwin-aarch64', 'darwin-x86_64', 'windows-x86_64', 'linux-x86_64'];
+  const requiredPlatforms = ['darwin-aarch64', 'windows-x86_64', 'linux-x86_64', 'linux-aarch64'];
   const missing = requiredPlatforms.filter((key) => !platforms[key]);
   if (missing.length) {
     throw new Error(`Desktop release is missing signed updater platforms: ${missing.join(', ')}`);

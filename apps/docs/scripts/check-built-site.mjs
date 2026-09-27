@@ -83,24 +83,41 @@ const taggedReleaseBases = [
   'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.2',
   'https://github.com/A3S-Lab/a3s/releases/download/desktop-v0.1.0',
 ];
+const currentDownloadAssets = [
+  'A3S-macos-arm64.dmg',
+  'A3S-windows-x64.exe',
+  'A3S-linux-x64.AppImage',
+  'A3S-linux-arm64.AppImage',
+  'SHA256SUMS.txt',
+];
+const earlierDownloadAssets = [
+  'A3S-macos-arm64.dmg',
+  'A3S-windows-x64.exe',
+  'A3S-linux-x64.AppImage',
+  'SHA256SUMS.txt',
+];
 for (const [downloadPage, locale] of [[chineseDownload, 'Chinese'], [englishDownload, 'English']]) {
-  for (const asset of [
-    'A3S-macos-arm64.dmg',
-    'A3S-macos-x64.dmg',
-    'A3S-windows-x64.exe',
-    'A3S-linux-x64.AppImage',
-    'SHA256SUMS.txt',
-  ]) {
+  for (const asset of currentDownloadAssets) {
     assert(
       downloadPage.includes(`${releaseBase}/${asset}`),
       `${locale} download page is missing ${asset}`,
     );
-    for (const taggedReleaseBase of taggedReleaseBases) {
+  }
+  assert(
+    !downloadPage.includes(`${releaseBase}/A3S-macos-x64.dmg`),
+    `${locale} download page still offers macOS Intel`,
+  );
+  for (const taggedReleaseBase of taggedReleaseBases) {
+    for (const asset of earlierDownloadAssets) {
       assert(
         downloadPage.includes(`${taggedReleaseBase}/${asset}`),
         `${locale} download page history is missing ${taggedReleaseBase} ${asset}`,
       );
     }
+    assert(
+      !downloadPage.includes(`${taggedReleaseBase}/A3S-linux-arm64.AppImage`),
+      `${locale} download page history offers Linux ARM for ${taggedReleaseBase}`,
+    );
   }
   assert(
     downloadPage.includes('https://github.com/A3S-Lab/a3s/releases'),

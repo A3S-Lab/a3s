@@ -1,4 +1,4 @@
-export type DesktopPlatformId = 'macos-arm64' | 'macos-x64' | 'windows-x64' | 'linux-x64';
+export type DesktopPlatformId = 'macos-arm64' | 'windows-x64' | 'linux-x64' | 'linux-arm64';
 
 export interface DesktopReleaseAsset {
   id: DesktopPlatformId;
@@ -24,13 +24,6 @@ export const desktopReleaseAssets: readonly DesktopReleaseAsset[] = [
     href: `${desktopReleaseAssetBaseUrl}/A3S-macos-arm64.dmg`,
   },
   {
-    id: 'macos-x64',
-    name: 'macOS (Intel)',
-    format: 'DMG',
-    fileName: 'A3S-macos-x64.dmg',
-    href: `${desktopReleaseAssetBaseUrl}/A3S-macos-x64.dmg`,
-  },
-  {
     id: 'windows-x64',
     name: 'Windows (x64)',
     format: 'NSIS installer',
@@ -43,6 +36,13 @@ export const desktopReleaseAssets: readonly DesktopReleaseAsset[] = [
     format: 'AppImage',
     fileName: 'A3S-linux-x64.AppImage',
     href: `${desktopReleaseAssetBaseUrl}/A3S-linux-x64.AppImage`,
+  },
+  {
+    id: 'linux-arm64',
+    name: 'Linux (ARM64)',
+    format: 'AppImage',
+    fileName: 'A3S-linux-arm64.AppImage',
+    href: `${desktopReleaseAssetBaseUrl}/A3S-linux-arm64.AppImage`,
   },
 ] as const;
 

@@ -13,8 +13,8 @@ source, while the root repository publishes the installers and signed Tauri upda
 | Updater manifest | `desktop-latest/latest.json`; signed entries point to the versioned release. |
 | Website page | `https://a3s-lab.github.io/a3s/download/`; links resolve to `desktop-latest`. |
 
-The release workflow builds macOS arm64 and x64 app/DMG bundles, Windows x64 NSIS/MSI installers,
-and Linux x64 AppImage/DEB packages. With Tauri v2 updater artifacts enabled, macOS publishes a
+The release workflow builds a macOS Apple silicon app/DMG, Windows x64 NSIS/MSI installers,
+and Linux x64 and ARM64 AppImage/DEB packages. With Tauri v2 updater artifacts enabled, macOS publishes a
 signed `.app.tar.gz`; Linux publishes a signed self-contained `.AppImage`; and Windows publishes
 signed self-contained `.exe` and `.msi` artifacts. The verifier also accepts the older
 `.AppImage.tar.gz`, `.nsis.zip`, and `.msi.zip` forms so a migration can be diagnosed without
