@@ -37,13 +37,15 @@ jobs:
     outputs:
       tag_name: ${{ steps.metadata.outputs.tag_name }}
       version: ${{ steps.metadata.outputs.version }}
+      source_sha: ${{ steps.metadata.outputs.source_sha }}
     env:
       RELEASE_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag_name || github.ref }}
+          # workflow_dispatch builds the main commit that pins Desktop. Tag pushes build the tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.inputs.tag_name || github.ref }}
           fetch-depth: 0
 
       - name: Initialize Desktop and release submodules
@@ -127,6 +129,7 @@ jobs:
           }
           echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
   publish-tauri:
     name: Build and publish ${{ matrix.name }}
@@ -166,7 +169,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate.outputs.tag_name }}
+          ref: ${{ needs.validate.outputs.source_sha }}
           fetch-depth: 0
 
       - name: Initialize Desktop and release submodules
