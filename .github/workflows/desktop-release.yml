@@ -43,6 +43,8 @@ jobs:
       tag_name: ${{ steps.metadata.outputs.tag_name }}
       version: ${{ steps.metadata.outputs.version }}
       source_sha: ${{ steps.metadata.outputs.source_sha }}
+      matrix: ${{ steps.metadata.outputs.matrix }}
+      partial: ${{ steps.metadata.outputs.partial }}
     env:
       RELEASE_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
     steps:
@@ -113,6 +115,7 @@ jobs:
         shell: bash
         env:
           UPDATER_PUBKEY: ${{ secrets.A3S_DESKTOP_UPDATER_PUBKEY }}
+          REQUESTED_TARGETS: ${{ github.event.inputs.targets }}
         run: |
           set -euo pipefail
           if [[ ! "$RELEASE_TAG" =~ ^desktop-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
@@ -135,14 +138,32 @@ jobs:
           echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "source_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const requested = String(process.env.REQUESTED_TARGETS || '')
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const matrix = [
+            { name: 'Windows x64', runner: 'windows-latest', target: 'x86_64-pc-windows-msvc', bundles: 'nsis,msi' },
+            { name: 'Linux x64', runner: 'ubuntu-22.04', target: 'x86_64-unknown-linux-gnu', bundles: 'appimage,deb' },
+            { name: 'macOS arm64', runner: 'macos-15', target: 'aarch64-apple-darwin', bundles: 'app,dmg' },
+            { name: 'macOS x64', runner: 'macos-15-intel', target: 'x86_64-apple-darwin', bundles: 'app,dmg' },
+          ];
+          const known = new Set(matrix.map((row) => row.name));
+          const missing = requested.filter((name) => !known.has(name));
+          if (missing.length > 0) {
+            console.error(`Unknown desktop release targets: ${missing.join(', ')}`);
+            process.exit(1);
+          }
+          const selected = requested.length === 0 ? matrix : matrix.filter((row) => requested.includes(row.name));
+          const delimiter = 'A3S_DESKTOP_MATRIX';
+          process.stdout.write(`matrix<<${delimiter}\n${JSON.stringify(selected)}\n${delimiter}\n`);
+          process.stdout.write(`partial=${requested.length === 0 ? 'false' : 'true'}\n`);
+          NODE
 
   publish-tauri:
     name: Build and publish ${{ matrix.name }}
     needs: validate
-    if: >-
-      github.event_name != 'workflow_dispatch' ||
-      github.event.inputs.targets == '' ||
-      contains(format(',{0},', github.event.inputs.targets), format(',{0},', matrix.name))
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 180
     strategy:
@@ -151,23 +172,7 @@ jobs:
       # Serializing jobs prevents two latest.json uploads from racing.
       max-parallel: 1
       matrix:
-        include:
-          - name: Windows x64
-            runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            bundles: nsis,msi
-          - name: Linux x64
-            runner: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            bundles: appimage,deb
-          - name: macOS arm64
-            runner: macos-15
-            target: aarch64-apple-darwin
-            bundles: app,dmg
-          - name: macOS x64
-            runner: macos-15-intel
-            target: x86_64-apple-darwin
-            bundles: app,dmg
+        include: ${{ fromJSON(needs.validate.outputs.matrix) }}
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.A3S_DESKTOP_TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -294,9 +299,7 @@ jobs:
       - validate
       - publish-tauri
     # A partial dispatch cannot satisfy the four-installer alias contract.
-    if: >-
-      github.event_name != 'workflow_dispatch' ||
-      github.event.inputs.targets == ''
+    if: needs.validate.outputs.partial != 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
