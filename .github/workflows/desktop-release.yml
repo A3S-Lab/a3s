@@ -289,6 +289,13 @@ jobs:
           # Linux stays verbose because Tauri drops linuxdeploy stderr at the default log level.
           args: --config src-tauri/tauri.release.conf.json --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}${{ contains(matrix.target, 'linux') && ' --verbose' || '' }}
 
+      - name: Allow Linux sandbox user namespaces
+        if: runner.os == 'Linux'
+        run: |
+          # Ubuntu 24.04 ARM runners block bubblewrap until this AppArmor knob is opened.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+
       - name: Smoke-test native sandbox on the release runner
         working-directory: apps/desktop
         run: npm run sandbox:smoke
