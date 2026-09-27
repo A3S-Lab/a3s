@@ -269,6 +269,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # a3s-box links libkrun from its staged lib/ tree. linuxdeploy only
+          # searches the system path and this variable, not the resource directory.
+          LD_LIBRARY_PATH: ${{ matrix.target == 'x86_64-unknown-linux-gnu' && format('{0}/apps/desktop/src-tauri/gen/box/lib', github.workspace) || '' }}
         with:
           projectPath: apps/desktop
           tagName: ${{ needs.validate.outputs.tag_name }}
