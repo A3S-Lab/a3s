@@ -41,8 +41,12 @@ int main(int argc, char **argv, char **envp) {
     char logname_env[256];
     struct passwd *pw;
 
-    if (uid == 0 || gid == 0 || geteuid() != 0) {
-        return fail("requires an unprivileged caller and a root-owned setuid installation");
+    /* A root caller is allowed for single-identity service deployments: the
+     * agent itself runs as root, and the state-ownership contract of the
+     * runtime requires one effective identity across boot, removal, and log
+     * shipping. The setuid-root installation check stays. */
+    if (geteuid() != 0) {
+        return fail("requires a root-owned setuid installation");
     }
     if (build_delegation_root(delegation, sizeof(delegation), uid) != 0) {
         return fail("could not build delegated cgroup path");
