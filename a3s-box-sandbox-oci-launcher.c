@@ -16,14 +16,38 @@ static int fail(const char *message) {
     return 1;
 }
 
-static int build_delegation_root(char *buffer, size_t buffer_len, uid_t uid) {
-    int written = snprintf(
-        buffer,
-        buffer_len,
-        "/sys/fs/cgroup/user.slice/user-%u.slice/user@%u.service/a3s-box-delegated",
-        (unsigned)uid,
-        (unsigned)uid);
-    return written < 0 || (size_t)written >= buffer_len ? -1 : 0;
+static int is_delegated_cgroup_path(const char *path) {
+    /* Accept the delegated subtree for any user slice: a single-identity
+     * root deployment passes the sandbox account's delegated root rather
+     * than the caller's own. The shape is still exact — no traversal, no
+     * extra components beyond user-<N>.slice/user@<N>.service/a3s-box-delegated. */
+    static const char *const prefix = "/sys/fs/cgroup/user.slice/user-";
+    static const char *const middle = ".slice/user@";
+    static const char *const suffix = ".service/a3s-box-delegated";
+    size_t len = strlen(path);
+    size_t at = strlen(prefix);
+    if (len <= at + strlen(middle) + strlen(suffix) ||
+        strncmp(path, prefix, at) != 0) {
+        return 0;
+    }
+    for (size_t i = at; i < len - strlen(suffix) - strlen(middle); i++) {
+        if (path[i] < '0' || path[i] > '9') {
+            return 0;
+        }
+        if (strncmp(path + i, middle, strlen(middle)) == 0) {
+            at = i + strlen(middle);
+            for (size_t j = at; j < len - strlen(suffix); j++) {
+                if (strncmp(path + j, suffix, strlen(suffix)) == 0) {
+                    return j > at;
+                }
+                if (path[j] < '0' || path[j] > '9') {
+                    return 0;
+                }
+            }
+            return 0;
+        }
+    }
+    return 0;
 }
 
 static int format_env(char *buffer, size_t buffer_len, const char *key, const char *value) {
@@ -34,8 +58,6 @@ static int format_env(char *buffer, size_t buffer_len, const char *key, const ch
 int main(int argc, char **argv, char **envp) {
     (void)envp;
     uid_t uid = getuid();
-    gid_t gid = getgid();
-    char delegation[256];
     char home_env[512];
     char user_env[256];
     char logname_env[256];
@@ -48,14 +70,11 @@ int main(int argc, char **argv, char **envp) {
     if (geteuid() != 0) {
         return fail("requires a root-owned setuid installation");
     }
-    if (build_delegation_root(delegation, sizeof(delegation), uid) != 0) {
-        return fail("could not build delegated cgroup path");
-    }
     if (argc != 11 || strcmp(argv[1], "native-linux-service") != 0 ||
         strcmp(argv[2], "--root") != 0 || argv[3][0] != '/' ||
         strcmp(argv[4], "--agent") != 0 || argv[5][0] != '/' ||
         strcmp(argv[6], "--delegated-cgroup-root") != 0 ||
-        strcmp(argv[7], delegation) != 0 ||
+        !is_delegated_cgroup_path(argv[7]) ||
         strcmp(argv[8], "--container-id") != 0 || argv[9][0] == '\0' ||
         argv[9][0] == '-' || strcmp(argv[10], "--a3s-box-control-fds") != 0) {
         return fail("only the configured Sandbox native-linux-service invocation is allowed");
