@@ -17,8 +17,9 @@
 #   A3S_INSTALL_LIB_URL  Optional URL for the helper library when piped via curl
 #
 # Release archives may contain the target-specific Moli executable under
-# `moli/`. The embedded Code runtime discovers that sidecar beside `a3s`;
-# archives without it continue to use the runtime's digest-verified cache.
+# `moli/`, plus `a3s-code-tui` and `a3s-code-acp` beside `a3s`. The embedded
+# Code runtime discovers those sidecars beside `a3s`; archives without Moli
+# continue to use the runtime's digest-verified cache.
 set -eu
 PRIMARY_REPOSITORY="A3S-Lab/CLI"
 LEGACY_REPOSITORY="A3S-Lab/a3s"
@@ -500,13 +501,24 @@ binary_activation_started=0
 webview_activation_started=0
 zvec_activation_started=0
 moli_activation_started=0
+has_bundled_code=0
+code_tui_activation_started=0
+code_acp_activation_started=0
+old_code_tui_saved=0
+old_code_acp_saved=0
+staged_code_tui=""
+backup_code_tui=""
+failed_code_tui=""
+staged_code_acp=""
+backup_code_acp=""
+failed_code_acp=""
 committed=0
 
 remove_generated_binary() {
     generated_path=${1:-}
     [ -n "$generated_path" ] || return 0
     case "$generated_path" in
-        "$install_dir"/.a3s.*|"$install_dir"/.a3s-webview.*|"$install_dir"/.a3s-libzvec.*|"$install_dir"/.a3s-moli.*)
+        "$install_dir"/.a3s.*|"$install_dir"/.a3s-webview.*|"$install_dir"/.a3s-libzvec.*|"$install_dir"/.a3s-moli.*|"$install_dir"/.a3s-code-tui.*|"$install_dir"/.a3s-code-acp.*)
             if [ -d "$generated_path" ] && [ ! -L "$generated_path" ]; then
                 rm -rf -- "$generated_path"
             else
@@ -515,6 +527,45 @@ remove_generated_binary() {
             ;;
         *) warn "refusing to remove unexpected file $generated_path" ;;
     esac
+}
+
+rollback_regular_file() {
+    started=$1
+    staged=$2
+    dest=$3
+    failed=$4
+    backup=$5
+    label=$6
+    saved=0
+    if [ "$started" -eq 1 ]; then
+        if [ ! -e "$staged" ] && [ ! -L "$staged" ]; then
+            if [ -e "$dest" ] || [ -L "$dest" ]; then
+                if mv "$dest" "$failed"; then
+                    :
+                else
+                    warn "could not move the failed $label; the previous file is preserved at $backup"
+                fi
+            fi
+        fi
+        if [ -e "$backup" ] || [ -L "$backup" ]; then
+            if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+                if mv "$backup" "$dest"; then
+                    saved=0
+                else
+                    saved=1
+                    warn "could not restore the previous $label; its backup is preserved at $backup"
+                fi
+            elif [ -e "$staged" ] || [ -L "$staged" ]; then
+                saved=0
+            else
+                saved=1
+                warn "could not restore the previous $label; its backup is preserved at $backup"
+            fi
+        else
+            saved=0
+        fi
+    fi
+    printf '%s\n' "$saved"
 }
 
 rollback_activation() {
@@ -641,6 +692,12 @@ rollback_activation() {
         fi
     fi
 
+    old_code_tui_saved=$(rollback_regular_file "$code_tui_activation_started" \
+        "$staged_code_tui" "$install_dir/a3s-code-tui" "$failed_code_tui" \
+        "$backup_code_tui" "Code TUI")
+    old_code_acp_saved=$(rollback_regular_file "$code_acp_activation_started" \
+        "$staged_code_acp" "$install_dir/a3s-code-acp" "$failed_code_acp" \
+        "$backup_code_acp" "Code ACP")
 }
 
 cleanup() {
@@ -678,7 +735,22 @@ cleanup() {
         warn "preserved the previous Moli runtime at $backup_moli"
     fi
     remove_generated_binary "$failed_moli"
+    remove_generated_binary "$staged_code_tui"
+    if [ "$old_code_tui_saved" -eq 0 ]; then
+        remove_generated_binary "$backup_code_tui"
+    elif [ -e "$backup_code_tui" ] || [ -L "$backup_code_tui" ]; then
+        warn "preserved the previous Code TUI at $backup_code_tui"
+    fi
+    remove_generated_binary "$failed_code_tui"
+    remove_generated_binary "$staged_code_acp"
+    if [ "$old_code_acp_saved" -eq 0 ]; then
+        remove_generated_binary "$backup_code_acp"
+    elif [ -e "$backup_code_acp" ] || [ -L "$backup_code_acp" ]; then
+        warn "preserved the previous Code ACP at $backup_code_acp"
+    fi
+    remove_generated_binary "$failed_code_acp"
     rm -f -- "$archive" "$archive_list" "$temp_dir/a3s" "$temp_dir/a3s-webview" \
+        "$temp_dir/a3s-code-tui" "$temp_dir/a3s-code-acp" \
         "$temp_dir/libzvec_c_api.dylib" "$temp_dir/libzvec_c_api.so"
     rm -rf -- "$temp_dir/moli"
     rmdir "$temp_dir" 2>/dev/null
@@ -746,6 +818,18 @@ elif [ "$zvec_so_count" -eq 1 ]; then
     has_bundled_zvec=1
     zvec_lib_name="libzvec_c_api.so"
 fi
+code_tui_count=$(awk '$0 == "a3s-code-tui" { count += 1 } END { print count + 0 }' "$archive_list")
+code_acp_count=$(awk '$0 == "a3s-code-acp" { count += 1 } END { print count + 0 }' "$archive_list")
+[ "$code_tui_count" -le 1 ] \
+    || die "release archive must contain at most one a3s-code-tui"
+[ "$code_acp_count" -le 1 ] \
+    || die "release archive must contain at most one a3s-code-acp"
+[ "$code_tui_count" -eq "$code_acp_count" ] \
+    || die "release archive must contain a3s-code-tui and a3s-code-acp together"
+has_bundled_code=0
+if [ "$code_tui_count" -eq 1 ]; then
+    has_bundled_code=1
+fi
 legacy_payload_entry_count=$(awk '
     $0 == "support" || index($0, "support/") == 1 ||
     $0 == "release-compat" || index($0, "release-compat/") == 1 { count += 1 }
@@ -764,7 +848,7 @@ tar -tvzf "$archive" | awk '
 
 while IFS= read -r entry; do
     case "$entry" in
-        a3s|a3s-webview|libzvec_c_api.dylib|libzvec_c_api.so|moli|moli/*|support|support/*|release-compat|release-compat/*) ;;
+        a3s|a3s-webview|a3s-code-tui|a3s-code-acp|libzvec_c_api.dylib|libzvec_c_api.so|moli|moli/*|support|support/*|release-compat|release-compat/*) ;;
         *) die "release archive contains an unexpected path: $entry" ;;
     esac
     case "/$entry/" in
@@ -781,6 +865,9 @@ if [ "$has_bundled_moli" -eq 1 ]; then
 fi
 if [ "$has_bundled_zvec" -eq 1 ]; then
     archive_members="$archive_members $zvec_lib_name"
+fi
+if [ "$has_bundled_code" -eq 1 ]; then
+    archive_members="$archive_members a3s-code-tui a3s-code-acp"
 fi
 # The validated archive member names never contain whitespace.
 # shellcheck disable=SC2086
@@ -802,10 +889,22 @@ if [ "$has_bundled_zvec" -eq 1 ]; then
     [ -f "$temp_dir/$zvec_lib_name" ] && [ ! -L "$temp_dir/$zvec_lib_name" ] \
         || die "the extracted libzvec library is not a regular file"
 fi
+if [ "$has_bundled_code" -eq 1 ]; then
+    [ -f "$temp_dir/a3s-code-tui" ] && [ ! -L "$temp_dir/a3s-code-tui" ] \
+        || die "the extracted Code TUI is not a regular file"
+    [ -f "$temp_dir/a3s-code-acp" ] && [ ! -L "$temp_dir/a3s-code-acp" ] \
+        || die "the extracted Code ACP is not a regular file"
+fi
 chmod 755 "$temp_dir/a3s" || die "failed to make the staged a3s binary executable"
 if [ "$has_bundled_webview" -eq 1 ]; then
     chmod 755 "$temp_dir/a3s-webview" \
         || die "failed to make the staged a3s-webview companion executable"
+fi
+if [ "$has_bundled_code" -eq 1 ]; then
+    chmod 755 "$temp_dir/a3s-code-tui" \
+        || die "failed to make the staged Code TUI executable"
+    chmod 755 "$temp_dir/a3s-code-acp" \
+        || die "failed to make the staged Code ACP executable"
 fi
 if [ "$has_bundled_moli" -eq 1 ]; then
     chmod 755 "$temp_dir/moli/moli" \
@@ -840,10 +939,20 @@ if [ "$has_bundled_zvec" -eq 1 ]; then
     backup_zvec="$install_dir/.a3s-libzvec.backup.$activation_id"
     failed_zvec="$install_dir/.a3s-libzvec.failed.$activation_id"
 fi
+if [ "$has_bundled_code" -eq 1 ]; then
+    staged_code_tui="$install_dir/.a3s-code-tui.new.$activation_id"
+    backup_code_tui="$install_dir/.a3s-code-tui.backup.$activation_id"
+    failed_code_tui="$install_dir/.a3s-code-tui.failed.$activation_id"
+    staged_code_acp="$install_dir/.a3s-code-acp.new.$activation_id"
+    backup_code_acp="$install_dir/.a3s-code-acp.backup.$activation_id"
+    failed_code_acp="$install_dir/.a3s-code-acp.failed.$activation_id"
+fi
 for generated_path in "$staged_binary" "$backup_binary" "$failed_binary" \
     "$staged_webview" "$backup_webview" "$failed_webview" \
     "$staged_zvec" "$backup_zvec" "$failed_zvec" \
-    "$staged_moli" "$backup_moli" "$failed_moli"; do
+    "$staged_moli" "$backup_moli" "$failed_moli" \
+    "$staged_code_tui" "$backup_code_tui" "$failed_code_tui" \
+    "$staged_code_acp" "$backup_code_acp" "$failed_code_acp"; do
     [ ! -e "$generated_path" ] && [ ! -L "$generated_path" ] \
         || die "temporary activation path already exists: $generated_path"
 done
@@ -861,6 +970,16 @@ if [ "$has_bundled_webview" -eq 1 ]; then
         || die "failed to stage the a3s-webview companion"
     chmod 755 "$staged_webview" \
         || die "failed to make the a3s-webview companion executable"
+fi
+if [ "$has_bundled_code" -eq 1 ]; then
+    cp "$temp_dir/a3s-code-tui" "$staged_code_tui" \
+        || die "failed to stage the Code TUI"
+    chmod 755 "$staged_code_tui" \
+        || die "failed to make the Code TUI executable"
+    cp "$temp_dir/a3s-code-acp" "$staged_code_acp" \
+        || die "failed to stage the Code ACP"
+    chmod 755 "$staged_code_acp" \
+        || die "failed to make the Code ACP executable"
 fi
 if [ "$has_bundled_zvec" -eq 1 ]; then
     cp "$temp_dir/$zvec_lib_name" "$staged_zvec" \
@@ -931,6 +1050,41 @@ if [ "$has_bundled_webview" -eq 1 ]; then
         || die "the installed a3s-webview companion is not executable"
 fi
 
+if [ "$has_bundled_code" -eq 1 ]; then
+    code_tui_activation_started=1
+    if [ -L "$install_dir/a3s-code-tui" ]; then
+        die "refusing to replace symlink $install_dir/a3s-code-tui"
+    fi
+    if [ -e "$install_dir/a3s-code-tui" ]; then
+        [ -f "$install_dir/a3s-code-tui" ] \
+            || die "$install_dir/a3s-code-tui is not a regular file"
+        cp -p "$install_dir/a3s-code-tui" "$backup_code_tui" \
+            || die "failed to back up the existing Code TUI"
+        old_code_tui_saved=1
+    fi
+    mv -f "$staged_code_tui" "$install_dir/a3s-code-tui" \
+        || die "failed to activate the Code TUI"
+    staged_code_tui=""
+    [ -x "$install_dir/a3s-code-tui" ] \
+        || die "the installed Code TUI is not executable"
+    code_acp_activation_started=1
+    if [ -L "$install_dir/a3s-code-acp" ]; then
+        die "refusing to replace symlink $install_dir/a3s-code-acp"
+    fi
+    if [ -e "$install_dir/a3s-code-acp" ]; then
+        [ -f "$install_dir/a3s-code-acp" ] \
+            || die "$install_dir/a3s-code-acp is not a regular file"
+        cp -p "$install_dir/a3s-code-acp" "$backup_code_acp" \
+            || die "failed to back up the existing Code ACP"
+        old_code_acp_saved=1
+    fi
+    mv -f "$staged_code_acp" "$install_dir/a3s-code-acp" \
+        || die "failed to activate the Code ACP"
+    staged_code_acp=""
+    [ -x "$install_dir/a3s-code-acp" ] \
+        || die "the installed Code ACP is not executable"
+fi
+
 binary_activation_started=1
 if [ -L "$install_dir/a3s" ]; then
     die "refusing to replace symlink $install_dir/a3s"
@@ -971,6 +1125,18 @@ if remove_generated_binary "$backup_moli"; then
     backup_moli=""
 else
     warn "could not remove the old Moli runtime backup at $backup_moli"
+fi
+if remove_generated_binary "$backup_code_tui"; then
+    old_code_tui_saved=0
+    backup_code_tui=""
+else
+    warn "could not remove the old Code TUI backup at $backup_code_tui"
+fi
+if remove_generated_binary "$backup_code_acp"; then
+    old_code_acp_saved=0
+    backup_code_acp=""
+else
+    warn "could not remove the old Code ACP backup at $backup_code_acp"
 fi
 path_is_ready=0
 case ":${PATH:-}:" in
@@ -1034,6 +1200,10 @@ else
 fi
 if [ "$has_bundled_zvec" -eq 1 ]; then
     info "installed $zvec_lib_name to $install_dir/$zvec_lib_name"
+fi
+if [ "$has_bundled_code" -eq 1 ]; then
+    info "installed a3s-code-tui to $install_dir/a3s-code-tui"
+    info "installed a3s-code-acp to $install_dir/a3s-code-acp"
 fi
 if ! "$install_dir/a3s" code --help >/dev/null 2>&1; then
     warn "a3s code --help failed; ensure this release includes the Code TUI entry"

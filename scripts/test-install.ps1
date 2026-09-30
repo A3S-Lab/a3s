@@ -25,7 +25,7 @@ function Assert-File {
 function Assert-NoGeneratedPaths {
     param([string]$Root)
     $leftovers = @(Get-ChildItem -LiteralPath $Root -Recurse -Force |
-        Where-Object { $_.Name -match '^\.a3s(?:-webview|-moli)?\.(new|backup|failed)\.' })
+        Where-Object { $_.Name -match '^\.a3s(?:-webview|-moli|-code-tui|-code-acp)?\.(new|backup|failed)\.' })
     if ($leftovers.Count -ne 0) {
         Fail-Test "installer left temporary path $($leftovers[0].FullName)"
     }
@@ -164,7 +164,7 @@ function New-FixtureExecutable {
     param(
         [string]$Version,
         [string]$Destination,
-        [ValidateSet('a3s', 'webview', 'moli')][string]$Product = 'a3s'
+        [ValidateSet('a3s', 'webview', 'moli', 'code-tui', 'code-acp')][string]$Product = 'a3s'
     )
     $typeName = 'Program_' + $Version.Replace('.', '_') + '_' + [Guid]::NewGuid().ToString('N')
     $source = if ($Product -eq 'webview') {
@@ -192,6 +192,19 @@ public static class $typeName
     public static int Main(string[] args)
     {
         Console.WriteLine("moli $Version");
+        return 0;
+    }
+}
+"@
+    } elseif ($Product -eq 'code-tui' -or $Product -eq 'code-acp') {
+        $printed = if ($Product -eq 'code-tui') { 'a3s-code-tui' } else { 'a3s-code-acp' }
+        @"
+using System;
+public static class $typeName
+{
+    public static int Main(string[] args)
+    {
+        Console.WriteLine("$printed $Version");
         return 0;
     }
 }
@@ -238,6 +251,7 @@ function Set-ReleaseFixture {
         [switch]$WithoutWebview,
         [switch]$WithoutMoli,
         [switch]$WithLegacyPayload,
+        [ValidateSet('None', 'Both', 'AcpOnly')][string]$CodeSidecar = 'None',
         [string]$Repository = 'A3S-Lab/CLI'
     )
 
@@ -260,6 +274,12 @@ function Set-ReleaseFixture {
                 version = '1.1.1'
                 target = 'x86_64-pc-windows-msvc'
             } | ConvertTo-Json -Compress) -Encoding UTF8
+    }
+    if ($CodeSidecar -eq 'Both' -or $CodeSidecar -eq 'AcpOnly') {
+        New-FixtureExecutable -Version $Version -Destination (Join-Path $payload 'a3s-code-acp.exe') -Product code-acp
+    }
+    if ($CodeSidecar -eq 'Both') {
+        New-FixtureExecutable -Version $Version -Destination (Join-Path $payload 'a3s-code-tui.exe') -Product code-tui
     }
     if ($WithLegacyPayload) {
         [IO.Directory]::CreateDirectory((Join-Path $payload 'support')) | Out-Null
@@ -518,6 +538,46 @@ try {
     if ($installedMoliVersion -cne 'moli 1.2.4') {
         Fail-Test 'unsafe archive changed the installed Moli runtime'
     }
+
+    # Code TUI and ACP install beside a3s.exe, and only as a pair.
+    $codeRoot = Join-Path $testRoot 'code-sidecars'
+    $codeInstallDir = Join-Path $codeRoot 'bin'
+    Set-ReleaseFixture -Version '3.1.0' -CodeSidecar Both
+    Invoke-TestInstall -Version '3.1.0' -InstallDir $codeInstallDir
+    Assert-File (Join-Path $codeInstallDir 'a3s-code-tui.exe')
+    Assert-File (Join-Path $codeInstallDir 'a3s-code-acp.exe')
+    $installedCodeTui = (& (Join-Path $codeInstallDir 'a3s-code-tui.exe') | Out-String).Trim()
+    if ($installedCodeTui -cne 'a3s-code-tui 3.1.0') {
+        Fail-Test "initial Code TUI reported $installedCodeTui"
+    }
+    $installedCodeAcp = (& (Join-Path $codeInstallDir 'a3s-code-acp.exe') | Out-String).Trim()
+    if ($installedCodeAcp -cne 'a3s-code-acp 3.1.0') {
+        Fail-Test "initial Code ACP reported $installedCodeAcp"
+    }
+    Set-ReleaseFixture -Version '3.1.1' -CodeSidecar Both
+    Invoke-TestInstall -Version '3.1.1' -InstallDir $codeInstallDir
+    $installedCodeTui = (& (Join-Path $codeInstallDir 'a3s-code-tui.exe') | Out-String).Trim()
+    if ($installedCodeTui -cne 'a3s-code-tui 3.1.1') {
+        Fail-Test "upgraded Code TUI reported $installedCodeTui"
+    }
+    $installedCodeAcp = (& (Join-Path $codeInstallDir 'a3s-code-acp.exe') | Out-String).Trim()
+    if ($installedCodeAcp -cne 'a3s-code-acp 3.1.1') {
+        Fail-Test "upgraded Code ACP reported $installedCodeAcp"
+    }
+    Assert-NoGeneratedPaths -Root $codeRoot
+    Set-ReleaseFixture -Version '3.1.2' -CodeSidecar AcpOnly
+    Expect-Failure 'Code ACP without the TUI' {
+        Invoke-TestInstall -Version '3.1.2' -InstallDir $codeInstallDir
+    }
+    $installedVersion = (& (Join-Path $codeInstallDir 'a3s.exe') --version | Out-String).Trim()
+    if ($installedVersion -cne 'a3s 3.1.1') {
+        Fail-Test 'a one-sided Code bundle replaced a3s'
+    }
+    $installedCodeTui = (& (Join-Path $codeInstallDir 'a3s-code-tui.exe') | Out-String).Trim()
+    if ($installedCodeTui -cne 'a3s-code-tui 3.1.1') {
+        Fail-Test 'a one-sided Code bundle replaced the TUI'
+    }
+    Assert-NoGeneratedPaths -Root $codeRoot
 
     # A locked executable forces rollback without losing the old installation.
     $lockedRoot = Join-Path $testRoot 'locked'
