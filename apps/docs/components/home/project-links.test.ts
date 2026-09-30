@@ -21,7 +21,7 @@ describe('project links', () => {
   test('opens Desktop at its root-owned application source', () => {
     assert.equal(
       getProjectPrimaryHref('desktop'),
-      'https://github.com/A3S-Lab/a3s/tree/main/apps/desktop',
+      'https://github.com/contra-sense/kbot',
     );
   });
 });

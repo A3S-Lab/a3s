@@ -9,7 +9,7 @@ export const projectLinks = {
     repository: 'https://github.com/A3S-Lab/Code',
     website: 'https://a3s-lab.github.io/Code/',
   },
-  desktop: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/desktop' },
+  desktop: { repository: 'https://github.com/contra-sense/kbot' },
   windhole: { repository: 'https://github.com/A3S-Lab/a3s/tree/main/apps/windhole' },
   box: {
     repository: 'https://github.com/A3S-Lab/Box',
