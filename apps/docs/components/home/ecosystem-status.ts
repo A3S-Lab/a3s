@@ -21,7 +21,7 @@ export const statusVerifiedAt = '2026-09-30';
 const statusByProject = {
   cli: { stage: 'preview', release: 'v0.21.0' },
   code: { stage: 'released', release: 'v9.1.1' },
-  desktop: { stage: 'preview', release: 'v0.1.2' },
+  desktop: { stage: 'preview', release: 'v0.1.8' },
   windhole: { stage: 'preview', release: 'main' },
   box: { stage: 'released', release: 'v3.3.0' },
   bench: { stage: 'preview', release: 'v0.1.3' },
@@ -49,7 +49,7 @@ const statusByProject = {
   tui: { stage: 'preview', release: 'v0.2.0' },
   gui: { stage: 'preview', release: 'main' },
   webview: { stage: 'preview', release: 'v0.1.5' },
-  ui: { stage: 'preview', release: 'v0.2.1' },
+  ui: { stage: 'preview', release: 'v0.4.0' },
   observer: { stage: 'preview', release: 'v0.11.0' },
   sentry: { stage: 'preview', release: 'v0.8.0' },
   updater: { stage: 'released', release: 'v0.3.0' },
